@@ -39,13 +39,14 @@
 #include <vector>
 
 #include <vulkan/vulkan.h>
+#include "common/hailo_align.hpp"
 
 namespace yvo::vk {
 
 class VulkanContext;
 
 // HailoRT read_async 가 요구하는 정렬. 후처리 트랙이 실측한 값이다.
-inline constexpr std::size_t kHailoAsyncAlign = 16384;
+using yvo::kHailoAsyncAlign;  // 정의는 common/hailo_align.hpp 하나뿐이다
 
 struct ExportedDmaBuf {
     VkBuffer buffer = VK_NULL_HANDLE;

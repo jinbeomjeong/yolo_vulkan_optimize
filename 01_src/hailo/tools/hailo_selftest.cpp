@@ -29,10 +29,14 @@
 #include "common/frame_types.hpp"
 #include "hailo/hailo_runner.hpp"
 #include "common/stats.hpp"
+#include "common/tool_util.hpp"
 
 using yvo::percentile;
 
 namespace {
+
+using yvo::tool::Nv12Frame;
+using yvo::tool::read_nv12_frames;
 
 // COCO 라벨은 common/coco_labels.hpp 에 하나로 모았다(중복 정의 제거).
 using yvo::kCoco;
@@ -50,30 +54,6 @@ struct Options {
     float score = -1.0f;
     yvo::TensorLayout layout = yvo::TensorLayout::Nhwc;  // 러너에 넘길 입력 텐서 레이아웃
 };
-
-struct Nv12Frame {
-    int w = 0, h = 0;
-    std::vector<std::uint8_t> data;  // Y(w*h) + UV(w*h/2)
-};
-
-std::vector<Nv12Frame> read_nv12_frames(const std::string& video, int n, int w, int h) {
-    const std::string cmd = "ffmpeg -nostdin -v error -i '" + video + "' -frames:v " + std::to_string(n) +
-                            " -f rawvideo -pix_fmt nv12 -";
-    FILE* p = popen(cmd.c_str(), "r");
-    if (!p) throw std::runtime_error("popen(ffmpeg) 실패");
-    std::vector<Nv12Frame> out;
-    const std::size_t fsz = static_cast<std::size_t>(w) * h * 3 / 2;
-    for (int i = 0; i < n; ++i) {
-        Nv12Frame f;
-        f.w = w;
-        f.h = h;
-        f.data.resize(fsz);
-        if (std::fread(f.data.data(), 1, fsz, p) != fsz) break;
-        out.push_back(std::move(f));
-    }
-    pclose(p);
-    return out;
-}
 
 std::shared_ptr<std::uint8_t> alloc_aligned(std::size_t size) {
     const std::size_t rounded = (size + 4095) / 4096 * 4096;

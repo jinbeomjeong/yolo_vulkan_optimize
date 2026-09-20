@@ -64,17 +64,24 @@
 #include "hailo/hailo_runner.hpp"
 #include "hailo/tools/p2_out_buffers.hpp"
 #include "common/stats.hpp"
+#include "common/tool_util.hpp"
+#include "common/hailo_align.hpp"
 
 using yvo::percentile;
 
 namespace {
+
+using yvo::tool::fmt;
+using yvo::tool::count_open_fds;
+using yvo::tool::Nv12Frame;
+using yvo::tool::read_nv12_frames;
 
 constexpr int kSrcW = 1920;
 constexpr int kSrcH = 1080;
 // HailoRT의 vdma_stream.cpp:379가 read_async()에 **16384 B 정렬**을 요구한다. 4096 B로 주면
 // "unaligned buffer ... causes performance degradation" 경고가 프레임×스트림마다 뜨고
 // 실측으로 FPS가 48.5 → 51.7로 3 FPS 차이가 났다(계획서 §7 검증 기록).
-constexpr std::size_t kDmaAlign = 16384;
+constexpr std::size_t kDmaAlign = yvo::kHailoAsyncAlign;  // common/hailo_align.hpp
 constexpr float kIouMatchThreshold = yvo::detmatch::kIouThreshold;  // common/detection_match.hpp
 constexpr float kHefScoreThreshold = 0.2f;   // HEF의 YOLOV8 post-process 설정
 constexpr float kHefIouThreshold = 0.7f;
@@ -157,38 +164,7 @@ private:
     std::ofstream f_;
 };
 
-std::string fmt(const char* f, ...) __attribute__((format(printf, 1, 2)));
-std::string fmt(const char* f, ...) {
-    char buf[1024];
-    va_list ap;
-    va_start(ap, f);
-    std::vsnprintf(buf, sizeof(buf), f, ap);
-    va_end(ap);
-    return std::string(buf);
-}
-
 // ---------------------------------------------------------------- 영상 → NHCW 입력
-
-struct Nv12Frame {
-    std::vector<std::uint8_t> data;   // Y(w*h) + UV(w*h/2)
-};
-
-std::vector<Nv12Frame> read_nv12_frames(const std::string& video, int n) {
-    const std::string cmd = "ffmpeg -nostdin -v error -i '" + video + "' -frames:v " + std::to_string(n) +
-                            " -f rawvideo -pix_fmt nv12 -";
-    FILE* p = popen(cmd.c_str(), "r");
-    if (!p) throw std::runtime_error("popen(ffmpeg) 실패");
-    std::vector<Nv12Frame> out;
-    const std::size_t fsz = static_cast<std::size_t>(kSrcW) * kSrcH * 3 / 2;
-    for (int i = 0; i < n; ++i) {
-        Nv12Frame f;
-        f.data.resize(fsz);
-        if (std::fread(f.data.data(), 1, fsz, p) != fsz) break;
-        out.push_back(std::move(f));
-    }
-    pclose(p);
-    return out;
-}
 
 // hailo_selftest.cpp의 CPU letterbox NHCW 경로와 같다: cpu_letterbox_nv12_bt709 → rgb_packed_to_nhcw
 std::vector<std::vector<std::uint8_t>> make_nhcw_inputs(const std::vector<Nv12Frame>& frames,
@@ -826,16 +802,6 @@ struct ApiOutcome {
 };
 
 // ---------------------------------------------------------------- P2: dma-buf 출력 경로
-
-// /proc/self/fd 항목 수. 슬롯 16 x 텐서 6 = fd 96개를 열어 두므로 누수 여부를 이 값으로 본다.
-long count_open_fds() {
-    long n = 0;
-    std::error_code ec;
-    for (auto it = std::filesystem::directory_iterator("/proc/self/fd", ec);
-         !ec && it != std::filesystem::directory_iterator(); it.increment(ec))
-        ++n;
-    return n;
-}
 
 // 칩 온도만 읽고 장치를 즉시 놓는다. 세션을 만들기 전 냉각 판정에 쓴다.
 float read_chip_temp() {
@@ -1959,7 +1925,7 @@ int main(int argc, char** argv) {
         // ---- 입력 프레임
         const yvo::LetterboxParams lb = yvo::make_letterbox(kSrcW, kSrcH, 640, 640);
         const int need = std::max({o.compare_frames, o.dump_frames, o.api_check_frames});
-        auto nv12 = read_nv12_frames(o.video, need);
+        auto nv12 = read_nv12_frames(o.video, need, kSrcW, kSrcH);
         if (static_cast<int>(nv12.size()) < need)
             throw std::runtime_error("프레임 부족: " + std::to_string(nv12.size()) + " / " + std::to_string(need));
         const std::size_t in_size = static_cast<std::size_t>(640) * 640 * 3;

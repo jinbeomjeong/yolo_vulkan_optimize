@@ -80,12 +80,15 @@
 #ifdef YVO_HAVE_DISPLAY
 #include "display/display_pipeline.hpp"
 #include "common/stats.hpp"
+#include "common/tool_util.hpp"
 
 using yvo::Stats;
 using yvo::stats;
 #endif
 
 namespace {
+
+using yvo::tool::soc_temperature;
 
 using Clock = std::chrono::steady_clock;
 
@@ -285,18 +288,6 @@ double cpu_ms() {
     getrusage(RUSAGE_SELF, &ru);
     return static_cast<double>(ru.ru_utime.tv_sec + ru.ru_stime.tv_sec) * 1e3 +
            static_cast<double>(ru.ru_utime.tv_usec + ru.ru_stime.tv_usec) / 1e3;
-}
-
-// vcgencmd measure_temp → °C (실패하면 NaN)
-double soc_temperature() {
-    FILE* p = popen("vcgencmd measure_temp 2>/dev/null", "r");
-    if (!p) return std::nan("");
-    char buf[128] = {0};
-    const bool got = std::fgets(buf, sizeof(buf), p) != nullptr;
-    pclose(p);
-    if (!got) return std::nan("");
-    const char* eq = std::strchr(buf, '=');
-    return eq ? std::atof(eq + 1) : std::nan("");
 }
 
 // 스레드 안전 슬롯 풀 + 완료 큐 (HailoRT 콜백 ↔ 메인 스레드)

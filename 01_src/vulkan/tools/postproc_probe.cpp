@@ -65,6 +65,7 @@
 #include "vulkan/yolo_postproc.hpp"
 
 #include "heap_sum_spv.h"
+#include "common/tool_util.hpp"
 
 #ifdef YVO_HAVE_HAILO
 #include <atomic>
@@ -78,6 +79,9 @@
 #endif
 
 namespace {
+
+using yvo::tool::fmt;
+using yvo::tool::count_open_fds;
 
 using yvo::DetectionKeyed;
 using yvo::LetterboxParams;
@@ -98,16 +102,6 @@ constexpr float kCoordTolPx = 0.25f;         // 계획서 §4.5 G5
 
 // ─────────────────────────────────────────────────────────────────── 출력 (stdout + 파일)
 
-std::string fmt(const char* f, ...) __attribute__((format(printf, 1, 2)));
-std::string fmt(const char* f, ...) {
-    char buf[1024];
-    va_list ap;
-    va_start(ap, f);
-    std::vsnprintf(buf, sizeof(buf), f, ap);
-    va_end(ap);
-    return std::string(buf);
-}
-
 class Tee {
 public:
     explicit Tee(const std::string& path) {
@@ -126,9 +120,6 @@ public:
 private:
     std::ofstream f_;
 };
-
-// 열린 fd 수. 정의는 아래 live/stale 절 앞에 있다(gpuab 도 누수 판정에 쓴다).
-long count_open_fds();
 
 // 셸 한 줄 실행 결과 캡처. 정의는 heapimport 절에 있다(gpuab 가 온도·스로틀 기록에 먼저 쓴다).
 std::string run_capture(const char* cmd);
@@ -1136,16 +1127,6 @@ int run_gpuab(const Options& o, Tee& log) {
     log(fmt("[RESULT] gpuab %s  (밴드 %c)", pass ? "PASS" : "FAIL",
             ratio <= 1.05 ? 'A' : (ratio <= 1.30 ? 'B' : 'C')));
     return pass ? 0 : 1;
-}
-
-// 열려 있는 fd 수 (/proc/self/fd). live/stale 과 heapimport 가 fd 누수를 센다.
-long count_open_fds() {
-    long n = 0;
-    std::error_code ec;
-    for (auto it = std::filesystem::directory_iterator("/proc/self/fd", ec);
-         !ec && it != std::filesystem::directory_iterator(); it.increment(ec))
-        ++n;
-    return n;
 }
 
 // ─────────────────────────────────────────────────────────────── live / stale (NPU)

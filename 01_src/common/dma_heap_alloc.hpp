@@ -50,6 +50,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include "common/hailo_align.hpp"
 
 namespace yvo {
 
@@ -145,7 +146,7 @@ struct DmaHeapConfig {
     // — 둘은 같은 힙이다. 이름을 남겨 둔 것은 다른 기기에서 갈릴 수 있어서다.
     std::vector<std::string> heaps{"/dev/dma_heap/vidbuf_cached", "/dev/dma_heap/system"};
     // 할당 크기·시작 주소 정렬. 16384 = HailoRT read_async 요구(부록 A.4, vulkan/dmabuf_export.hpp kHailoAsyncAlign)
-    std::size_t align = 16384;
+    std::size_t align = kHailoAsyncAlign;
     // 드라이버가 요청 크기 위에 더 요구하는 바이트 수(부록 B.12). Vulkan import 대상이면 > 0이어야 한다.
     // vk::storage_dmabuf_headroom()이 질의로 구한 값을 넣는다. **상수를 박지 않는다.**
     std::size_t device_headroom = 0;

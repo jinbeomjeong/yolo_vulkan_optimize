@@ -31,10 +31,11 @@
 #include "common/dma_heap_alloc.hpp"
 #include "vulkan/dmabuf_export.hpp"
 #include "vulkan/vulkan_context.hpp"
+#include "common/hailo_align.hpp"
 
 namespace yvo::p2 {
 
-inline constexpr std::size_t kHailoAsyncAlign = 16384;   // vulkan/dmabuf_export.hpp 의 kHailoAsyncAlign 과 같다
+using yvo::kHailoAsyncAlign;  // 정의는 common/hailo_align.hpp 하나뿐이다
 
 inline std::size_t align_up(std::size_t v, std::size_t a) { return a <= 1 ? v : (v + a - 1) / a * a; }
 
