@@ -23,7 +23,7 @@
 #include <gtest/gtest.h>
 #include <unistd.h>
 
-#include "detection_match.hpp"
+#include "common/detection_match.hpp"
 
 #include "common/cpu_letterbox.hpp"
 #include "common/dmabuf_map.hpp"

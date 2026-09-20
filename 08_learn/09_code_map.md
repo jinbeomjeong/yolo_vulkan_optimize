@@ -224,7 +224,7 @@ ctest --test-dir build
 
 검출 결과를 직접 비교하는 스크립트도 있다:
 [`06_tools/python/compare_detections.py`](../06_tools/python/compare_detections.py).
-C++ 테스트의 판정 규칙([`05_tests/detection_match.hpp`](../05_tests/detection_match.hpp))과
+C++ 테스트의 판정 규칙([`01_src/common/detection_match.hpp`](../01_src/common/detection_match.hpp))과
 **일부러 같은 알고리즘**으로 구현돼 있다.
 
 ---

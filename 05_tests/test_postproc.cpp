@@ -44,7 +44,7 @@
 #include <gtest/gtest.h>
 #include <unistd.h>
 
-#include "detection_match.hpp"
+#include "common/detection_match.hpp"
 
 #include "common/cpu_yolov8_decode.hpp"
 #include "common/frame_types.hpp"

@@ -35,7 +35,7 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 
 | 파일 | 하는 일 | 실행 환경 |
 |---|---|---|
-| `compare_detections.py` | 두 `detections.jsonl` 비교(IoU 매칭·좌표 오차). 판정 규칙이 [`05_tests/detection_match.hpp`](../05_tests/detection_match.hpp) 와 **의도적으로 동일**하다 | conda `hailo-yolo` |
+| `compare_detections.py` | 두 `detections.jsonl` 비교(IoU 매칭·좌표 오차). 판정 규칙이 [`01_src/common/detection_match.hpp`](../01_src/common/detection_match.hpp) 와 **의도적으로 동일**하다 | conda `hailo-yolo` |
 | `gen_glyph_font_8x16.py` | `01_src/common/glyph_font_8x16.hpp` 생성. **빌드에 관여하지 않는다** — 산출물은 커밋된 헤더이고 이 파일은 그 상수를 어떻게 얻었는지의 재현 기록이다 | 시스템 python3 |
 
 ## `probes/` — 일회성 프로브 소스

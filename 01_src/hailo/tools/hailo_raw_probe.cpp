@@ -58,6 +58,7 @@
 #include "common/cpu_letterbox.hpp"
 #include "common/dma_heap_alloc.hpp"   // dma_sync_* (입력 dma-buf 가 캐시된 힙일 때만 쓴다)
 #include "common/cpu_yolov8_decode.hpp"
+#include "common/detection_match.hpp"
 #include "common/frame_types.hpp"
 #include "hailo/hailo_raw_runner.hpp"
 #include "hailo/hailo_runner.hpp"
@@ -74,7 +75,7 @@ constexpr int kSrcH = 1080;
 // "unaligned buffer ... causes performance degradation" 경고가 프레임×스트림마다 뜨고
 // 실측으로 FPS가 48.5 → 51.7로 3 FPS 차이가 났다(계획서 §7 검증 기록).
 constexpr std::size_t kDmaAlign = 16384;
-constexpr float kIouMatchThreshold = 0.9f;   // 05_tests/test_detections.cpp:36과 동일
+constexpr float kIouMatchThreshold = yvo::detmatch::kIouThreshold;  // common/detection_match.hpp
 constexpr float kHefScoreThreshold = 0.2f;   // HEF의 YOLOV8 post-process 설정
 constexpr float kHefIouThreshold = 0.7f;
 constexpr int kHefMaxPerClass = 100;
@@ -204,41 +205,8 @@ std::vector<std::vector<std::uint8_t>> make_nhcw_inputs(const std::vector<Nv12Fr
     return out;
 }
 
-// ---------------------------------------------------------------- 매칭 기준 (test_detections.cpp:55-84)
-
-struct MatchResult {
-    long ref = 0, test = 0, matched = 0;
-};
-
-// 점수 순 greedy 매칭 (같은 클래스, IoU 최대, kIouMatchThreshold 이상).
-// iou는 common/cpu_yolov8_decode.hpp의 iou_xyxy()이고 test_detections.cpp:44와 수식이 같다.
-MatchResult match(const std::vector<yvo::Detection>& ref, const std::vector<yvo::Detection>& test) {
-    MatchResult m;
-    m.ref = static_cast<long>(ref.size());
-    m.test = static_cast<long>(test.size());
-    std::vector<std::size_t> order(ref.size());
-    for (std::size_t i = 0; i < order.size(); ++i) order[i] = i;
-    std::sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) { return ref[a].score > ref[b].score; });
-    std::vector<bool> used(test.size(), false);
-    for (std::size_t i : order) {
-        const auto& r = ref[i];
-        float best = 0.0f;
-        std::size_t best_j = test.size();
-        for (std::size_t j = 0; j < test.size(); ++j) {
-            if (used[j] || test[j].class_id != r.class_id) continue;
-            const float v = yvo::iou_xyxy(r, test[j]);
-            if (v > best) {
-                best = v;
-                best_j = j;
-            }
-        }
-        if (best_j < test.size() && best >= kIouMatchThreshold) {
-            used[best_j] = true;
-            ++m.matched;
-        }
-    }
-    return m;
-}
+// 매칭 기준은 common/detection_match.hpp 하나뿐이다(2026-09-21 이전에는 여기에 사본이 있었다).
+using yvo::detmatch::match;
 
 // ---------------------------------------------------------------- 원시 스트림 세션
 
@@ -2426,7 +2394,7 @@ int main(int argc, char** argv) {
                             std::vector<yvo::Detection> test;
                             test.reserve(cand.size());
                             for (const auto& d : cand) test.push_back(static_cast<const yvo::Detection&>(d));
-                            const auto m = match(ref[i], test);
+                            const auto m = match(ref[i], test, nullptr);
                             row.ref += m.ref;
                             row.test += m.test;
                             row.matched += m.matched;
@@ -2492,7 +2460,7 @@ int main(int argc, char** argv) {
             yvo::cpu_nms_greedy_by_class(cand, kHefIouThreshold, kHefMaxPerClass);
             std::vector<yvo::Detection> test;
             for (const auto& d : cand) test.push_back(static_cast<const yvo::Detection&>(d));
-            const auto m = match(ref[i], test);
+            const auto m = match(ref[i], test, nullptr);
             inc_ref += m.ref;
             inc_test += m.test;
             inc_matched += m.matched;
