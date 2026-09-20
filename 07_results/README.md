@@ -90,11 +90,18 @@ build/01_src/pipeline/yvo_pipeline \
 `evidence/` 는 *관문 통과 증거*, `verification/` 은 *verify 스킬 6단계 로그*(검증 레이어·ASan·perf·ctest)다.
 전문은 [`.claude/skills/measure/SKILL.md`](../.claude/skills/measure/SKILL.md) §5.
 
-> ⚠ **중복돼 보이는 PNG 를 지우지 마라.** 46장 중 상당수가 바이트까지 같은데,
-> **그 동일성 자체가 결론**이다 — host 경로 == GPU 경로(`gpu_postproc_e2e/dump_{host,gpu}/`),
-> ISP A안 == C안(`isp_resize/detections/isp_{A_nhwc,C_nhcw}_b8/`),
-> batch 4 == batch 8(`pipeline_ffmpeg_vulkan_hailo/selftest/{b4,b8}/`),
-> NHWC == NHCW(`.../preproc/letterbox_frame100{,_nhcw}.png`). 지우면 근거가 사라진다.
+### 중복 산출물
+
+2026-09-21 에 바이트 일치 PNG 22장(7.4 MB)을 정본만 남기고 지웠다(46장 16.2 MB → 24장 8.8 MB).
+
+**지우기 전에 md5 대조표를 남겼다**: [`duplicate_png.md`](duplicate_png.md).
+몇몇 실험은 *두 경로의 산출물이 바이트까지 같다*는 것 **자체가 결론**이기 때문이다 —
+host 경로 == GPU 경로, ISP A안 == C안, batch 4 == batch 8, NHWC == NHCW.
+표의 md5 로 지워진 파일이 남은 파일과 같은 내용이었음을 확인할 수 있고,
+**동일성의 1차 근거인 `detections.jsonl` 은 전부 그대로 있다**(PNG 는 그것의 시각화였다).
+
+> 앞으로도 같은 순서로 한다: **md5 로 동일성을 확인 → 대조표에 기록 → 삭제.**
+> 인용된 파일은 지우지 않는다.
 
 문서 링크가 깨지지 않았는지는 이걸로 확인한다:
 

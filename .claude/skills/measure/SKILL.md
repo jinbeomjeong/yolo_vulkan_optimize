@@ -156,10 +156,14 @@ ASan 로그가 `evidence/` 에 있으면 `verification/` 으로 옮긴다.
 `summary.md` 머리에 산문으로 적혀 있다. 없는 파일을 지금 만들면 그 시점의 실제 스냅샷이 아니라
 **재구성한 값**이 되므로 날조다. 이 규약은 **새로 측정하는 실험부터** 적용한다.
 
-> **중복돼 보이는 산출물을 함부로 지우지 마라.** `07_results/` 안의 PNG 중 상당수는
-> 바이트가 같은데, **그 동일성 자체가 결론**이다
-> (host 경로 == GPU 경로, A안 == C안, batch 4 == batch 8, NHWC == NHCW).
-> 지우면 결론의 근거가 사라진다.
+**중복 산출물을 지울 때의 순서** — `07_results/` 안의 PNG 중 상당수는 바이트가 같은데,
+**그 동일성 자체가 결론**인 경우가 있다(host 경로 == GPU 경로, A안 == C안,
+batch 4 == batch 8, NHWC == NHCW). 그래서 지우되 근거는 남긴다:
+
+1. `md5sum` 으로 **바이트 일치를 확인**한다. 하나라도 다르면 건드리지 않는다
+2. md5·남긴 파일·지운 파일을 [`07_results/duplicate_png.md`](../../../07_results/duplicate_png.md) 에 기록한다
+3. **문서에 인용된 파일은 지우지 않는다**(`python3 06_tools/python/check_links.py` 로 확인)
+4. 수치의 1차 근거(`detections.jsonl`, CSV)는 **절대 지우지 않는다.** 이미지는 그것의 시각화다
 
 **CSV는 LF 줄바꿈으로 쓴다.** 파이썬 `csv.writer`는 기본이 CRLF다. 반드시 지정할 것:
 

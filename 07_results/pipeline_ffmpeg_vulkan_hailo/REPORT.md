@@ -164,6 +164,7 @@ NHCW 기준값은 `cpu_letterbox_nv12_bt709()` 결과를 `rgb_packed_to_nhcw()`�
 - ASan/UBSan: 디코더, 전처리, yvo_pipeline(100프레임 × 2모드), test_detections 모두 에러·누수 0
 - fd 누수: 디코더 도구가 시작 전후 fd 수를 세고, 모든 실행에서 같았다.
 - 시각 확인: `samples/frame00000.png` 등 7장, `selftest/frame0_detections.png`, `preproc/letterbox_frame100.png`
+  (`selftest/b4/`·`b8/` 의 같은 이름 PNG 와 `preproc/letterbox_frame100_nhcw.png` 은 위 파일들과 **바이트 일치**였다 — batch 와 레이아웃이 결과를 바꾸지 않는다는 뜻이다. 2026-09-21 에 정본만 남겼고 md5 는 `../duplicate_png.md` 에 있다)
 
 ## 4. 실험 결과
 

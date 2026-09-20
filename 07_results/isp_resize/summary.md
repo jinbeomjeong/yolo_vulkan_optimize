@@ -268,7 +268,10 @@ HailoRT 입력 경로가 현행과 같아 되돌리기도 쉽다. A안의 유일
 - `pipeline/env_bench.txt` — 환경 스냅샷 + 소스 트리 오염 점검(md5)
 - `pipeline/results_raw.csv`(18행 = 1차 9 + 2차 9) / `pipeline/results.csv` — 설정별 6회 중앙값
 - `pipeline/raw/<설정>_run<N>/{stdout.log,hailort.log}`, `pipeline_rerun/` — 2차 원시 로그
-- `detections/<설정>/detections.jsonl` + 박스 PNG(300프레임마다)
+- `detections/<설정>/detections.jsonl` + 박스 PNG(300프레임마다).
+  `gpu_nhcw_b8/` 의 PNG 는 `../pipeline_ffmpeg_vulkan_hailo/samples/` 와, `isp_C_nhcw_b8/` 의 PNG 는 `isp_A_nhwc_b8/` 와 **바이트 일치**라 정본만 남겼다
+> 2026-09-21 중복 정리: 바이트 일치 PNG 를 정본만 남기고 지웠다. 어느 파일이 어디로 합쳐졌는지는 [`../duplicate_png.md`](../duplicate_png.md) 의 md5 대조표에 있다. **수치의 1차 근거인 `detections.jsonl`·CSV 는 그대로 있다.**
+
 - `detections/compare_*.csv` — 매칭 비율·클래스별 개수
 - `detections/strong_match_diagnostic.txt` — 점수 하한별 강한 검출 재현율
 - `detections/isp_A_filter_*/` — 리샘플 필터 비교
