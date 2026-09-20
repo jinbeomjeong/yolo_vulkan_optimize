@@ -42,13 +42,24 @@ build/01_src/pipeline/yvo_pipeline \
 
 1. **zero-copy 는 `dmabuf + NHCW` 에서만 성립한다.** V3D GEM mmap 포인터는 Hailo 가 DMA 매핑하지 못한다.
 2. **GPU 가 쓴 버퍼를 CPU 로 훑으면 약 10배 비싸다.** V3D 메모리 타입이 `HOST_COHERENT` 하나뿐이고
-   `HOST_CACHED` 가 없다(1.2 MB 기준 순차 **약 1.41 GB/s**, stride-3 은 0.088 GB/s).
-   **반대 방향(CPU→GPU 쓰기)은 싸다.** 정본은
-   [`pipeline_ffmpeg_vulkan_hailo/summary.md`](pipeline_ffmpeg_vulkan_hailo/summary.md)
-   (0.85~0.87 ms / 1,228,800 B). 이 색인의 이전 판은 1.48 GB/s 라 적었다.
+   `HOST_CACHED` 가 없다. **반대 방향(CPU→GPU 쓰기)은 싸다.**
+
+   ⚠ **순차 읽기 대역폭은 서로 다른 두 측정이 있다. 섞어 인용하지 마라.**
+
+   | 측정 | 조건 | 결과 | 정본 |
+   |---|---|---|---|
+   | **P2 프로브** (할당처 비교) | 1,221,120 B, 30회 반복 + 워밍업 3회 | 0.826 ms = **1.479 GB/s**<br>(malloc 0.244 = 5.001, 캐시 dma-heap 0.396 = 3.084) | [`gpu_postprocess/summary.md`](gpu_postprocess/summary.md) P2 ⑥ |
+   | **`yvo_preproc_bench`** (파이프라인 버퍼) | 1,228,800 B | 0.85~0.87 ms = **약 1.41 GB/s** | [`pipeline_ffmpeg_vulkan_hailo/summary.md`](pipeline_ffmpeg_vulkan_hailo/summary.md) §주의 |
+
+   **할당처 간 비교에는 P2(1.479)** 를 쓴다 — 반복 횟수가 많고 malloc·dma-heap 대조군이 있다.
+   stride-3 읽기는 같은 양에 약 14 ms = **0.088 GB/s** 이고, 16~17배 차이가 이 설계의 근거다.
+
+   > 2026-09-21 정정: 이 색인이 한때 1.48(= P2 반올림)로 적었다가 1.41(= preproc_bench)로 "고쳤는데",
+   > **둘은 애초에 다른 측정이었다.** 하나로 합치려 한 것이 실수였다.
 3. **처리량 상한은 PCIe Gen3 x1 이 정한다.** `T(B) = 24.8 + 16.2·B ms`, 점근 상한 61.6 FPS, 실측 51.7.
 4. **파이프라인에서 처리량·지연을 지배하는 것은 batch 가 아니라 slots 다.** 지연 ≈ `slots × 프레임 주기`.
-5. **표시 해상도를 낮추면 오히려 비싸진다**(1:1 2.05 ns/px vs 스케일 5.31 ns/px). 1920×1080 1:1 이 기본.
+5. **표시 해상도를 낮추면 오히려 비싸진다.** 1:1 경로 **2.04 ns/px** vs 스케일 경로 **5.72**(720p) / **5.31**(900p) ns/px.
+   1920×1080 1:1 이 기본. (픽셀당 값은 `시간 ÷ 픽셀 수` 로 계산한 것이다 — 원문은 ms 만 준다.)
 6. **원시 출력에 `InferModel` 은 쓸 수 없다** — `VDevice::configure()` + `infer_async()` 저수준 경로 필수.
 
 ---
@@ -63,7 +74,7 @@ build/01_src/pipeline/yvo_pipeline \
 | [`pipeline_ffmpeg_vulkan_hailo/`](pipeline_ffmpeg_vulkan_hailo/REPORT.md) | 디코드 → GPU 전처리 → NPU 통합 | **51.63 FPS**(NPU 상한의 99.9%). **NHCW 직접 출력으로 CPU 17.6 → 3.5 ms/f.** 비싼 것은 전치가 아니라 **CPU 가 V3D 메모리를 읽는 것**이었다 |
 | [`nms_host_cost/`](nms_host_cost/summary.md) | 호스트 NMS 비용 | `yolov8_nms_postprocess` 는 **온칩이 아니라 호스트 CPU** 실행. **2.2~3.2 ms/f 고정비**(검출 수와 무관). 원시 출력으로 바꿔도 **PCIe 트래픽은 안 늘어난다** |
 | [`gpu_postprocess/`](gpu_postprocess/summary.md) | GPU 후처리 프로브 (P1/P2/P3) + **[F0] 관문** | 텐서 해석 4변수 전수 확정. pass1 **0.5625 ms**, CPU 억제 3~11 µs. **[F0]: 입력·출력 dma-buf 동시 사용 동작 확인**(`evidence/f0_in_dmabuf.txt`) |
-| [`display_vulkan_hdmi/`](display_vulkan_hdmi/summary.md) | 표시 프로브 (P4~P10) | 컴퓨트가 **스왑체인에 직접 STORAGE 쓰기** 가능(blit 불필요). 1080p 1:1 **4.25 ms**. ⚠ 창 모드는 **조용히 2.6배 느려진다** |
+| [`display_vulkan_hdmi/`](display_vulkan_hdmi/summary.md) | 표시 프로브 (P4~P10) | 컴퓨트가 **스왑체인에 직접 STORAGE 쓰기** 가능(blit 불필요). 1080p 1:1 **4.229 ms**. ⚠ 창 모드는 **조용히 2.6배 느려진다** |
 | [`dmaheap_unify/`](dmaheap_unify/summary.md) | dma-heap → V3DV import 관문 (별도 트랙) | V3DV 가 dma-heap fd 를 import 한다. **단 `range = size − 256`** 함정. GPU 읽기 성능(B.2)과 3자 일관성은 **미검증** |
 
 ### 이번 통합 작업 (2026-09-20)

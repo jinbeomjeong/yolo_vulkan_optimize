@@ -41,7 +41,7 @@
 - **처리량**은 `--display-pace asap` 실행에서 잰다 (최대 속도로 돌린다)
 - **지연·드롭**은 `--display-pace source` 실행에서 잰다 (소스 30 fps에 맞춰 돌린다)
 
-그리고 [`README.md`](../README.md) §1 에 이 경고가 붙어 있다:
+그리고 [`07_results/README.md`](../07_results/README.md) 맨 위에 이 경고가 붙어 있다:
 *"두 페이싱은 **다른 실행**이다. FPS·CPU·glass 를 섞어 인용하지 마라."*
 
 > 이건 흔한 실수다. "34.87 FPS이고 지연은 101 ms입니다"라고 쓰면
@@ -310,7 +310,7 @@ C가 느리게 나와도 C 탓인지 열 탓인지 구분할 수 없다. `ABC AB
 **Q4. "34.87 FPS이고 glass-to-glass는 101 ms입니다"가 왜 잘못된 문장인가?**
 
 두 값이 **다른 실행**에서 나왔기 때문이다. 34.87 FPS는 `--display-pace asap` 실행의 값이고
-그때 지연은 131 ms다. 지연 101 ms는 `--display-pace source` 실행의 값이고 그때 FPS는 29.91이다.
+그때 지연은 130.75 ms(median)다. 지연 101 ms는 `--display-pace source` 실행의 값이고 그때 FPS는 29.91이다. (두 지연 모두 median 이다 — mean 은 131.42 / 101.13.)
 
 **Q5. 속도가 23% 빨라진 ISP 경로를 왜 쓰지 않는가?**
 

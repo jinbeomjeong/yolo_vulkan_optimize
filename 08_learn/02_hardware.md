@@ -407,12 +407,16 @@ V3D 드라이버가 내놓는 Vulkan 메모리 타입은 **`DEVICE_LOCAL | HOST_
 
 | 측정 | 값 | 출처 |
 |---|---:|---|
-| GPU가 쓴 메모리를 CPU가 **순차로** 읽기 | 약 1.41 GB/s | [`pipeline_ffmpeg_vulkan_hailo/summary.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/summary.md) |
-| GPU가 쓴 메모리를 CPU가 **stride-3으로** 읽기 | **약 0.088 GB/s** | 〃 |
+| GPU가 쓴 메모리를 CPU가 **순차로** 읽기 | **1.479 GB/s** (0.826 ms / 1,221,120 B) | [`gpu_postprocess/summary.md`](../07_results/gpu_postprocess/summary.md) P2 ⑥ |
+| 같은 양을 **캐시 매핑 dma-heap**에서 읽기 | 3.084 GB/s (0.396 ms) | 〃 |
+| 같은 양을 **평범한 malloc**에서 읽기 | 5.001 GB/s (0.244 ms) | 〃 |
+| GPU가 쓴 메모리를 CPU가 **stride-3으로** 읽기 | **약 0.088 GB/s** (약 14 ms) | [`pipeline_ffmpeg_vulkan_hailo/REPORT.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md) §4.3 |
 | 반대 방향(CPU → GPU 쓰기) | **싸다** | [`07_results/README.md`](../07_results/README.md) 2번 |
 
-> 색인 문서 [`07_results/README.md`](../07_results/README.md) 는 순차 값을 1.48 GB/s로 적는다.
-> 이 교재는 **측정 문서 쪽(1.41)** 을 따른다 — 정본은 색인이 아니라 측정 문서다.
+> ⚠ **순차 읽기에는 서로 다른 두 측정이 있다.** 위 표의 1.479는 할당처 세 가지를 나란히 잰
+> P2 프로브 값이고(30회 반복), 파이프라인 버퍼를 잰 `yvo_preproc_bench` 쪽은 1,228,800 B에
+> 0.85~0.87 ms = **약 1.41 GB/s** 다. **둘을 같은 값처럼 섞지 마라.**
+> 할당처 비교에는 P2를 쓴다 — [`07_results/README.md`](../07_results/README.md) 2번 참조.
 | 1.2 MB memcpy — 캐시 매핑 dma-heap(ISP 출력) | **0.229 ms** | [`isp_resize`](../07_results/isp_resize/summary.md) 1부 표 2 |
 | 1.2 MB memcpy — V3D 메모리(GPU 출력) | **1.045 ms** (**4.6배**) | 〃 |
 

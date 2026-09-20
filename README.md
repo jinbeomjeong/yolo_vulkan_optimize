@@ -8,8 +8,8 @@ Vulkan(V3D GPU)으로 밀어낸** 프로젝트다. 디코드·전처리·추론�
 
 | `--display-pace` | FPS | glass-to-glass | CPU ms/frame | 드롭 |
 |---|---:|---:|---:|---:|
-| **`source`** (기본·최종 운용) | **29.91** (소스 30 fps 추종) | **101 ms** | **2.18** | 0 |
-| `asap` | 34.87 | 131 ms | 1.84 | 0 |
+| **`source`** (기본·최종 운용) | **29.91** (소스 30 fps 추종) | **101.20 ms** | **2.18** | 0 |
+| `asap` | 34.87 | 130.75 ms | 1.84 | 0 |
 
 검출 수는 표시 off/on, 두 페이싱 전부 **3369 로 동일**하다.
 근거: [`07_results/display_e2e/summary.md`](07_results/display_e2e/summary.md) §3·§3.2.
@@ -148,9 +148,9 @@ wall            4.612 s, 29.49 FPS
 | `--batch N` / `--slots N` | 8 / `max(4,batch*2)` | 운용점. §3.3 참조 |
 | `--gpu-depth N` | 3 | GPU 동시 프레임 상한. **지연에 영향 없음**(실측 1 vs 3 동일) |
 | `--display off\|on` | `off` | HDMI 실시간 표시 |
-| `--display-fullscreen` | 꺼짐 | **반드시 켠다.** 창 모드는 에러·경고 없이 표시 변환이 **2.6배**(4.25 → 10.9 ms) 느려진다 |
+| `--display-fullscreen` | 꺼짐 | **반드시 켠다.** 창 모드는 에러·경고 없이 표시 변환이 **2.6배**(4.22 → 10.92 ms) 느려진다 |
 | `--display-sync matched\|latest` | `matched` | `matched` 는 프레임과 그 검출을 정확히 맞춘다. `latest` 는 화면을 즉시 띄우고 박스만 뒤처진다 |
-| `--display-pace source\|asap` | 표시 on 이면 `source` | 소스 fps 로 페이싱. `asap` 이면 큐가 꽉 차 glass 101 → 131 ms |
+| `--display-pace source\|asap` | 표시 on 이면 `source` | 소스 fps 로 페이싱. `asap` 이면 큐가 꽉 차 glass 101.20 → 130.75 ms (둘 다 median) |
 | `--postproc-alloc export\|heap` | `export` | **`heap` 은 쓰지 마라** — 3자 일관성(PCIe DMA ↔ CPU 캐시 ↔ V3D)이 미검증이다 |
 | `--score T` | HEF 값 0.2 | 검출 점수 임계값 |
 | `--frames N` / `--quiet` / `--csv-label L` | | 측정용 |

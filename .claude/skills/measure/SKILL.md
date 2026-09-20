@@ -193,7 +193,7 @@ csv.writer(f, lineterminator="\n")
 |---|---|---|---|
 | NPU 상한 (`hailortcli benchmark`) | batch 8에서 **51.7 FPS** | 2026-09-20, PCIe **Gen3** x1 | `07_results/npu_benchmark/gen3/` |
 | 같은 항목, 한 세대 아래 | batch 8에서 **26.1 FPS** | 2026-09-20, PCIe **Gen2** x1 | `07_results/npu_benchmark/gen2/` |
-| HW HEVC 디코드만 (libavcodec DRM_PRIME) | 398 FPS, CPU 0.23~0.28 ms/frame | 1080p30 | `07_results/decode_benchmark/` |
+| HW HEVC 디코드만 (libavcodec DRM_PRIME) | **398.5 FPS**, CPU 0.23~0.28 ms/frame | 1080p30 | `07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md` §4.1 (**`decode_benchmark/` 아님**) |
 | GPU 전처리 셰이더 (1080p → 640×640) | 2.13 ms (연속 스트림) | V3D 7.1, local 32×8 | `07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md` |
 | 전체 파이프라인 (dmabuf, NHCW, b8/s16) | 51.6 FPS, CPU 약 3.5 ms/frame | 2026-09-20, PCIe **Gen3** x1 | 같은 폴더 `results.csv` |
 

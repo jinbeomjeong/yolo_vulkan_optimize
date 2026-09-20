@@ -145,6 +145,9 @@ PSNR·max\|err\|·비율은 보고만 한다.
 | 설정 | 전처리 | Hailo 입력 | fps_median (min–max) | cpu_ms_per_frame (min–max) | 전처리 ms (축) | npu_ms_mean | e2e_ms_mean | 검출 수 |
 |---|---|---|---|---|---|---|---|---|
 | `gpu_nhcw_b8` (현행) | 셰이더 | NHCW dmabuf | 51.640 (51.60–51.64) | **3.218** (3.150–3.265) | 2.718 (device) | 302.05 | 325.90 | **9457** |
+
+> ⚠ 같은 "현행 GPU NHCW b8/s16" 을 [`pipeline_ffmpeg_vulkan_hailo/summary.md`](../pipeline_ffmpeg_vulkan_hailo/summary.md) 는
+> **CPU 3.52 ms/f** 로 적는다. **다른 측정 회차다** — 이 표는 6회 중앙값이고 저쪽은 3회다. 섞어 인용하지 마라.
 | `isp_A_nhwc_b8` (A안) | ISP | NHWC dmabuf | 51.620 (51.45–51.64) | **4.720** (4.543–5.538) | 2.052 (wall) | 304.14 | 322.19 | 9237 |
 | `isp_C_nhcw_b8` (C안) | ISP + CPU 전치 | NHCW dmabuf | 51.595 (51.31–51.64) | **4.112** (4.013–5.880) | 1.891 (wall) | 302.89 | 321.51 | 9237 |
 

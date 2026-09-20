@@ -394,7 +394,7 @@ Vulkan에서 GPU에게 메모리 타입 목록을 물어보면(`vkGetPhysicalDev
 
 | 접근 패턴 | 시간 | 대역폭 |
 |---|---:|---:|
-| **순차** memcpy (V3D 버퍼) | 0.85~0.87 ms | 약 **1.41 GB/s** |
+| **순차** memcpy (V3D 버퍼) | 0.826 ms (P2) / 0.85~0.87 ms (preproc_bench) | **1.479** / 약 1.41 GB/s |
 | **stride-3** 바이트 읽기 (V3D 버퍼) | 약 14 ms | 약 **0.088 GB/s** |
 
 **같은 메모리, 같은 양인데 16배 차이다.**
@@ -768,7 +768,7 @@ zero-copy는 **소비자가 그 메모리를 CPU로 건드리지 않을 때** �
 V3D가 노출하는 Vulkan 메모리 타입이 `DEVICE_LOCAL｜HOST_VISIBLE｜HOST_COHERENT` **하나뿐**이고
 **`HOST_CACHED` 가 없다.** 즉 CPU 쪽에서 캐시되지 않는 매핑이다.
 캐시가 없으면 **읽기는 매번 메모리까지 가서 기다려야** 한다 —
-같은 1.22 MB를 순차로 읽으면 약 1.41 GB/s인데 stride-3으로 읽으면 약 **0.088 GB/s**,
+같은 1.22 MB를 순차로 읽으면 1.479 GB/s인데 stride-3으로 읽으면 약 **0.088 GB/s**,
 16배 차이다([`pipeline_ffmpeg_vulkan_hailo/summary.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/summary.md)).
 **반대 방향(CPU→GPU 쓰기)은 싸다** — 쓰기는 버퍼에 던지고 바로 다음 일을 하기 때문이다.
 
