@@ -62,6 +62,9 @@
 #include "hailo/hailo_raw_runner.hpp"
 #include "hailo/hailo_runner.hpp"
 #include "hailo/tools/p2_out_buffers.hpp"
+#include "common/stats.hpp"
+
+using yvo::percentile;
 
 namespace {
 
@@ -99,13 +102,6 @@ std::shared_ptr<std::uint8_t> alloc_dma_aligned(std::size_t size) {
     if (!p) throw std::bad_alloc();
     std::memset(p, 0, rounded);
     return std::shared_ptr<std::uint8_t>(static_cast<std::uint8_t*>(p), [](std::uint8_t* q) { std::free(q); });
-}
-
-double percentile(std::vector<double> v, double q) {
-    if (v.empty()) return 0.0;
-    std::sort(v.begin(), v.end());
-    const std::size_t idx = static_cast<std::size_t>(q * static_cast<double>(v.size() - 1) + 0.5);
-    return v[std::min(idx, v.size() - 1)];
 }
 
 const char* format_order_name(hailo_format_order_t o) {

@@ -46,6 +46,10 @@
 #include "isp/isp_resizer.hpp"
 #include "isp/nhcw_repack.hpp"
 #include "pipeline/ffmpeg_drm_decoder.hpp"
+#include "common/stats.hpp"
+
+using yvo::Stats;
+using yvo::stats;
 
 namespace {
 
@@ -127,31 +131,6 @@ double cpu_ms() {
     getrusage(RUSAGE_SELF, &ru);
     return static_cast<double>(ru.ru_utime.tv_sec + ru.ru_stime.tv_sec) * 1e3 +
            static_cast<double>(ru.ru_utime.tv_usec + ru.ru_stime.tv_usec) / 1e3;
-}
-
-struct Stats {
-    double mean = 0, median = 0, p90 = 0, max = 0;
-    std::size_t n = 0;
-};
-
-Stats stats(std::vector<double> v) {
-    Stats s;
-    s.n = v.size();
-    if (v.empty()) return s;
-    std::sort(v.begin(), v.end());
-    auto pct = [&](double p) {
-        const double idx = p * static_cast<double>(v.size() - 1);
-        const auto lo = static_cast<std::size_t>(idx);
-        const std::size_t hi = std::min(lo + 1, v.size() - 1);
-        return v[lo] + (v[hi] - v[lo]) * (idx - static_cast<double>(lo));
-    };
-    double sum = 0;
-    for (double x : v) sum += x;
-    s.mean = sum / static_cast<double>(v.size());
-    s.median = pct(0.5);
-    s.p90 = pct(0.9);
-    s.max = v.back();
-    return s;
 }
 
 double soc_temperature() {

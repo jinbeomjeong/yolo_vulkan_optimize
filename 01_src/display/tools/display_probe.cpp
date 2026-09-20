@@ -68,6 +68,10 @@
 // **컴파일 시** 검증하므로, OverlayRenderer 가 붙기 전까지 이 프로브를 유일한 컴파일 지점으로 둔다.
 #include "common/coco_labels.hpp"
 #include "common/glyph_font_8x16.hpp"
+#include "common/stats.hpp"
+
+using yvo::Stats;
+using yvo::stats;
 
 static_assert(yvo::class_color(0)[0] == 255 && yvo::class_color(0)[1] == 80 && yvo::class_color(0)[2] == 0,
               "class_color()는 RGB다 (BGR 규칙을 뒤집은 것)");
@@ -84,32 +88,6 @@ using yvo::display::OverlayRenderer;
 std::vector<yvo::Detection> synth_dets(int n, int w, int h);
 
 // ─────────────────────────────── 공통 ───────────────────────────────
-
-struct Stats {
-    double median = 0, p90 = 0, mean = 0, min = 0, max = 0;
-    std::size_t n = 0;
-};
-
-Stats stats(std::vector<double> v) {
-    Stats s;
-    if (v.empty()) return s;
-    std::sort(v.begin(), v.end());
-    auto pct = [&](double p) {
-        const double idx = p * static_cast<double>(v.size() - 1);
-        const auto lo = static_cast<std::size_t>(idx);
-        const std::size_t hi = std::min(lo + 1, v.size() - 1);
-        return v[lo] + (v[hi] - v[lo]) * (idx - static_cast<double>(lo));
-    };
-    s.median = pct(0.5);
-    s.p90 = pct(0.9);
-    s.min = v.front();
-    s.max = v.back();
-    double sum = 0;
-    for (double x : v) sum += x;
-    s.mean = sum / static_cast<double>(v.size());
-    s.n = v.size();
-    return s;
-}
 
 double now_ms() {
     return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();

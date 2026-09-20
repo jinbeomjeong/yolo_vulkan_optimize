@@ -28,6 +28,9 @@
 #include "common/cpu_letterbox.hpp"
 #include "common/frame_types.hpp"
 #include "hailo/hailo_runner.hpp"
+#include "common/stats.hpp"
+
+using yvo::percentile;
 
 namespace {
 
@@ -77,13 +80,6 @@ std::shared_ptr<std::uint8_t> alloc_aligned(std::size_t size) {
     auto* p = static_cast<std::uint8_t*>(std::aligned_alloc(4096, rounded));
     if (!p) throw std::bad_alloc();
     return std::shared_ptr<std::uint8_t>(p, [](std::uint8_t* q) { std::free(q); });
-}
-
-double percentile(std::vector<double> v, double q) {
-    if (v.empty()) return 0.0;
-    std::sort(v.begin(), v.end());
-    const std::size_t idx = static_cast<std::size_t>(q * static_cast<double>(v.size() - 1) + 0.5);
-    return v[std::min(idx, v.size() - 1)];
 }
 
 // 사용 가능한 슬롯 풀 (콜백 스레드가 반납)

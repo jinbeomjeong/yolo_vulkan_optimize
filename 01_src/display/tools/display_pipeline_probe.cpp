@@ -21,37 +21,16 @@
 #include "display/display_pipeline.hpp"
 #include "pipeline/ffmpeg_drm_decoder.hpp"
 #include "vulkan/vulkan_context.hpp"
+#include "common/stats.hpp"
+
+using yvo::Stats;
+using yvo::stats;
 
 namespace {
 
 using Clock = std::chrono::steady_clock;
 using yvo::display::DisplayPipeline;
 using yvo::display::DisplayPipelineConfig;
-
-struct Stats {
-    double mean = 0, median = 0, p90 = 0, max = 0;
-    std::size_t n = 0;
-};
-
-Stats stats(std::vector<double> v) {
-    Stats s;
-    s.n = v.size();
-    if (v.empty()) return s;
-    std::sort(v.begin(), v.end());
-    auto pct = [&](double p) {
-        const double idx = p * static_cast<double>(v.size() - 1);
-        const auto lo = static_cast<std::size_t>(idx);
-        const std::size_t hi = std::min(lo + 1, v.size() - 1);
-        return v[lo] + (v[hi] - v[lo]) * (idx - static_cast<double>(lo));
-    };
-    double sum = 0;
-    for (double x : v) sum += x;
-    s.mean = sum / static_cast<double>(v.size());
-    s.median = pct(0.5);
-    s.p90 = pct(0.9);
-    s.max = v.back();
-    return s;
-}
 
 std::vector<yvo::Detection> synth_dets(int n, int w, int h) {
     std::vector<yvo::Detection> v;
