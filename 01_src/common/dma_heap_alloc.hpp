@@ -4,9 +4,7 @@
 //   · common/dmabuf_map.hpp  DmaBufReadMap   — 남의 fd를 읽기 전용 매핑 (할당 안 함). **그대로 남는다.**
 //                                              내부 ioctl만 이 헤더의 dma_sync_* 로 위임한다.
 //   · hailo/tools/p2_out_buffers.hpp HeapOutPool — DmaHeapPool 위의 얇은 어댑터로 축소됐다.
-//   · isp/dma_heap_buffer.hpp DmaHeapBuffers    — **같은 일을 한다.** 지금은 다른 세션이 소유하고 있어
-//                                              건드리지 않는다. 소유 세션과 조율된 뒤 어댑터로 흡수한다.
-//                                              (그때 넘길 것: 16384 정렬 미확인, begin/end_cpu_read 부재)
+//   · (2026-09-21 흡수 완료) isp/dma_heap_buffer.hpp DmaHeapBuffers 는 제거하고 이 풀로 옮겼다.
 //
 // **Vulkan 심볼을 쓰지 않는다.** yvo_common은 INTERFACE 라이브러리라 이 헤더를 더해도 링크 그래프가
 // 한 변도 늘지 않고, yvo_hailo가 yvo_vulkan에 의존하지 않는다는 링크 격리(계획서 §5.2)가 그대로 지켜진다.

@@ -42,7 +42,7 @@
 #include "common/coco_labels.hpp"
 #include "common/cpu_letterbox.hpp"
 #include "hailo/hailo_runner.hpp"
-#include "isp/dma_heap_buffer.hpp"
+#include "common/dma_heap_alloc.hpp"
 #include "isp/isp_resizer.hpp"
 #include "isp/nhcw_repack.hpp"
 #include "pipeline/ffmpeg_drm_decoder.hpp"
@@ -260,10 +260,18 @@ int run(const Args& a) {
     }
 
     // C안: NHCW 전치 결과를 담을 dma-heap 버퍼(슬롯마다 하나) + 사전 DMA 매핑
-    std::unique_ptr<yvo::isp::DmaHeapBuffers> nhcw_bufs;
+    std::unique_ptr<yvo::DmaHeapPool> nhcw_bufs;
     if (nhcw) {
-        nhcw_bufs = std::make_unique<yvo::isp::DmaHeapBuffers>("yvo_nhcw", isp.output_size(), a.slots);
-        for (int s = 0; s < a.slots; ++s) runner->map_dmabuf(nhcw_bufs->fd(s), isp.output_size());
+        // common/dma_heap_alloc.hpp 의 풀을 쓴다. 2026-09-21 이전의 isp 전용 DmaHeapBuffers 에는
+        // HailoRT read_async 가 요구하는 16384 정렬이 없었고 READ 방향 sync 도 없었다.
+        yvo::DmaHeapConfig hc;
+        hc.name = "yvo_nhcw";
+        nhcw_bufs = std::make_unique<yvo::DmaHeapPool>(hc);
+        for (int s = 0; s < a.slots; ++s) {
+            const int i = nhcw_bufs->allocate(isp.output_size());
+            // dma_map_dmabuf 에는 dma-buf 실크기를 준다(HailoRT 크기 계약)
+            runner->map_dmabuf(nhcw_bufs->at(i).fd, nhcw_bufs->at(i).dmabuf_size);
+        }
     } else if (dmabuf) {
         for (int s = 0; s < a.slots; ++s) runner->map_dmabuf(isp.dmabuf_fd(s), isp.output_size());
     }
@@ -285,7 +293,8 @@ int run(const Args& a) {
                     a.video.c_str(), src_w, src_h, dmabuf ? "dmabuf" : "ptr", layout_name(a.layout),
                     nhcw ? yvo::isp::repack_name(a.repack) : "-",
                     a.filter.empty() ? "smart" : a.filter.c_str(), a.batch, a.slots, a.media.c_str());
-        if (nhcw_bufs) std::printf("[cfg] nhcw dma-heap: %s x%d\n", nhcw_bufs->heap().c_str(), nhcw_bufs->count());
+        if (nhcw_bufs)
+            std::printf("[cfg] nhcw dma-heap: %s x%zu\n", nhcw_bufs->heap().c_str(), nhcw_bufs->count());
         std::fflush(stdout);
     }
 
@@ -371,12 +380,12 @@ int run(const Args& a) {
                 // ISP 출력은 캐시 매핑 dma-heap이다. CPU로 읽기 전에 DMA_BUF_IOCTL_SYNC로 감싼다.
                 const yvo::isp::IspResizer::OutputRead lock(isp, *slot);
                 if (nhcw) {
-                    nhcw_bufs->begin_cpu_write(*slot);
+                    auto acc = nhcw_bufs->cpu_access(*slot, yvo::DmaSyncDir::Write);
                     const auto r0 = Clock::now();
                     yvo::isp::rgb_packed_to_nhcw(a.repack, lock.data(), out.lb.dst_w, out.lb.dst_h,
-                                                 nhcw_bufs->ptr(*slot));
+                                                 nhcw_bufs->at(*slot).ptr);
                     repack_ms.push_back(std::chrono::duration<double, std::milli>(Clock::now() - r0).count());
-                    nhcw_bufs->end_cpu_write(*slot);
+                    acc.finish();
                 }
                 if (want_png) {
                     std::vector<std::uint8_t>& buf = png_src[out.pts];
@@ -387,8 +396,8 @@ int run(const Args& a) {
 
             if (nhcw) {
                 out.layout = yvo::TensorLayout::Nhcw;
-                out.dmabuf_fd = nhcw_bufs->fd(*slot);
-                out.host_ptr = nhcw_bufs->ptr(*slot);
+                out.dmabuf_fd = nhcw_bufs->at(*slot).fd;
+                out.host_ptr = nhcw_bufs->at(*slot).ptr;
             } else if (!dmabuf) {
                 out.dmabuf_fd = -1; // host 매핑 포인터로 제출
             }

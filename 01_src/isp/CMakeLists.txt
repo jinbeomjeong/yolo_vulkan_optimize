@@ -15,8 +15,7 @@ message(STATUS "libpisp ${YVO_PISP_VERSION} - yvo_isp를 빌드한다.")
 
 add_library(yvo_isp STATIC
   isp_resizer.cpp
-  nhcw_repack.cpp
-  dma_heap_buffer.cpp)
+  nhcw_repack.cpp)
 target_include_directories(yvo_isp PUBLIC ${PROJECT_SOURCE_DIR}/01_src)
 # PkgConfig::YVO_PISP는 반드시 PRIVATE다. Cflags의 -I/usr/include/libpisp가 PUBLIC으로 새면
 # /usr/include/libpisp/backend/pisp_be_config.h와 /usr/include/linux/media/raspberrypi/pisp_be_config.h가
