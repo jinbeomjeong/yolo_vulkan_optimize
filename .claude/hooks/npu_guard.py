@@ -15,7 +15,10 @@ import sys
 
 # NPU 를 여는 명령
 NPU_CMDS = {"yvo_pipeline", "yvo_hailo_selftest", "hailortcli", "test_detections", "ctest"}
-BENCH_SCRIPTS = ("pipeline_bench.sh", "decode_bench.sh")
+# 06_tools/bench/ 의 전부. 새 벤치를 추가하면 여기도 추가한다.
+BENCH_SCRIPTS = ("pipeline_bench.sh", "decode_bench.sh", "op_point_bench.sh",
+                 "display_bench.sh", "backpressure_bench.sh",
+                 "isp_bench.sh", "isp_pipeline_bench.sh")
 
 HOW = ("\n다시 되는 시점: 위 작업이 끝나면 바로 통과한다. 진행 상황은 그 작업의 로그로 확인할 것."
        "\n꼭 지금 실행해야 하면 명령 앞에 YVO_HOOK_OFF=1 을 붙인다(측정값은 신뢰할 수 없게 된다).")
