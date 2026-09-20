@@ -111,17 +111,55 @@ grep -E '\[warning\]' hailort.log | grep -cE '[Tt]emperature|[Tt]hrottl|[Oo]verh
 
 ## 5. 결과 저장 규약 — `07_results/<실험>/`
 
+### 무엇이 "실험"인가
+
+**`07_results/README.md` 의 실험 목록표가 정본이다.** 거기 한 행으로 오르는 것이 실험이고,
+그 아래 하위 폴더는 **같은 실험의 측정 회차·변종**이다(새 실험이 아니다).
+
+예: `npu_benchmark/{gen2,gen3}` 는 같은 벤치의 PCIe 세대별 회차,
+`op_point/latency_sweep/` 은 운용점 실험의 지연 스윕 회차,
+`isp_resize/{pipeline,pipeline_rerun}/` 은 ISP 실험의 파이프라인 단계 1·2차다.
+**회차 폴더가 자기 `summary.md` 를 가질 수 있다** — 그렇다고 별도 실험으로 승격하지 않는다.
+새 실험으로 올릴지 헷갈리면 기준은 하나다: **README 표에 한 행으로 설명되는가.**
+
+### 레이아웃 — 두 변종
+
+실험은 **스윕형**(설정을 바꿔 수치를 비교)과 **프로브형**(관문 통과 여부를 가름) 둘 중 하나다.
+지금까지 규약이 이 구분을 안 해서 프로브형 폴더가 전부 "이탈"로 보였다.
+
 ```
 07_results/<실험>/
-  results_raw.csv        실행별 원시 행 (run 번호, 냉각 대기, hailort 경고·에러 수 포함)
-  results.csv            설정별 중앙값
-  env_bench.txt          §1 의 환경 스냅샷
+  summary.md             필수 — 짧은 요약 (양쪽 공통)
+  env_bench.txt          필수 — §1 의 환경 스냅샷 (양쪽 공통)
+  REPORT.md              선택 — 상세 구현·실험 보고
+  notes/                 선택 — summary/REPORT 가 아닌 기술 문서
   raw/<설정>_run<N>/     stdout.log, hailort.log
-  verification/          검증 로그 (verify 스킬 참고)
-  samples/               검출 JSONL, 박스 PNG 등 눈으로 볼 산출물
-  summary.md             짧은 요약 (필수)
-  REPORT.md              상세 구현·실험 보고 (필요할 때만)
+
+  ── 스윕형 ────────────────  ── 프로브형 ────────────────
+  results_raw.csv  필수      evidence/       필수
+  results.csv      필수      verification/   선택
+  verification/    선택      samples/        선택
+  samples/         선택
 ```
+
+**`evidence/` 와 `verification/` 의 경계** (2026-09-21 에 처음 정의했다):
+
+| 폴더 | 무엇을 담나 |
+|---|---|
+| `evidence/` | **관문이 통과했음을 보이는 1회성 증거.** 프로브 stdout, API 시도 결과, 조합 스윕 표 |
+| `verification/` | **verify 스킬 6단계의 로그.** 검증 레이어, ASan/UBSan, perf, ctest |
+
+ASan 로그가 `evidence/` 에 있으면 `verification/` 으로 옮긴다.
+
+**과거 실험의 예외는 그대로 둔다(소급 적용하지 않는다).**
+`display_vulkan_hdmi`·`gpu_postprocess`·`npu_benchmark` 는 `env_bench.txt` 가 없고 환경 정보가
+`summary.md` 머리에 산문으로 적혀 있다. 없는 파일을 지금 만들면 그 시점의 실제 스냅샷이 아니라
+**재구성한 값**이 되므로 날조다. 이 규약은 **새로 측정하는 실험부터** 적용한다.
+
+> **중복돼 보이는 산출물을 함부로 지우지 마라.** `07_results/` 안의 PNG 중 상당수는
+> 바이트가 같은데, **그 동일성 자체가 결론**이다
+> (host 경로 == GPU 경로, A안 == C안, batch 4 == batch 8, NHWC == NHCW).
+> 지우면 결론의 근거가 사라진다.
 
 **CSV는 LF 줄바꿈으로 쓴다.** 파이썬 `csv.writer`는 기본이 CRLF다. 반드시 지정할 것:
 

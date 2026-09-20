@@ -107,7 +107,7 @@
 - `evidence/p1_api_result.txt`, `p1_stdout.log`, `hailort.log`
 - `evidence/hailortcli_benchmark_b8_baseline.txt` — 같은 날 냉각 후 기준선(51.00 FPS)
 - `evidence/p2_alloc_matrix.txt` — size 4조합 × 2 alloc × 2 API = 16셀
-- `evidence/p2_result.txt`, `p2_cpu_read.txt`, `p2_stdout.log`, `p2_asan.log`, `hailort_p2.log`
+- `evidence/p2_result.txt`, `p2_cpu_read.txt`, `p2_stdout.log`, `hailort_p2.log` (ASan 로그는 `verification/p2_asan.log`)
 - `evidence/p3_{fixture,sweep,live,stale}.txt` — G5·G6·바이트 합·스테일·워크그룹 26조합
 - `verification/ctest_11of11.log`, `ctest_golden_numbers.log`, `asan_ubsan_raw_probe.log`
 - `04_data/raw_tensors/` — 셰이더 디버깅용 픽스처 (`.gitignore` 에 있음)

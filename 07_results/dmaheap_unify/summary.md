@@ -3,7 +3,7 @@
 - 측정일: 2026-09-20
 - 환경: Raspberry Pi CM5 (BCM2712, Cortex-A76 ×4, **PAGESIZE 16384**), **V3D 7.1.10.2 / V3DV Mesa 26.2.2**,
   Hailo-8 **PCIe 8.0 GT/s x1 (Gen3)**, HailoRT 4.24.0, kernel 6.18.50, g++ 14.2 Release
-- 계획: `~/.claude/plans/jaunty-dazzling-quasar.md` **부록 B**. 1단계 상세는 [REPORT_stage1.md](REPORT_stage1.md)
+- 계획: `~/.claude/plans/jaunty-dazzling-quasar.md` **부록 B**. 1단계 상세는 [REPORT.md](REPORT.md)
 - 목적: 사용자가 정한 두 가지 — ① **설계 제약 제거**("GPU가 쓴 버퍼를 CPU로 읽지 마라"를 근거로 닫는다)
   ② **메모리 관리 일원화**. **"오늘 더 빠르게"가 아니다**(§결론 참조)
 
@@ -146,7 +146,7 @@ clean window에서 다시 쟀다.
 
 ## 파일
 
-- `REPORT_stage1.md` — 1단계 P0 관문 상세
+- `REPORT.md` — 1단계 P0 관문 상세
 - `evidence/p0_heapimport.txt` — P0 6텐서 전수
 - `evidence/stage2_unify.txt`, `stage2_p2_heap_result.txt` — 일원화, `--probe p2 --alloc heap` 30/30 일치
 - `evidence/stage3_headroom.txt`, `stage3_headroom_probe.txt`, `stage3_headroom_negative_control.txt`

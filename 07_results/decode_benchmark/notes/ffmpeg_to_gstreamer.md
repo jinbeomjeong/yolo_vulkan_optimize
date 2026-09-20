@@ -2,7 +2,7 @@
 
 - 조사 일시: 2026-09-20
 - 환경: Raspberry Pi CM5 (BCM2712), GStreamer 1.26.2, ffmpeg(Raspberry Pi 빌드, `-hwaccel drm`), 입력 `04_data/videos/video_h265.mp4`(HEVC Main 1080p30, 1816프레임)
-- 배경: [summary.md](summary.md)에서 같은 HEVC HW 디코더(`rpi-hevc-dec`)가 경로에 따라 크게 달랐다. ffmpeg는 333 FPS·2 ms/frame, GStreamer `v4l2slh265dec`는 32.7 FPS에 1코어가 포화됐다
+- 배경: [summary.md](../summary.md)에서 같은 HEVC HW 디코더(`rpi-hevc-dec`)가 경로에 따라 크게 달랐다. ffmpeg는 333 FPS·2 ms/frame, GStreamer `v4l2slh265dec`는 32.7 FPS에 1코어가 포화됐다
 
 ## 1. gst-libav로는 안 된다
 `avdec_h265`에는 hwaccel 관련 속성이 없다(`max-threads`, `direct-rendering`, `lowres` 등만 있다). GStreamer 안에서 ffmpeg의 HW 디코드를 켤 방법이 없다.

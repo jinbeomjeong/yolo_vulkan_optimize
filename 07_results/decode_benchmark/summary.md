@@ -55,9 +55,9 @@
 - 입력 해상도를 줄이는 것만으로 CPU 부담이 크게 줄어든다
 
 ## 다음 단계 제안
-- ffmpeg HW 디코드를 GStreamer로 넘기는 방법 조사: [ffmpeg_to_gstreamer.md](ffmpeg_to_gstreamer.md). 파이프 방식은 3회 측정 결과 디코드만 11.7 ms/frame, 변환 포함 23.6 ms/frame으로 GStreamer HW 경로(30.6 / 39.4 ms)와 avdec_h264(20.2 / 28.1 ms)보다 싸다. ffmpeg에 `-fps_mode passthrough`가 필요하다
+- ffmpeg HW 디코드를 GStreamer로 넘기는 방법 조사: [notes/ffmpeg_to_gstreamer.md](notes/ffmpeg_to_gstreamer.md). 파이프 방식은 3회 측정 결과 디코드만 11.7 ms/frame, 변환 포함 23.6 ms/frame으로 GStreamer HW 경로(30.6 / 39.4 ms)와 avdec_h264(20.2 / 28.1 ms)보다 싸다. ffmpeg에 `-fps_mode passthrough`가 필요하다
 - **HW HEVC zero-copy 경로 확인:** `v4l2slh265dec`는 DMABuf 출력에서도 내부 복사가 일어난다(조사 문서 참고). 그래서 libavcodec의 DRM_PRIME 프레임(dma-buf fd)을 Vulkan으로 import하고, SAND→RGB letterbox를 GPU에서 처리한다. 성공하면 디코드와 전처리의 CPU 비용이 약 2 ms/frame 수준까지 줄 수 있다. Hailo↔Vulkan 버퍼 공유와 같은 인터페이스 설계가 필요하다
-- **GStreamer 복사 원인 확정:** DMABuf caps를 강제해도 복사가 남는 것은 확인했다(`ffmpeg_to_gstreamer.md`). 남은 일은 v4l2codecs 소스에서 copy 판단 조건을 찾는 것이다
+- **GStreamer 복사 원인 확정:** DMABuf caps를 강제해도 복사가 남는 것은 확인했다(`notes/ffmpeg_to_gstreamer.md`). 남은 일은 v4l2codecs 소스에서 copy 판단 조건을 찾는 것이다
 
 ## 측정 조건 메모
 - 매 실행 전 SoC 온도가 기준 이하로 내려갈 때까지 기다렸다. 1차는 65 °C·최대 120초, 재개는 70 °C·최대 30초였다

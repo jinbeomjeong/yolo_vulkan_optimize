@@ -77,6 +77,33 @@ build/01_src/pipeline/yvo_pipeline \
 
 ---
 
+## 폴더 규약
+
+**위 표가 "무엇이 실험인가"의 정본이다.** 표에 한 행으로 오르는 것이 실험이고,
+그 아래 하위 폴더는 **같은 실험의 측정 회차·변종**이다 — 새 실험이 아니다.
+회차 폴더가 자기 `summary.md` 를 갖기도 한다(`npu_benchmark/{gen2,gen3}`,
+`op_point/latency_gen3_cooled`). 그래도 별도 실험으로 올리지 않는다.
+
+레이아웃은 두 변종이 있다. **스윕형**(설정을 바꿔 수치를 비교)은 `results.csv`·`results_raw.csv`·`raw/` 가
+필수이고, **프로브형**(관문 통과 여부를 가름)은 `evidence/` 가 필수다.
+양쪽 공통 필수는 `summary.md` 와 `env_bench.txt` 뿐이다.
+`evidence/` 는 *관문 통과 증거*, `verification/` 은 *verify 스킬 6단계 로그*(검증 레이어·ASan·perf·ctest)다.
+전문은 [`.claude/skills/measure/SKILL.md`](../.claude/skills/measure/SKILL.md) §5.
+
+> ⚠ **중복돼 보이는 PNG 를 지우지 마라.** 46장 중 상당수가 바이트까지 같은데,
+> **그 동일성 자체가 결론**이다 — host 경로 == GPU 경로(`gpu_postproc_e2e/dump_{host,gpu}/`),
+> ISP A안 == C안(`isp_resize/detections/isp_{A_nhwc,C_nhcw}_b8/`),
+> batch 4 == batch 8(`pipeline_ffmpeg_vulkan_hailo/selftest/{b4,b8}/`),
+> NHWC == NHCW(`.../preproc/letterbox_frame100{,_nhcw}.png`). 지우면 근거가 사라진다.
+
+문서 링크가 깨지지 않았는지는 이걸로 확인한다:
+
+```bash
+python3 06_tools/python/check_links.py
+```
+
+---
+
 ## 읽는 순서
 
 - **"지금 뭘 쓰면 되나"** → [`op_point/summary.md`](op_point/summary.md) §8

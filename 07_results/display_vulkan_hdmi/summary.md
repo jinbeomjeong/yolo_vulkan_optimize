@@ -91,6 +91,6 @@ labwc 광고 전역: `wp_viewporter=1`, `wp_presentation=1`, `wl_subcompositor=1
 - `dmabuf_modifier_dump.c` — labwc 가 광고하는 dma-buf format/modifier 덤프 도구.
   2026-09-21 폴더 재배치에서 **`../../06_tools/probes/dmabuf_modifier_dump.c` 로 옮겼다**
   (결과 폴더에는 소스를 두지 않는다)
-- `verification/README_stage2.md` — 6개 게이트 표와 로그 색인
+- `verification/README.md` — 6개 게이트 표와 로그 색인
 - `verification/` — context 회귀(골든/present-on/full), preproc 벤치 전후, 검증 레이어 로그, ASan 로그, ctest, PNG 재현
 - `samples/p05_present_pattern.png` — `grim` 캡처(픽셀 검사 근거)
