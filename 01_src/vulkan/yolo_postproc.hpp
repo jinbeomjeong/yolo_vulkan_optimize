@@ -184,6 +184,7 @@ struct YoloDetBufHeader {
 static_assert(sizeof(YoloDetBufHeader) == 152, "DetBuf header layout must match shader (std430)");
 static_assert(offsetof(YoloDetBufHeader, count) == 12, "dispatch must be uvec3 at offset 0");
 static_assert(offsetof(YoloDetBufHeader, overflow) == 16, "overflow offset must match shader");
+static_assert(offsetof(YoloDetBufHeader, text_bytes) == 20, "text_bytes offset must match shader");
 static_assert(offsetof(YoloDetBufHeader, text) == 24, "text offset must match shader");
 
 struct YoloDetGpu {
@@ -194,6 +195,10 @@ struct YoloDetGpu {
     std::uint32_t keep;
 };
 static_assert(sizeof(YoloDetGpu) == 32, "DetGpu must be 32 B (오버레이 트랙과 공유하는 계약)");
+static_assert(offsetof(YoloDetGpu, score) == 16, "DetGpu.score offset must match shader");
+static_assert(offsetof(YoloDetGpu, class_id) == 20, "DetGpu.class_id offset must match shader");
+static_assert(offsetof(YoloDetGpu, anchor_key) == 24, "DetGpu.anchor_key offset must match shader");
+static_assert(offsetof(YoloDetGpu, keep) == 28, "DetGpu.keep offset must match shader");
 
 class YoloPostproc {
 public:

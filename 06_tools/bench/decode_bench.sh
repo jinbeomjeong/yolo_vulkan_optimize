@@ -27,13 +27,10 @@
 set -euo pipefail
 
 PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-# npu_guard 훅(.claude/hooks/npu_guard.sh)이 이 파일의 PID 로 "벤치가 돌고 있다"를 판단한다.
-# 측정 중에 빌드·테스트가 끼어들면 CPU 시간 측정이 에러 없이 조용히 오염되기 때문이다.
-# 훅이 PID 생존 여부를 보므로 비정상 종료로 남은 락은 자동으로 무효가 된다.
-BENCH_LOCK="${BENCH_LOCK:-$PROJ/build/.bench_running}"
-mkdir -p "$(dirname "$BENCH_LOCK")"
-printf '%s' "$$" > "$BENCH_LOCK"
-trap 'rm -f "$BENCH_LOCK"' EXIT INT TERM
+# 공통 함수(온도·PCIe·냉각·hailort 경고 판정·벤치 락)는 lib/common.sh 하나로 모았다.
+# 예전에는 이 함수들이 7개 스크립트에 복붙돼 있었고 실제로 갈라져 있었다(pcie_link 의 Gen5 분기 등).
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
+bench_lock_acquire
 VID="$PROJ/04_data/videos"
 OUT_DIR="${OUT_DIR:-$PROJ/07_results/decode_benchmark}"
 RUNS="${RUNS:-3}"
@@ -102,29 +99,6 @@ ffsrc="FFPIPE fdsrc fd=0 blocksize=3110400 ! rawvideoparse width=1920 height=108
 add "h265_E_ffpipe_S1"     "$H265" $N265 "$ffsrc ! $SINK_FS"
 add "h265_E_ffpipe_S2_nt4" "$H265" $N265 "$ffsrc ! videoconvertscale n-threads=4 add-borders=true ! $S2CAPS ! $SINK_FS"
 
-# PCIe 링크 세대·폭을 한 줄로 출력한다. 예: "pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)"
-# sysfs 를 쓴다. lspci -vv 의 LnkSta: 는 root 가 아니면 출력되지 않아 조용히 빈 값이 된다
-# (과거에 이 때문에 env 스냅샷에 링크 속도가 하나도 기록되지 않았다).
-# 읽기에 실패하면 반드시 그 사실을 찍는다. 빈 줄은 "정보 없음"과 구분되지 않는다.
-pcie_link() {
-  local d speed width gen
-  for d in /sys/bus/pci/devices/*/; do
-    [[ "$(cat "$d/vendor" 2>/dev/null)" == "0x1e60" ]] || continue   # Hailo
-    speed=$(cat "$d/current_link_speed" 2>/dev/null)
-    width=$(cat "$d/current_link_width" 2>/dev/null)
-    if [[ -z "$speed" || -z "$width" ]]; then
-      echo "pcie: 읽기 실패 ($d current_link_speed/width)"; return
-    fi
-    case "${speed%% *}" in
-      2.5) gen=Gen1 ;; 5.0) gen=Gen2 ;; 8.0) gen=Gen3 ;; 16.0) gen=Gen4 ;; 32.0) gen=Gen5 ;;
-      *)   gen="Gen?" ;;
-    esac
-    echo "pcie: $speed x$width ($gen, $(basename "$d"))"
-    return
-  done
-  echo "pcie: 읽기 실패 (vendor 0x1e60 장치를 /sys/bus/pci/devices 에서 찾지 못함)"
-}
-
 env_snapshot() {
   {
     echo "date: $(date -Is)"
@@ -151,12 +125,10 @@ for c in "${combos[@]}"; do
   IFS='|' read -r id video expected pipe <<< "$c"
   echo "$id" | grep -qE "$ONLY" || continue
   for r in $(seq 1 "$RUNS"); do
-    # 발열 영향을 줄이기 위해 SoC 온도가 COOL_C 이하가 될 때까지(최대 COOL_MAX_S초) 대기
-    for _ in $(seq 1 "$COOL_MAX_S"); do
-      t=$(vcgencmd measure_temp | grep -oE '[0-9]+\.[0-9]+' || echo 0)
-      awk -v t="$t" -v c="$COOL_C" 'BEGIN{exit !(t<=c)}' && break
-      sleep 1
-    done
+    # 발열 영향을 줄이기 위해 SoC 온도가 COOL_C 이하가 될 때까지 대기.
+    # 예전에는 여기에 자체 루프가 있었는데 온도를 못 읽으면 `|| echo 0` 으로 0 이 되어
+    # **식지 않았는데도 즉시 통과**했고, 대기 시간도 기록하지 않았다(measure 스킬 §2 위반).
+    cool_down "$id run$r" soc
     log="$OUT_DIR/raw/${id}_run${r}.log"
     "$PY" - "$id" "$r" "$expected" "$log" "$video" "$pipe" >> "$RAW_CSV" <<'PYEOF'
 import os, re, shlex, subprocess, sys, time

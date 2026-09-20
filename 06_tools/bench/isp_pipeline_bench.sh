@@ -14,13 +14,10 @@
 set -euo pipefail
 
 PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-# npu_guard 훅(.claude/hooks/npu_guard.sh)이 이 파일의 PID 로 "벤치가 돌고 있다"를 판단한다.
-# 측정 중에 빌드·테스트가 끼어들면 CPU 시간 측정이 에러 없이 조용히 오염되기 때문이다.
-# 훅이 PID 생존 여부를 보므로 비정상 종료로 남은 락은 자동으로 무효가 된다.
-BENCH_LOCK="${BENCH_LOCK:-$PROJ/build/.bench_running}"
-mkdir -p "$(dirname "$BENCH_LOCK")"
-printf '%s' "$$" > "$BENCH_LOCK"
-trap 'rm -f "$BENCH_LOCK"' EXIT INT TERM
+# 공통 함수(온도·PCIe·냉각·hailort 경고 판정·벤치 락)는 lib/common.sh 하나로 모았다.
+# 예전에는 이 함수들이 7개 스크립트에 복붙돼 있었고 실제로 갈라져 있었다(pcie_link 의 Gen5 분기 등).
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
+bench_lock_acquire
 GPU_BIN="${GPU_BIN:-$PROJ/build/01_src/pipeline/yvo_pipeline}"
 ISP_BIN="${ISP_BIN:-$PROJ/build/01_src/isp/yvo_isp_pipeline}"
 VIDEO="${VIDEO:-$PROJ/04_data/videos/video_h265.mp4}"
@@ -47,45 +44,6 @@ configs=(
   "isp_C_nhcw_b8|isp|--mode dmabuf --layout nhcw --repack cpu --batch 8 --slots 16"
 )
 
-hailo_temp() {
-  (cd "$OUT_DIR/raw" && "$PY_HAILO" - <<'EOF' 2>/dev/null) || echo nan
-from hailo_platform import Device
-d = Device()
-t = d.control.get_chip_temperature()
-print(f"{max(t.ts0_temperature, t.ts1_temperature):.1f}")
-d.release()
-EOF
-}
-soc_temp() { vcgencmd measure_temp 2>/dev/null | sed -E 's/temp=([0-9.]+).*/\1/' || echo nan; }
-throttled() { vcgencmd get_throttled 2>/dev/null | sed 's/throttled=//' || echo NA; }
-
-pcie_link() {
-  local d speed width gen
-  for d in /sys/bus/pci/devices/*/; do
-    [[ "$(cat "$d/vendor" 2>/dev/null)" == "0x1e60" ]] || continue
-    speed=$(cat "$d/current_link_speed" 2>/dev/null)
-    width=$(cat "$d/current_link_width" 2>/dev/null)
-    if [[ -z "$speed" || -z "$width" ]]; then echo "pcie: 읽기 실패 ($d)"; return; fi
-    case "${speed%% *}" in
-      2.5) gen=Gen1 ;; 5.0) gen=Gen2 ;; 8.0) gen=Gen3 ;; 16.0) gen=Gen4 ;; 32.0) gen=Gen5 ;; *) gen="Gen?" ;;
-    esac
-    echo "pcie: $speed x$width ($gen, $(basename "$d"))"; return
-  done
-  echo "pcie: 읽기 실패 (vendor 0x1e60 장치 없음)"
-}
-
-WARN_RE='[Tt]emperature|[Tt]hrottl|[Oo]verheat|clock'
-
-cool_down() {
-  local t waited=0
-  t=$(hailo_temp)
-  echo "  cooling ($1): hailo ${t} C -> <= ${COOL_C} C (max ${COOL_MAX_S}s)"
-  while awk -v t="$t" -v c="$COOL_C" 'BEGIN{exit !(t=="nan" || t>c)}' && (( waited < COOL_MAX_S )); do
-    sleep 5; waited=$((waited + 5)); t=$(hailo_temp)
-  done
-  echo "  cooled ${waited}s, hailo ${t} C"
-  COOL_WAITED=$waited
-}
 
 # 측정 창 오염 확인: 01_src/·02_shaders/ 파일 mtime 스냅샷(다른 세션이 고치는지)
 src_snapshot() { find "$PROJ/01_src" "$PROJ/02_shaders" -type f -printf '%T@ %p\n' | sort | md5sum | cut -d' ' -f1; }
