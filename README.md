@@ -180,7 +180,7 @@ median 을 써라(V3D 가 커맨드 버퍼를 합치면서 한쪽 구간이 0에
 ## 6. 검증
 
 ```bash
-ctest --test-dir build        # 44/44 통과해야 한다
+ctest --test-dir build        # 46/46 통과해야 한다
 ```
 
 | 테스트 | NPU | 무엇을 보는가 |
@@ -190,6 +190,7 @@ ctest --test-dir build        # 44/44 통과해야 한다
 | `test_detections` | 필요 | CPU/GPU 전처리 경로 검출 일치 |
 | `test_preproc` | 불필요 | GPU 전처리가 CPU 기준과 **비트 일치**(max 오차 0) |
 | `test_overlay` | 불필요 | 오버레이 셰이더 vs CPU 기준 비트 일치 |
+| `test_display_convert` | 불필요 | 표시 변환 셰이더(1:1) vs CPU 기준 **비트 일치**. BT.709 계수 세 번째 사본의 게이트 |
 | `test_isp_preproc` | 불필요(ISP 필요) | ISP 전처리 vs CPU 기준. **비트 일치가 아니다**(리샘플 커널이 다르다) — 패딩만 오차 0, 내용은 MAE ≤ 3.0 |
 
 두 경로의 검출을 직접 비교하려면:

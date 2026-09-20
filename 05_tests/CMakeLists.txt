@@ -103,3 +103,17 @@ if(TARGET yvo_display)
     PROPERTIES TIMEOUT 300
     DISCOVERY_TIMEOUT 60)
 endif()
+
+# 표시 변환(display_convert.comp, 1:1) vs CPU 기준 구현 — 비트 일치 (GPU + HEVC HW 디코더, NPU 불필요)
+# BT.709 계수의 세 번째 사본에 게이트가 없던 구멍을 막는다(2026-09-21). 판정은 display/display_convert_check.hpp.
+if(TARGET yvo_display AND TARGET yvo_decoder)
+  add_executable(test_display_convert test_display_convert.cpp)
+  target_link_libraries(test_display_convert PRIVATE yvo_display yvo_decoder GTest::gtest_main yvo_warnings)
+  target_compile_options(test_display_convert PRIVATE -mcpu=cortex-a76)
+  target_compile_definitions(test_display_convert PRIVATE
+    YVO_TEST_VIDEO="${PROJECT_SOURCE_DIR}/04_data/videos/video_h265.mp4")
+  gtest_discover_tests(test_display_convert
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    PROPERTIES TIMEOUT 300
+    DISCOVERY_TIMEOUT 60)
+endif()

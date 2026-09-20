@@ -19,7 +19,7 @@
 | | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 6개 (`.comp`) |
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
 | | `04_data/` | 입력 영상 3개와 테스트용 원시 텐서 픽스처 (git에 없음) |
-| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 테스트 6종 |
+| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 테스트 7종 |
 | | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 7개), `python/`(2개), `probes/`(일회성 소스) |
 | | [`07_results/`](../07_results/) | 실험별 측정 원시 출력과 `summary.md` |
 | **문서** | [`08_learn/`](00_README.md) | 지금 읽고 있는 이 자습 교재 12장 |
@@ -212,6 +212,7 @@ ctest --test-dir build
 | `test_postproc_live` | 필요 | host 경로 vs GPU 경로 검출 매칭 ≥ 0.95 |
 | `test_detections` | 필요 | 네 경로(CPU/GPU-ptr/GPU-dmabuf/NHCW) 검출 일치 |
 | `test_overlay` | 불필요 | 오버레이 GPU vs CPU 기준 **오차 0** |
+| `test_display_convert` | 불필요 | 표시 변환(1:1)이 CPU 기준과 **오차 0**. BT.709 계수의 세 번째 사본을 지킨다 |
 | `test_isp_preproc` | 불필요(ISP 필요) | 패딩은 오차 0, 내용은 MAE ≤ 3.0 |
 
 주목할 점 둘:

@@ -47,6 +47,7 @@
 #include <unistd.h>
 
 #include "display/display_convert.hpp"
+#include "display/offscreen_target.hpp"
 #include "display/overlay_renderer.hpp"
 #include "display/vk_swapchain.hpp"
 #include "display/wayland_window.hpp"
@@ -59,6 +60,7 @@
 #include "common/dmabuf_map.hpp"
 #include "common/sand.hpp"
 #include "pipeline/ffmpeg_drm_decoder.hpp"
+#include "display/display_convert_check.hpp"
 #include "display_probe_spv.h"
 #else
 #include "display_probe_spv.h"
@@ -767,113 +769,9 @@ int run_present(const Args& a) {
     return (c1 && c2 && c3 && c4) ? 0 : 1;
 }
 
-// ─────────── 공통: 오프스크린 렌더 타깃 (P7 overlay / P8 convert 가 같이 쓴다) ───────────
-
-// STORAGE|TRANSFER_SRC 이미지 + 리드백 버퍼. 정확도 검사와 무페이싱 타이밍에 쓴다.
-// extra_usage 로 TRANSFER_DST 등을 덧붙일 수 있다(P7 은 배경을 vkCmdClearColorImage 로 채운다).
-// **P8 경로는 extra_usage = 0 으로 오늘까지와 완전히 같은 이미지를 만든다**(측정 회귀 방지).
-struct OffscreenTarget {
-    yvo::vk::VulkanContext& ctx;
-    VkImage image = VK_NULL_HANDLE;
-    VkDeviceMemory mem = VK_NULL_HANDLE;
-    VkImageView view = VK_NULL_HANDLE;
-    VkBuffer buf = VK_NULL_HANDLE;
-    VkDeviceMemory buf_mem = VK_NULL_HANDLE;
-    std::uint8_t* host = nullptr;
-    VkFence fence = VK_NULL_HANDLE;
-    std::uint32_t w = 0, h = 0;
-
-    OffscreenTarget(yvo::vk::VulkanContext& c, std::uint32_t width, std::uint32_t height, bool readback,
-                    VkImageUsageFlags extra_usage = 0)
-        : ctx(c), w(width), h(height) {
-        VkDevice dev = ctx.device();
-        VkImageCreateInfo ici{};
-        ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        ici.imageType = VK_IMAGE_TYPE_2D;
-        ici.format = VK_FORMAT_R8G8B8A8_UNORM;
-        ici.extent = {w, h, 1};
-        ici.mipLevels = 1;
-        ici.arrayLayers = 1;
-        ici.samples = VK_SAMPLE_COUNT_1_BIT;
-        ici.tiling = VK_IMAGE_TILING_OPTIMAL;
-        ici.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | extra_usage;
-        ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        YVO_VK_CHECK(vkCreateImage(dev, &ici, nullptr, &image));
-        VkMemoryRequirements req{};
-        vkGetImageMemoryRequirements(dev, image, &req);
-        std::uint32_t type = ctx.find_memory_type(req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        VkMemoryAllocateInfo mai{};
-        mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        mai.allocationSize = req.size;
-        mai.memoryTypeIndex = type;
-        YVO_VK_CHECK(vkAllocateMemory(dev, &mai, nullptr, &mem));
-        YVO_VK_CHECK(vkBindImageMemory(dev, image, mem, 0));
-        VkImageViewCreateInfo vi{};
-        vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        vi.image = image;
-        vi.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        vi.format = VK_FORMAT_R8G8B8A8_UNORM;
-        vi.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-        YVO_VK_CHECK(vkCreateImageView(dev, &vi, nullptr, &view));
-
-        if (readback) {
-            VkBufferCreateInfo bci{};
-            bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-            bci.size = static_cast<VkDeviceSize>(w) * h * 4;
-            bci.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-            bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            YVO_VK_CHECK(vkCreateBuffer(dev, &bci, nullptr, &buf));
-            vkGetBufferMemoryRequirements(dev, buf, &req);
-            type = ctx.find_memory_type(req.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                                                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-            mai.allocationSize = req.size;
-            mai.memoryTypeIndex = type;
-            YVO_VK_CHECK(vkAllocateMemory(dev, &mai, nullptr, &buf_mem));
-            YVO_VK_CHECK(vkBindBufferMemory(dev, buf, buf_mem, 0));
-            void* p = nullptr;
-            YVO_VK_CHECK(vkMapMemory(dev, buf_mem, 0, VK_WHOLE_SIZE, 0, &p));
-            host = static_cast<std::uint8_t*>(p);
-        }
-        VkFenceCreateInfo fi{};
-        fi.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        YVO_VK_CHECK(vkCreateFence(dev, &fi, nullptr, &fence));
-    }
-    ~OffscreenTarget() {
-        VkDevice dev = ctx.device();
-        if (dev == VK_NULL_HANDLE) return;
-        if (fence) vkDestroyFence(dev, fence, nullptr);
-        if (host) vkUnmapMemory(dev, buf_mem);
-        if (buf) vkDestroyBuffer(dev, buf, nullptr);
-        if (buf_mem) vkFreeMemory(dev, buf_mem, nullptr);
-        if (view) vkDestroyImageView(dev, view, nullptr);
-        if (image) vkDestroyImage(dev, image, nullptr);
-        if (mem) vkFreeMemory(dev, mem, nullptr);
-    }
-    OffscreenTarget(const OffscreenTarget&) = delete;
-    OffscreenTarget& operator=(const OffscreenTarget&) = delete;
-};
-
-void barrier_image(VkCommandBuffer cb, VkImage img, VkImageLayout from, VkImageLayout to,
-                   VkPipelineStageFlags2 ss, VkAccessFlags2 sa, VkPipelineStageFlags2 ds, VkAccessFlags2 da) {
-    VkImageMemoryBarrier2 b{};
-    b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-    b.srcStageMask = ss;
-    b.srcAccessMask = sa;
-    b.dstStageMask = ds;
-    b.dstAccessMask = da;
-    b.oldLayout = from;
-    b.newLayout = to;
-    b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    b.image = img;
-    b.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    VkDependencyInfo di{};
-    di.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-    di.imageMemoryBarrierCount = 1;
-    di.pImageMemoryBarriers = &b;
-    vkCmdPipelineBarrier2(cb, &di);
-}
+// 오프스크린 렌더 타깃·배리어·되읽기는 display/offscreen_target.hpp 하나뿐이다(test_overlay 와 공유).
+using yvo::display::barrier_image;
+using yvo::display::OffscreenTarget;
 
 // ─────────────────────────────── P8: convert ───────────────────────────────
 
@@ -948,18 +846,10 @@ ConvertRun run_offscreen(yvo::vk::VulkanContext& ctx, const Args& a, int dst_w, 
 }
 
 // 픽셀 정확도: CPU 기준(sand.hpp de-SAND + cpu_letterbox.hpp 색 수식, scale=1)과 비교한다.
-struct AccuracyResult {
-    bool ok = false;
-    int max_err = -1;
-    long long diff_px = 0;
-    long long total_px = 0;
-    int alpha_bad = 0;
-    int first_x = -1, first_y = -1;
-    int gpu_rgb[3]{}, cpu_rgb[3]{};
-};
+// P8 정확도: 판정은 display/display_convert_check.hpp 하나뿐이다(test_display_convert 와 공유).
+using AccuracyResult = yvo::display::ConvertAccuracy;
 
 AccuracyResult run_accuracy(yvo::vk::VulkanContext& ctx, const Args& a, int frame_index) {
-    AccuracyResult r;
     yvo::FfmpegDrmDecoder dec;
     if (!dec.open(a.video)) throw std::runtime_error("decoder open failed: " + dec.error());
     std::optional<yvo::DrmFrame> f;
@@ -968,93 +858,7 @@ AccuracyResult run_accuracy(yvo::vk::VulkanContext& ctx, const Args& a, int fram
         if (!f) break;
     }
     if (!f) throw std::runtime_error("accuracy: 프레임을 얻지 못했다");
-    const int w = f->width, h = f->height;
-
-    yvo::display::DisplayConvertConfig cc;
-    cc.num_slots = 1;
-    cc.local_size_x = a.lx;
-    cc.local_size_y = a.ly;
-    cc.uniform_scale = false; // 1:1 경로를 검증한다
-    cc.max_dst_w = std::max(w, 1920);
-    yvo::display::DisplayConvert conv(ctx, cc);
-    OffscreenTarget t(ctx, static_cast<std::uint32_t>(w), static_cast<std::uint32_t>(h), true);
-
-    YVO_VK_CHECK(vkResetFences(ctx.device(), 1, &t.fence));
-    VkCommandBuffer cb = conv.begin(0);
-    barrier_image(cb, t.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_NONE,
-                  VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT);
-    conv.record(0, *f, t.view, {t.w, t.h});
-    barrier_image(cb, t.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                  VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-                  VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
-    VkBufferImageCopy region{};
-    region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    region.imageExtent = {t.w, t.h, 1};
-    vkCmdCopyImageToBuffer(cb, t.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, t.buf, 1, &region);
-    VkBufferMemoryBarrier2 bb{};
-    bb.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
-    bb.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
-    bb.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-    bb.dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT;
-    bb.dstAccessMask = VK_ACCESS_2_HOST_READ_BIT;
-    bb.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    bb.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    bb.buffer = t.buf;
-    bb.size = VK_WHOLE_SIZE;
-    VkDependencyInfo di{};
-    di.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-    di.bufferMemoryBarrierCount = 1;
-    di.pBufferMemoryBarriers = &bb;
-    vkCmdPipelineBarrier2(cb, &di);
-    conv.end_and_submit(0, VK_NULL_HANDLE, VK_NULL_HANDLE, t.fence);
-    conv.finish(0);
-
-    // CPU 기준: dma-buf mmap → de-SAND → cpu_letterbox_nv12_bt709 (scale = 1, 패딩 없음)
-    std::vector<std::uint8_t> y(static_cast<std::size_t>(w) * h), uv(static_cast<std::size_t>(w) * h / 2);
-    {
-        yvo::DmaBufReadMap my(f->fd, f->size), muv(f->uv_fd, f->uv_size);
-        if (!my.data() || !muv.data() ||
-            !yvo::desand_nv12(my.data(), f->size, muv.data(), f->uv_size, yvo::make_sand_layout(*f), y.data(),
-                              static_cast<std::size_t>(w), uv.data(), static_cast<std::size_t>(w)))
-            throw std::runtime_error("accuracy: de-SAND 실패");
-    }
-    yvo::LetterboxParams lb;
-    lb.dst_w = w;
-    lb.dst_h = h;
-    lb.scale = 1.0f;
-    lb.pad_x = 0;
-    lb.pad_y = 0;
-    std::vector<std::uint8_t> ref(static_cast<std::size_t>(w) * h * 3);
-    yvo::cpu_letterbox_nv12_bt709(y.data(), static_cast<std::size_t>(w), uv.data(), static_cast<std::size_t>(w), w,
-                                  h, lb, ref.data());
-
-    r.total_px = static_cast<long long>(w) * h;
-    r.max_err = 0;
-    for (int py = 0; py < h; ++py) {
-        for (int px = 0; px < w; ++px) {
-            const std::uint8_t* g = t.host + (static_cast<std::size_t>(py) * w + px) * 4;
-            const std::uint8_t* c = ref.data() + (static_cast<std::size_t>(py) * w + px) * 3;
-            if (g[3] != 255) ++r.alpha_bad;
-            int e = 0;
-            for (int k = 0; k < 3; ++k) e = std::max(e, std::abs(static_cast<int>(g[k]) - static_cast<int>(c[k])));
-            if (e > 0) {
-                ++r.diff_px;
-                if (e > r.max_err || r.first_x < 0) {
-                    if (r.first_x < 0) {
-                        r.first_x = px;
-                        r.first_y = py;
-                        for (int k = 0; k < 3; ++k) {
-                            r.gpu_rgb[k] = g[k];
-                            r.cpu_rgb[k] = c[k];
-                        }
-                    }
-                    r.max_err = std::max(r.max_err, e);
-                }
-            }
-        }
-    }
-    r.ok = r.max_err == 0 && r.alpha_bad == 0;
-    return r;
+    return yvo::display::check_display_convert_1to1(ctx, *f, a.lx, a.ly);
 }
 
 // 실제 스왑체인 경로 (표시하면서 변환). present 통계와 total(배리어+blit 포함) 시간을 낸다.
@@ -1408,28 +1212,7 @@ OverlayAccuracy overlay_accuracy(yvo::vk::VulkanContext& ctx, int w, int h, cons
                   VK_PIPELINE_STAGE_2_CLEAR_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
                   VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT);
     ov.record(0, cb, t.view, {t.w, t.h}, aff, false);
-    barrier_image(cb, t.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                  VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-                  VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
-    VkBufferImageCopy region{};
-    region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    region.imageExtent = {t.w, t.h, 1};
-    vkCmdCopyImageToBuffer(cb, t.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, t.buf, 1, &region);
-    VkBufferMemoryBarrier2 bb{};
-    bb.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
-    bb.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
-    bb.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-    bb.dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT;
-    bb.dstAccessMask = VK_ACCESS_2_HOST_READ_BIT;
-    bb.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    bb.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    bb.buffer = t.buf;
-    bb.size = VK_WHOLE_SIZE;
-    VkDependencyInfo di{};
-    di.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-    di.bufferMemoryBarrierCount = 1;
-    di.pBufferMemoryBarriers = &bb;
-    vkCmdPipelineBarrier2(cb, &di);
+    t.record_readback(cb);
     YVO_VK_CHECK(vkEndCommandBuffer(cb));
 
     YVO_VK_CHECK(vkResetFences(ctx.device(), 1, &t.fence));
