@@ -18,10 +18,24 @@ description: >
 
 새로 짜기 전에 확인한다. 대개 `configs` 배열에 행 하나를 더하는 것으로 끝난다.
 
-| 스크립트 | 대상 |
-|---|---|
-| `06_tools/bench/pipeline_bench.sh` | 전체 파이프라인. `{mode} × {layout} × {batch/slots} × RUNS` |
-| `06_tools/bench/decode_bench.sh` | 디코드 경로 비교 |
+`06_tools/bench/` 에 **7개**가 있다. 목록·환경변수는 [`06_tools/README.md`](../../../06_tools/README.md).
+
+| 스크립트 | 대상 | 출력 |
+|---|---|---|
+| `pipeline_bench.sh` | 전체 파이프라인. `{mode} × {layout} × {batch/slots} × RUNS` | `07_results/pipeline_ffmpeg_vulkan_hailo/` |
+| `op_point_bench.sh` | 운용점 스윕(batch·slots·gpu_depth·postproc·display) | `07_results/op_point/` |
+| `display_bench.sh` | 표시 통합 e2e (RESULT_CSV + RESULT_CSV2 병합) | `07_results/display_e2e/` |
+| `decode_bench.sh` | 디코드 경로 비교 | `07_results/decode_benchmark/` |
+| `backpressure_bench.sh` | 백프레셔 전후 비교 | `07_results/raw_runner_backpressure/` |
+| `isp_bench.sh` | ISP 전처리 단독(NPU 미사용) | `07_results/isp_resize/` |
+| `isp_pipeline_bench.sh` | ISP 포함 전체 파이프라인 | `07_results/isp_resize/pipeline/` |
+
+> ⚠ `pipeline_bench.sh` 의 `configs` 스키마(`id|mode|layout|batch|slots` 5필드)는 **바꾸지 마라.**
+> 다른 스크립트들이 대조군 기준으로 쓴다.
+>
+> 일곱 스크립트 모두 시작할 때 `build/.bench_running` 에 PID 를 쓰고 `trap` 으로 지운다.
+> `npu_guard` 훅이 이걸 보고 측정 중 빌드·테스트를 막는다. **락을 우회하지 마라** —
+> 측정 중 다른 작업이 돌면 CPU 시간이 에러 없이 오염된다.
 
 `pipeline_bench.sh`의 유용한 환경변수:
 `RUNS`, `FRAMES`, `ONLY`(설정 id의 grep 패턴), `APPEND=1`(기존 CSV에 이어붙이기),

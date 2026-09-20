@@ -123,7 +123,7 @@ GPU 메모리를 CPU로 읽는 설계를 무심코 넣거나, 오염된 조건�
 - 수치를 새로 적기 전에 [`07_results/`](../07_results/) 의 해당 `summary.md` 를 확인하고
   출처 링크를 단다. 정본이 바뀌면 여기를 고친다(반대가 아니다)
 - 인용 금지 구간 두 개를 지킨다
-  ([`10_paper/paper_ko.md`](../10_paper/paper_ko.md) 부록 A.4):
+  ([`07_results/README.md`](../07_results/README.md#-인용-금지-구간) — 정본):
   ① 백프레셔 수정 이전 GPU 후처리 경로의 FPS·지연
   ② `--display-pace asap` + 표시 on 의 GPU timestamp **평균값**
 - 원인이 밝혀지지 않은 현상은 **"가설"이라고 명시**한다

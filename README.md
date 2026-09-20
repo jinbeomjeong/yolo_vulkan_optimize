@@ -21,33 +21,33 @@ Vulkan(V3D GPU)으로 밀어낸** 프로젝트다. 디코드·전처리·추론�
 ```
 04_data/videos/video_h265.mp4  (HEVC 1080p30)
       │
-      ▼  libavcodec DRM_PRIME                      [HW 디코더]   decode call 0.107 ms/f
+      ▼  libavcodec DRM_PRIME                      [HW 디코더]
    DrmFrame: Y/UV dma-buf (SAND128 NV12)  ── 복사 0
       │
       ├───────────────────────────────────────────┐
-      ▼  sand_letterbox.comp        [V3D GPU] 2.088 ms  ▼ (표시용 원본 유지)
-   NHCW 640×640×3  ── export dma-buf                    │
-      │                                                 │
-      ▼  infer_async (H2D dma-buf)  [Hailo-8] 69.7 ms   │
-   원시 6텐서 1,221,120 B  ── D2H dma-buf               │
-      │                                                 │
-      ▼  yolo_decode.comp           [V3D GPU] 0.626 ms  │
-   후보 ~16개                                           │
-      ▼  cpu_nms_greedy_by_class    [CPU]     2.67 µs   │
-   Detection (원본 1920×1080 좌표)                       │
-      │                                                 │
-      ▼─────────────────────────────────────────────────┘
-   display_convert.comp + overlay_boxes.comp  [V3D GPU] 4.153 + 0.128 ms
+      ▼  sand_letterbox.comp              [V3D GPU]  ▼ (표시용 원본 유지)
+   NHCW 640×640×3  ── export dma-buf                 │
+      │                                              │
+      ▼  infer_async (H2D dma-buf)        [Hailo-8]  │
+   원시 6텐서 1,221,120 B  ── D2H dma-buf            │
+      │                                              │
+      ▼  yolo_decode.comp                 [V3D GPU]  │
+   후보 ~16개                                        │
+      ▼  cpu_nms_greedy_by_class          [CPU]      │
+   Detection (원본 1920×1080 좌표)                    │
+      │                                              │
+      ▼──────────────────────────────────────────────┘
+   display_convert.comp + overlay_boxes.comp  [V3D GPU]
       ▼  Wayland 스왑체인 present (FIFO)
    HDMI-A-1 1920×1080@60
 ```
 
 dma-buf 세 그룹(디코더 SAND / 전처리 NHCW / 원시 텐서)이 전부 zero-copy 로 오간다.
 
-> 구간 시간은 전부 **중앙값(median)** 이다. GPU 4구간(2.088 / 0.626 / 4.153 / 0.128 ms, 합 6.995 ms)은
-> [`display_e2e/summary.md`](07_results/display_e2e/summary.md) §3.1(`disp_asap`), 디코드 호출·NPU·CPU NMS 는
-> 같은 측정의 `raw/disp_source_run1/stdout.log` 다. `display_convert` 의 **4.226 ms 는 NPU 유휴 기준선(M5a)**
-> 이지 실측이 아니다 — 혼동하지 마라. 같은 값을 쓰는 그림이 [`09_diagrams/pipeline_overview.graphml`](09_diagrams/pipeline_overview.graphml) 에 있다.
+> **구간별 지연 수치는 여기 적지 않는다.** 같은 값이 세 곳에 복제돼 있다가 한 번 어긋난 적이 있어
+> (`09_diagrams/README.md` 의 정렬 기록), 2026-09-21 에 이 도식에서는 **흐름만** 남겼다.
+> 구간 median 은 [`display_e2e/summary.md`](07_results/display_e2e/summary.md) §3.1 이 정본이고,
+> 같은 값을 붙인 그림이 [`09_diagrams/pipeline_overview.graphml`](09_diagrams/pipeline_overview.graphml) 에 있다.
 
 ---
 
@@ -173,6 +173,7 @@ wall            4.612 s, 29.49 FPS
 
 ⚠ **`--display-pace asap` + 표시 on 에서는 GPU timestamp 의 `mean` 을 믿지 마라.**
 median 을 써라(V3D 가 커맨드 버퍼를 합치면서 한쪽 구간이 0에 가깝게 잡힌다 — 원인 미확정).
+인용 금지 구간의 정본은 [`07_results/README.md`](07_results/README.md#-인용-금지-구간) 다.
 
 ---
 
@@ -189,6 +190,7 @@ ctest --test-dir build        # 44/44 통과해야 한다
 | `test_detections` | 필요 | CPU/GPU 전처리 경로 검출 일치 |
 | `test_preproc` | 불필요 | GPU 전처리가 CPU 기준과 **비트 일치**(max 오차 0) |
 | `test_overlay` | 불필요 | 오버레이 셰이더 vs CPU 기준 비트 일치 |
+| `test_isp_preproc` | 불필요(ISP 필요) | ISP 전처리 vs CPU 기준. **비트 일치가 아니다**(리샘플 커널이 다르다) — 패딩만 오차 0, 내용은 MAE ≤ 3.0 |
 
 두 경로의 검출을 직접 비교하려면:
 
@@ -262,9 +264,14 @@ grim -o HDMI-A-1 shot.png
 - [`07_results/op_point/summary.md`](07_results/op_point/summary.md) §8 — 운용점 확정 근거와 최종 결론
 - [`07_results/display_e2e/summary.md`](07_results/display_e2e/summary.md) — 표시 통합 측정
 - [`07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md`](07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md) §4.3 — 왜 이 설계인가(메모리 제약)
+- [`09_diagrams/`](09_diagrams/README.md) — yEd 로 여는 파이프라인 다이어그램 2장(분기·스레드 경계·dma-buf 소유권)
+- [`10_paper/paper_ko.md`](10_paper/paper_ko.md) — 논문 형식의 전체 서술
 - `CLAUDE.md` — 폴더 규약, 개발 환경, 서브에이전트 라우팅
 
 ### 아직 열려 있는 것
+
+목록의 정본은 **[`07_results/README.md`](07_results/README.md#아직-열려-있는-것)** 다(9항목).
+여기서는 운용에 바로 영향을 주는 셋만 적는다.
 
 - **연속 운용 발열** — 측정이 전부 26초짜리다. 몇 시간 도는 운용에서 `b2/s4` 의 30 fps 여유(+16%)가
   클럭 강등을 버티는지 미검증

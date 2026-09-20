@@ -42,7 +42,10 @@ build/01_src/pipeline/yvo_pipeline \
 
 1. **zero-copy 는 `dmabuf + NHCW` 에서만 성립한다.** V3D GEM mmap 포인터는 Hailo 가 DMA 매핑하지 못한다.
 2. **GPU 가 쓴 버퍼를 CPU 로 훑으면 약 10배 비싸다.** V3D 메모리 타입이 `HOST_COHERENT` 하나뿐이고
-   `HOST_CACHED` 가 없다(순차 1.48 GB/s, stride-3 은 0.088 GB/s). **반대 방향(CPU→GPU 쓰기)은 싸다.**
+   `HOST_CACHED` 가 없다(1.2 MB 기준 순차 **약 1.41 GB/s**, stride-3 은 0.088 GB/s).
+   **반대 방향(CPU→GPU 쓰기)은 싸다.** 정본은
+   [`pipeline_ffmpeg_vulkan_hailo/summary.md`](pipeline_ffmpeg_vulkan_hailo/summary.md)
+   (0.85~0.87 ms / 1,228,800 B). 이 색인의 이전 판은 1.48 GB/s 라 적었다.
 3. **처리량 상한은 PCIe Gen3 x1 이 정한다.** `T(B) = 24.8 + 16.2·B ms`, 점근 상한 61.6 FPS, 실측 51.7.
 4. **파이프라인에서 처리량·지연을 지배하는 것은 batch 가 아니라 slots 다.** 지연 ≈ `slots × 프레임 주기`.
 5. **표시 해상도를 낮추면 오히려 비싸진다**(1:1 2.05 ns/px vs 스케일 5.31 ns/px). 1920×1080 1:1 이 기본.
@@ -83,13 +86,36 @@ build/01_src/pipeline/yvo_pipeline \
   `test_detections`, `test_preproc`, `test_overlay`. 판정 규칙은 `05_tests/detection_match.hpp` 하나로 공용화돼 있고
   `06_tools/python/compare_detections.py` 가 같은 규칙을 구현한다
 
+## ⛔ 인용 금지 구간
+
+**이 절이 정본이다.** 아래 두 구간은 이 프로젝트의 어떤 문서·논문·보고에서도 인용하지 않는다.
+
+1. **백프레셔 결함 수정 이전의 GPU 후처리 경로 처리량·지연.**
+   근거: [`raw_runner_backpressure/summary.md`](raw_runner_backpressure/summary.md).
+   [`gpu_postproc_e2e/`](gpu_postproc_e2e/summary.md) 의 FPS·지연 값이 여기 해당한다
+   (같은 폴더의 **정확도·perf 결과는 유효하다**).
+   결함을 *서술하는* 맥락에서 "수정 전 24.48 → 수정 후 34.96" 처럼 쓰는 것은 인용이 아니라 설명이므로 허용한다.
+2. **`--display-pace asap` + 표시 on 조건의 GPU timestamp `mean`.**
+   V3D 가 연속 제출된 커맨드 버퍼를 병합해 한쪽 구간이 0에 가깝게 기록된다(**원인 미확정**).
+   이 조건에서는 **중앙값만** 쓴다. 근거: [`display_e2e/summary.md`](display_e2e/summary.md).
+
+> 이 규칙의 정본은 원래 `10_paper/paper_ko.md` 부록 A.4 였다. 논문은 저장소 밖으로 나가거나
+> 개정될 문서이므로 2026-09-21 에 이리로 옮겼다. 논문 A.4 는 이제 이 절을 참조한다.
+
+---
+
 ## 아직 열려 있는 것
+
+**이 표가 정본이다.** 루트 `README.md` 와 `08_learn/10_why_this_design.md` 는 여기를 링크한다.
 
 | 항목 | 왜 아직인가 |
 |---|---|
-| **연속 운용 발열 안정 FPS** | 측정이 전부 26초짜리다. 칩이 90 °C대로 가면 클럭이 400→250 MHz 로 떨어지고 `b2/s4` 의 여유(+16%)가 사라질 수 있다 |
-| **카메라(CSI) 입력 경로** | 디코더가 `ffmpeg_drm_decoder.cpp:166` 에서 **HEVC 파일만** 받는다. 카메라로 가면 ISP 경로 재검토 조건도 함께 열린다 |
+| **연속 운용 발열 안정 FPS** ★ 가장 큰 구멍 | 측정이 전부 900프레임 ≈ 26초짜리다. 칩이 90 °C대로 가면 클럭이 400→250 MHz 로 떨어지고 `b2/s4` 의 여유(+16%)가 사라질 수 있다 |
+| **카메라(CSI) 입력 경로** | 디코더가 `01_src/pipeline/ffmpeg_drm_decoder.cpp:166` 에서 **HEVC 파일만** 받는다. 카메라로 가면 ISP 경로 재검토 조건도 함께 열린다 |
 | `--display-sync latest` 정식 측정 | 150프레임 확인 실행만 했다(glass median 28.2 ms) |
 | dma-heap B.2 / 3자 일관성 | 별도 트랙. `--postproc-alloc heap` 은 옵션만 있고 **기본값은 `export`** 다 |
 | 완전 GPU NMS | 하이브리드(GPU 디코드 + CPU 억제)가 3~11 µs 라 서두를 이유가 없다는 판정 |
 | 다중 스트림 | **측정 불필요** — 1080p30 2개 = 60 FPS 인데 NPU 상한이 51.7 이다 |
+| 워크그룹 최적값의 **이유** | `yolo_decode` 가 60 invocation(10×6)에서 256보다 빠르고 `display_convert` 가 3×85 에서 16×16보다 1.83배 빠른 이유를 설명하지 못했다. **측정치만이 근거인 가설**이다 |
+| V3D 쪽 캐시 일관성 **기제** | Hailo 쪽은 드라이버가 관리함을 perf 로 확인했다. V3D 는 프레임마다 매핑하지 않는데도 오염이 관측되지 않는다 — 축출 완료인지 스누핑인지 **가르지 못했다**(결정적 실험에 root 필요) |
+| `pace=asap` 의 GPU timestamp 평균 왜곡 | 커맨드 버퍼 병합으로 **추정하나 미확인**. 해당 값은 위 "인용 금지 구간" 2번이다 |
