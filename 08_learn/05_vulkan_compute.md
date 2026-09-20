@@ -448,7 +448,7 @@ GPU 구간을 재는 수단은 **timestamp query** 하나다.
 > `--display-pace asap` 에 표시를 켠 상태에서는 V3D가 연속 제출된 커맨드 버퍼를 합치면서
 > 한쪽 구간이 0에 가깝게 기록되는 현상이 관측됐다(**원인 미확정**). 그래서 이 프로젝트의
 > GPU 시간은 **전부 중앙값(median)** 이다 ([`README.md`](../README.md) §5,
-> [`11_paper/paper_ko.md`](../11_paper/paper_ko.md) 부록 A.4).
+> [`10_paper/paper_ko.md`](../10_paper/paper_ko.md) 부록 A.4).
 
 ---
 

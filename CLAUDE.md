@@ -9,9 +9,9 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행�
 - `01_src/{common,hailo,vulkan,display,pipeline}/` C++ 소스, `02_shaders/` GLSL 컴퓨트 셰이더(SPIR-V 산출물은 `build/`)
   `01_src/display/`는 Wayland(xdg-shell) 창 + 스왑체인 표시 경로. 회귀 격리를 위해 `yvo_vulkan`과 별도 라이브러리(`yvo_display`)다.
 - `05_tests/` GoogleTest, `06_bench/` Google Benchmark. 각 폴더에 `CMakeLists.txt`가 생기면 최상위 `CMakeLists.txt`가 자동으로 포함한다.
-- `08_python/` hailo-yolo 환경 스크립트(집계·시각화·Python 추론), `09_scripts/` 측정 자동화 셸 스크립트
+- `06_tools/python/` hailo-yolo 환경 스크립트(집계·시각화·Python 추론), `06_tools/bench/` 측정 자동화 셸 스크립트
 - `07_results/<실험>/` 측정 원시 출력과 `summary.md`. 예: `07_results/npu_benchmark/{gen2,gen3}/`
-- `10_logs/` 보관용 런타임 로그
+- `11_logs/` 보관용 런타임 로그
 - 모델·영상·로그는 `.gitignore`에 들어 있다.
 
 ## 개발 환경
@@ -28,7 +28,7 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행�
   `hailo_platform` 4.24.0 설치 완료(`~/Downloads/hailort-4.24.0-cp313-cp313-linux_aarch64.whl`, 시스템 `libhailort.so.4.24.0`에 링크).
   Python에서 InferModel을 쓸 때는 VDevice 스케줄러를 `ROUND_ROBIN`으로 켜야 한다(기본값 NONE이면 `HAILO_STREAM_NOT_ACTIVATED`).
 - 설치 금지: apt `python3-hailort`, `hailo-all`. Python 바인딩이 4.23이라 런타임 4.24.0과 맞지 않는다.
-- `hailort.log`는 HailoRT 런타임이 실행한 디렉터리에 쓰는 로그다. 에러를 분석할 때 참고하고, 보관할 로그는 `10_logs/`에 날짜를 붙여 옮긴다.
+- `hailort.log`는 HailoRT 런타임이 실행한 디렉터리에 쓰는 로그다. 에러를 분석할 때 참고하고, 보관할 로그는 `11_logs/`에 날짜를 붙여 옮긴다.
 - GStreamer MCP: `gstreamer` 서버(`/home/pi/workspace/gstreamer-mcp`, 전역 `~/.claude.json`과 프로젝트 `.mcp.json`에 등록). 도구는 `mcp__gstreamer__*`.
 
 ## 서브에이전트 라우팅 (프로젝트 우선)

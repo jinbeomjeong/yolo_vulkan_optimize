@@ -1,12 +1,12 @@
-# 13_learn — 이 프로젝트를 이해하기 위한 배경지식
+# 08_learn — 이 프로젝트를 이해하기 위한 배경지식
 
 이 폴더는 **배경지식이 전혀 없는 상태에서 `yolo_vulkan_optimize` 를 이해하기 위한 자습 교재**다.
 
 ## 왜 이 폴더가 있나
 
 이 저장소에는 이미 좋은 문서가 많다 — 실행 안내([`README.md`](../README.md)),
-실험 결과 12건([`07_results/`](../07_results/)), 파이프라인 다이어그램([`12_docs/`](../12_docs/)),
-논문 초고([`11_paper/paper_ko.md`](../11_paper/paper_ko.md)).
+실험 결과 12건([`07_results/`](../07_results/)), 파이프라인 다이어그램([`09_diagrams/`](../09_diagrams/)),
+논문 초고([`10_paper/paper_ko.md`](../10_paper/paper_ko.md)).
 
 그런데 그 문서들은 전부 **배경지식이 있는 독자**를 전제한다. 예를 들어 논문의 이 한 문장은
 설계의 핵심을 담고 있지만,
@@ -79,7 +79,7 @@ GPU 메모리를 CPU로 읽는 설계를 무심코 넣거나, 오염된 조건�
 
 ### 코스 C — 논문을 읽을 사람 (약 4~6시간)
 
-"[`11_paper/paper_ko.md`](../11_paper/paper_ko.md) 를 이해하고 싶다."
+"[`10_paper/paper_ko.md`](../10_paper/paper_ko.md) 를 이해하고 싶다."
 
 ```
 01 → 03 YOLO/텐서 → 04 NPU → 06 zero-copy → 10 설계 사슬 → 논문
@@ -123,7 +123,7 @@ GPU 메모리를 CPU로 읽는 설계를 무심코 넣거나, 오염된 조건�
 - 수치를 새로 적기 전에 [`07_results/`](../07_results/) 의 해당 `summary.md` 를 확인하고
   출처 링크를 단다. 정본이 바뀌면 여기를 고친다(반대가 아니다)
 - 인용 금지 구간 두 개를 지킨다
-  ([`11_paper/paper_ko.md`](../11_paper/paper_ko.md) 부록 A.4):
+  ([`10_paper/paper_ko.md`](../10_paper/paper_ko.md) 부록 A.4):
   ① 백프레셔 수정 이전 GPU 후처리 경로의 FPS·지연
   ② `--display-pace asap` + 표시 on 의 GPU timestamp **평균값**
 - 원인이 밝혀지지 않은 현상은 **"가설"이라고 명시**한다

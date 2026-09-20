@@ -59,7 +59,7 @@ Detection (원본 1920x1080 좌표) → JSON Lines / PNG
 | `05_tests/test_preproc.cpp` | GPU 전처리 vs CPU 기준 (GTest) | vulkan-expert |
 | `05_tests/test_detections.cpp` | CPU / GPU ptr / GPU dmabuf / GPU dmabuf NHCW 검출 비교 (GTest) | cpp-expert |
 | `CMakeLists.txt`, `cmake/yvo_embed_spirv.cmake` | `yvo_add_shaders()`: glslc → spirv-val → SPIR-V 헤더 임베드 | vulkan-expert |
-| `09_scripts/pipeline_bench.sh` | 성능 측정(냉각 대기, CSV 집계) | cpp-expert |
+| `06_tools/bench/pipeline_bench.sh` | 성능 측정(냉각 대기, CSV 집계) | cpp-expert |
 
 소스와 스크립트를 합쳐 약 5,200줄이다.
 
@@ -377,9 +377,9 @@ ctest --test-dir build
 # 권장 경로: dmabuf + NHCW
 build/01_src/pipeline/yvo_pipeline --video 04_data/videos/video_h265.mp4 \
     --mode dmabuf --layout nhcw --batch 8 --slots 16 --dump-dir /tmp/out --dump-every 300
-bash 09_scripts/pipeline_bench.sh                       # 전체 9설정(약 55분, 냉각 포함)
-ONLY='nhcw' APPEND=1 bash 09_scripts/pipeline_bench.sh  # NHCW만 재서 기존 결과에 추가
-RUNS=1 FRAMES=300 bash 09_scripts/pipeline_bench.sh     # 짧게
+bash 06_tools/bench/pipeline_bench.sh                       # 전체 9설정(약 55분, 냉각 포함)
+ONLY='nhcw' APPEND=1 bash 06_tools/bench/pipeline_bench.sh  # NHCW만 재서 기존 결과에 추가
+RUNS=1 FRAMES=300 bash 06_tools/bench/pipeline_bench.sh     # 짧게
 ```
 
 ## 8. 결과 파일 (`07_results/pipeline_ffmpeg_vulkan_hailo/`)

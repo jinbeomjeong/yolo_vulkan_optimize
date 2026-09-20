@@ -13,7 +13,7 @@
 | 경로 | `--mode dmabuf --layout nhcw`, 표시 off |
 | 냉각 | 칩 > 75 °C 면 65 °C 까지 대기. 총 대기 335 s |
 | 신뢰성 | 12회 전부 `hailort.log` error 0 / 온도·클럭 warning 0, `ok=1` |
-| 스크립트 | 이 폴더의 `bench.sh` (구조는 `09_scripts/op_point_bench.sh` 복사) |
+| 스크립트 | `06_tools/bench/backpressure_bench.sh` (구조는 `op_point_bench.sh` 복사). 2026-09-21 폴더 재배치 전에는 이 폴더의 `bench.sh` 였다 |
 
 ## 2. 수정 내용
 

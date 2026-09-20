@@ -18,7 +18,7 @@
 | 냉각 | 칩 > 75 °C 면 65 °C 이하까지 대기(최대 120 s). 합계 대기 **480 s** |
 | 바이너리 | md5 `d9590bc7…`, 측정 중 재빌드 없음(전후 md5 동일) |
 | **신뢰성** | **18회 전부 `hailort.log` 온도·클럭 경고 0건, 에러 0건, `ok=1`** |
-| 스크립트 | `09_scripts/op_point_bench.sh` (신규. `pipeline_bench.sh` 는 손대지 않았다) |
+| 스크립트 | `06_tools/bench/op_point_bench.sh` (신규. `pipeline_bench.sh` 는 손대지 않았다) |
 
 ## 2. 세션 유효성 — 대조군
 
@@ -189,7 +189,7 @@ O3(30 FPS 실시간 표시) = **`b2/s4`** 로 변동 없다.
 - `env_bench.txt` — 환경 스냅샷(측정 전후), 바이너리 md5·mtime
 - `raw/<설정>_run<N>/{stdout.log,hailort.log}`
 - `latency_gen3_cooled/` — Mb: 냉각 상태 Gen3 지연 재측정(`npu_benchmark/gen3` 의 TODO 해소)
-- `latency_sweep/` — §5.5 지연 최소화 스윕(`USE_LAT=1 bash 09_scripts/op_point_bench.sh`)
+- `latency_sweep/` — §5.5 지연 최소화 스윕(`USE_LAT=1 bash 06_tools/bench/op_point_bench.sh`)
 - 관련: [`07_results/raw_runner_backpressure/summary.md`](../raw_runner_backpressure/summary.md) — §5.6 의 원자료와 백프레셔 결함 규명
 
 ## 8. 최종 결론

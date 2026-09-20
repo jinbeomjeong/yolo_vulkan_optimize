@@ -81,7 +81,7 @@ build/01_src/pipeline/yvo_pipeline \
 - **"표시가 어떻게 동작하나"** → `display_vulkan_hdmi/` (프로브) → `display_e2e/` (통합)
 - **"정확도를 어떻게 보장하나"** → `ctest` 44개. 특히 `test_postproc`(픽스처 4 + live 1),
   `test_detections`, `test_preproc`, `test_overlay`. 판정 규칙은 `05_tests/detection_match.hpp` 하나로 공용화돼 있고
-  `08_python/compare_detections.py` 가 같은 규칙을 구현한다
+  `06_tools/python/compare_detections.py` 가 같은 규칙을 구현한다
 
 ## 아직 열려 있는 것
 

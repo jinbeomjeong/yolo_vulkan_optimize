@@ -13,11 +13,18 @@
 #   pace=source 에서는 FPS 가 소스 30 으로 고정돼 "FPS ±2%" 판정이 무의미해진다.
 #
 # 사용법:
-#   bash 09_scripts/display_bench.sh
-#   RUNS=3 FRAMES=900 ONLY='disp_on' bash 09_scripts/display_bench.sh
+#   bash 06_tools/bench/display_bench.sh
+#   RUNS=3 FRAMES=900 ONLY='disp_on' bash 06_tools/bench/display_bench.sh
 set -euo pipefail
 
-PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# npu_guard 훅(.claude/hooks/npu_guard.sh)이 이 파일의 PID 로 "벤치가 돌고 있다"를 판단한다.
+# 측정 중에 빌드·테스트가 끼어들면 CPU 시간 측정이 에러 없이 조용히 오염되기 때문이다.
+# 훅이 PID 생존 여부를 보므로 비정상 종료로 남은 락은 자동으로 무효가 된다.
+BENCH_LOCK="${BENCH_LOCK:-$PROJ/build/.bench_running}"
+mkdir -p "$(dirname "$BENCH_LOCK")"
+printf '%s' "$$" > "$BENCH_LOCK"
+trap 'rm -f "$BENCH_LOCK"' EXIT INT TERM
 BIN="${BIN:-$PROJ/build/01_src/pipeline/yvo_pipeline}"
 VIDEO="${VIDEO:-$PROJ/04_data/videos/video_h265.mp4}"
 HEF="${HEF:-$PROJ/03_models/yolov11m.hef}"
@@ -49,7 +56,7 @@ configs=(
   "disp_source  |--mode dmabuf --layout nhcw --batch 2 --slots 4 --postproc gpu --display on --display-fullscreen --display-pace source"
 )
 
-# ── 아래 4개 함수는 09_scripts/op_point_bench.sh 에서 그대로 복사했다 (수정 금지) ──
+# ── 아래 4개 함수는 06_tools/bench/op_point_bench.sh 에서 그대로 복사했다 (수정 금지) ──
 hailo_temp() {
   (cd "$OUT_DIR/raw" && "$PY_HAILO" - <<'EOF' 2>/dev/null) || echo nan
 from hailo_platform import Device

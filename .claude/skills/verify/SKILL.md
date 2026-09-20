@@ -85,7 +85,7 @@ perf report -i perf.data --no-children --stdio -g none --percent-limit 0.2
 grep -cE '\[error\]|\[warning\]' hailort.log
 ```
 
-- `hailort.log`는 **실행한 디렉터리**에 생긴다. 보관할 것은 `10_logs/`에 날짜를 붙여 옮긴다.
+- `hailort.log`는 **실행한 디렉터리**에 생긴다. 보관할 것은 `11_logs/`에 날짜를 붙여 옮긴다.
 - 온도·클럭 경고가 있으면 그 실행의 **성능 수치는 신뢰할 수 없다**. `measure` 스킬을 볼 것.
 
 ---

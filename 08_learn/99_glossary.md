@@ -188,8 +188,8 @@
 | 2 | [`07_results/README.md`](../07_results/README.md) | **수치를 인용하기 전에 여기부터.** 실험 12개 색인과 "설계를 지배하는 사실 6개" |
 | 3 | [`07_results/op_point/summary.md`](../07_results/op_point/summary.md) §8 | 최종 결론. "지금 뭘 쓰면 되나" |
 | 4 | [`07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md) §4.3 | "왜 이 설계인가"의 핵심 |
-| 5 | [`12_docs/`](../12_docs/) | yEd로 여는 파이프라인 다이어그램 2장. 노드마다 소스 경로와 수치 출처가 붙어 있다 |
-| 6 | [`11_paper/paper_ko.md`](../11_paper/paper_ko.md) | 논문 형식의 전체 서술. **이 문서들을 읽었다면 이제 읽을 수 있다** |
+| 5 | [`09_diagrams/`](../09_diagrams/) | yEd로 여는 파이프라인 다이어그램 2장. 노드마다 소스 경로와 수치 출처가 붙어 있다 |
+| 6 | [`10_paper/paper_ko.md`](../10_paper/paper_ko.md) | 논문 형식의 전체 서술. **이 문서들을 읽었다면 이제 읽을 수 있다** |
 
 > ⚠ 논문은 본문은 완성됐지만 저자 정보와 참고문헌이 아직 채워지지 않았다.
 

@@ -40,7 +40,7 @@ CPU 억제: 2.2~2.7 µs/frame. 후보 수 mean 16.81 / max 45 (상한 4096, over
 
 ## 정확도 (전체 1816프레임, b8/s16)
 
-`08_python/compare_detections.py` — `verification/accuracy_host_vs_gpu.csv`
+`06_tools/python/compare_detections.py` — `verification/accuracy_host_vs_gpu.csv`
 
 | 지표 | 값 | 게이트 |
 |---|---|---|

@@ -2,7 +2,7 @@
 
 - 측정 일시: 2026-09-20 01:23~02:16 KST(1차), 02:21~02:26 KST(나머지 조합 재개)
 - 환경: Raspberry Pi CM5 (BCM2712, Cortex-A76 4코어 1.5 GHz, governor ondemand), GStreamer 1.26.2, kernel 6.18.50
-- 스크립트: [`09_scripts/decode_bench.sh`](../../09_scripts/decode_bench.sh). 조합마다 3회를 실행하고 중앙값을 쓴다. CPU 시간은 wait4 rusage에서 얻는다(`/usr/bin/time -v`와 같은 값)
+- 스크립트: [`06_tools/bench/decode_bench.sh`](../../06_tools/bench/decode_bench.sh). 조합마다 3회를 실행하고 중앙값을 쓴다. CPU 시간은 wait4 rusage에서 얻는다(`/usr/bin/time -v`와 같은 값)
 - 입력: `04_data/videos/video_h264.mp4`(H.264 High 1080p30, 1834프레임), `video_h265.mp4`(HEVC Main 1080p30, 1816프레임), `urban_street.mp4`(H.264 Main 720p30, 앞 3000프레임)
 - 단계
   - S1: 디코드만 한다 (`fakesink sync=false`)

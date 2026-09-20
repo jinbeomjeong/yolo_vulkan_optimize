@@ -4,7 +4,7 @@
 > [02_hardware.md](02_hardware.md) (CPU / GPU / NPU 가 각각 무엇을 잘하는가)
 > **다 읽으면 읽을 수 있는 것**: [`01_src/common/cpu_yolov8_decode.hpp`](../01_src/common/cpu_yolov8_decode.hpp)
 > 상단 주석 1)~7), [`02_shaders/yolo_decode.comp`](../02_shaders/yolo_decode.comp) 머리 주석,
-> [`11_paper/paper_ko.md`](../11_paper/paper_ko.md) §3.2 텐서 사양 표,
+> [`10_paper/paper_ko.md`](../10_paper/paper_ko.md) §3.2 텐서 사양 표,
 > [`07_results/gpu_postprocess/summary.md`](../07_results/gpu_postprocess/summary.md)
 
 ---
@@ -149,7 +149,7 @@ NHCW : R00 R01 R02 | G00 G01 G02 | B00 B01 B02 ‖ R10 R11 R12 | G10 G11 G12 | B
 Hailo-8은 NHCW를 받는다. 우리 GPU 전처리 셰이더가 NHWC로 써 놓으면, 런타임이 CPU로
 **순서를 바꿔 주는 일(전치, transpose)** 을 대신 한다. 공짜가 아니다. 이 프로젝트에서
 그 비용은 프레임당 약 **14 ms**였다
-([`11_paper/paper_ko.md`](../11_paper/paper_ko.md) §4.3.2, CPU 17.6 → 3.5 ms).
+([`10_paper/paper_ko.md`](../10_paper/paper_ko.md) §4.3.2, CPU 17.6 → 3.5 ms).
 
 **이유 2: 읽는 방향에 따라 속도가 10배까지 달라진다.**
 
@@ -409,7 +409,7 @@ q = 255 → 255 × 0.0034697596 = 0.88478
 ```
 
 이 값들은 이 프로젝트 모델의 P3 클래스 텐서 실제 값이다
-([`11_paper/paper_ko.md`](../11_paper/paper_ko.md) §3.2 표).
+([`10_paper/paper_ko.md`](../10_paper/paper_ko.md) §3.2 표).
 0 ~ 0.885 구간을 **256단계로 쪼갠 눈금자**라고 생각하면 정확하다.
 
 ```
@@ -518,7 +518,7 @@ D 0.60  IoU(C,D)=0.75  0.7 초과 → 억제 ✘
 
 ### (1) HEF가 실제로 내놓는 6개 텐서
 
-정본은 [`11_paper/paper_ko.md`](../11_paper/paper_ko.md) §3.2 표다. 값이 바뀌면 그쪽을 고친다.
+정본은 [`10_paper/paper_ko.md`](../10_paper/paper_ko.md) §3.2 표다. 값이 바뀌면 그쪽을 고친다.
 
 | 스트림 | 역할 | hw_shape | 바이트 | zero_point | scale |
 |---|---|---|---:|---:|---|
@@ -768,7 +768,7 @@ NPU 원시 출력 6텐서 (UINT8 NHCW, 합계 1,221,120 B)
 바이트 수는 **같다**(640 × 640 × 3 = 1,228,800 B). 값도 같다. **순서만** 다르다.
 그런데 소비자가 요구하는 순서가 정해져 있어서 구분해야 한다. Hailo-8 장치는 NHCW를
 요구하므로, NHWC로 넘기면 런타임이 CPU에서 전치해 주고 이 프로젝트에서는 그 비용이
-프레임당 약 14 ms였다([`11_paper/paper_ko.md`](../11_paper/paper_ko.md) §4.3.2, CPU 17.6 → 3.5 ms).
+프레임당 약 14 ms였다([`10_paper/paper_ko.md`](../10_paper/paper_ko.md) §4.3.2, CPU 17.6 → 3.5 ms).
 게다가 잘못된 순서로 해석하면 결과가 완전히 망가진다.
 
 **Q2. YOLO가 격자를 80×80 / 40×40 / 20×20 세 벌 만드는 이유는?**

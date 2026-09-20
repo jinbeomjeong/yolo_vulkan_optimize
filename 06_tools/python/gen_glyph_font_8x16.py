@@ -8,8 +8,8 @@
 얻었는지 재현하기 위한 기록이다. 폰트를 바꾸려면 다시 돌려 헤더를 덮어쓰고 커밋한다.
 
 사용:
-  python3 09_scripts/gen_glyph_font_8x16.py [--psf PATH.psf(.gz)] [--out 01_src/common/glyph_font_8x16.hpp]
-  python3 09_scripts/gen_glyph_font_8x16.py --dump ABC   # 글리프를 아스키 아트로 확인만 한다
+  python3 06_tools/python/gen_glyph_font_8x16.py [--psf PATH.psf(.gz)] [--out 01_src/common/glyph_font_8x16.hpp]
+  python3 06_tools/python/gen_glyph_font_8x16.py --dump ABC   # 글리프를 아스키 아트로 확인만 한다
 """
 
 from __future__ import annotations
@@ -75,7 +75,7 @@ HEADER_TOP = '''// 8x16 비트맵 폰트 (ASCII 32~126, 95 글리프 x 16 B = 15
 // CPU 기준 구현이 **같은 표**를 쓰기 위한 헤더다. 런타임 베이크도, OpenCV 의존도 없다.
 //
 // 데이터 출처: /usr/share/consolefonts/Lat15-VGA16.psf.gz (IBM VGA 8x16 비트맵, 공개 도메인).
-// 생성 스크립트: 09_scripts/gen_glyph_font_8x16.py — 빌드에 관여하지 않는다. 아래 상수가 최종 산출물이다.
+// 생성 스크립트: 06_tools/python/gen_glyph_font_8x16.py — 빌드에 관여하지 않는다. 아래 상수가 최종 산출물이다.
 //
 // ======================== 렌더링 규약 (이 주석이 유일한 기준이다) ========================
 // GPU 컴퓨트 셰이더와 CPU 기준 구현은 이 주석만 보고 **비트 단위로 같은 결과**를 내야 한다.

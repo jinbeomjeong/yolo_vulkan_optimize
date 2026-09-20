@@ -10,7 +10,7 @@
 #   냉각·환경 스냅샷·루프 구조는 pipeline_bench.sh 에서 그대로 복사했다(수정하지 않았다).
 #
 # 사용법:
-#   bash 09_scripts/op_point_bench.sh                       # 전체, 설정당 3회
+#   bash 06_tools/bench/op_point_bench.sh                       # 전체, 설정당 3회
 #   RUNS=3 FRAMES=900 ONLY='b2s2|b8s8' bash ...             # 일부만
 #   BIN=/path/to/yvo_pipeline bash ...                      # 바이너리 고정(측정 중 재빌드 차단)
 #   APPEND=1 bash ...                                       # 기존 results_raw.csv 에 이어붙이기
@@ -18,7 +18,14 @@
 # 실행 순서: 반복(run) 바깥 루프, 설정 안쪽 루프 — 열 상태 편향을 설정 간에 고르게 나눈다.
 set -euo pipefail
 
-PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# npu_guard 훅(.claude/hooks/npu_guard.sh)이 이 파일의 PID 로 "벤치가 돌고 있다"를 판단한다.
+# 측정 중에 빌드·테스트가 끼어들면 CPU 시간 측정이 에러 없이 조용히 오염되기 때문이다.
+# 훅이 PID 생존 여부를 보므로 비정상 종료로 남은 락은 자동으로 무효가 된다.
+BENCH_LOCK="${BENCH_LOCK:-$PROJ/build/.bench_running}"
+mkdir -p "$(dirname "$BENCH_LOCK")"
+printf '%s' "$$" > "$BENCH_LOCK"
+trap 'rm -f "$BENCH_LOCK"' EXIT INT TERM
 BIN="${BIN:-$PROJ/build/01_src/pipeline/yvo_pipeline}"
 VIDEO="${VIDEO:-$PROJ/04_data/videos/video_h265.mp4}"
 HEF="${HEF:-$PROJ/03_models/yolov11m.hef}"
@@ -69,7 +76,7 @@ configs_lat=(
 )
 [[ "${USE_LAT:-0}" == "1" ]] && configs=("${configs_lat[@]}")
 
-# ── 아래 5개 함수는 09_scripts/pipeline_bench.sh 에서 그대로 복사했다 (수정 금지) ──
+# ── 아래 5개 함수는 06_tools/bench/pipeline_bench.sh 에서 그대로 복사했다 (수정 금지) ──
 hailo_temp() {  # hailort.log 가 raw/ 에 생기도록 그 디렉터리에서 실행
   (cd "$OUT_DIR/raw" && "$PY_HAILO" - <<'EOF' 2>/dev/null) || echo nan
 from hailo_platform import Device

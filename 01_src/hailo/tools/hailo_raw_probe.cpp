@@ -887,7 +887,7 @@ float read_chip_temp() {
     return std::max(t->ts0_temperature, t->ts1_temperature);
 }
 
-// 09_scripts/pipeline_bench.sh 의 cool_down() 과 같은 규칙. 대기한 초를 돌려준다.
+// 06_tools/bench/pipeline_bench.sh 의 cool_down() 과 같은 규칙. 대기한 초를 돌려준다.
 int cool_down(float above, float target, int max_s, float& temp_before, float& temp_after) {
     temp_before = read_chip_temp();
     temp_after = temp_before;

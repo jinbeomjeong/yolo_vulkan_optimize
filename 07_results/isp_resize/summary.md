@@ -18,7 +18,7 @@
 - 반복 3회(반복이 바깥 루프), 설정당 **중앙값** + min/max. 워밍업 앞 60프레임 제외 → **n = 1756**
 - 냉각: SoC 72 °C 초과 시 66 °C까지 대기(최대 120 s). 실제 대기 25~80 s, `results_raw.csv`의 `cool_wait_s`에 기록
 - NPU를 쓰지 않으므로 `hailort_warnings`/`hailort_errors`는 전 행 **0**이다(신뢰 불가 행 없음)
-- 스크립트: `09_scripts/isp_bench.sh`
+- 스크립트: `06_tools/bench/isp_bench.sh`
 
 ### 시간 축이 두 개다 — 섞어 읽으면 안 된다
 
@@ -138,7 +138,7 @@ PSNR·max\|err\|·비율은 보고만 한다.
 - **`hailort.log` 온도·스로틀 경고: 전 18행 0건, 에러 0건 → 신뢰 불가 행 없음**
 - 도구: `yvo_isp_pipeline`(신규). `yvo_pipeline`은 건드리지 않았다. 검출 파싱은 두 도구 모두
   `HailoRunner`의 `parse_nms_by_class` + letterbox 역변환을 그대로 쓴다(완전히 같은 경로)
-- 스크립트: `09_scripts/isp_pipeline_bench.sh`
+- 스크립트: `06_tools/bench/isp_pipeline_bench.sh`
 
 ## 표 4 — 전체 파이프라인 (`pipeline/results.csv`, 6회 중앙값)
 

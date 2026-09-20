@@ -937,7 +937,7 @@ int run(const Args& a) {
             fps, cpu_per_frame, sd.mean, sg.mean, sg.p90, sn.mean, sn.p90, se.mean, se.p90, total_dets,
             static_cast<double>(hailo_t0), static_cast<double>(hailo_t1), soc_t0, soc_t1, fail ? 0 : 1);
         // 신규 지표는 **별도 줄**이다. RESULT_CSV 의 22필드는 순서·개수를 바꾸지 않는다
-        // (09_scripts/pipeline_bench.sh:120 이 헤더를 grep -qx 로 비교한다).
+        // (06_tools/bench/pipeline_bench.sh:120 이 헤더를 grep -qx 로 비교한다).
         // label,postproc,alloc,gpu_post_mean,gpu_post_p90,cpu_nms_us_mean,cand_mean,cand_max,cand_overflow,ok
         // + 표시 지표는 **뒤로만** 덧붙인다(앞의 10필드는 순서·개수를 바꾸지 않는다):
         //   display,sync,pace,disp_convert_mean,disp_convert_p90,disp_overlay_mean,present_interval_median,

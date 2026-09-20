@@ -93,7 +93,7 @@ Hailo-8은 그렇게 하지 않는다.
 ### 컨텍스트(context)가 4개라는 말의 뜻
 
 `hailortcli parse-hef`로 이 HEF를 보면 **Multi Context, 컨텍스트 4개**라고 나온다
-([`11_paper/paper_ko.md`](../11_paper/paper_ko.md) §3.2).
+([`10_paper/paper_ko.md`](../10_paper/paper_ko.md) §3.2).
 
 **컨텍스트 = 칩에 한 번에 올릴 수 있는 만큼의 모델 조각.**
 
@@ -548,7 +548,7 @@ GPU 후처리를 통합한 뒤 처리량이 눈에 띄게 떨어졌다. 원인�
 **0.1% 이내**로 돌아왔다.
 
 > ⛔ **수정 이전에 기록된 GPU 후처리 경로의 FPS·지연 값은 인용 금지다**
-> ([`11_paper/paper_ko.md`](../11_paper/paper_ko.md) 부록 A.4).
+> ([`10_paper/paper_ko.md`](../10_paper/paper_ko.md) 부록 A.4).
 > 그 값들은 `07_results/gpu_postproc_e2e/`에 남아 있지만, 러너 버그가 섞인 수치라
 > "GPU 후처리의 비용"을 전혀 대표하지 않는다. **후속 문서에서 쓰지 마라.**
 > 데이터를 지우지 않고 "쓰지 말 것"으로 표시해 두는 것이 이 프로젝트의 관례다.
@@ -650,7 +650,7 @@ DMA 엔진이 주소의 하위 비트를 무시하거나 페이지 단위로만 
 
 이 프로젝트는 GPU 전처리 셰이더가 **처음부터 NHCW로 쓰게** 만들어 그 단계를 없앴다.
 효과는 프레임당 CPU **17.6 ms → 3.5 ms**다
-([`11_paper/paper_ko.md`](../11_paper/paper_ko.md) §4.3.2).
+([`10_paper/paper_ko.md`](../10_paper/paper_ko.md) §4.3.2).
 
 그런데 이 14 ms는 **전치 연산의 계산량으로 설명되지 않는다.** 같은 전치를 보통
 메모리에서 하면 1.2 ms면 끝난다. 10배 이상의 차이가 어디서 오는지,

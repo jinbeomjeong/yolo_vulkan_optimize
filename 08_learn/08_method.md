@@ -4,7 +4,7 @@
 > **다 읽으면 읽을 수 있는 것**: [`07_results/`](../07_results/) 의 모든 `summary.md`,
 > [`.claude/skills/measure/SKILL.md`](../.claude/skills/measure/SKILL.md),
 > [`.claude/skills/verify/SKILL.md`](../.claude/skills/verify/SKILL.md),
-> [`09_scripts/`](../09_scripts/) 의 벤치 스크립트
+> [`06_tools/bench/`](../06_tools/bench/) 의 벤치 스크립트
 
 이 챕터는 하드웨어나 API 이야기가 아니다. **"이 프로젝트가 성능 수치를 어떻게 믿을 만하게 만드는가"**
 에 관한 것이다. 이 프로젝트에서 가장 이식성 높은 부분이기도 하다 —
@@ -36,7 +36,7 @@
 [01장](01_big_picture.md)에서 본 대로 둘은 서로 맞바꾸는 관계다. 그래서 **한 번의 실행에서
 둘 다 최적인 값을 뽑을 수 없다.** 이 프로젝트는 아예 축을 나눠서 잰다.
 
-`09_scripts/display_bench.sh` 를 보면:
+`06_tools/bench/display_bench.sh` 를 보면:
 
 - **처리량**은 `--display-pace asap` 실행에서 잰다 (최대 속도로 돌린다)
 - **지연·드롭**은 `--display-pace source` 실행에서 잰다 (소스 30 fps에 맞춰 돌린다)
@@ -70,7 +70,7 @@ V3D가 커맨드 버퍼 두 개를 한 작업으로 합치면서 한쪽 구간�
 
 그래서 이 프로젝트에는 **인용 금지 규칙**이 있다:
 `--display-pace asap` + 표시 on 의 GPU timestamp **평균값은 인용하지 않는다.**
-([`11_paper/paper_ko.md`](../11_paper/paper_ko.md) 부록 A.4)
+([`10_paper/paper_ko.md`](../10_paper/paper_ko.md) 부록 A.4)
 
 > 이게 좋은 태도다. 원인을 모르면 "모른다"고 적고, 영향받는 수치는 쓰지 않는다.
 > 그럴듯한 설명을 지어내서 수치를 그냥 쓰는 것보다 낫다.
@@ -162,11 +162,11 @@ NPU를 여는 명령과 빌드 명령을 막는다.
 
 "이 변경이 효과가 있었다"를 증명하려면 **바꾸지 않은 것과 나란히 재야 한다.**
 
-`09_scripts/op_point_bench.sh` 를 보면 측정 설정 목록에 `ctl_b4s8`, `ctl_b8s16` 처럼
+`06_tools/bench/op_point_bench.sh` 를 보면 측정 설정 목록에 `ctl_b4s8`, `ctl_b8s16` 처럼
 `ctl_`(control, 대조군) 로 시작하는 설정이 섞여 있다. 이건 **과거 측정과 같은 조건**이고,
 이 값이 과거와 비슷하게 나와야 "오늘 환경이 그때와 같다"고 말할 수 있다.
 
-`09_scripts/pipeline_bench.sh` 의 설정 형식을 **바꾸면 안 된다**는 규칙도 같은 이유다.
+`06_tools/bench/pipeline_bench.sh` 의 설정 형식을 **바꾸면 안 된다**는 규칙도 같은 이유다.
 다른 스크립트들이 이걸 기준선으로 삼는다.
 
 ---

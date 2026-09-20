@@ -270,7 +270,7 @@ SAND→RGBA 1:1 (전체화면 고정)<y:LabelModel>
       </data>
     </node>
     <node id="n_leg_t">
-      <data key="d5">색 규약은 12_docs/pipeline_overview.graphml 과 12_docs/pipeline_detail.graphml 에 공통이다. 12_docs/README.md 참조.</data>
+      <data key="d5">색 규약은 09_diagrams/pipeline_overview.graphml 과 09_diagrams/pipeline_detail.graphml 에 공통이다. 09_diagrams/README.md 참조.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="39.4" width="280.0" x="1000.0" y="0.0"/>
@@ -287,7 +287,7 @@ SAND→RGBA 1:1 (전체화면 고정)<y:LabelModel>
       </data>
     </node>
     <node id="n_leg0">
-      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d5">범례 항목. 색 규약은 09_diagrams/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="34.0" width="280.0" x="1000.0" y="46.0"/>
@@ -304,7 +304,7 @@ SAND→RGBA 1:1 (전체화면 고정)<y:LabelModel>
       </data>
     </node>
     <node id="n_leg1">
-      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d5">범례 항목. 색 규약은 09_diagrams/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="34.0" width="280.0" x="1000.0" y="88.0"/>
@@ -321,7 +321,7 @@ SAND→RGBA 1:1 (전체화면 고정)<y:LabelModel>
       </data>
     </node>
     <node id="n_leg2">
-      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d5">범례 항목. 색 규약은 09_diagrams/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="34.0" width="280.0" x="1000.0" y="130.0"/>
@@ -338,7 +338,7 @@ SAND→RGBA 1:1 (전체화면 고정)<y:LabelModel>
       </data>
     </node>
     <node id="n_leg3">
-      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d5">범례 항목. 색 규약은 09_diagrams/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="34.0" width="280.0" x="1000.0" y="172.0"/>
@@ -355,7 +355,7 @@ SAND→RGBA 1:1 (전체화면 고정)<y:LabelModel>
       </data>
     </node>
     <node id="n_leg4">
-      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d5">범례 항목. 색 규약은 09_diagrams/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="34.0" width="280.0" x="1000.0" y="214.0"/>
@@ -372,7 +372,7 @@ SAND→RGBA 1:1 (전체화면 고정)<y:LabelModel>
       </data>
     </node>
     <node id="n_leg5">
-      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d5">범례 항목. 색 규약은 09_diagrams/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="34.0" width="280.0" x="1000.0" y="256.0"/>
@@ -389,7 +389,7 @@ SAND→RGBA 1:1 (전체화면 고정)<y:LabelModel>
       </data>
     </node>
     <node id="n_leg6">
-      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d5">범례 항목. 색 규약은 09_diagrams/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="34.0" width="280.0" x="1000.0" y="298.0"/>

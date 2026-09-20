@@ -4,9 +4,9 @@
 #   NHCW는 HailoRT의 CPU 입력 변환을 없애는 경로이고 dma-buf 입력에서만 동작한다.
 #
 # 사용법:
-#   bash 09_scripts/pipeline_bench.sh                    # 전체(1816프레임), 설정당 3회
-#   RUNS=1 FRAMES=300 bash 09_scripts/pipeline_bench.sh  # 짧게
-#   ONLY='dmabuf_b8' bash 09_scripts/pipeline_bench.sh   # 설정 id(grep -E 패턴) 일부만
+#   bash 06_tools/bench/pipeline_bench.sh                    # 전체(1816프레임), 설정당 3회
+#   RUNS=1 FRAMES=300 bash 06_tools/bench/pipeline_bench.sh  # 짧게
+#   ONLY='dmabuf_b8' bash 06_tools/bench/pipeline_bench.sh   # 설정 id(grep -E 패턴) 일부만
 #   ONLY='nhcw' APPEND=1 bash ...                        # 기존 results_raw.csv에 이어붙이기(같은 냉각 규칙일 때만)
 #   COOL_C=65 COOL_MAX_S=120 HOT_C=75 bash ...          # 냉각 조건
 #   OUT_DIR=/path bash ...                               # 출력 디렉터리
@@ -22,7 +22,14 @@
 #   $OUT_DIR/samples/          dmabuf batch8 1회 실행의 detections.jsonl + 박스 PNG (측정과 별도)
 set -euo pipefail
 
-PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# npu_guard 훅(.claude/hooks/npu_guard.sh)이 이 파일의 PID 로 "벤치가 돌고 있다"를 판단한다.
+# 측정 중에 빌드·테스트가 끼어들면 CPU 시간 측정이 에러 없이 조용히 오염되기 때문이다.
+# 훅이 PID 생존 여부를 보므로 비정상 종료로 남은 락은 자동으로 무효가 된다.
+BENCH_LOCK="${BENCH_LOCK:-$PROJ/build/.bench_running}"
+mkdir -p "$(dirname "$BENCH_LOCK")"
+printf '%s' "$$" > "$BENCH_LOCK"
+trap 'rm -f "$BENCH_LOCK"' EXIT INT TERM
 BIN="${BIN:-$PROJ/build/01_src/pipeline/yvo_pipeline}"
 VIDEO="${VIDEO:-$PROJ/04_data/videos/video_h265.mp4}"
 HEF="${HEF:-$PROJ/03_models/yolov11m.hef}"

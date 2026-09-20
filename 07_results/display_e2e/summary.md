@@ -17,7 +17,7 @@
 | 냉각 | 칩 > 75 °C 면 65 °C 이하까지. 합계 **315 s** |
 | 바이너리 | 측정 중 재빌드 없음 (md5 전후 동일 `0c0ef2d3…`) |
 | **신뢰성** | **12회 전부 `hailort.log` 온도·클럭 경고 0, 에러 0, `ok=1`** |
-| 스크립트 | `09_scripts/display_bench.sh` (신규) |
+| 스크립트 | `06_tools/bench/display_bench.sh` (신규) |
 
 > ⚠ **측정은 반드시 전체화면으로 한다.** 창 모드에서는 labwc 가 높이 1044 를 주면 `kUniformScale`
 > 경로로 넘어가 변환이 **10.87 ms(2.6배)** 가 되는데 **에러도 경고도 없다.**
@@ -142,4 +142,4 @@
 - `raw/<설정>_run<N>/{stdout.log,hailort.log}`
 - `verification/` — 검증 레이어·ASan·perf 로그
 - `samples/hdmi_boxes.png` — `grim` 화면 캡처
-- 재현: `bash 09_scripts/display_bench.sh`
+- 재현: `bash 06_tools/bench/display_bench.sh`

@@ -2,12 +2,12 @@
 # 영상 디코드 벤치마크: H.264 SW vs H.265 HW/SW, S1(디코드만) / S2(디코드 + 640x640 RGB letterbox)
 #
 # 사용법:
-#   bash 09_scripts/decode_bench.sh                 # 전체 매트릭스, 조합당 3회
-#   RUNS=1 bash 09_scripts/decode_bench.sh          # 반복 횟수 변경
-#   ONLY='A_t0' bash 09_scripts/decode_bench.sh     # combo id에 대한 grep -E 패턴으로 일부만 실행
+#   bash 06_tools/bench/decode_bench.sh                 # 전체 매트릭스, 조합당 3회
+#   RUNS=1 bash 06_tools/bench/decode_bench.sh          # 반복 횟수 변경
+#   ONLY='A_t0' bash 06_tools/bench/decode_bench.sh     # combo id에 대한 grep -E 패턴으로 일부만 실행
 #   COOL_C=65 COOL_MAX_S=120 bash ...             # 실행 전 냉각 대기 조건
-#   OUT_DIR=/path bash 09_scripts/decode_bench.sh   # 출력 디렉터리 변경
-#   ONLY='^h265_E_' bash 09_scripts/decode_bench.sh # ffmpeg HW HEVC 디코드 → 파이프 → GStreamer 조합(E)만 실행
+#   OUT_DIR=/path bash 06_tools/bench/decode_bench.sh   # 출력 디렉터리 변경
+#   ONLY='^h265_E_' bash 06_tools/bench/decode_bench.sh # ffmpeg HW HEVC 디코드 → 파이프 → GStreamer 조합(E)만 실행
 #
 # 출력: $OUT_DIR/raw/<combo>_run<N>.log (gst-launch -v 로그 중 caps/에러/마지막 줄),
 #       $OUT_DIR/results_raw.csv (실행별), $OUT_DIR/results.csv (조합별 중앙값·편차),
@@ -26,7 +26,14 @@
 #   ffmpeg는 -fps_mode passthrough를 준다. 없으면 rawvideo 출력의 CFR 처리로 프레임 1개가 복제된다(dup=1 → 1817).
 set -euo pipefail
 
-PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# npu_guard 훅(.claude/hooks/npu_guard.sh)이 이 파일의 PID 로 "벤치가 돌고 있다"를 판단한다.
+# 측정 중에 빌드·테스트가 끼어들면 CPU 시간 측정이 에러 없이 조용히 오염되기 때문이다.
+# 훅이 PID 생존 여부를 보므로 비정상 종료로 남은 락은 자동으로 무효가 된다.
+BENCH_LOCK="${BENCH_LOCK:-$PROJ/build/.bench_running}"
+mkdir -p "$(dirname "$BENCH_LOCK")"
+printf '%s' "$$" > "$BENCH_LOCK"
+trap 'rm -f "$BENCH_LOCK"' EXIT INT TERM
 VID="$PROJ/04_data/videos"
 OUT_DIR="${OUT_DIR:-$PROJ/07_results/decode_benchmark}"
 RUNS="${RUNS:-3}"

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # 전처리 단계 성능 측정: PiSP BE(ISP) 경로 vs Vulkan 셰이더 경로 vs 디코드 단독
-#   NPU를 쓰지 않는다(전처리 단계만). 전체 파이프라인은 09_scripts/pipeline_bench.sh다.
+#   NPU를 쓰지 않는다(전처리 단계만). 전체 파이프라인은 06_tools/bench/pipeline_bench.sh다.
 #
 # 사용법:
-#   bash 09_scripts/isp_bench.sh                       # 전체(1816프레임), 설정당 3회
-#   RUNS=1 FRAMES=300 bash 09_scripts/isp_bench.sh     # 짧게
-#   ONLY='isp_' bash 09_scripts/isp_bench.sh           # 설정 id(grep -E 패턴) 일부만
+#   bash 06_tools/bench/isp_bench.sh                       # 전체(1816프레임), 설정당 3회
+#   RUNS=1 FRAMES=300 bash 06_tools/bench/isp_bench.sh     # 짧게
+#   ONLY='isp_' bash 06_tools/bench/isp_bench.sh           # 설정 id(grep -E 패턴) 일부만
 #   OUT_DIR=/path bash ...                             # 출력 디렉터리
 #
 # 시간 축이 두 개다. 섞어 읽으면 안 된다.
@@ -18,7 +18,14 @@
 #       COOL_C 이하가 될 때까지(최대 COOL_MAX_S초) 대기한다. Hailo 칩 온도는 스냅샷용으로만 읽는다.
 set -euo pipefail
 
-PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# npu_guard 훅(.claude/hooks/npu_guard.sh)이 이 파일의 PID 로 "벤치가 돌고 있다"를 판단한다.
+# 측정 중에 빌드·테스트가 끼어들면 CPU 시간 측정이 에러 없이 조용히 오염되기 때문이다.
+# 훅이 PID 생존 여부를 보므로 비정상 종료로 남은 락은 자동으로 무효가 된다.
+BENCH_LOCK="${BENCH_LOCK:-$PROJ/build/.bench_running}"
+mkdir -p "$(dirname "$BENCH_LOCK")"
+printf '%s' "$$" > "$BENCH_LOCK"
+trap 'rm -f "$BENCH_LOCK"' EXIT INT TERM
 ISP_BIN="${ISP_BIN:-$PROJ/build/01_src/isp/yvo_isp_bench}"
 GPU_BIN="${GPU_BIN:-$PROJ/build/01_src/vulkan/yvo_preproc_bench}"
 VIDEO="${VIDEO:-$PROJ/04_data/videos/video_h265.mp4}"

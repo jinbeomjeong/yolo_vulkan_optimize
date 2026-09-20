@@ -3,7 +3,7 @@
 > **선수 지식**: [01_big_picture.md](01_big_picture.md)
 > **다 읽으면 읽을 수 있는 것**: [`07_results/npu_benchmark/summary.md`](../07_results/npu_benchmark/summary.md),
 > [`07_results/decode_benchmark/summary.md`](../07_results/decode_benchmark/summary.md),
-> [`11_paper/paper_ko.md`](../11_paper/paper_ko.md) §3 (배경: 대상 플랫폼과 지배적 제약),
+> [`10_paper/paper_ko.md`](../10_paper/paper_ko.md) §3 (배경: 대상 플랫폼과 지배적 제약),
 > [`07_results/display_e2e/env_bench.txt`](../07_results/display_e2e/env_bench.txt) 같은 환경 스냅샷 파일.
 
 1장에서 "칩 다섯 개"가 각자 일을 나눠 맡는다고 했다. 이 장은 **그 칩들이 각각 무엇이고,
@@ -31,7 +31,7 @@ PC를 열어 보면 큰 부품이 따로따로 꽂혀 있다. CPU 칩, 그래픽
 ### 이 보드의 SoC: BCM2712
 
 이 프로젝트가 도는 보드는 **Raspberry Pi Compute Module 5 (CM5)**, 그 위에 얹힌 SoC가
-**Broadcom BCM2712** 다 ([`11_paper/paper_ko.md`](../11_paper/paper_ko.md) §3.1,
+**Broadcom BCM2712** 다 ([`10_paper/paper_ko.md`](../10_paper/paper_ko.md) §3.1,
 [`isp_resize/summary.md`](../07_results/isp_resize/summary.md) 1부). 안에 든 블록 중
 이 프로젝트가 쓰는 것은 넷이다.
 
@@ -69,7 +69,7 @@ PC를 열어 보면 큰 부품이 따로따로 꽂혀 있다. CPU 칩, 그래픽
 CPU는 일정한 박자에 맞춰 움직인다. 이 박자가 **클럭**이고 단위는 Hz(1초에 몇 번).
 **2.4 GHz** = 1초에 24억 번 박자를 친다는 뜻이고, 박자가 빠르면 같은 시간에 더 많은 명령을 처리한다.
 이 보드의 측정 시점 클럭이 **2.4 GHz**다
-([`11_paper/paper_ko.md`](../11_paper/paper_ko.md) §3.1,
+([`10_paper/paper_ko.md`](../10_paper/paper_ko.md) §3.1,
 [`07_results/display_e2e/env_bench.txt`](../07_results/display_e2e/env_bench.txt) 의 `frequency(0)=2400033792`).
 
 **클럭은 고정된 값이 아니다.** 한가하면 내려가고 뜨거우면 강제로 내려간다 (→ [2.9](#29-열thermal과-클럭-강등)).
@@ -141,10 +141,10 @@ CPU 코어는 **똑똑하지만 소수**다. "이 값이 3보다 크면 A를, �
 
 칩 이름은 **VideoCore VII**, 하드웨어·드라이버 세대를 가리키는 이름은 **V3D 7.1**이다.
 리눅스에서 이 GPU를 Vulkan으로 쓰게 해 주는 드라이버가 **Mesa V3DV 26.2.2**이고 지원 Vulkan 버전은
-**1.3** 이다 ([`11_paper/paper_ko.md`](../11_paper/paper_ko.md) §3.1).
+**1.3** 이다 ([`10_paper/paper_ko.md`](../10_paper/paper_ko.md) §3.1).
 
 SIMD의 폭과 한 번에 묶을 수 있는 일의 크기는 하드웨어마다 다르다. V3D 7.1은 이렇고
-([`paper_ko.md`](../11_paper/paper_ko.md) §3.3 제약 3), 이 숫자들이 셰이더를 어떻게 짜야 하는지를
+([`paper_ko.md`](../10_paper/paper_ko.md) §3.3 제약 3), 이 숫자들이 셰이더를 어떻게 짜야 하는지를
 직접 제약한다.
 
 - **서브그룹(subgroup) 크기 16 고정** — 한 명령이 동시에 먹는 데이터가 16개 묶음이다
@@ -167,7 +167,7 @@ DRAM 왕복이 줄어 전기를 크게 아끼지만 **대가가 있다.** 타일
 **이 프로젝트가 여기서 설계를 바꿨다.** 검출 박스 오버레이를 보통대로
 그래픽스 파이프라인(삼각형을 그리는 방식)으로 만들면 위 비용을 그대로 맞는다. 그래서 오버레이를
 **컴퓨트 셰이더로 직접 픽셀을 찍는 방식**(컴퓨트 래스터라이저)으로 구현했다
-([`11_paper/paper_ko.md`](../11_paper/paper_ko.md) §3.3 제약 3 마지막 항목, 구현은 §4.5).
+([`10_paper/paper_ko.md`](../10_paper/paper_ko.md) §3.3 제약 3 마지막 항목, 구현은 §4.5).
 셰이더는 [`02_shaders/overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) 이고 실측 0.128~0.196 ms다
 ([`display_e2e/summary.md`](../07_results/display_e2e/summary.md) §3.1).
 
@@ -257,7 +257,7 @@ HailoRT(Hailo의 런타임 라이브러리)를 어떻게 쓰는지는 [04_npu_ha
 
 배율이 1.9~2.0배로 나온 것만으로는 부족하다. 더 강한 증거는 **시간을 분해했을 때**다.
 한 배치를 처리하는 시간 `T`를 "배치당 고정비 + 프레임당 비용"으로 나누면
-([`paper_ko.md`](../11_paper/paper_ko.md) §3.3 제약 2,
+([`paper_ko.md`](../10_paper/paper_ko.md) §3.3 제약 2,
 [`latency_gen3_cooled/summary.md`](../07_results/op_point/latency_gen3_cooled/summary.md) 결론 3):
 
 | | 배치당 고정비 | 프레임당 |
@@ -403,7 +403,7 @@ PCIe 장치가 시스템 DRAM을 직접 읽고 쓰는 **DMA**(Direct Memory Acce
 
 V3D 드라이버가 내놓는 Vulkan 메모리 타입은 **`DEVICE_LOCAL | HOST_VISIBLE | HOST_COHERENT` 한 종류뿐**이고
 **`HOST_CACHED`가 없다.** 즉 **GPU가 쓴 버퍼를 CPU가 캐시된 상태로 읽는 선택지가 드라이버 수준에 아예 없다**
-([`11_paper/paper_ko.md`](../11_paper/paper_ko.md) §3.3 제약 1). 실측된 비대칭은 이렇다.
+([`10_paper/paper_ko.md`](../10_paper/paper_ko.md) §3.3 제약 1). 실측된 비대칭은 이렇다.
 
 | 측정 | 값 | 출처 |
 |---|---:|---|
@@ -546,18 +546,18 @@ CPU를 비우기"** 가 된 것이다. 이 판단의 사슬은 [10_why_this_desi
 |---|---|---|
 | 보드 | Raspberry Pi Compute Module 5 Rev 1.0 | [`isp_resize/summary.md`](../07_results/isp_resize/summary.md) 1부 |
 | SoC | Broadcom BCM2712 (`BCM2712_D0`, hw_revision `0x2252701`) | [`isp_resize/summary.md`](../07_results/isp_resize/summary.md) 1부 |
-| CPU | ARM Cortex-A76 ×4 @ **2.4 GHz** | [`paper_ko.md`](../11_paper/paper_ko.md) §3.1, [`display_e2e/env_bench.txt`](../07_results/display_e2e/env_bench.txt) |
+| CPU | ARM Cortex-A76 ×4 @ **2.4 GHz** | [`paper_ko.md`](../10_paper/paper_ko.md) §3.1, [`display_e2e/env_bench.txt`](../07_results/display_e2e/env_bench.txt) |
 | CPU 캐시 | L1 64 KiB(D)+64 KiB(I)/코어, L2 512 KiB/코어, L3 2 MiB 공유 | `/sys/devices/system/cpu/cpu0/cache/` |
-| GPU | VideoCore VII (V3D 7.1) | [`paper_ko.md`](../11_paper/paper_ko.md) §3.1 |
-| Vulkan 드라이버 | **Mesa V3DV 26.2.2**, apiVersion **1.3** | [`paper_ko.md`](../11_paper/paper_ko.md) §3.1 / 부록 A.1 |
-| NPU | **Hailo-8** | [`paper_ko.md`](../11_paper/paper_ko.md) §3.1 |
-| NPU 런타임 | **HailoRT 4.24.0** | [`paper_ko.md`](../11_paper/paper_ko.md) 부록 A.1 |
+| GPU | VideoCore VII (V3D 7.1) | [`paper_ko.md`](../10_paper/paper_ko.md) §3.1 |
+| Vulkan 드라이버 | **Mesa V3DV 26.2.2**, apiVersion **1.3** | [`paper_ko.md`](../10_paper/paper_ko.md) §3.1 / 부록 A.1 |
+| NPU | **Hailo-8** | [`paper_ko.md`](../10_paper/paper_ko.md) §3.1 |
+| NPU 런타임 | **HailoRT 4.24.0** | [`paper_ko.md`](../10_paper/paper_ko.md) 부록 A.1 |
 | PCIe 링크 | **8.0 GT/s x1 (Gen3)**, `0001:01:00.0` | [`display_e2e/env_bench.txt`](../07_results/display_e2e/env_bench.txt) |
-| 비디오 디코더 | BCM2712 내장 **HEVC** 하드웨어 디코더 | [`paper_ko.md`](../11_paper/paper_ko.md) §3.1 |
+| 비디오 디코더 | BCM2712 내장 **HEVC** 하드웨어 디코더 | [`paper_ko.md`](../10_paper/paper_ko.md) §3.1 |
 | 디코드 라이브러리 | **libavcodec 61.19** (FFmpeg) | [`pipeline_ffmpeg_vulkan_hailo/REPORT.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md) |
 | ISP 라이브러리 | **libpisp 1.7.0** | [`isp_resize/summary.md`](../07_results/isp_resize/summary.md) 1부 |
 | 커널 | **Linux 6.18.50+rpt-rpi-2712** | [`display_e2e/env_bench.txt`](../07_results/display_e2e/env_bench.txt) |
-| 컴파일러 | **g++ 14.2**, `-O3 -mcpu=cortex-a76` | [`paper_ko.md`](../11_paper/paper_ko.md) 부록 A.1 |
+| 컴파일러 | **g++ 14.2**, `-O3 -mcpu=cortex-a76` | [`paper_ko.md`](../10_paper/paper_ko.md) 부록 A.1 |
 | 디스플레이 | HDMI-A-1 **1920×1080@60**, labwc (Wayland) | [`display_e2e/summary.md`](../07_results/display_e2e/summary.md) §1 |
 
 > ⚠ **PCIe 세대와 클럭은 "지금도 그렇다"는 보장이 없다.** 이 표는 측정 당시의 스냅샷이므로
@@ -575,7 +575,7 @@ CPU를 비우기"** 가 된 것이다. 이 판단의 사슬은 [10_why_this_desi
 아니다. **위치**다. GPU는 BCM2712 SoC **안**에 있어서 DRAM을 바로 본다. Hailo-8은
 **SoC 밖의 별개 칩**이고 **PCIe Gen3 x1**이라는 좁은 통로로 붙어 있다. 프레임 한 장당
 약 2.4 MB(입력 1.23 MB + 출력 1.22 MB)를 그 통로로 왕복시켜야 하고, 이 왕복이 병목이다.
-→ [`paper_ko.md`](../11_paper/paper_ko.md) §3.1·§3.3, [`npu_benchmark/summary.md`](../07_results/npu_benchmark/summary.md)
+→ [`paper_ko.md`](../10_paper/paper_ko.md) §3.1·§3.3, [`npu_benchmark/summary.md`](../07_results/npu_benchmark/summary.md)
 
 **Q2. PCIe 세대를 Gen3로 바꿨더니 FPS가 약 2배가 됐다. 이것만으로 "PCIe가 병목"이라 말할 수 있는가?**
 
@@ -605,7 +605,7 @@ write-combine 매핑은 **쓰기는 모아서 빠르지만 읽기는 매번 DRAM
 실측으로 순차 읽기 약 1.41 GB/s, stride-3 읽기 **약 0.088 GB/s**이고, 1.2 MB memcpy가
 캐시 매핑 dma-heap 0.229 ms 대 V3D 메모리 1.045 ms로 **4.6배**다. 그래서 이 프로젝트는
 "GPU가 쓴 버퍼를 CPU로 훑는 일"을 설계에서 없앴고, 그게 CPU 17.6 → 3.5 ms/frame의 본질이다.
-→ [`paper_ko.md`](../11_paper/paper_ko.md) §3.3 제약 1, [`07_results/README.md`](../07_results/README.md) 2번,
+→ [`paper_ko.md`](../10_paper/paper_ko.md) §3.3 제약 1, [`07_results/README.md`](../07_results/README.md) 2번,
 [`isp_resize/summary.md`](../07_results/isp_resize/summary.md) 1부 표 2, 상세는 [06_zerocopy_dmabuf.md](06_zerocopy_dmabuf.md)
 
 **Q5. 측정 전에 칩이 식을 때까지 기다리는 것은 과한 신중함인가?**

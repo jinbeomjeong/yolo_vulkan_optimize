@@ -12,7 +12,7 @@
 CSV에서 접미사 없는 *_coord_err_px 열은 PRIMARY_IOU 기준이다.
 
 사용법:
-  python 08_python/compare_detections.py REF.jsonl TEST.jsonl [--csv OUT.csv] [--label NAME]
+  python 06_tools/python/compare_detections.py REF.jsonl TEST.jsonl [--csv OUT.csv] [--label NAME]
 """
 import argparse
 import csv

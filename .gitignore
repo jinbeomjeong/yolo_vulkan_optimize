@@ -10,7 +10,7 @@ __pycache__/
 #   (measure 스킬 4단계: 온도·클럭 경고가 있으면 그 실행은 신뢰 불가).
 /hailort.log
 /pyhailort.log
-10_logs/
+11_logs/
 
 # 대용량 자산 — 저장소 밖에서 관리한다
 04_data/videos/*.mp4

@@ -10,24 +10,27 @@
 
 ## 9.1 폴더 규약
 
-최상위 폴더 이름 앞의 번호는 **중요도 순**이다(코드 → 모델·데이터 → 검증 → 결과 → 보조 도구 → 로그 → 문서).
-`build/`, `.claude/` 처럼 번호가 없는 것도 있다.
+최상위 폴더 이름 앞의 번호는 **네 대역**으로 묶인다.
+`build/`, `build-asan/`, `cmake/`, `.claude/` 처럼 번호가 없는 것도 있다.
 
-| 폴더 | 무엇이 있나 |
-|---|---|
-| [`01_src/`](../01_src/) | C++ 소스 전부. 아래 6개 하위 폴더 |
-| [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 6개 (`.comp`) |
-| `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (32 MB, git에 없음) |
-| `04_data/` | 입력 영상 3개와 테스트용 원시 텐서 픽스처 (git에 없음) |
-| [`05_tests/`](../05_tests/) | GoogleTest 테스트 5종 |
-| `06_bench/` | **비어 있다.** Google Benchmark 자리만 잡아 둔 것 |
-| [`07_results/`](../07_results/) | 실험 12개의 측정 원시 출력과 `summary.md` |
-| [`08_python/`](../08_python/) | 검출 결과 비교 스크립트 1개 |
-| [`09_scripts/`](../09_scripts/) | 측정 자동화 셸 스크립트 6개 |
-| `10_logs/` | 보관용 런타임 로그 |
-| [`11_paper/`](../11_paper/) | 논문 초고 `paper_ko.md` |
-| [`12_docs/`](../12_docs/) | yEd로 여는 파이프라인 다이어그램 2장 |
-| `13_learn/` | 지금 읽고 있는 이 문서들 |
+| 대역 | 폴더 | 무엇이 있나 |
+|---|---|---|
+| **코드** | [`01_src/`](../01_src/) | C++ 소스 전부. 아래 6개 하위 폴더 |
+| | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 6개 (`.comp`) |
+| **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
+| | `04_data/` | 입력 영상 3개와 테스트용 원시 텐서 픽스처 (git에 없음) |
+| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 테스트 6종 |
+| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 7개), `python/`(2개), `probes/`(일회성 소스) |
+| | [`07_results/`](../07_results/) | 실험별 측정 원시 출력과 `summary.md` |
+| **문서** | [`08_learn/`](00_README.md) | 지금 읽고 있는 이 자습 교재 12장 |
+| | [`09_diagrams/`](../09_diagrams/) | yEd로 여는 파이프라인 다이어그램 2장 |
+| | [`10_paper/`](../10_paper/) | 논문 초고 `paper_ko.md` |
+| **로그** | `11_logs/` | 보관용 런타임 로그 |
+
+> 2026-09-21에 폴더를 재배치했다. 이전에는 `08_python`·`09_scripts`가 나뉘어 있었고
+> (파이썬 파일 2개가 서로 다른 폴더에 흩어져 있었다), `06_bench/`가 `.gitkeep` 하나뿐인
+> 빈 폴더인데도 CMake의 `find_package(benchmark REQUIRED)`가 configure 하드 의존이었다.
+> 문서 3폴더(`11_paper`·`12_docs`·`13_learn`)는 번호가 시간 순으로 붙어 있었다.
 
 모델·영상·로그는 `.gitignore`에 들어 있어서 저장소에 없다.
 
@@ -220,7 +223,7 @@ ctest --test-dir build
    GPU 최적화가 결과를 바꾸지 않았음을 증명하려면 이 수준이 필요하다.
 
 검출 결과를 직접 비교하는 스크립트도 있다:
-[`08_python/compare_detections.py`](../08_python/compare_detections.py).
+[`06_tools/python/compare_detections.py`](../06_tools/python/compare_detections.py).
 C++ 테스트의 판정 규칙([`05_tests/detection_match.hpp`](../05_tests/detection_match.hpp))과
 **일부러 같은 알고리즘**으로 구현돼 있다.
 
@@ -228,7 +231,7 @@ C++ 테스트의 판정 규칙([`05_tests/detection_match.hpp`](../05_tests/dete
 
 ## 9.7 측정 스크립트
 
-[`09_scripts/`](../09_scripts/) 의 셸 스크립트 6개가 `07_results/` 의 결과를 만들어 낸다.
+[`06_tools/bench/`](../06_tools/bench/) 의 셸 스크립트 7개가 `07_results/` 의 결과를 만들어 낸다.
 
 | 스크립트 | 무엇을 재나 |
 |---|---|
@@ -236,12 +239,24 @@ C++ 테스트의 판정 규칙([`05_tests/detection_match.hpp`](../05_tests/dete
 | `display_bench.sh` | 화면 표시 포함 종단간 |
 | `pipeline_bench.sh` | 회귀 기준선 (고정 9설정) |
 | `decode_bench.sh` | 디코드 경로 비교 |
+| `backpressure_bench.sh` | 백프레셔 결함 전후 비교 |
 | `isp_bench.sh` / `isp_pipeline_bench.sh` | ISP 경로 |
 
 공통 규약(설정당 3회 중앙값, 냉각 게이트, 환경 스냅샷)은 [08_method.md](08_method.md)에서 다룬다.
 
 > `pipeline_bench.sh`의 설정 형식은 **바꾸면 안 된다.** 다른 스크립트들이
 > 이걸 대조군 기준으로 쓴다.
+
+일곱 스크립트 모두 시작할 때 `build/.bench_running` 에 자기 PID를 쓰고 끝날 때 지운다.
+[`.claude/hooks/npu_guard.sh`](../.claude/hooks/npu_guard.sh) 가 이 파일을 보고 **측정 중에는
+빌드·테스트 명령을 막는다** — 측정 중 다른 작업이 돌면 CPU 시간이 에러 없이 오염되기 때문이다.
+
+### 그 밖의 도구
+
+| 폴더 | 내용 |
+|---|---|
+| [`06_tools/python/`](../06_tools/python/) | `compare_detections.py`(검출 비교), `gen_glyph_font_8x16.py`(폰트 헤더 생성 — 빌드에 관여하지 않는 재현 기록) |
+| [`06_tools/probes/`](../06_tools/probes/) | 일회성 프로브 소스. 빌드 대상이 아니며, 어떤 실험에서 쓴 것인지는 해당 `summary.md`에 적혀 있다 |
 
 ---
 

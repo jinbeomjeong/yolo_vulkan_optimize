@@ -20,16 +20,16 @@ description: >
 
 | 스크립트 | 대상 |
 |---|---|
-| `09_scripts/pipeline_bench.sh` | 전체 파이프라인. `{mode} × {layout} × {batch/slots} × RUNS` |
-| `09_scripts/decode_bench.sh` | 디코드 경로 비교 |
+| `06_tools/bench/pipeline_bench.sh` | 전체 파이프라인. `{mode} × {layout} × {batch/slots} × RUNS` |
+| `06_tools/bench/decode_bench.sh` | 디코드 경로 비교 |
 
 `pipeline_bench.sh`의 유용한 환경변수:
 `RUNS`, `FRAMES`, `ONLY`(설정 id의 grep 패턴), `APPEND=1`(기존 CSV에 이어붙이기),
 `COOL_C`/`COOL_MAX_S`/`HOT_C`, `OUT_DIR`, `SAMPLES`, `SAMPLE_LAYOUT`.
 
 ```bash
-RUNS=1 FRAMES=300 bash 09_scripts/pipeline_bench.sh    # 짧게 확인
-ONLY='nhcw' APPEND=1 bash 09_scripts/pipeline_bench.sh # 일부만 재서 기존 결과에 추가
+RUNS=1 FRAMES=300 bash 06_tools/bench/pipeline_bench.sh    # 짧게 확인
+ONLY='nhcw' APPEND=1 bash 06_tools/bench/pipeline_bench.sh # 일부만 재서 기존 결과에 추가
 ```
 
 ## 1. 측정 전 환경 확인 — 기록까지 한다

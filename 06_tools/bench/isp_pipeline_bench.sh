@@ -3,8 +3,8 @@
 #   b8 운용점만 잰다(batch 8, slots 16). b1/b4는 운용점이 아니라 뺐다.
 #
 # 사용법:
-#   bash 09_scripts/isp_pipeline_bench.sh                 # 전체(1816프레임), 설정당 3회
-#   RUNS=1 FRAMES=300 bash 09_scripts/isp_pipeline_bench.sh
+#   bash 06_tools/bench/isp_pipeline_bench.sh                 # 전체(1816프레임), 설정당 3회
+#   RUNS=1 FRAMES=300 bash 06_tools/bench/isp_pipeline_bench.sh
 #   ONLY='isp_' bash ...            # 설정 id(grep -E 패턴) 일부만
 #   DUMPS=0 bash ...                # 검출 JSONL 덤프 실행 생략
 #
@@ -13,7 +13,14 @@
 #   HOT_C 초과면 COOL_C 이하가 될 때까지(최대 COOL_MAX_S초) 대기한다.
 set -euo pipefail
 
-PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# npu_guard 훅(.claude/hooks/npu_guard.sh)이 이 파일의 PID 로 "벤치가 돌고 있다"를 판단한다.
+# 측정 중에 빌드·테스트가 끼어들면 CPU 시간 측정이 에러 없이 조용히 오염되기 때문이다.
+# 훅이 PID 생존 여부를 보므로 비정상 종료로 남은 락은 자동으로 무효가 된다.
+BENCH_LOCK="${BENCH_LOCK:-$PROJ/build/.bench_running}"
+mkdir -p "$(dirname "$BENCH_LOCK")"
+printf '%s' "$$" > "$BENCH_LOCK"
+trap 'rm -f "$BENCH_LOCK"' EXIT INT TERM
 GPU_BIN="${GPU_BIN:-$PROJ/build/01_src/pipeline/yvo_pipeline}"
 ISP_BIN="${ISP_BIN:-$PROJ/build/01_src/isp/yvo_isp_pipeline}"
 VIDEO="${VIDEO:-$PROJ/04_data/videos/video_h265.mp4}"

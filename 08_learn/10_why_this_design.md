@@ -2,7 +2,7 @@
 
 > **선수 지식**: [02](02_hardware.md) ~ [08](08_method.md) 을 다 읽고 오는 것이 가장 좋다.
 > 다만 각 사슬이 독립적이라, 관심 있는 것부터 읽어도 된다.
-> **다 읽으면 읽을 수 있는 것**: [`11_paper/paper_ko.md`](../11_paper/paper_ko.md) 전체,
+> **다 읽으면 읽을 수 있는 것**: [`10_paper/paper_ko.md`](../10_paper/paper_ko.md) 전체,
 > [`07_results/README.md`](../07_results/README.md) 의 "설계를 지배하는 사실 6개"
 
 ---
@@ -255,7 +255,7 @@ NPU에 한 번에 여러 장을 묶어 보내는 것이 **batch**, 동시에 몇
 최종 파이프라인의 실측은 **0.128 ms**다.
 
 **근거**: [`display_vulkan_hdmi/summary.md`](../07_results/display_vulkan_hdmi/summary.md),
-[`11_paper/paper_ko.md`](../11_paper/paper_ko.md) §4.5
+[`10_paper/paper_ko.md`](../10_paper/paper_ko.md) §4.5
 
 ---
 
@@ -495,4 +495,4 @@ CPU다. 병목이 PCIe/NPU이므로 병목이 아닌 단계를 최적화해도 F
 ---
 
 **다음** → 용어가 헷갈리면 [99_glossary.md](99_glossary.md),
-원문을 읽을 준비가 됐으면 [`11_paper/paper_ko.md`](../11_paper/paper_ko.md).
+원문을 읽을 준비가 됐으면 [`10_paper/paper_ko.md`](../10_paper/paper_ko.md).

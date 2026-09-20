@@ -43,7 +43,9 @@ if(YVO_USE_CCACHE AND NOT CMAKE_CXX_COMPILER_LAUNCHER)
 endif()
 
 option(YVO_BUILD_TESTS "GoogleTest 기반 테스트 빌드" ON)
-option(YVO_BUILD_BENCH "Google Benchmark 기반 벤치마크 빌드" ON)
+# Google Benchmark 옵션은 제거했다(2026-09-21). 06_bench/ 가 .gitkeep 하나뿐인 빈 폴더인데
+# find_package(benchmark REQUIRED) 가 configure 하드 의존이었다 — 소비자가 0개인 의존이다.
+# 마이크로 벤치가 실제로 필요해지면 05_tests/bench/ 하위로 되살린다.
 
 # 필수 의존성
 find_package(HailoRT REQUIRED)   # HailoRT::libhailort
@@ -57,10 +59,6 @@ endif()
 if(YVO_BUILD_TESTS)
   find_package(GTest REQUIRED)   # GTest::gtest_main
   enable_testing()
-endif()
-
-if(YVO_BUILD_BENCH)
-  find_package(benchmark REQUIRED)   # benchmark::benchmark
 endif()
 
 # 셰이더 컴파일 헬퍼 (glslc: *.comp -> *.spv -> 임베드 헤더)
@@ -133,6 +131,3 @@ if(YVO_BUILD_TESTS)
   yvo_add_subdirectory_if_exists(05_tests)
 endif()
 
-if(YVO_BUILD_BENCH)
-  yvo_add_subdirectory_if_exists(06_bench)
-endif()

@@ -88,7 +88,9 @@ labwc 광고 전역: `wp_viewporter=1`, `wp_presentation=1`, `wl_subcompositor=1
 - `evidence/p05_p10_probe.md` — P0.5/P10(조정자 실행), labwc modifier 표 덤프
 - `evidence/p08_window_mode_trap.md` — 창 모드 2.6배 저하와 `wp_viewporter` 해법, P5 픽셀 재검사
 - `evidence/p07_overlay.md` — 오버레이 P7 실측 전문, 경계 규약 R0~R8, 워크그룹 스윕
-- `evidence/dmabuf_modifier_dump.c` — labwc 가 광고하는 dma-buf format/modifier 덤프 도구
+- `dmabuf_modifier_dump.c` — labwc 가 광고하는 dma-buf format/modifier 덤프 도구.
+  2026-09-21 폴더 재배치에서 **`../../06_tools/probes/dmabuf_modifier_dump.c` 로 옮겼다**
+  (결과 폴더에는 소스를 두지 않는다)
 - `verification/README_stage2.md` — 6개 게이트 표와 로그 색인
 - `verification/` — context 회귀(골든/present-on/full), preproc 벤치 전후, 검증 레이어 로그, ASan 로그, ctest, PNG 재현
 - `samples/p05_present_pattern.png` — `grim` 캡처(픽셀 검사 근거)

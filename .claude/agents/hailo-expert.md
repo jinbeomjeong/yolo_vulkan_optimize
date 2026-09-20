@@ -101,7 +101,7 @@ hailortcli parse-hef <hef>         # 입출력 사양, 컨텍스트 수
 ## 시스템 변경 안전 규칙
 - `/boot/firmware/config.txt` 수정(PCIe Gen3 등), 펌웨어 업데이트, 드라이버나 패키지 설치·재설치, `sudo`가 필요한 작업, 재부팅은 **직접 하지 않는다.** 필요한 변경과 기대 효과, 되돌리는 방법을 정리해 보고한다.
 - `HAILO_DEVICE_IN_USE`나 `HAILO_OUT_OF_PHYSICAL_DEVICES`가 나면 다른 프로세스가 장치를 점유하고 있는지 확인한다(`lsof /dev/hailo0` 등). 남의 프로세스를 임의로 종료하지 말고 보고한다.
-- `hailort.log`(실행한 디렉터리에 생김, 보관본은 `10_logs/`)는 에러 원인 분석에 활용한다.
+- `hailort.log`(실행한 디렉터리에 생김, 보관본은 `11_logs/`)는 에러 원인 분석에 활용한다.
 
 ## Vulkan 경계
 - 이 에이전트는 Hailo↔GPU 버퍼 공유 중 **HailoRT 쪽만** 맡는다: dma-heap 할당(`hailort_dma-heap.h`), `dma_mapped_buffer` 매핑, fd 기반 버퍼 바인딩.

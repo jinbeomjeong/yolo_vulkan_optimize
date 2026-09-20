@@ -1,4 +1,4 @@
-# 12_docs — 파이프라인 다이어그램
+# 09_diagrams — 파이프라인 다이어그램
 
 최종 확정 파이프라인을 yEd 로 열고 편집할 수 있는 `.graphml` 2장으로 옮긴 것이다.
 `README.md` §1 의 ASCII 도식과 같은 내용이되 분기·재합류가 그래프로 정확히 표현돼 있다.
@@ -17,7 +17,7 @@ yEd 에서 노드를 선택하고 Properties 창(F6)을 열면 보인다.
 ```bash
 cd /home/pi/yed
 DISPLAY=:0 java $(tr -d '\r' < /home/pi/yed/yed.vmoptions | tr '\n' ' ') -jar yed.jar \
-  /home/pi/workspace/yolo_vulkan_optimize/12_docs/pipeline_overview.graphml
+  /home/pi/workspace/yolo_vulkan_optimize/09_diagrams/pipeline_overview.graphml
 ```
 
 `java -jar` 는 `yed.vmoptions` 를 **자동으로 읽지 않는다.** 위처럼 직접 넘기지 않으면
@@ -116,8 +116,8 @@ id 로 찾으면 된다 (`grep -n 'id="n_pre"' pipeline_overview.graphml`).
 ## 검증
 
 ```bash
-xmllint --noout 12_docs/*.graphml                                  # well-formed
-xmllint --noout --schema ~/.cache/graphml-xsd/ygraphml.xsd 12_docs/*.graphml
+xmllint --noout 09_diagrams/*.graphml                                  # well-formed
+xmllint --noout --schema ~/.cache/graphml-xsd/ygraphml.xsd 09_diagrams/*.graphml
 ```
 
 두 번째 명령에서 `pipeline_detail.graphml` 은 두 종류의 에러를 낸다.

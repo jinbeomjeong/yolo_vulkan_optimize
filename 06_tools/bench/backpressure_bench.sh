@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 # 러너 백프레셔 수정(hailo_raw_runner.cpp: 수동 increase/decrease 제거) 전후 비교 측정.
 # host(기준 경로) 와 gpu(원시 러너 경로) 를 **같은 세션에서 인터리브**해 열 상태 편향을 없앤다.
-# 냉각·환경 스냅샷·루프 구조는 09_scripts/op_point_bench.sh 에서 복사했다.
+# 냉각·환경 스냅샷·루프 구조는 06_tools/bench/op_point_bench.sh 에서 복사했다.
 set -euo pipefail
-PROJ="${PROJ:-/home/pi/workspace/yolo_vulkan_optimize}"
+PROJ="${PROJ:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+# npu_guard 훅(.claude/hooks/npu_guard.sh)이 이 파일의 PID 로 "벤치가 돌고 있다"를 판단한다.
+# 측정 중에 빌드·테스트가 끼어들면 CPU 시간 측정이 에러 없이 조용히 오염되기 때문이다.
+# 훅이 PID 생존 여부를 보므로 비정상 종료로 남은 락은 자동으로 무효가 된다.
+BENCH_LOCK="${BENCH_LOCK:-$PROJ/build/.bench_running}"
+mkdir -p "$(dirname "$BENCH_LOCK")"
+printf '%s' "$$" > "$BENCH_LOCK"
+trap 'rm -f "$BENCH_LOCK"' EXIT INT TERM
 BIN="${BIN:-$PROJ/build/01_src/pipeline/yvo_pipeline}"
 VIDEO="${VIDEO:-$PROJ/04_data/videos/video_h265.mp4}"
 HEF="${HEF:-$PROJ/03_models/yolov11m.hef}"

@@ -47,7 +47,7 @@ dma-buf 세 그룹(디코더 SAND / 전처리 NHCW / 원시 텐서)이 전부 ze
 > 구간 시간은 전부 **중앙값(median)** 이다. GPU 4구간(2.088 / 0.626 / 4.153 / 0.128 ms, 합 6.995 ms)은
 > [`display_e2e/summary.md`](07_results/display_e2e/summary.md) §3.1(`disp_asap`), 디코드 호출·NPU·CPU NMS 는
 > 같은 측정의 `raw/disp_source_run1/stdout.log` 다. `display_convert` 의 **4.226 ms 는 NPU 유휴 기준선(M5a)**
-> 이지 실측이 아니다 — 혼동하지 마라. 같은 값을 쓰는 그림이 [`12_docs/pipeline_overview.graphml`](12_docs/pipeline_overview.graphml) 에 있다.
+> 이지 실측이 아니다 — 혼동하지 마라. 같은 값을 쓰는 그림이 [`09_diagrams/pipeline_overview.graphml`](09_diagrams/pipeline_overview.graphml) 에 있다.
 
 ---
 
@@ -193,7 +193,7 @@ ctest --test-dir build        # 44/44 통과해야 한다
 두 경로의 검출을 직접 비교하려면:
 
 ```bash
-python 08_python/compare_detections.py ref/detections.jsonl test/detections.jsonl --csv out.csv
+python 06_tools/python/compare_detections.py ref/detections.jsonl test/detections.jsonl --csv out.csv
 ```
 
 ---
@@ -201,10 +201,10 @@ python 08_python/compare_detections.py ref/detections.jsonl test/detections.json
 ## 7. 측정
 
 ```bash
-bash 09_scripts/op_point_bench.sh    # 운용점 스윕 (배치·슬롯)
-bash 09_scripts/display_bench.sh     # 표시 e2e (M5a 기준선 + M4)
-bash 09_scripts/pipeline_bench.sh    # 기존 9설정 회귀 기준선
-bash 09_scripts/decode_bench.sh      # 디코드 경로 비교
+bash 06_tools/bench/op_point_bench.sh    # 운용점 스윕 (배치·슬롯)
+bash 06_tools/bench/display_bench.sh     # 표시 e2e (M5a 기준선 + M4)
+bash 06_tools/bench/pipeline_bench.sh    # 기존 9설정 회귀 기준선
+bash 06_tools/bench/decode_bench.sh      # 디코드 경로 비교
 ```
 
 공통 환경변수: `RUNS`(기본 3), `FRAMES`, `ONLY`(설정 id grep), `APPEND=1`, `BIN`, `OUT_DIR`,
@@ -256,7 +256,7 @@ grim -o HDMI-A-1 shot.png
 
 ## 10. 더 읽을 것
 
-- **[`13_learn/`](13_learn/00_README.md)** — 배경지식이 없다면 **여기부터**. NPU·Vulkan·dma-buf·YOLO 텐서를
+- **[`08_learn/`](08_learn/00_README.md)** — 배경지식이 없다면 **여기부터**. NPU·Vulkan·dma-buf·YOLO 텐서를
   맨 밑바닥부터 설명하고, 각 개념이 이 프로젝트의 어느 결정으로 이어졌는지 연결한 자습 교재 12장
 - **[`07_results/README.md`](07_results/README.md)** — 12개 실험의 색인과 결론. **수치를 인용하기 전에 여기부터**
 - [`07_results/op_point/summary.md`](07_results/op_point/summary.md) §8 — 운용점 확정 근거와 최종 결론

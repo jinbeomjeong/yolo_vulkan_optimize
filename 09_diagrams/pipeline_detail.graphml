@@ -534,7 +534,7 @@ slots+gpu_depth ≤ 10 : 01_src/pipeline/main.cpp:224
       </data>
     </node>
     <node id="n_leg_t">
-      <data key="d5">색 규약은 12_docs/pipeline_overview.graphml 과 공통이다. 12_docs/README.md 참조.</data>
+      <data key="d5">색 규약은 09_diagrams/pipeline_overview.graphml 과 공통이다. 09_diagrams/README.md 참조.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="39.4" width="340.0" x="1300.0" y="481.3"/>
@@ -551,7 +551,7 @@ slots+gpu_depth ≤ 10 : 01_src/pipeline/main.cpp:224
       </data>
     </node>
     <node id="n_leg0">
-      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d5">범례 항목. 색 규약은 09_diagrams/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="34.0" width="340.0" x="1300.0" y="523.3"/>
@@ -568,7 +568,7 @@ slots+gpu_depth ≤ 10 : 01_src/pipeline/main.cpp:224
       </data>
     </node>
     <node id="n_leg1">
-      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d5">범례 항목. 색 규약은 09_diagrams/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="34.0" width="340.0" x="1300.0" y="565.3"/>
@@ -585,7 +585,7 @@ slots+gpu_depth ≤ 10 : 01_src/pipeline/main.cpp:224
       </data>
     </node>
     <node id="n_leg2">
-      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d5">범례 항목. 색 규약은 09_diagrams/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="34.0" width="340.0" x="1300.0" y="607.3"/>
@@ -602,7 +602,7 @@ slots+gpu_depth ≤ 10 : 01_src/pipeline/main.cpp:224
       </data>
     </node>
     <node id="n_leg3">
-      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d5">범례 항목. 색 규약은 09_diagrams/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="34.0" width="340.0" x="1300.0" y="649.3"/>
@@ -619,7 +619,7 @@ slots+gpu_depth ≤ 10 : 01_src/pipeline/main.cpp:224
       </data>
     </node>
     <node id="n_leg4">
-      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d5">범례 항목. 색 규약은 09_diagrams/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="34.0" width="340.0" x="1300.0" y="691.3"/>
@@ -636,7 +636,7 @@ slots+gpu_depth ≤ 10 : 01_src/pipeline/main.cpp:224
       </data>
     </node>
     <node id="n_leg5">
-      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d5">범례 항목. 색 규약은 09_diagrams/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="34.0" width="340.0" x="1300.0" y="733.3"/>
@@ -653,7 +653,7 @@ slots+gpu_depth ≤ 10 : 01_src/pipeline/main.cpp:224
       </data>
     </node>
     <node id="n_leg6">
-      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d5">범례 항목. 색 규약은 09_diagrams/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="34.0" width="340.0" x="1300.0" y="775.3"/>
@@ -670,7 +670,7 @@ slots+gpu_depth ≤ 10 : 01_src/pipeline/main.cpp:224
       </data>
     </node>
     <node id="n_leg7">
-      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d5">범례 항목. 색 규약은 09_diagrams/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="34.0" width="340.0" x="1300.0" y="817.3"/>
@@ -687,7 +687,7 @@ slots+gpu_depth ≤ 10 : 01_src/pipeline/main.cpp:224
       </data>
     </node>
     <node id="n_leg8">
-      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d5">범례 항목. 색 규약은 09_diagrams/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="34.0" width="340.0" x="1300.0" y="859.3"/>

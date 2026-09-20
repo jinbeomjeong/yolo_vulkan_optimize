@@ -3,7 +3,7 @@
 
 점유 판정
   - NPU : fuser -s /dev/hailo0 (장치 기준. root 권한 없이 동작하는 것을 확인했다)
-  - 벤치 : <project>/build/.bench_running 의 PID 생존 여부 (09_scripts/*_bench.sh 가 만든다)
+  - 벤치 : <project>/build/.bench_running 의 PID 생존 여부 (06_tools/bench/*_bench.sh 가 만든다)
 pgrep -f 로 프로세스 이름을 찾으면 안 된다. 패턴 문자열이 호출자 셸의 명령줄에 들어 있어
 자기 자신을 매칭한다(실측 확인).
 """
