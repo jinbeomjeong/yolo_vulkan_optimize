@@ -88,6 +88,7 @@ using yvo::stats;
 
 namespace {
 
+using yvo::tool::cpu_ms;
 using yvo::tool::soc_temperature;
 
 using Clock = std::chrono::steady_clock;
@@ -281,13 +282,6 @@ bool parse(int argc, char** argv, Args& a) {
     }
 #endif
     return true;
-}
-
-double cpu_ms() {
-    rusage ru{};
-    getrusage(RUSAGE_SELF, &ru);
-    return static_cast<double>(ru.ru_utime.tv_sec + ru.ru_stime.tv_sec) * 1e3 +
-           static_cast<double>(ru.ru_utime.tv_usec + ru.ru_stime.tv_usec) / 1e3;
 }
 
 // 스레드 안전 슬롯 풀 + 완료 큐 (HailoRT 콜백 ↔ 메인 스레드)

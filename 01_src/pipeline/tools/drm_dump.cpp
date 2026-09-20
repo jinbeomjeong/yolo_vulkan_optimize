@@ -28,9 +28,11 @@ extern "C" {
 
 #include "common/sand.hpp"
 #include "pipeline/ffmpeg_drm_decoder.hpp"
+#include "common/tool_util.hpp"
 
 namespace {
 
+using yvo::tool::cpu_ms;
 struct Args {
     std::string video;
     int frames = 3;          // descriptor를 출력할 프레임 수
@@ -247,13 +249,6 @@ int desand_and_compare(const yvo::DrmFrame& f, const std::string& dir) {
                 diff_y, ws * hs, first_y, diff_uv, ws * hs / 2, first_uv,
                 (diff_y == 0 && diff_uv == 0) ? "MATCH" : "MISMATCH");
     return (diff_y == 0 && diff_uv == 0) ? 0 : 2;
-}
-
-double cpu_ms() {
-    rusage ru{};
-    getrusage(RUSAGE_SELF, &ru);
-    return (static_cast<double>(ru.ru_utime.tv_sec + ru.ru_stime.tv_sec) * 1e3 +
-            static_cast<double>(ru.ru_utime.tv_usec + ru.ru_stime.tv_usec) / 1e3);
 }
 
 } // namespace

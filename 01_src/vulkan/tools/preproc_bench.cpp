@@ -30,12 +30,16 @@
 #include "vulkan/sand_letterbox.hpp"
 #include "vulkan/vulkan_context.hpp"
 #include "common/stats.hpp"
+#include "common/tool_util.hpp"
+#include "common/tool_image.hpp"
 
 using yvo::Stats;
 using yvo::stats;
 
 namespace {
 
+using yvo::tool::save_rgb;
+using yvo::tool::cpu_ms;
 struct Args {
     std::string video = "04_data/videos/video_h265.mp4";
     int frames = 0;       // 0 = 전체
@@ -92,31 +96,6 @@ bool parse(int argc, char** argv, Args& a) {
         else return false;
     }
     return a.slots > 0 && a.depth > 0 && a.depth <= a.slots;
-}
-
-double cpu_ms() {
-    rusage ru{};
-    getrusage(RUSAGE_SELF, &ru);
-    return static_cast<double>(ru.ru_utime.tv_sec + ru.ru_stime.tv_sec) * 1e3 +
-           static_cast<double>(ru.ru_utime.tv_usec + ru.ru_stime.tv_usec) / 1e3;
-}
-
-bool save_rgb(const std::string& path_noext, const std::uint8_t* rgb, int w, int h) {
-#ifdef YVO_HAVE_OPENCV
-    cv::Mat m(h, w, CV_8UC3, const_cast<std::uint8_t*>(rgb));
-    cv::Mat bgr;
-    cv::cvtColor(m, bgr, cv::COLOR_RGB2BGR);
-    const std::string p = path_noext + ".png";
-    const bool ok = cv::imwrite(p, bgr);
-#else
-    const std::string p = path_noext + ".ppm";
-    std::ofstream o(p, std::ios::binary);
-    o << "P6\n" << w << " " << h << "\n255\n";
-    o.write(reinterpret_cast<const char*>(rgb), static_cast<std::streamsize>(w) * h * 3);
-    const bool ok = static_cast<bool>(o);
-#endif
-    if (ok) std::printf("saved sample: %s\n", p.c_str());
-    return ok;
 }
 
 struct RunResult {

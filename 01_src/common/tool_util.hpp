@@ -5,6 +5,8 @@
 //   soc_temperature()    pipeline/main.cpp ↔ isp/tools/isp_pipeline.cpp          (바이트 동일)
 //   fmt(), count_open_fds() hailo/tools/hailo_raw_probe.cpp ↔ vulkan/tools/postproc_probe.cpp
 //   Nv12Frame, read_nv12_frames() hailo/tools/hailo_selftest.cpp ↔ hailo_raw_probe.cpp (필드가 달랐다)
+//   cpu_ms()             pipeline/main.cpp · pipeline/tools/drm_dump.cpp · isp/tools/{isp_bench,isp_pipeline}.cpp ·
+//                        vulkan/tools/preproc_bench.cpp — 5벌. 파이프라인의 대표 지표(CPU ms/frame)를 재는 함수다
 //
 // 라이브러리 코드는 이 헤더를 include 하지 않는다 — 도구 전용이다.
 #include <cmath>
@@ -20,7 +22,17 @@
 #include <system_error>
 #include <vector>
 
+#include <sys/resource.h>
+
 namespace yvo::tool {
+
+// 이 프로세스의 누적 CPU 시간(user + sys) [ms]. 두 시점의 차를 프레임 수로 나눈 것이 CPU ms/frame 이다.
+inline double cpu_ms() {
+    rusage ru{};
+    getrusage(RUSAGE_SELF, &ru);
+    return static_cast<double>(ru.ru_utime.tv_sec + ru.ru_stime.tv_sec) * 1e3 +
+           static_cast<double>(ru.ru_utime.tv_usec + ru.ru_stime.tv_usec) / 1e3;
+}
 
 // SoC 온도 [°C]. 읽지 못하면 NaN.
 inline double soc_temperature() {
