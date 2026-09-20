@@ -1,0 +1,55 @@
+#version 450
+// P5(--probe present) 전용 테스트 패턴. **컴퓨트가 스왑체인 storage image 에 직접 쓴다.**
+//
+// 목적은 성능이 아니라 "정말 화면에 나왔는가"를 grim -o HDMI-A-1 로 **사람 눈 없이** 판정하는 것이다.
+// 따라서 좌표와 기대 RGB 가 고정이어야 하고, 프로브가 그 값을 stdout 에 그대로 출력한다.
+//
+// 패턴 (모두 R8G8B8A8_UNORM 값. 셰이더가 byte/255.0 으로 쓰므로 왕복이 정확하다):
+//   · 배경           : (32, 32, 32)
+//   · 중앙 블록      : (255, 0, 128)  — 가로 400 x 세로 300, 화면 중앙
+//   · 네 꼭지점 마커 : 64x64, 좌상 (255,0,0) / 우상 (0,255,0) / 좌하 (0,0,255) / 우하 (255,255,255)
+//   · 움직이는 막대  : (255, 255, 0), y ∈ [3h/4, 3h/4+24), x 는 프레임마다 이동 — **살아 있음의 증거**
+//                      (위 검사 영역들과 겹치지 않는 띠에만 그린다)
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+layout(rgba8, set = 0, binding = 0) uniform writeonly image2D dst_image;
+
+layout(push_constant, std430) uniform Params {
+    int width;
+    int height;
+    uint frame;
+} pc;
+
+const int kMarker = 64;
+const int kBlockW = 400;
+const int kBlockH = 300;
+const int kBarH = 24;
+const int kBarW = 40;
+
+void main() {
+    const int x = int(gl_GlobalInvocationID.x);
+    const int y = int(gl_GlobalInvocationID.y);
+    if (x >= pc.width || y >= pc.height) return;
+
+    uvec3 rgb = uvec3(32u);
+
+    const int bx0 = (pc.width - kBlockW) / 2;
+    const int by0 = (pc.height - kBlockH) / 2;
+    if (x >= bx0 && x < bx0 + kBlockW && y >= by0 && y < by0 + kBlockH) rgb = uvec3(255u, 0u, 128u);
+
+    const int bar_y = (pc.height * 3) / 4;
+    if (y >= bar_y && y < bar_y + kBarH) {
+        const int bar_x = int((pc.frame * 10u) % uint(max(pc.width - kBarW, 1)));
+        if (x >= bar_x && x < bar_x + kBarW) rgb = uvec3(255u, 255u, 0u);
+    }
+
+    const bool left = x < kMarker;
+    const bool right = x >= pc.width - kMarker;
+    const bool top = y < kMarker;
+    const bool bottom = y >= pc.height - kMarker;
+    if (top && left) rgb = uvec3(255u, 0u, 0u);
+    else if (top && right) rgb = uvec3(0u, 255u, 0u);
+    else if (bottom && left) rgb = uvec3(0u, 0u, 255u);
+    else if (bottom && right) rgb = uvec3(255u, 255u, 255u);
+
+    imageStore(dst_image, ivec2(x, y), vec4(vec3(rgb) / 255.0, 1.0));
+}

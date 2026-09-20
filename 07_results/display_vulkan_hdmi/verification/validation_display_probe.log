@@ -1,0 +1,61 @@
+[vulkan WARNING] Layer "VK_LAYER_KHRONOS_validation" forced enabled due to env var 'VK_LOADER_LAYERS_ENABLE'
+[vulkan WARNING] Layer "VK_LAYER_KHRONOS_validation" forced enabled due to env var 'VK_LOADER_LAYERS_ENABLE'
+[vulkan WARNING] Layer "VK_LAYER_KHRONOS_validation" forced enabled due to env var 'VK_LOADER_LAYERS_ENABLE'
+[vulkan WARNING] Layer "VK_LAYER_KHRONOS_validation" forced enabled due to env var 'VK_LOADER_LAYERS_ENABLE'
+== probe context-regression ==
+
+-- present=off --
+device        : V3D 7.1.10.2 (api 1.3.354, driver 0x6802002)
+queue family  : 0
+timestamps    : yes (period 1.000 ns, 64 bits)
+dma-buf       : import=1 export=1 dedicated_only=0
+external qf   : FOREIGN_EXT
+validation    : errors=0 warnings=2 (layer on)
+graphics qf   : yes
+present       : disabled
+instance exts : 1
+  VK_EXT_debug_utils
+device exts   : 3
+  VK_EXT_external_memory_dma_buf
+  VK_EXT_queue_family_foreign
+  VK_KHR_external_memory_fd
+
+-- wayland window --
+size          : 1280x720
+configured    : yes
+globals       : viewporter=1 presentation=1 subcompositor=1
+native        : wl_display=0x5555c4e45cb0 wl_surface=0x5555c4eecfd0
+
+-- present=on --
+device        : V3D 7.1.10.2 (api 1.3.354, driver 0x6802002)
+queue family  : 0
+timestamps    : yes (period 1.000 ns, 64 bits)
+dma-buf       : import=1 export=1 dedicated_only=0
+external qf   : FOREIGN_EXT
+validation    : errors=0 warnings=2 (layer on)
+graphics qf   : yes
+present       : enabled
+present feats : surface_maintenance1=1 swapchain_maintenance1=1 present_id=1 present_wait=1
+instance exts : 5
+  VK_EXT_debug_utils
+  VK_EXT_surface_maintenance1
+  VK_KHR_get_surface_capabilities2
+  VK_KHR_surface
+  VK_KHR_wayland_surface
+device exts   : 7
+  VK_EXT_external_memory_dma_buf
+  VK_EXT_queue_family_foreign
+  VK_EXT_swapchain_maintenance1
+  VK_KHR_external_memory_fd
+  VK_KHR_present_id
+  VK_KHR_present_wait
+  VK_KHR_swapchain
+
+-- diff (off -> on) --
+added instance exts: 4 VK_EXT_surface_maintenance1 VK_KHR_get_surface_capabilities2 VK_KHR_surface VK_KHR_wayland_surface
+added device exts  : 4 VK_EXT_swapchain_maintenance1 VK_KHR_present_id VK_KHR_present_wait VK_KHR_swapchain
+queue family       : 0 -> 0 (동일)
+timestamp bits     : 64 -> 64 (동일)
+external qf        : FOREIGN_EXT -> FOREIGN_EXT (동일)
+dma-buf            : import=1/1 export=1/1 dedicated_only=0/0 (동일)
+poll()             : ok, should_close=0

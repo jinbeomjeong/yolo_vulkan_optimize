@@ -1,0 +1,10 @@
+date: 2026-09-20T02:21:28+09:00
+uname: Linux raspberry 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64 GNU/Linux
+temp: temp=65.9'C
+throttled: throttled=0x80000
+arm_clock: frequency(0)=2400033792
+governor:       4 ondemand 
+loadavg: 0.06 0.55 0.84 2/411 56896
+gst: gst-launch-1.0 version 1.26.2 GStreamer 1.26.2 
+hailo0 users (readable /proc only): 
+hailo/vulkan processes: 

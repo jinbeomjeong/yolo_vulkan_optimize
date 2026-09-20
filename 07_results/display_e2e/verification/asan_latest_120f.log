@@ -1,0 +1,27 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[hevc @ 0x518000011480] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+== yvo_pipeline (dmabuf, nhcw, batch 2, slots 4, gpu_depth 3, postproc gpu/export) ==
+frames          120 (decoded 120, errors 0)
+wall            3.493 s, 34.35 FPS
+cpu             3.485 ms/frame (process user+sys 418.2 ms, 12% of one core)
+decode call ms  mean 0.483  median 0.190  p90 0.261  max 24.833
+gpu shader ms   mean 1.248  median 2.033  p90 2.186  max 6.391
+npu latency ms  mean 104.035  median 106.370  p90 108.706  max 115.406
+e2e latency ms  mean 141.526  median 122.720  p90 168.102  max 212.570  (decode 반환 → NPU 완료 콜백)
+slot wait ms    mean 27.314  p90 54.149  (메인 스레드가 빈 슬롯을 기다린 시간)
+gpu post ms     mean 0.622  median 0.587  p90 0.666  max 4.046  (yolo_decode.comp pass 1)
+cpu nms us      mean 18.009  median 15.843  p90 26.478  max 69.093  (cpu_nms_greedy_by_class)
+candidates      mean 14.32  max 30  overflow frames 0
+slot hold ms    mean 4.792  median 4.066  p90 5.432  max 46.310  (NPU 완료 콜백 → 슬롯 반납)
+disp convert ms mean 4.204  median 4.388  p90 4.597  (display_convert.comp)
+disp overlay ms mean 0.082  median 0.070  p90 0.124  (overlay_boxes.comp)
+present 간격 ms median 16.818  p90 49.796  (n=117)
+glass-to-glass  mean 30.29  median 28.76  p90 41.94  (n=119, 디코드 → 화면 도달)
+display         presented 120, dropped 0, recreates 1, overlay overflow 0
+held frames max 2 (디코더 한계 약 13), slot timeout 0
+detections      284 total, 2.37 / frame
+hailo chip temp 57.4 -> 59.6 C
+soc temp        70.8 -> 69.2 C
+vk validation   errors 0, warnings 1
+RESULT_CSV,asan_latest,dmabuf,nhcw,2,4,120,3.493,34.35,3.485,0.483,1.248,2.186,104.03,108.71,141.53,168.10,284,57.4,59.6,70.8,69.2,1
+RESULT_CSV2,asan_latest,gpu,export,0.6216,0.6659,18.009,14.32,30,0,1,wayland,latest,asap,4.2045,4.5970,0.0816,16.818,30.29,41.94,120,0,1,2,0

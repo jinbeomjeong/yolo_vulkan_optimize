@@ -1,0 +1,22 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[cfg] video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 1920x1080 mode=dmabuf layout=nhcw batch=8 slots=16 gpu_depth=3 device=V3D 7.1.10.2
+[hevc @ 0x55556e13b260] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[progress] 300 frames, 53.1 FPS, hailo 64.6 C
+[progress] 600 frames, 52.7 FPS, hailo 67.9 C
+[progress] 900 frames, 52.2 FPS, hailo 70.9 C
+[progress] 1200 frames, 52.2 FPS, hailo 73.1 C
+[progress] 1500 frames, 52.0 FPS, hailo 75.6 C
+[progress] 1800 frames, 52.1 FPS, hailo 77.7 C
+== yvo_pipeline (dmabuf, nhcw, batch 8, slots 16, gpu_depth 3) ==
+frames          1816 (decoded 1816, errors 0)
+wall            35.173 s, 51.63 FPS
+cpu             3.116 ms/frame (process user+sys 5658.6 ms, 16% of one core)
+decode call ms  mean 0.363  median 0.119  p90 1.138  max 12.505
+gpu shader ms   mean 2.694  median 2.261  p90 5.564  max 10.249
+npu latency ms  mean 301.659  median 302.833  p90 303.931  max 340.287
+e2e latency ms  mean 325.631  median 309.725  p90 445.497  max 449.943  (decode 반환 → NPU 완료 콜백)
+slot wait ms    mean 18.558  p90 136.259  (메인 스레드가 빈 슬롯을 기다린 시간)
+detections      9457 total, 5.21 / frame
+hailo chip temp 59.2 -> 77.8 C
+soc temp        64.2 -> 67.5 C
+vk validation   errors 0, warnings 1

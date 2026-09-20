@@ -1,0 +1,238 @@
+#version 450
+// YOLOv8/v11 원시 출력(UINT8 NHCW) → 후보 검출 압축. 계획서 §4.3 "pass 1".
+//
+// ── 기준 구현 ─────────────────────────────────────────────────────────────────────────────────
+// **수식의 원문은 `01_src/common/cpu_yolov8_decode.hpp` 상단 주석 1)~7) 이다.** 이 셰이더는 그 수식의
+// GPU 번역이고, `yvo_postproc_probe --fixture` 가 `cpu_yolov8_candidates()` 와 비교해
+// **후보 개수 동일 / 점수 비트 일치 / 좌표 오차 < 0.25 px**(계획서 §4.5 G5)로 판정한다.
+// 수식을 바꿀 때는 저 헤더를 먼저 고친다.
+//
+// 확정된 텐서 해석(부록 A.5, P1 이 40프레임 16조합 전수 시도로 ratio 1.0000 확정):
+//   · DFL 채널 순서 = `ch = coord * reg_max + bin` (reg_max = 16)
+//   · sigmoid 를 **적용하지 않는다** (클래스 출력이 이미 확률이다)
+//   · 앵커당 **다중 클래스** — threshold 를 넘는 모든 클래스를 emit 한다(argmax 아님)
+//   · threshold 비교는 `>=`
+//   · 양자화는 스트림당 **스칼라** 하나뿐 → LUT 버퍼 없이 push constant 로 충분하다
+//
+// ── 디스패치 규약 (계획서 §4.3) ───────────────────────────────────────────────────────────────
+// **스케일별 1회, 총 3 디스패치. 파이프라인은 하나이고 push constant 만 다르다.**
+// 한 디스패치가 보는 SSBO 는 `{cls, box, det}` **3개뿐**이다
+// (`maxPerStageDescriptorStorageBuffers = 8`, `descriptorIndexing = false` → 6개를 한 셰이더에 몰면
+//  바인딩을 동적으로 못 골라 스케일별 코드를 3벌 펼쳐야 한다. V3D 컴파일러에 최악이므로 기각했다).
+// **3 디스패치 사이에 배리어가 없다** — 상호작용은 `det.count` 의 device-scope atomic 뿐이고
+// 각 디스패치는 서로 다른 `dets[]` 칸에만 쓴다(주소가 겹치지 않으므로 경쟁이 없다).
+// 카운터 초기화는 호스트가 submit 직전에 헤더에 쓴다(`vkCmdFillBuffer` 와 TRANSFER_DST 불필요).
+//
+// ── invocation 매핑: w 방향 uint 워드 = 4앵커 (coalescing) ─────────────────────────────────────
+// NHCW 는 `idx = ((h*C)+c)*W_padded + w` 이므로 (h,c) 고정 시 w 가 연속이다.
+//   invocation (x, y) = (워드 열 wi, 행 h).  한 invocation 이 앵커 4개(w = 4*wi .. 4*wi+3)를 맡는다.
+//   x 방향으로 인접한 invocation 은 **인접한 워드**를 읽으므로 워프 안에서 완전히 coalesce 된다.
+// `grid_w` 가 전부 4의 배수(80/40/20)라 워드 경계가 항상 맞는다.
+// **P5 패딩**: 주소 스트라이드는 `w_words_pad = w_padded/4 = 6`, 순회하는 유효 워드는 `w_words = 5`
+// (w 0..19)뿐이다. w=20..23 은 `(w+0.5)*32 >= 656` 으로 640 입력 밖 좌표를 만들고 값도 정의되지 않았다
+// (부록 A.6).
+//
+// ── pass 1 알고리즘 ───────────────────────────────────────────────────────────────────────────
+//  ① 클래스 스캔: c = 0..79 워드 로드 → 4바이트를 **정수** `q_thr_low` 와 비교(그룹 joint max).
+//     `q_thr_low = floor(thr/cls_scale)` 이라 느슨한 필요조건이다(P3 57 / P4 53 / P5 52).
+//     **여기가 전체 비용의 거의 전부다**: 672,000 회의 float 곱·비교가 바이트 비교로 바뀐다.
+//  ② 그룹의 max 가 못 넘으면 return (그룹 2100개 중 살아남는 것은 수십 개).
+//  ③ DFL 디코드(그룹당 1회): 같은 워드에 4앵커의 같은 bin 이 있어 **4앵커를 vec4 로 한꺼번에** 푼다.
+//     coord 별 max 를 정수 도메인에서 구해(scale>0 이라 argmax 가 같다) 빼고 exp 16개 → softmax → 거리.
+//  ④ letterbox 역변환 → **원본 1920×1080 좌표**.
+//  ⑤ emit: `atomicAdd(det.count,1)`, 상한 초과면 `atomicOr(det.overflow,1)`.
+//
+// ── V3D 규율 (`02_shaders/sand_letterbox.comp` 주석의 실측 근거와 같다) ───────────────────────
+//   · **바이트 로드 대신 워드 로드 + 시프트** (byte load 는 명령 수가 4배다)
+//   · 32비트 정수 곱셈은 umul24 에뮬레이션이라 비싸다 → 루프 안의 주소 계산은 **덧셈 누적**만 쓴다
+//   · 로컬 배열 + 루프를 쓰지 않는다(컴파일러가 못 푼다) → 4앵커를 `vec4`/`uvec4` 로 들고 간다
+//   · lane 별 분기를 피한다. 조기 return 은 `barrier()` 가 없으므로 발산해도 무해하다
+//   · int64 atomic 이 없다(32비트만) → 카운터·체크섬 모두 uint 다
+//
+// ── 출력 레이아웃: `DetGpu` 32 B + `DetBuf` 헤더 152 B ────────────────────────────────────────
+// **`01_src/display/overlay_renderer.hpp` 의 `OverlayDetBufHeader`/`DetGpu` 와 바이트 단위로 같다.**
+// 그래서 이 버퍼를 그대로 `vkCmdDispatchIndirect(cb, det_buf, 0)` 로 오버레이에 직결할 수 있다.
+//   dispatch 0..11 / count 12 / overflow 16 / text_bytes 20 / text[32] 24..151 / dets[] 152..
+// 두 가지만 오버레이와 다르게 쓴다(둘 다 문서화된 약속이다):
+//   · `count` 는 **emit 시도 총수**다. 상한을 넘으면 `count > max_dets` 가 되고 `overflow = 1` 이 된다.
+//     소비자는 `min(count, max_dets)` 로 클램프한다(`YoloPostproc::read_candidates()` 가 그렇게 한다).
+//   · `text[32]`(오버레이 HUD ASCII 자리)는 `kChecksum` 모드에서만 **바이트 합 저장소로 재사용**한다.
+//     text[2*scale_id] = 클래스 텐서 유효 영역 바이트 합, text[2*scale_id+1] = box 텐서 합.
+//     검증 전용 파이프라인이고(spec constant 라 별도 파이프라인), 평상시 경로는 건드리지 않는다.
+
+// spec 0/1 = local_size_x/y. x 는 **워드 열**(=4앵커), y 는 행이다.
+layout(local_size_x_id = 0, local_size_y_id = 1, local_size_z = 1) in;
+// spec 2 = 검증용 바이트 합 모드. true 면 box 텐서까지 전부 읽어 합을 낸다(느리다. 프로브 전용).
+layout(constant_id = 2) const bool kChecksum = false;
+
+const int kRegMax = 16;    // DFL 빈 수. box 채널 수 = 4 * kRegMax = 64
+const int kSides = 4;      // left, top, right, bottom
+const int kBoxChannels = kSides * kRegMax;
+
+layout(std430, set = 0, binding = 0) readonly buffer ClsBuf { uint cls_w[]; };
+layout(std430, set = 0, binding = 1) readonly buffer BoxBuf { uint box_w[]; };
+
+// overlay_boxes.comp 의 DetGpu 와 같은 32 B 레이아웃 (후처리↔오버레이 공유 계약)
+struct DetGpu {
+    float x1, y1, x2, y2;
+    float score;
+    uint class_id;
+    uint anchor_key;
+    uint keep;
+};
+
+// std430. 호스트 OverlayDetBufHeader(152 B) 와 static_assert 로 맞춰 둔다.
+// dispatch 를 uvec3 대신 uint 3개로 쓰는 이유: uvec3 성분에 atomic 을 걸지 않기 위해서다
+// (std430 레이아웃은 동일하다 — uvec3 는 offset 0 에서 정렬 16, 뒤따르는 uint 는 offset 12).
+layout(std430, set = 0, binding = 2) buffer DetBuf {
+    uint dispatch_x;   // offset 0  (VkDispatchIndirectCommand.x)
+    uint dispatch_y;   // offset 4
+    uint dispatch_z;   // offset 8
+    uint count;        // offset 12
+    uint overflow;     // offset 16
+    uint text_bytes;   // offset 20
+    uint text[32];     // offset 24..151  (kChecksum 모드에서 바이트 합 저장소로 재사용)
+    DetGpu dets[];     // offset 152
+};
+
+layout(push_constant, std430) uniform Params {
+    int grid_h;        // 유효 행 수 (80/40/20)
+    int grid_w;        // 유효 열 수 (80/40/20)
+    int w_words;       // 순회할 유효 워드 수 = grid_w/4 (20/10/5)
+    int w_words_pad;   // 주소 스트라이드용 워드 수 = w_padded/4 (20/10/6)
+    int num_classes;   // 80
+    int scale_id;      // 0=P3, 1=P4, 2=P5
+    uint q_thr_low;    // floor(thr / cls_scale) — 정수 사전필터 경계
+    uint max_dets;     // dets[] 상한
+    float stride;      // 8 / 16 / 32
+    float cls_scale;
+    float cls_zp;
+    float box_scale;
+    float box_zp;
+    float thr;         // 0.2
+    float inv_scale;   // 1.0 / letterbox scale
+    float pad_x;
+    float pad_y;
+    float max_x;       // src_w  (클램프 상한)
+    float max_y;       // src_h
+} pc;
+
+uvec4 unpack4(uint w) { return uvec4(w & 0xffu, (w >> 8) & 0xffu, (w >> 16) & 0xffu, w >> 24); }
+uint byte_of(uint w, int i) { return (w >> (uint(i) * 8u)) & 0xffu; }
+
+// 변 하나(bin 16개)의 DFL softmax 기대값을 4앵커 동시에 푼다. base 는 그 변의 첫 bin 워드 인덱스다.
+// **로컬 배열을 쓰지 않으려고 함수로 뽑았다**(V3D 컴파일러가 로컬 배열 + 루프를 못 푼다 — sand_letterbox 규율).
+vec4 dfl_dist(int base, int Wp) {
+    int bi = base;
+    uvec4 mq = uvec4(0u);
+    for (int b = 0; b < kRegMax; ++b) {
+        mq = max(mq, unpack4(box_w[bi]));
+        bi += Wp;
+    }
+    const vec4 m = (vec4(mq) - pc.box_zp) * pc.box_scale;
+    bi = base;
+    vec4 sum = vec4(0.0);
+    vec4 acc = vec4(0.0);
+    for (int b = 0; b < kRegMax; ++b) {
+        const vec4 v = (vec4(unpack4(box_w[bi])) - pc.box_zp) * pc.box_scale;
+        const vec4 e = exp(v - m);
+        sum += e;
+        acc += float(b) * e;
+        bi += Wp;
+    }
+    return acc / sum;
+}
+
+void emit(float x1, float y1, float x2, float y2, float score, uint cls, uint key) {
+    const uint idx = atomicAdd(count, 1u);
+    if (idx >= pc.max_dets) {
+        atomicOr(overflow, 1u);
+        return;
+    }
+    dets[idx].x1 = x1;
+    dets[idx].y1 = y1;
+    dets[idx].x2 = x2;
+    dets[idx].y2 = y2;
+    dets[idx].score = score;
+    dets[idx].class_id = cls;
+    dets[idx].anchor_key = key;
+    dets[idx].keep = 1u;
+    // 오버레이에 직결할 때를 위해 dispatch.x 를 살아 있는 후보 수로 올려 둔다.
+    // 호스트가 (1,1,1) 로 초기화하므로 후보가 0개여도 워크그룹 0(HUD)은 돈다.
+    atomicMax(dispatch_x, idx + 1u);
+}
+
+void main() {
+    const int wi = int(gl_GlobalInvocationID.x);
+    const int h = int(gl_GlobalInvocationID.y);
+    if (wi >= pc.w_words || h >= pc.grid_h) return;   // barrier() 를 쓰지 않으므로 발산해도 무해하다
+
+    const int Wp = pc.w_words_pad;
+    const int w0 = wi * 4;
+
+    // ── ① 클래스 스캔: 그룹(4앵커 x 80클래스)의 정수 최대값 ────────────────────────────────
+    // 주소는 c 마다 Wp 만큼 더해 나간다(루프 안에 32비트 곱셈을 두지 않는다).
+    int ci = (h * pc.num_classes) * Wp + wi;
+    uvec4 gmax4 = uvec4(0u);
+    uint cls_sum = 0u;
+    for (int c = 0; c < pc.num_classes; ++c) {
+        const uvec4 q = unpack4(cls_w[ci]);
+        gmax4 = max(gmax4, q);
+        if (kChecksum) cls_sum += q.x + q.y + q.z + q.w;
+        ci += Wp;
+    }
+    if (kChecksum) {
+        uint box_sum = 0u;
+        int bi = (h * kBoxChannels) * Wp + wi;
+        for (int ch = 0; ch < kBoxChannels; ++ch) {
+            const uvec4 q = unpack4(box_w[bi]);
+            box_sum += q.x + q.y + q.z + q.w;
+            bi += Wp;
+        }
+        atomicAdd(text[2 * pc.scale_id], cls_sum);
+        atomicAdd(text[2 * pc.scale_id + 1], box_sum);
+    }
+
+    // ── ② 그룹 탈락 ──────────────────────────────────────────────────────────────────────
+    const uint gmax = max(max(gmax4.x, gmax4.y), max(gmax4.z, gmax4.w));
+    if (gmax < pc.q_thr_low) return;
+
+    // ── ③ DFL 디코드 (그룹당 1회, 4앵커 동시) ────────────────────────────────────────────
+    // cpu_yolov8_decode.hpp 4): ch = coord * reg_max + bin, softmax 전에 coord 별 max 를 뺀다.
+    // max 는 정수 도메인에서 구해도 같다 — box_scale > 0 이라 argmax 가 보존되고
+    // (max_q - zp) * scale 은 dequant 값들의 max 와 **같은 부동소수 식**이다(비트 일치).
+    const int b0 = (h * kBoxChannels) * Wp + wi;
+    const int side_stride = kRegMax * Wp;
+    const vec4 d_l = dfl_dist(b0, Wp);
+    const vec4 d_t = dfl_dist(b0 + side_stride, Wp);
+    const vec4 d_r = dfl_dist(b0 + 2 * side_stride, Wp);
+    const vec4 d_b = dfl_dist(b0 + 3 * side_stride, Wp);
+
+    // ── ④ letterbox 640 좌표 → 원본 좌표 (cpu_yolov8_decode.hpp 5)(6)) ──────────────────
+    const vec4 cx = float(w0) + vec4(0.5, 1.5, 2.5, 3.5);
+    const float cy = float(h) + 0.5;
+    const vec4 x1 = clamp(((cx - d_l) * pc.stride - pc.pad_x) * pc.inv_scale, 0.0, pc.max_x);
+    const vec4 y1 = clamp(((cy - d_t) * pc.stride - pc.pad_y) * pc.inv_scale, 0.0, pc.max_y);
+    const vec4 x2 = clamp(((cx + d_r) * pc.stride - pc.pad_x) * pc.inv_scale, 0.0, pc.max_x);
+    const vec4 y2 = clamp(((cy + d_b) * pc.stride - pc.pad_y) * pc.inv_scale, 0.0, pc.max_y);
+
+    // ── ⑤ emit: threshold 를 넘는 **모든** 클래스 (다중 클래스, 부록 A.5) ────────────────
+    // 앵커별로 클래스를 다시 훑는다. 살아남은 그룹은 수십 개뿐이라 재로드 비용이 무시할 수준이고,
+    // 그 대신 vec4 의 동적 인덱싱이 사라진다(a 가 상수 경계 루프 변수라 컴파일러가 푼다).
+    const uint key_hw = (uint(pc.scale_id) << 21) | (uint(h) << 14);
+    for (int a = 0; a < 4; ++a) {
+        const int w = w0 + a;
+        if (w >= pc.grid_w) break;
+        if (gmax4[a] < pc.q_thr_low) continue;   // 이 앵커에는 threshold 를 넘는 클래스가 없다
+        const uint key_a = key_hw | (uint(w) << 7);
+        int cj = (h * pc.num_classes) * Wp + wi;
+        for (int c = 0; c < pc.num_classes; ++c) {
+            const uint q = byte_of(cls_w[cj], a);
+            cj += Wp;
+            if (q < pc.q_thr_low) continue;                    // 정수 사전필터 (느슨한 필요조건)
+            const float score = (float(q) - pc.cls_zp) * pc.cls_scale;
+            if (score < pc.thr) continue;                      // 확정 비교: score >= thr
+            emit(x1[a], y1[a], x2[a], y2[a], score, uint(c), key_a | uint(c));
+        }
+    }
+}

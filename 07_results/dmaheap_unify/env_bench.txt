@@ -1,0 +1,59 @@
+# 측정 환경 (P0 heapimport, NPU 미사용)
+2026-09-20T16:18:24+09:00
+
+Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+
+temp=65.9'C
+throttled=0xe0000
+
+Vulkan Instance Version: 1.4.309
+GPU0 deviceName   = V3D 7.1.10.2  (DRIVER_ID_MESA_V3DV, V3DV Mesa 26.2.2)
+GPU0 apiVersion   = 1.3.354
+GPU0 deviceType   = PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU
+memoryTypeCount   = 1  -> type 0: DEVICE_LOCAL|HOST_VISIBLE|HOST_COHERENT (0x007)
+로컬 Vulkan 레지스트리 = 1.4.309 (commit 43d153dd, 2025-02-21)
+
+total 0
+crw-rw---- 1 root video 252, 1 Sep 20 00:22 default_cma_region
+crw-rw---- 1 root video 252, 2 Sep 20 00:22 linux,cma
+crw-rw---- 1 root video 252, 0 Sep 20 00:22 system
+lrwxrwxrwx 1 root root       6 Sep 20 00:22 vidbuf_cached -> system
+
+(저장소 루트 hailort.log 의 error/warning 36건은 이전 세션 기록이다 —
+ 마지막 항목 2026-09-20 15:25:47 로 이 프로브 실행보다 앞선다.
+ heapimport 프로브는 NPU 를 쓰지 않으므로 hailort.log 판정 대상이 아니다.)
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────
+# 측정 환경 (부록 B 4단계 GPU 읽기 A/B + 5단계 V1·V2·V3), 2026-09-20T17:23:10+09:00
+# ─────────────────────────────────────────────────────────────────────────────────────────────
+
+PCIe            : 8.0 GT/s PCIe x1  (Gen3 x1)
+                  경로 0001:01:00.0 (vendor 0x1e60), max_link_speed 8.0 GT/s PCIe
+SoC             : temp=65.9'C   (측정 구간 전체 63.1 ~ 70.8 °C)
+Hailo 칩        : 54.4 °C  (각 프로브 진입 시 59.7 / 60.4 / 61.5 / 62.7 °C
+                  → measure 스킬의 75 °C 기준 미달. **냉각 대기 0 초**)
+ARM 클럭        : frequency(0)=2400030464  (유휴 시 1.5~1.9 GHz 로 내려가는 것은 정상 스케일링)
+kernel          : 6.18.50+rpt-rpi-2712
+PAGESIZE        : 16384   / L1 D-cache line 64 B
+
+vcgencmd get_throttled : throttled=0xe0000
+  ⚠ 비트 17(ARM 주파수 제한 발생) · 18(스로틀링 발생) · 19(온도 제한 발생)가 서 있다.
+    **이들은 "과거에 발생했다"는 래치 비트다.** 현재 상태 비트(0~3)는 전부 0이므로
+    **이 측정 구간 동안 스로틀링·주파수 제한은 없었다.**
+    직전에 다른 세션이 연속 NPU 벤치(hailortcli benchmark -t 15 반복)를 돌려 보드가 달아오른 흔적이다.
+
+NPU 점유 확인   : 모든 프로브 **직전·직후**에 fuser /dev/hailo0 와
+                  ps -eo comm | grep -E "hailortcli|yvo_" 를 확인했다 → 전 구간 비어 있었다.
+                  (17:14:18 V1-before ~ 17:20:29 test_detections-after)
+                  ⚠ 17:08 대에는 다른 세션이 약 40 초 주기로 재점유하고 있었다 —
+                    그 구간의 잠정 측정치는 채택하지 않았고, 이 clean window 에서 전부 다시 쟀다.
+
+hailort.log     : 이 측정 구간(줄 937 이후, 총 1036줄)에서 [error] 0건,
+                  온도·클럭 관련 [warning] 0건 → **성능 수치 신뢰 가능**.
+                  (줄 936 까지의 error/warning 36+8건은 이전 세션 기록이다)
+
+GPU / Vulkan    : V3D 7.1.10.2 (V3DV Mesa 26.2.2), api 1.3.354, memoryTypeCount = 1
+                  로컬 Vulkan 레지스트리 = 1.4.309 (commit 43d153dd, 2025-02-21)
+dma-heap        : /dev/dma_heap/vidbuf_cached -> system (심볼릭 링크, 같은 힙)
+device tree     : dma-coherent 속성 **0건** (find /proc/device-tree -name dma-coherent)
+                  → 커널이 V3D·Hailo 를 비일관(non-coherent) 장치로 취급한다

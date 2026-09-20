@@ -1,0 +1,41 @@
+#version 450
+// dma-heap import 왕복 확인용 최소 셰이더 (부록 B 1단계 = P0 관문, `--probe heapimport`).
+//
+// 목적은 성능이 아니라 **"Vulkan import 가 형식적으로 성공했다"와 "GPU 가 실제로 올바른 데이터를
+// 본다"를 가르는 것**이다. CPU 가 mmap(heap_fd) 로 쓴 알려진 패턴의 바이트 합을 GPU 가 다시 계산해
+// 호스트 계산값과 대조한다. `yolo_decode.comp` 의 kChecksum 과 같은 역할이지만, 그쪽은
+// YoloPostproc 의 텐서 레이아웃(NHCW·6텐서)에 묶여 있어 import 버퍼 하나를 재려면 쓸 수 없다.
+//
+// 합은 **uint32 wraparound** 다. 호스트도 같은 폭으로 더해야 일치한다.
+// 워크그룹 수는 호스트가 고정(kSumGroups)하고 grid-stride 루프로 전 범위를 덮는다 — 버퍼 크기가
+// 6텐서마다 달라도 디스패치 모양이 같아 비교가 깨끗하다.
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(std430, set = 0, binding = 0) readonly buffer Src { uint w[]; } src;
+layout(std430, set = 0, binding = 1) buffer Dst { uint sum; uint words; } dst;
+
+layout(push_constant, std430) uniform Params {
+    uint n_words;   // 읽을 32bit 워드 수 (= VkBuffer range / 4)
+} pc;
+
+shared uint s_part[64];
+
+void main() {
+    const uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+    uint acc = 0u;
+    // 경계 검사는 루프 조건이 한다. barrier() 앞에서 조기 return 하지 않으므로 배리어가 발산하지 않는다.
+    for (uint i = gl_GlobalInvocationID.x; i < pc.n_words; i += stride) {
+        const uint v = src.w[i];
+        acc += (v & 0xffu) + ((v >> 8) & 0xffu) + ((v >> 16) & 0xffu) + (v >> 24);
+    }
+    s_part[gl_LocalInvocationID.x] = acc;
+    barrier();
+    for (uint st = gl_WorkGroupSize.x / 2u; st > 0u; st >>= 1) {
+        if (gl_LocalInvocationID.x < st) s_part[gl_LocalInvocationID.x] += s_part[gl_LocalInvocationID.x + st];
+        barrier();
+    }
+    if (gl_LocalInvocationID.x == 0u) {
+        atomicAdd(dst.sum, s_part[0]);
+        atomicAdd(dst.words, 1u);   // 디스패치가 정말 돌았는지의 증거 (= 워크그룹 수)
+    }
+}

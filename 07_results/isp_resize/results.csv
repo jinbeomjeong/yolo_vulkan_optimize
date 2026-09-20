@@ -1,0 +1,7 @@
+label,tool,variant,time_axis,runs,frames,fps_median,wall_s_median,cpu_ms_per_frame_median,pre_ms_median_median,pre_ms_p90_median,pre_ms_mean_median,pre_ms_min_median,pre_ms_max_median,host_submit_us_median_median,host_wait_us_median_median,repack_ms_median_median,repack_ms_p90_median,sync_ms_median_median,soc_t1_median,fps_min,fps_max,cpu_ms_min,cpu_ms_max,hailort_warnings,all_ok
+decode_only,isp,decode_only/none,wall,3,1756,392.250,4.477,0.275,0.000,0.000,0.000,0.000,0.000,,,0.000,0.000,0.000,71.400,368.61,392.72,0.243,0.482,0,1
+gpu_nhcw_d2,gpu,--layout nhcw --depth 2,device,3,1816,389.300,4.665,0.436,2.129,2.240,2.152,1.765,3.369,43.700,14.100,,,,70.800,383.10,390.30,0.417,0.474,0,1
+gpu_nhcw_d1,gpu,--layout nhcw --depth 1,device,3,1816,384.100,4.727,0.456,2.143,2.265,2.160,2.045,3.744,44.600,2036.300,,,,74.100,371.60,387.10,0.410,0.510,0,1
+isp_A_nhwc,isp,isp/none,wall,3,1756,292.130,6.011,0.436,1.594,1.859,1.664,1.522,3.876,,,0.000,0.000,0.000,68.600,288.45,303.17,0.422,0.444,0,1
+isp_C_repack_cpu,isp,isp/cpu,wall,3,1756,270.340,6.496,1.014,1.620,1.985,1.708,1.538,4.443,,,0.353,0.557,0.057,68.100,262.61,274.44,0.977,1.072,0,1
+isp_C_repack_neon,isp,isp/neon,wall,3,1756,269.750,6.510,1.005,1.632,1.877,1.712,1.563,6.218,,,0.350,0.521,0.060,69.700,259.78,270.25,0.994,1.065,0,1

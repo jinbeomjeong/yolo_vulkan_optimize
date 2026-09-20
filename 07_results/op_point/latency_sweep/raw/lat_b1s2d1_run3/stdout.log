@@ -1,0 +1,17 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[hevc @ 0x555631f16c80] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+== yvo_pipeline (dmabuf, nhcw, batch 1, slots 2, gpu_depth 1, postproc host) ==
+frames          600 (decoded 600, errors 0)
+wall            24.602 s, 24.39 FPS
+cpu             3.259 ms/frame (process user+sys 1955.4 ms, 8% of one core)
+decode call ms  mean 0.180  median 0.110  p90 0.141  max 34.193
+gpu shader ms   mean 2.125  median 2.104  p90 2.163  max 5.632
+npu latency ms  mean 79.486  median 79.565  p90 79.747  max 82.918
+e2e latency ms  mean 122.395  median 122.560  p90 122.775  max 125.077  (decode 반환 → NPU 완료 콜백)
+slot wait ms    mean 40.590  p90 40.833  (메인 스레드가 빈 슬롯을 기다린 시간)
+detections      2090 total, 3.48 / frame
+hailo chip temp 70.0 -> 73.9 C
+soc temp        69.2 -> 68.6 C
+vk validation   errors 0, warnings 1
+RESULT_CSV,lat_b1s2d1,dmabuf,nhcw,1,2,600,24.602,24.39,3.259,0.180,2.125,2.163,79.49,79.75,122.39,122.77,2090,70.0,73.9,69.2,68.6,1
+RESULT_CSV2,lat_b1s2d1,host,-,0.0000,0.0000,0.000,0.00,0,0,1

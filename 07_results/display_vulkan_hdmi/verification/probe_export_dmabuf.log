@@ -1,0 +1,19 @@
+== probe export (dma-buf 내보내기 헬퍼) ==
+
+align = 16384 B
+dedicated 할당 강제: 아니오
+#       requested        alloc       dmabuf     fd host_ptr           aligned_ptr        align_offset
+0          512000       540672       540672     10 0x7fff069d8000     0x7fff069d8000     0
+1          409600       425984       425984     11 0x7fff06970000     0x7fff06970000     0
+2          128000       147456       147456     12 0x7fff0694c000     0x7fff0694c000     0
+3          102400       131072       131072     13 0x7fff0692c000     0x7fff0692c000     0
+4           38400        65536        65536     14 0x7fff0cd10000     0x7fff0cd10000     0
+5           30720        49152        49152     15 0x7fff0ecf4000     0x7fff0ecf4000     0
+6         1228800      1245184      1245184     16 0x7fff067fc000     0x7fff067fc000     0
+
+dup_fd(0) = 17 (호출자가 close)
+요청 크기 != dma-buf 실측 크기인 항목: 7 / 7
+=> HailoRT dma_map_dmabuf(fd, size, D2H) / read_async(fd, size) 에 넘길 size 후보는
+   ① requested_size ② dmabuf_size 두 가지다. hailo-expert 가 둘 다 시험해야 한다.
+판정: PASS
+vk validation errors 0 warnings 0 (layer on)

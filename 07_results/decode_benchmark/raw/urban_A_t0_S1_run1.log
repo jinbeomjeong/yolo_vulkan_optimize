@@ -1,0 +1,20 @@
+cmd: gst-launch-1.0 -v filesrc location=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/urban_street.mp4 ! qtdemux ! h264parse ! avdec_h264 max-threads=0 ! fakesink name=sink sync=false silent=false num-buffers=3000
+/GstPipeline:pipeline0/GstH264Parse:h264parse0.GstPad:sink: caps = video/x-h264, stream-format=(string)avc, alignment=(string)au, level=(string)3.1, profile=(string)main, codec_data=(buffer)014d401fffe1001c674d401fe8802802dd80b501010140000003004000000f03c60c448001000468ebef20, width=(int)1280, height=(int)720, framerate=(fraction)30/1, pixel-aspect-ratio=(fraction)1/1
+/GstPipeline:pipeline0/GstH264Parse:h264parse0.GstPad:src: caps = video/x-h264, stream-format=(string)avc, alignment=(string)au, level=(string)3.1, profile=(string)main, codec_data=(buffer)014d401fffe1001c674d401fe8802802dd80b501010140000003004000000f03c60c448001000468ebef20, width=(int)1280, height=(int)720, framerate=(fraction)30/1, pixel-aspect-ratio=(fraction)1/1, coded-picture-structure=(string)frame, chroma-format=(string)4:2:0, bit-depth-luma=(uint)8, bit-depth-chroma=(uint)8, colorimetry=(string)bt709, parsed=(boolean)true, lcevc=(boolean)false
+/GstPipeline:pipeline0/avdec_h264:avdec_h264-0.GstPad:sink: caps = video/x-h264, stream-format=(string)avc, alignment=(string)au, level=(string)3.1, profile=(string)main, codec_data=(buffer)014d401fffe1001c674d401fe8802802dd80b501010140000003004000000f03c60c448001000468ebef20, width=(int)1280, height=(int)720, framerate=(fraction)30/1, pixel-aspect-ratio=(fraction)1/1, coded-picture-structure=(string)frame, chroma-format=(string)4:2:0, bit-depth-luma=(uint)8, bit-depth-chroma=(uint)8, colorimetry=(string)bt709, parsed=(boolean)true, lcevc=(boolean)false
+/GstPipeline:pipeline0/avdec_h264:avdec_h264-0.GstPad:src: caps = video/x-raw, format=(string)I420, width=(int)1280, height=(int)720, interlace-mode=(string)progressive, pixel-aspect-ratio=(fraction)1/1, chroma-site=(string)mpeg2, colorimetry=(string)bt709, framerate=(fraction)30/1
+/GstPipeline:pipeline0/GstFakeSink:sink.GstPad:sink: caps = video/x-raw, format=(string)I420, width=(int)1280, height=(int)720, interlace-mode=(string)progressive, pixel-aspect-ratio=(fraction)1/1, chroma-site=(string)mpeg2, colorimetry=(string)bt709, framerate=(fraction)30/1
+Got EOS from element "pipeline0".
+Execution ended after 0:00:07.377206832
+--- tail ---
+/GstPipeline:pipeline0/GstFakeSink:sink.GstPad:sink: caps = video/x-raw, format=(string)I420, width=(int)1280, height=(int)720, interlace-mode=(string)progressive, pixel-aspect-ratio=(fraction)1/1, chroma-site=(string)mpeg2, colorimetry=(string)bt709, framerate=(fraction)30/1
+Redistribute latency...
+Pipeline is PREROLLED ...
+Setting pipeline to PLAYING ...
+Redistribute latency...
+New clock: GstSystemClock
+Got EOS from element "pipeline0".
+Execution ended after 0:00:07.377206832
+Setting pipeline to NULL ...
+Freeing pipeline ...
+frames=3000 expected=3000 rc=0 wall=7.495 user=21.482 sys=0.651 maxrss_kb=95152

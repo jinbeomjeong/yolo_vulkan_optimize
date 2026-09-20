@@ -1,0 +1,25 @@
+Running streaming inference (yolov11m.hef):
+  Transform data: true
+    Type:      auto
+    Quantized: true
+[F[2K
+[F[2K
+[F[2K
+[F[2K
+[F[2K
+[F[2K
+[F[2K
+[F[2K
+[F[2K
+[F[2K
+[F[2K
+[F[2K
+[F[2K
+[F[2K
+[2K
+> Inference result:
+ Network group: yolov11m
+    Frames count: 392
+    HW Latency: 247.60 ms
+    Overall Latency: 286.64 ms
+

@@ -1,0 +1,11 @@
+# raw_runner_backpressure bench 2026-09-20T20:40:59+09:00
+kernel: 6.18.50+rpt-rpi-2712
+soc temp: 64.2 C, hailo temp: 55.5 C
+throttled=0xe0000
+frequency(0)=2400017408
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/01_src/pipeline/yvo_pipeline
+bin md5: 0d9d829d69662e32624617ec676a66f5
+bin mtime: 2026-09-20 20:34:33.229957017 +0900
+Firmware Version: 4.24.0 (release,app,extended context switch buffer)
+video: /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 frames: 900 runs: 3

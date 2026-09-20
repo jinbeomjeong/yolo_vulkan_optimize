@@ -1,0 +1,30 @@
+== probe overlay (P7) ==
+
+-- ① 박스 테두리 (CPU 기준과 비트 일치, 1920x1080, 검출 80개) --
+line_width 1 : max_err 0  diff_px 0  변경 px 46560 (CPU 46560)  PASS
+line_width 2 : max_err 0  diff_px 0  변경 px 92480 (CPU 92480)  PASS
+line_width 3 : max_err 0  diff_px 0  변경 px 137760 (CPU 137760)  PASS
+
+-- ② 글리프 (라벨 + HUD, CPU 기준과 비트 일치) --
+text_scale 1 : 라벨 max_err 0 diff_px 0 (변경 px 28027) | HUD ASCII 32~126 max_err 0 diff_px 0 (변경 px 2750)  PASS
+text_scale 2 : 라벨 max_err 0 diff_px 0 (변경 px 39820) | HUD ASCII 32~126 max_err 0 diff_px 0 (변경 px 11000)  PASS
+
+-- ③ GPU timestamp (오프스크린 연속 스트림 300프레임, depth 3, local_size_x=128) --
+size         dets   text  lw       median      p90      min      max         px    ns/px
+1920x1080    80     on    2         1.235    1.362    1.115    4.685     180754     6.83
+1920x1080    80     off   2         0.628    0.723    0.534    1.068      92480     6.79
+1920x1080    40     on    2         0.711    1.165    0.606    1.698      91772     7.75
+1920x1080    5      on    2         0.164    0.261    0.152    0.459      16856     9.73
+1920x1080    0      on    2         0.054    0.070    0.041    0.390       1608    33.46
+640x640      80     on    2         0.959    1.076    0.933    1.806      87977    10.90
+640x640      40     on    2         0.527    0.630    0.507    1.069      44653    11.81
+640x640      5      on    2         0.147    0.158    0.116    0.286      10676    13.76
+
+검출 80개(1080p, 텍스트 on) median = 1.235 ms  기준 < 0.7 ms → FAIL
+검출 5개(실측 평균 5.21/frame) median = 0.164 ms
+참고: display_convert.comp 의 순차 쓰기 최적치는 2.05 ns/px 다(1920x1080 1:1, 4.23 ms).
+      오버레이는 얇은 테두리·글리프를 흩뿌려 쓰므로 px 당 비용이 그보다 높다.
+
+vk validation errors 0 warnings 0 (layer on)
+
+판정: ① 테두리 PASS  ② 글리프 PASS  ③ GPU < 0.7 ms FAIL  ④ 검증 errors 0 PASS

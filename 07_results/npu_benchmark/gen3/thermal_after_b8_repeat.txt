@@ -1,0 +1,4 @@
+2026-09-20T00:28:35+09:00
+temp=67.5'C
+throttled=0x0
+link: 8.0 GT/s PCIe x1

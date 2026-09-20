@@ -1,0 +1,23 @@
+# 빌드 산출물
+build/
+build-asan/
+*.spv
+*.spv.d
+__pycache__/
+
+# 런타임 로그 — HailoRT 가 CWD 에 떨어뜨리는 잔재만 제외한다.
+#   07_results/**/hailort*.log(159개, 2 MB)는 측정 신뢰성 판정의 근거이므로 추적한다
+#   (measure 스킬 4단계: 온도·클럭 경고가 있으면 그 실행은 신뢰 불가).
+/hailort.log
+/pyhailort.log
+10_logs/
+
+# 대용량 자산 — 저장소 밖에서 관리한다
+04_data/videos/*.mp4
+03_models/*.hef
+# P1 원시 텐서 픽스처 (raw probe 도구가 생성, 약 6 MB)
+04_data/raw_tensors/
+
+# perf 원시 바이너리 덤프 (약 3.9 MB). 어느 문서도 인용하지 않는다 —
+# 분석 결과는 같은 폴더의 perf_*.txt 로 남는다.
+*.data

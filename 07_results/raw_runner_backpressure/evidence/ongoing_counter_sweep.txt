@@ -1,0 +1,24 @@
+# ongoing_callbacks 의미론 실측 (evidence/ongoing_probe.cpp)
+# 2026-09-20, Hailo-8, HailoRT 4.24.0, PCIe 8.0 GT/s x1 (Gen3), yolov11m.hef, batch 2,
+# 호스트 malloc 버퍼(16 KB 정렬), 워밍업 20 + 측정 200 프레임, slots 8 고정.
+# peak_inflight = 제출 스레드가 관측한 동시 비행 프레임 수의 최댓값.
+#
+# 명령: ./ongoing_probe --hef 03_models/yolov11m.hef --manual {0|1} --threshold K --slots 8 --batch 2 --frames 200
+
+RESULT manual=1 threshold=4 slots=8 batch=2 frames=200 peak_inflight=2 fps=24.58
+RESULT manual=0 threshold=4 slots=8 batch=2 frames=200 peak_inflight=4 fps=34.90
+RESULT manual=1 threshold=8 slots=8 batch=2 frames=200 peak_inflight=4 fps=34.90
+RESULT manual=0 threshold=2 slots=8 batch=2 frames=200 peak_inflight=2 fps=24.50
+RESULT manual=0 threshold=8 slots=8 batch=2 frames=200 peak_inflight=8 fps=34.90
+
+## 해석
+manual=0 (수동 increase/decrease 없음): peak = threshold  (2→2, 4→4, 8→8)
+  → infer_async() 가 요청당 **1** 을 스스로 센다. 프레임당 증가량 = 1.
+manual=1 (수동 쌍 있음)               : peak = floor((threshold-1)/2)+1  (4→2, 8→4)
+  → 프레임당 증가량 = **2** (내부 1 + 수동 1). 백프레셔 상한이 정확히 절반이 된다.
+slots=8 인데 threshold=2 에서 peak 가 2 로 묶인 것이 수동 쌍 없이도 백프레셔가 동작한다는 증거다.
+
+## libhailort 4.24.0 디스어셈블 대조 (objdump, /usr/lib/libhailort.so.4.24.0)
+increase_ongoing_callbacks            @0x292038 : this+0x38 (m_ongoing_transfers) 에 ldaxr/add #1/stlxr
+wait_for_ongoing_callbacks_count_under@0x291e10 : ldar this+0x38 → cmp threshold, count → b.hi
+  즉 술어는 strict "count < threshold" 다.

@@ -1,0 +1,28 @@
+Internal ctest changing into directory: /home/pi/workspace/yolo_vulkan_optimize/build
+Test project /home/pi/workspace/yolo_vulkan_optimize/build
+      Start  1: Frames/PreprocTest.MatchesCpuReference/frame0  # GetParam() = 0
+ 1/11 Test  #1: Frames/PreprocTest.MatchesCpuReference/frame0  # GetParam() = 0 .............   Passed    5.15 sec
+      Start  2: Frames/PreprocTest.MatchesCpuReference/frame100  # GetParam() = 100
+ 2/11 Test  #2: Frames/PreprocTest.MatchesCpuReference/frame100  # GetParam() = 100 .........   Passed    5.15 sec
+      Start  3: Frames/PreprocTest.MatchesCpuReference/frame500  # GetParam() = 500
+ 3/11 Test  #3: Frames/PreprocTest.MatchesCpuReference/frame500  # GetParam() = 500 .........   Passed    5.17 sec
+      Start  4: Frames/PreprocTest.MatchesCpuReference/frame900  # GetParam() = 900
+ 4/11 Test  #4: Frames/PreprocTest.MatchesCpuReference/frame900  # GetParam() = 900 .........   Passed    5.17 sec
+      Start  5: Frames/PreprocTest.MatchesCpuReference/frame1815  # GetParam() = 1815
+ 5/11 Test  #5: Frames/PreprocTest.MatchesCpuReference/frame1815  # GetParam() = 1815 .......   Passed    5.15 sec
+      Start  6: Frames/PreprocTest.NhcwMatchesCpuReference/frame0  # GetParam() = 0
+ 6/11 Test  #6: Frames/PreprocTest.NhcwMatchesCpuReference/frame0  # GetParam() = 0 .........   Passed    5.18 sec
+      Start  7: Frames/PreprocTest.NhcwMatchesCpuReference/frame100  # GetParam() = 100
+ 7/11 Test  #7: Frames/PreprocTest.NhcwMatchesCpuReference/frame100  # GetParam() = 100 .....   Passed    5.13 sec
+      Start  8: Frames/PreprocTest.NhcwMatchesCpuReference/frame500  # GetParam() = 500
+ 8/11 Test  #8: Frames/PreprocTest.NhcwMatchesCpuReference/frame500  # GetParam() = 500 .....   Passed    5.11 sec
+      Start  9: Frames/PreprocTest.NhcwMatchesCpuReference/frame900  # GetParam() = 900
+ 9/11 Test  #9: Frames/PreprocTest.NhcwMatchesCpuReference/frame900  # GetParam() = 900 .....   Passed    5.11 sec
+      Start 10: Frames/PreprocTest.NhcwMatchesCpuReference/frame1815  # GetParam() = 1815
+10/11 Test #10: Frames/PreprocTest.NhcwMatchesCpuReference/frame1815  # GetParam() = 1815 ...   Passed    5.15 sec
+      Start 11: test_detections
+11/11 Test #11: test_detections .............................................................   Passed   18.81 sec
+
+100% tests passed, 0 tests failed out of 11
+
+Total Test time (real) =  70.29 sec

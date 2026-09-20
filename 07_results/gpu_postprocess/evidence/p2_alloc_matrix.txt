@@ -1,0 +1,41 @@
+# P2-④ size 인자 4조합 전수 시도 (계획서 §4.2)
+# pcie=8.0 GT/s PCIe x1 hef=03_models/yolov11m.hef
+# 한 셀: slots=2, frames=2. bytes 는 --alloc malloc 결과와의 바이트 단위 비교다.
+# hw_frame_size = 512000/409600/128000/102400/38400/30720,  dmabuf_size = 그것을 16384로 올림
+
+alloc   api           dma_map size   read_async size  map_status                  issue  cb/fail  bytes      판정
+------  ------------  -------------  ---------------  --------------------------  -----  -------  ---------  ----
+heap    infer_async   hw_frame_size  hw_frame_size    HAILO_SUCCESS(0)            ok      14/0     2/2       PASS
+heap    infer_async   hw_frame_size  dmabuf_size      HAILO_SUCCESS(0)            lost     6/6     0/0       FAIL
+        error: drain 시한 초과: 제출한 프레임의 콜백이 오지 않았다
+heap    infer_async   dmabuf_size    hw_frame_size    HAILO_SUCCESS(0)            ok      14/0     2/2       PASS
+heap    infer_async   dmabuf_size    dmabuf_size      HAILO_SUCCESS(0)            lost     6/6     0/0       FAIL
+        error: drain 시한 초과: 제출한 프레임의 콜백이 오지 않았다
+heap    read_async    hw_frame_size  hw_frame_size    HAILO_SUCCESS(0)            ok      14/0     2/2       PASS
+heap    read_async    hw_frame_size  dmabuf_size      HAILO_SUCCESS(0)            FAIL     7/6     0/0       FAIL
+        error: HailoRT 실패: OutputStream::read_async -> HAILO_STREAM_ABORT(63)
+heap    read_async    dmabuf_size    hw_frame_size    HAILO_SUCCESS(0)            ok      14/0     2/2       PASS
+heap    read_async    dmabuf_size    dmabuf_size      HAILO_SUCCESS(0)            FAIL     7/6     0/0       FAIL
+        error: HailoRT 실패: OutputStream::read_async -> HAILO_STREAM_ABORT(63)
+vulkan  infer_async   hw_frame_size  hw_frame_size    HAILO_SUCCESS(0)            ok      14/0     2/2       PASS
+vulkan  infer_async   hw_frame_size  dmabuf_size      HAILO_SUCCESS(0)            lost     6/6     0/0       FAIL
+        error: drain 시한 초과: 제출한 프레임의 콜백이 오지 않았다
+vulkan  infer_async   dmabuf_size    hw_frame_size    HAILO_SUCCESS(0)            ok      14/0     2/2       PASS
+vulkan  infer_async   dmabuf_size    dmabuf_size      HAILO_SUCCESS(0)            lost     6/6     0/0       FAIL
+        error: drain 시한 초과: 제출한 프레임의 콜백이 오지 않았다
+vulkan  read_async    hw_frame_size  hw_frame_size    HAILO_SUCCESS(0)            ok      14/0     2/2       PASS
+vulkan  read_async    hw_frame_size  dmabuf_size      HAILO_SUCCESS(0)            FAIL     7/6     0/0       FAIL
+        error: HailoRT 실패: OutputStream::read_async -> HAILO_STREAM_ABORT(63)
+vulkan  read_async    dmabuf_size    hw_frame_size    HAILO_SUCCESS(0)            ok      14/0     2/2       PASS
+vulkan  read_async    dmabuf_size    dmabuf_size      HAILO_SUCCESS(0)            FAIL     7/6     0/0       FAIL
+        error: HailoRT 실패: OutputStream::read_async -> HAILO_STREAM_ABORT(63)
+
+# 이 단계에서 hailort.log 에 찍힌 error 8건은 **의도된** 크기 불일치 거부다
+
+[선택] dma_map=dmabuf_size read_async=hw_frame_size (통과 조합 8 / 전체 16)
+  tensor 0: hw_frame_size=30720
+  tensor 1: hw_frame_size=38400
+  tensor 2: hw_frame_size=409600
+  tensor 3: hw_frame_size=512000
+  tensor 4: hw_frame_size=102400
+  tensor 5: hw_frame_size=128000

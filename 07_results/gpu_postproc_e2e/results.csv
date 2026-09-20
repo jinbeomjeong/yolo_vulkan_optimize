@@ -1,0 +1,5 @@
+id,postproc,batch,slots,runs,fps_median,fps_min,fps_max,cpu_ms_per_frame_median,npu_ms_mean_median,e2e_ms_mean_median,gpu_ms_mean_median,detections,gpu_post_mean_median,gpu_post_p90_median,cpu_nms_us_mean_median,cand_mean,cand_max,cand_overflow,hailort_warnings,hailort_errors,all_ok
+host_b2s4,host,2,4,3,34.98,34.98,35.01,3.338,111.49,142.14,2.209,3369,0.0000,0.0000,0.000,0.00,0,0,0,0,1
+gpu_b2s4,gpu,2,4,3,24.48,24.46,24.55,1.282,81.62,183.30,2.117,3369,0.6347,0.7263,2.713,16.81,45,0,0,0,1
+host_b8s16,host,8,16,3,51.55,51.54,51.55,3.140,301.43,325.24,2.670,3369,0.0000,0.0000,0.000,0.00,0,0,0,0,1
+gpu_b8s16,gpu,8,16,3,49.66,49.65,49.67,1.161,159.68,283.33,2.197,3369,1.1762,4.0423,2.208,16.81,45,0,0,0,1

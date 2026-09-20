@@ -1,0 +1,10 @@
+[ RUN      ] DetectionsTest.GpuPtrMatchesCpu
+[gpu_ptr] frames 100, detections cpu 203 / gpu_ptr 203, matched 203, ratio 1.0000, preproc bit-identical 100/100
+[       OK ] DetectionsTest.GpuPtrMatchesCpu (0 ms)
+[ RUN      ] DetectionsTest.GpuDmabufMatchesCpu
+[gpu_dmabuf] frames 100, detections cpu 203 / gpu_dmabuf 203, matched 203, ratio 1.0000, preproc bit-identical 100/100
+[       OK ] DetectionsTest.GpuDmabufMatchesCpu (0 ms)
+[ RUN      ] DetectionsTest.GpuDmabufNhcwMatchesCpu
+[gpu_dmabuf_nhcw] frames 100, detections cpu 203 / gpu_dmabuf_nhcw 203, matched 203, ratio 1.0000, preproc bit-identical 100/100
+[       OK ] DetectionsTest.GpuDmabufNhcwMatchesCpu (0 ms)
+[  PASSED  ] 3 tests.

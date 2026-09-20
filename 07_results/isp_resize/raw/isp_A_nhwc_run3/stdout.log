@@ -1,0 +1,31 @@
+[hevc @ 0x555636b2db10] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[hevc @ 0x555636e4bb60] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+config: slots=4 buffers=12 repack=none warmup=60 video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4
+variant            : BCM2712_D0 (hw_revision 0x2252701)
+media device       : /dev/media0 (open)
+output node        : pispbe-output1 (branch 1)
+bayer_enables      : 0x0
+rgb_enables        : 0x92003  (INPUT|CCM|DOWNSCALE1|RESAMPLE1|OUTPUT1 expected)
+colour space (ccm) : rec709  coeffs 1192 0 1836 1192 -218 -546 1192 2163 0  offsets -65031074 20151458 -75768630
+input format       : 1920x1088 fmt 0x60000210 stride 139264 stride2 69632 (SAND cols 15)
+input plane sizes  : y 2088960 uv 1044480
+crop[1]            : (0,0) 1920x1080
+downscale          : scale_factor (8192,8192) recip (2048,2048)
+resample           : scale_factor (6147,6149)  filter: smart selection
+output format      : 640x640 fmt 0x40000000 stride 1920  (content 640x360)
+letterbox          : offset (0,140) scale 0.333333 pad_value 114
+output buffer      : 640x640x3 = 1228800 B, node sizeimage 1228800
+slots / buffers    : 4 slots, 12 V4L2 buffers per node
+num_tiles          : 4
+  tile 0: input (0,0) 600x1088 -> output (0,0) 192x360
+  tile 1: input (556,0) 620x1088 -> output (192,0) 192x360
+  tile 2: input (1132,0) 620x1088 -> output (384,0) 192x360
+  tile 3: input (1708,0) 212x1088 -> output (576,0) 64x360
+output dma-buf fds : 37 54 55 56
+input cache        : 0 entries, 0 imports, 0 hits
+[decode+isp] frames=1756 (of 1816, warmup 60) wall=5.792 s fps=303.17 cpu=0.422 ms/frame (total 742 ms)
+[decode+isp] isp ms (wall): median=1.566 p90=1.693 mean=1.624 min=1.519 max=3.232 (n=1756)
+RESULT_CSV,isp_A_nhwc,isp,none,4,1756,5.792,303.17,0.422,1.566,1.693,1.624,1.519,3.232,0.000,0.000,0.000,1756,1
+host read of ISP output (1228800 B, cached dma-heap): memcpy median=0.233 ms p90=0.291 | dma-buf sync median=0.021 ms
+repack(cpu ): from dma-buf median=0.134 ms | from warm malloc copy median=0.115 ms
+repack(neon): from dma-buf median=0.119 ms | from warm malloc copy median=0.108 ms

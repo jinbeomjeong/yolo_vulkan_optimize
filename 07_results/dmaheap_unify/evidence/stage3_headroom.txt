@@ -1,0 +1,116 @@
+부록 B 3단계 — B.12 헤드룸 (상수를 박지 않고 질의한다)
+실행일: 2026-09-20
+드라이버: V3D 7.1.10.2 (Mesa 26.2.2 계열), Vulkan 레지스트리 1.4.309 (commit 43d153dd)
+증거 원본: p0_heapimport.txt(전) / stage3_headroom_probe.txt(후)
+
+════════════════════════════════════════════════════════════════════════════════
+1. 절차 (01_src/vulkan/vk_storage_headroom.hpp)
+════════════════════════════════════════════════════════════════════════════════
+
+  1) 더미 VkBuffer 생성
+       size        = requested
+       usage       = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+       pNext       = VkExternalMemoryBufferCreateInfo{ handleTypes = DMA_BUF_BIT_EXT }
+  2) vkGetBufferMemoryRequirements2()  →  req.size, req.alignment
+  3) headroom = req.size - requested          (0 이하면 0)
+  4) vkDestroyBuffer (할당하지 않는다)
+
+  → DmaHeapConfig::device_headroom 에 주입
+  → DmaHeapPool::allocate() 가 align_up(requested + device_headroom, 16384) 로 잡는다
+  → DmaBufImportCache::get(fd, dmabuf_size, min_range = hw) 가 range < hw 면 **예외**
+
+  StorageHeadroomQuery 가 크기별로 memoize 한다(같은 크기를 두 번 묻지 않는다).
+  DmaHeapConfig 는 풀 하나에 값 하나라, 여러 크기를 담는 풀에는 max_headroom() 을 넣는다.
+  과할당은 안전하다: V3D 는 requiresDedicatedAllocation = prefersDedicatedAllocation = 0 이라
+  dmabuf_import.cpp 가 VkMemoryDedicatedAllocateInfo 를 붙이지 않고,
+  따라서 VUID-VkMemoryDedicatedAllocateInfo-buffer-02965("allocationSize must equal the
+  VkMemoryRequirements::size of the buffer")가 적용되지 않는다.
+
+  실측 질의 결과: 6텐서 전부 headroom = **256 B**, req.alignment = **256 B**.
+  크기와 무관한 상수다(P0 의 관측과 일치). **코드에는 상수 256 이 없다.**
+
+════════════════════════════════════════════════════════════════════════════════
+2. 갈아끼우기 전후 대조 (6텐서 전수)
+════════════════════════════════════════════════════════════════════════════════
+
+전(P0, 1단계): heap 할당 = align_up(hw, 16384)                     ← 헤드룸 없음
+후(3단계)    : heap 할당 = align_up(hw + headroom(256), 16384)
+
+텐서          hw        | 전 dmabuf  전 range   range>=hw | 후 dmabuf  후 range   range>=hw | 크기 변화
+------------- ----------+-----------------------------------+-----------------------------------+----------
+conv102_178      30,720 |    32,768     32,512   예 (+1,792)|    32,768     32,512   예 (+1,792)|      0
+conv105_178      38,400 |    49,152     48,896   예(+10,496)|    49,152     48,896   예(+10,496)|      0
+conv71_178      409,600 |   409,600    409,344  **아니오**  |   425,984    425,728   예(+16,128)| +16,384
+                        |                        (-256, 실데이터 손실)                         |
+conv74_178      512,000 |   524,288    524,032   예(+12,032)|   524,288    524,032   예(+12,032)|      0
+conv87_178      102,400 |   114,688    114,432   예(+12,032)|   114,688    114,432   예(+12,032)|      0
+conv90_178      128,000 |   131,072    130,816   예 (+2,816)|   131,072    130,816   예 (+2,816)|      0
+------------- ----------+-----------------------------------+-----------------------------------+----------
+합계                    | 1,261,568                         | 1,277,952                         | +16,384
+
+판정 요약 줄
+  전: [요약] import 6/6 · 왕복 일치 6/6 · range<size 6 · mmap 미정렬 0 · 검증레이어 errors 0
+      [S1 판정] 조건부 합격 — range < size. B.12 헤드룸 필요
+      conv71_178 만 "***** hw 를 잘라먹는다 *****" 를 찍었다
+  후: [요약] import 6/6 · **range >= hw 6/6** · 왕복 일치 6/6 · range<size 6 · mmap 미정렬 0
+            · 검증레이어 errors 0
+      [S1/S4 판정] 합격 — 6/6 range >= hw (헤드룸 적용), 왕복 일치. range < size 는 설계대로다
+      **"hw 를 잘라먹는다" 0건.** [RESULT] heapimport PASS
+
+  예측과 실측: B.17 이 계산으로 내놓은 값이 align_up(409600+256, 16384) = 425,984 B → range 425,728 이었다.
+  실측이 정확히 그 값이다.
+
+  range < size 가 6/6 인 것은 **정상**이다 — V3DV 의 -256 B 축소는 그대로 일어나지만,
+  헤드룸을 미리 더해 잡았으므로 축소된 range 가 hw 를 침범하지 않는다. 판정 기준을
+  "range >= hw"(실데이터를 덮는가)로 바꿨다. 이것이 3단계의 게이트다(S4).
+
+  비용: +16,384 B. 슬롯당 heap 합계 1,261,568 → 1,277,952 B.
+  vulkan export 경로(1,359,872 B) 대비 여전히 -81,920 B/슬롯이다(B.12 의 "-80 KB/슬롯" 정정과 일치).
+
+════════════════════════════════════════════════════════════════════════════════
+3. 강제 검증 (조용히 넘어가지 않는다)
+════════════════════════════════════════════════════════════════════════════════
+
+  DmaBufImportCache::get(fd, size, min_range) 는 min_range > 0 일 때
+  range < min_range 면 std::runtime_error 를 던진다. 새 import 경로와 **캐시 적중 경로 양쪽**에서 검사한다.
+  메시지에 range / 요청 데이터 / dma-buf 크기와 "헤드룸을 더해야 한다"는 조치를 담는다.
+  프로브는 min_range = hw_frame_size 를 넘긴다.
+  → 헤드룸을 빼면 conv71_178 에서 즉시 예외가 난다(전 상태의 range 409,344 < hw 409,600).
+
+════════════════════════════════════════════════════════════════════════════════
+4. 공통 관측값 (전·후 동일)
+════════════════════════════════════════════════════════════════════════════════
+
+  VkMemoryFdPropertiesKHR::memoryTypeBits        0x00000001   6/6
+  vkAllocateMemory                               VK_SUCCESS   6/6
+  requiresDedicatedAllocation                    0            6/6
+  prefersDedicatedAllocation                     0            6/6
+  req.alignment                                  256 B        6/6
+  mmap 16384 정렬                                예           6/6
+  DMA_BUF_IOCTL_SYNC START|WRITE / END|WRITE     0 / 0        6/6
+  왕복 CPU 바이트 합 == GPU(heap_sum.comp) 합    일치         6/6
+  힙                                             /dev/dma_heap/vidbuf_cached (= system 심볼릭 링크)
+  import 캐시                                    imports=6 hits=0
+  fd 누수                                        0 (진입 7 · 기준선 14 · 종료 14)
+  검증 레이어(--validation --sync-validation)    errors 0
+
+════════════════════════════════════════════════════════════════════════════════
+5. 음성 대조 — 강제 검증이 실제로 터지는가 (--no-headroom)
+════════════════════════════════════════════════════════════════════════════════
+
+  yvo_postproc_probe --probe heapimport --no-headroom
+  (질의는 그대로 하되 device_headroom 만 0 으로 강제 → 1단계와 같은 할당 크기가 된다)
+
+  [headroom] 질의 6회 → 질의값 256 B (req.alignment = 256 B)
+             **--no-headroom: 0 으로 강제(음성 대조)**. 할당 크기 = align_up(hw + 0, 16384)
+  [conv71_178] hw=409600 headroom=0 want=409600 dmabuf=409600  mmap 16384정렬=예
+      !! 실패: DmaBufImportCache: VkBuffer range 409344 B < 요청 데이터 409600 B
+               (dma-buf 409600 B). 할당 때 드라이버 헤드룸을 더해야 한다
+               (vulkan/vk_storage_headroom.hpp → DmaHeapConfig::device_headroom)
+  [요약] import 5/6 · range >= hw 5/6 · 왕복 일치 5/6
+  [S1/S4 판정] 불합격 — **--no-headroom 음성 대조**. 헤드룸 없이는 range < hw 로 터진다(기대한 결과)
+  [RESULT] heapimport FAIL
+
+  → 강제 검증이 **conv71_178 에서만, 정확히** 발동한다. 조용히 넘어가지 않는다.
+  → 나머지 5텐서는 여유가 있어 통과한다(거짓 양성 없음).
+  원본: stage3_headroom_negative_control.txt

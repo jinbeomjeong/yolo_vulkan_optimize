@@ -1,0 +1,18 @@
+# isp_pipeline_bench 2026-09-20T15:15:57+09:00
+kernel: 6.18.50+rpt-rpi-2712
+model: Raspberry Pi Compute Module 5 Rev 1.0
+soc temp: 64.8 C, hailo temp: 63.3 C
+throttled: 0xe0000  (0x80000 = 과거 기록 비트)
+frequency(0)=1600013696
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+hef: /home/pi/workspace/yolo_vulkan_optimize/03_models/yolov11m.hef
+libpisp: 1.7.0
+video: /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 frames: 0 runs: 3
+src tree md5 (before): 561710fe46ef7d68282cdda3c3f1e4e7
+src newest (before): 15:14:43.0105833480 /home/pi/workspace/yolo_vulkan_optimize/01_src/vulkan/tools/postproc_probe.cpp
+# after 2026-09-20T15:32:38+09:00
+soc temp: 68.1 C, hailo temp: 81.0 C
+throttled: 0xe0000
+src tree md5 (after): 561710fe46ef7d68282cdda3c3f1e4e7
+src newest (after): 15:14:43.0105833480 /home/pi/workspace/yolo_vulkan_optimize/01_src/vulkan/tools/postproc_probe.cpp
+오염 점검: 01_src/·02_shaders/ 변경 없음 (md5 일치)

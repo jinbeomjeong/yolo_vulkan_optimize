@@ -1,0 +1,11 @@
+# (B)안 폐기 증거: InferModel 유지안으로 원시(NHCW) 출력을 받을 수 있는가
+# 기대: 출력 vstream이 yolov8_nms_postprocess 하나뿐이고, 여기에 NHCW format order를
+#       걸면 configure()가 실패한다 (계획서 §4.1).
+
+infer_model->inputs().size()  = 1
+infer_model->outputs().size() = 1
+  output "yolov11m/yolov8_nms_postprocess" order=HAILO_NMS_BY_CLASS type=FLOAT32 is_nms=1 frame_size=160320
+
+set_format_order(HAILO_FORMAT_ORDER_NHCW) 후 configure():
+  configure() 실패 status = HAILO_INVALID_ARGUMENT(2)
+  → 출력 vstream은 NMS 하나뿐이고 post-process를 끌 수 없다. (B)안 폐기 확정.

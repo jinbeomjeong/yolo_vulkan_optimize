@@ -1,0 +1,982 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:y="http://www.yworks.com/xml/graphml" xmlns:yed="http://www.yworks.com/xml/yed/3" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://www.yworks.com/xml/schema/graphml/1.1/ygraphml.xsd">
+  <key for="graphml" id="d0" yfiles.type="resources"/>
+  <key for="port" id="d1" yfiles.type="portgraphics"/>
+  <key for="port" id="d2" yfiles.type="portgeometry"/>
+  <key for="port" id="d3" yfiles.type="portuserdata"/>
+  <key attr.name="url" attr.type="string" for="node" id="d4"/>
+  <key attr.name="description" attr.type="string" for="node" id="d5"/>
+  <key for="node" id="d6" yfiles.type="nodegraphics"/>
+  <key attr.name="url" attr.type="string" for="edge" id="d7"/>
+  <key attr.name="description" attr.type="string" for="edge" id="d8"/>
+  <key for="edge" id="d9" yfiles.type="edgegraphics"/>
+  <graph edgedefault="directed" id="G">
+    <node id="n0" yfiles.foldertype="group">
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/infer_stage.hpp:9-17 'VkQueue 는 외부 동기화 객체이고 이 프로젝트에는 큐가 하나뿐이다 → Vulkan 을 만지는 일은 전부 메인 스레드에서만 한다. 새 스레드를 만들지 않는다.'</data>
+      <data key="d6">
+        <y:ProxyAutoBoundsNode>
+          <y:Realizers active="0">
+            <y:GroupNode>
+              <y:Geometry height="707.0" width="540.0" x="100.0" y="75.0"/>
+              <y:Fill color="#DDE6F5" transparent="false"/>
+              <y:BorderStyle color="#000000" type="line" width="1.0"/>
+              <y:NodeLabel alignment="right" autoSizePolicy="node_width" backgroundColor="#404040" borderDistance="0.0" fontFamily="Dialog" fontSize="14" fontStyle="bold" hasLineColor="false" height="22.0" modelName="internal" modelPosition="t" textColor="#FFFFFF" visible="true" width="480.16" x="0.0" y="0.0">메인 스레드 — VkQueue 1개, 모든 Vulkan 호출이 여기서만 일어난다</y:NodeLabel>
+              <y:Shape type="roundrectangle"/>
+              <y:State closed="false" closedHeight="80.0" closedWidth="140.0" innerGraphDisplayEnabled="true"/>
+              <y:Insets bottom="15" bottomF="15.0" left="15" leftF="15.0" right="15" rightF="15.0" top="15" topF="15.0"/>
+              <y:BorderInsets bottom="0" bottomF="0.0" left="0" leftF="0.0" right="0" rightF="0.0" top="0" topF="0.0"/>
+            </y:GroupNode>
+            <y:GroupNode>
+              <y:Geometry height="80.0" width="140.0" x="100.0" y="75.0"/>
+              <y:Fill color="#DDE6F5" transparent="false"/>
+              <y:BorderStyle color="#000000" type="line" width="1.0"/>
+              <y:NodeLabel alignment="right" autoSizePolicy="node_width" backgroundColor="#404040" borderDistance="0.0" fontFamily="Dialog" fontSize="14" fontStyle="bold" hasLineColor="false" height="22.0" modelName="internal" modelPosition="t" textColor="#FFFFFF" visible="true" width="140.0" x="0.0" y="0.0">메인 스레드 — VkQueue 1개, 모든 Vulkan 호출이 여기서만 일어난다</y:NodeLabel>
+              <y:Shape type="roundrectangle"/>
+              <y:State closed="true" closedHeight="80.0" closedWidth="140.0" innerGraphDisplayEnabled="true"/>
+              <y:Insets bottom="15" bottomF="15.0" left="15" leftF="15.0" right="15" rightF="15.0" top="15" topF="15.0"/>
+              <y:BorderInsets bottom="0" bottomF="0.0" left="0" leftF="0.0" right="0" rightF="0.0" top="0" topF="0.0"/>
+            </y:GroupNode>
+          </y:Realizers>
+        </y:ProxyAutoBoundsNode>
+      </data>
+      <graph edgedefault="directed" id="n0:">
+      <node id="n0::n0">
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:1-34 '메인 스레드: 디코드 → 빈 슬롯 확보 → GPU submit → wait → HailoRT submit'. 출력 구조체는 01_src/common/frame_types.hpp struct DrmFrame.</data>
+        <data key="d6">
+          <y:GenericNode configuration="com.yworks.flowchart.process">
+            <y:Geometry height="54.0" width="480.0" x="130.0" y="120.0"/>
+            <y:Fill color="#E8EEF7" color2="#E8EEF7" transparent="false"/>
+            <y:BorderStyle color="#000000" type="line" width="1.0"/>
+            <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="30.84" modelName="custom" textColor="#000000" visible="true" width="301.84" x="89.08" y="11.58">av_read_frame / avcodec_receive_frame (DRM_PRIME)
+→ DrmFrame (fd, uv_fd, keepalive)<y:LabelModel>
+                <y:SmartNodeLabelModel distance="4.0"/>
+              </y:LabelModel>
+              <y:ModelParameter>
+                <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+              </y:ModelParameter>
+            </y:NodeLabel>
+          </y:GenericNode>
+        </data>
+      </node>
+      <node id="n0::n1">
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:1-34 '⚠ display_done 을 세우는 주체는 메인 스레드 자신이다. 그래서 빈 슬롯을 기다릴 때 블로킹하면 교착한다 — 슬롯 확보 루프는 acquire_poll + pump 로만 돌린다(acquire_wait 를 쓰지 않는다).' 이 누락으로 생긴 실제 교착 2건은 07_results/display_e2e/summary.md §5.</data>
+        <data key="d6">
+          <y:GenericNode configuration="com.yworks.flowchart.process">
+            <y:Geometry height="54.0" width="480.0" x="130.0" y="204.0"/>
+            <y:Fill color="#E8EEF7" color2="#E8EEF7" transparent="false"/>
+            <y:BorderStyle color="#000000" type="line" width="1.0"/>
+            <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="30.84" modelName="custom" textColor="#000000" visible="true" width="329.12" x="75.44" y="11.58">SlotExchange::acquire_poll(2 ms) + pump()
+⚠ acquire_wait 금지 — display_done 을 메인이 세워 교착<y:LabelModel>
+                <y:SmartNodeLabelModel distance="4.0"/>
+              </y:LabelModel>
+              <y:ModelParameter>
+                <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+              </y:ModelParameter>
+            </y:NodeLabel>
+          </y:GenericNode>
+        </data>
+      </node>
+      <node id="n0::n2">
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/sand_letterbox.comp 를 제출한다. VkQueue 가 하나뿐이라 vkQueueSubmit 은 메인 스레드 전용 (01_src/pipeline/infer_stage.hpp:9-17). GPU 동시 보유는 --gpu-depth(기본 3) 이하.</data>
+        <data key="d6">
+          <y:GenericNode configuration="com.yworks.flowchart.process">
+            <y:Geometry height="54.0" width="480.0" x="130.0" y="288.0"/>
+            <y:Fill color="#E8EEF7" color2="#E8EEF7" transparent="false"/>
+            <y:BorderStyle color="#000000" type="line" width="1.0"/>
+            <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="30.84" modelName="custom" textColor="#000000" visible="true" width="308.0" x="86.0" y="11.58">SandLetterbox::submit() / wait()   [vkQueueSubmit]
+펜스 완료 시 AVFrame keepalive 해제<y:LabelModel>
+                <y:SmartNodeLabelModel distance="4.0"/>
+              </y:LabelModel>
+              <y:ModelParameter>
+                <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+              </y:ModelParameter>
+            </y:NodeLabel>
+          </y:GenericNode>
+        </data>
+      </node>
+      <node id="n0::n3">
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/infer_stage.hpp:9-17 'submit(): 메인 스레드'. GpuPostprocStage::submit 구현은 01_src/pipeline/gpu_postproc_stage.cpp:126.</data>
+        <data key="d6">
+          <y:GenericNode configuration="com.yworks.flowchart.process">
+            <y:Geometry height="54.0" width="480.0" x="130.0" y="372.0"/>
+            <y:Fill color="#E8EEF7" color2="#E8EEF7" transparent="false"/>
+            <y:BorderStyle color="#000000" type="line" width="1.0"/>
+            <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="30.84" modelName="custom" textColor="#000000" visible="true" width="312.84" x="83.58" y="11.58">InferStage::submit() → HailoRawRunner::infer_async
+set_dma_buffer(NHCW export fd)<y:LabelModel>
+                <y:SmartNodeLabelModel distance="4.0"/>
+              </y:LabelModel>
+              <y:ModelParameter>
+                <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+              </y:ModelParameter>
+            </y:NodeLabel>
+          </y:GenericNode>
+        </data>
+      </node>
+      <node id="n0::n4">
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/gpu_postproc_stage.cpp GpuPostprocStage::push_ready_to_gpu(). main.cpp:1-34 '⚠ NPU 완료분을 GPU 로 미는 일도 메인 스레드가 한다 — VkQueue 가 하나뿐이라 vkQueueSubmit 을 다른 스레드에서 하면 안 되기 때문이다.'</data>
+        <data key="d6">
+          <y:GenericNode configuration="com.yworks.flowchart.process">
+            <y:Geometry height="54.0" width="480.0" x="130.0" y="456.0"/>
+            <y:Fill color="#E8EEF7" color2="#E8EEF7" transparent="false"/>
+            <y:BorderStyle color="#000000" type="line" width="1.0"/>
+            <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="30.84" modelName="custom" textColor="#000000" visible="true" width="308.44" x="85.78" y="11.58">InferStage::pump() — NPU 완료분을 GPU 후처리로 push
+YoloPostproc::submit  [vkQueueSubmit — 메인 전용]<y:LabelModel>
+                <y:SmartNodeLabelModel distance="4.0"/>
+              </y:LabelModel>
+              <y:ModelParameter>
+                <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+              </y:ModelParameter>
+            </y:NodeLabel>
+          </y:GenericNode>
+        </data>
+      </node>
+      <node id="n0::n5">
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/gpu_postproc_stage.cpp:182 yvo::cpu_nms_greedy_by_class(cand, cfg_.iou_thr, cfg_.max_per_class). 수치: 07_results/display_e2e/raw/disp_source_run1/stdout.log 'cpu nms us median 2.667', 'gpu post ms median 0.588'.</data>
+        <data key="d6">
+          <y:GenericNode configuration="com.yworks.flowchart.process">
+            <y:Geometry height="54.0" width="480.0" x="130.0" y="540.0"/>
+            <y:Fill color="#E8EEF7" color2="#E8EEF7" transparent="false"/>
+            <y:BorderStyle color="#000000" type="line" width="1.0"/>
+            <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="30.84" modelName="custom" textColor="#000000" visible="true" width="288.2" x="95.9" y="11.58">GpuPostprocStage::finish() → read_candidates()
++ cpu_nms_greedy_by_class   [CPU]<y:LabelModel>
+                <y:SmartNodeLabelModel distance="4.0"/>
+              </y:LabelModel>
+              <y:ModelParameter>
+                <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+              </y:ModelParameter>
+            </y:NodeLabel>
+          </y:GenericNode>
+        </data>
+      </node>
+      <node id="n0::n6">
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:1-34 '결과 기록(JSON Lines, PNG, 통계)은 메인 스레드가 pts 순서로 한다'. matched 모드에서 show() 를 거는 유일한 지점이라 pump 루프에서 빠지면 교착한다 (07_results/display_e2e/summary.md §5 버그 1).</data>
+        <data key="d6">
+          <y:GenericNode configuration="com.yworks.flowchart.process">
+            <y:Geometry height="54.0" width="480.0" x="130.0" y="624.0"/>
+            <y:Fill color="#E8EEF7" color2="#E8EEF7" transparent="false"/>
+            <y:BorderStyle color="#000000" type="line" width="1.0"/>
+            <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="30.84" modelName="custom" textColor="#000000" visible="true" width="234.08" x="122.96" y="11.58">flush_results() — pts 순 기록
++ DisplayPipeline::show (sync=matched)<y:LabelModel>
+                <y:SmartNodeLabelModel distance="4.0"/>
+              </y:LabelModel>
+              <y:ModelParameter>
+                <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+              </y:ModelParameter>
+            </y:NodeLabel>
+          </y:GenericNode>
+        </data>
+      </node>
+      <node id="n0::n7">
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/display/ (별도 라이브러리 yvo_display). 수치: 07_results/display_e2e/summary.md §3.1 변환 4.153 ms / 오버레이 0.128 ms(median). 표시 CPU 증가분 +0.727 ms 의 정체는 vkQueuePresentKHR 자체다(같은 문서 §4).</data>
+        <data key="d6">
+          <y:GenericNode configuration="com.yworks.flowchart.process">
+            <y:Geometry height="54.0" width="480.0" x="130.0" y="708.0"/>
+            <y:Fill color="#E8EEF7" color2="#E8EEF7" transparent="false"/>
+            <y:BorderStyle color="#000000" type="line" width="1.0"/>
+            <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="30.84" modelName="custom" textColor="#000000" visible="true" width="299.2" x="90.4" y="11.58">DisplayPipeline::pump() → display_convert.comp
+→ overlay_boxes.comp → VulkanSwapchain::present<y:LabelModel>
+                <y:SmartNodeLabelModel distance="4.0"/>
+              </y:LabelModel>
+              <y:ModelParameter>
+                <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+              </y:ModelParameter>
+            </y:NodeLabel>
+          </y:GenericNode>
+        </data>
+      </node>
+      </graph>
+    </node>
+    <node id="n1" yfiles.foldertype="group">
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:1-34 'HailoRT 콜백 스레드: 결과를 완료 큐에 넣고 슬롯을 free 목록에 반납(mutex + condvar).' gpu 경로에서는 큐에 넣기만 하고 Done 콜백은 메인 스레드가 부른다(infer_stage.hpp:9-17).</data>
+      <data key="d6">
+        <y:ProxyAutoBoundsNode>
+          <y:Realizers active="0">
+            <y:GroupNode>
+              <y:Geometry height="287.0" width="480.0" x="760.0" y="75.0"/>
+              <y:Fill color="#FFF0C2" transparent="false"/>
+              <y:BorderStyle color="#000000" type="line" width="1.0"/>
+              <y:NodeLabel alignment="right" autoSizePolicy="node_width" backgroundColor="#404040" borderDistance="0.0" fontFamily="Dialog" fontSize="14" fontStyle="bold" hasLineColor="false" height="22.0" modelName="internal" modelPosition="t" textColor="#FFFFFF" visible="true" width="152.56" x="0.0" y="0.0">HailoRT 콜백 스레드</y:NodeLabel>
+              <y:Shape type="roundrectangle"/>
+              <y:State closed="false" closedHeight="80.0" closedWidth="140.0" innerGraphDisplayEnabled="true"/>
+              <y:Insets bottom="15" bottomF="15.0" left="15" leftF="15.0" right="15" rightF="15.0" top="15" topF="15.0"/>
+              <y:BorderInsets bottom="0" bottomF="0.0" left="0" leftF="0.0" right="0" rightF="0.0" top="0" topF="0.0"/>
+            </y:GroupNode>
+            <y:GroupNode>
+              <y:Geometry height="80.0" width="140.0" x="760.0" y="75.0"/>
+              <y:Fill color="#FFF0C2" transparent="false"/>
+              <y:BorderStyle color="#000000" type="line" width="1.0"/>
+              <y:NodeLabel alignment="right" autoSizePolicy="node_width" backgroundColor="#404040" borderDistance="0.0" fontFamily="Dialog" fontSize="14" fontStyle="bold" hasLineColor="false" height="22.0" modelName="internal" modelPosition="t" textColor="#FFFFFF" visible="true" width="140.0" x="0.0" y="0.0">HailoRT 콜백 스레드</y:NodeLabel>
+              <y:Shape type="roundrectangle"/>
+              <y:State closed="true" closedHeight="80.0" closedWidth="140.0" innerGraphDisplayEnabled="true"/>
+              <y:Insets bottom="15" bottomF="15.0" left="15" leftF="15.0" right="15" rightF="15.0" top="15" topF="15.0"/>
+              <y:BorderInsets bottom="0" bottomF="0.0" left="0" leftF="0.0" right="0" rightF="0.0" top="0" topF="0.0"/>
+            </y:GroupNode>
+          </y:Realizers>
+        </y:ProxyAutoBoundsNode>
+      </data>
+      <graph edgedefault="directed" id="n1:">
+      <node id="n1::n0">
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/gpu_postproc_stage.cpp:136 raw_-&gt;submit(slot, in.pts, [this](yvo::RawInferResult&amp;&amp; r) { ... }).</data>
+        <data key="d6">
+          <y:GenericNode configuration="com.yworks.flowchart.process">
+            <y:Geometry height="54.0" width="420.0" x="790.0" y="120.0"/>
+            <y:Fill color="#FFCC00" color2="#FFCC00" transparent="false"/>
+            <y:BorderStyle color="#000000" type="line" width="1.0"/>
+            <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="30.84" modelName="custom" textColor="#000000" visible="true" width="228.8" x="95.6" y="11.58">HailoRawRunner 완료 콜백 람다
+(RawInferResult&amp;&amp; r) — HailoRT 스레드<y:LabelModel>
+                <y:SmartNodeLabelModel distance="4.0"/>
+              </y:LabelModel>
+              <y:ModelParameter>
+                <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+              </y:ModelParameter>
+            </y:NodeLabel>
+          </y:GenericNode>
+        </data>
+      </node>
+      <node id="n1::n1">
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/gpu_postproc_stage.cpp:137-142. 메인 스레드의 push_ready_to_gpu() 가 batch.swap(ready_) 로 통째로 가져간다.</data>
+        <data key="d6">
+          <y:GenericNode configuration="com.yworks.flowchart.process">
+            <y:Geometry height="54.0" width="420.0" x="790.0" y="204.0"/>
+            <y:Fill color="#FFCC00" color2="#FFCC00" transparent="false"/>
+            <y:BorderStyle color="#000000" type="line" width="1.0"/>
+            <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="30.84" modelName="custom" textColor="#000000" visible="true" width="308.0" x="56.0" y="11.58">ready_.push_back(RawDone) + ready_cv_.notify_all()
+mutex ready_mtx_ 로만 보호<y:LabelModel>
+                <y:SmartNodeLabelModel distance="4.0"/>
+              </y:LabelModel>
+              <y:ModelParameter>
+                <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+              </y:ModelParameter>
+            </y:NodeLabel>
+          </y:GenericNode>
+        </data>
+      </node>
+      <node id="n1::n2">
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/gpu_postproc_stage.cpp:136 주석 '⚠ HailoRT 콜백 스레드다. Vulkan 호출·재submit·GPU 메모리 읽기 전부 금지.' 근거는 01_src/pipeline/infer_stage.hpp:9-17 의 스레드 규율.</data>
+        <data key="d6">
+          <y:GenericNode configuration="com.yworks.flowchart.process">
+            <y:Geometry height="54.0" width="420.0" x="790.0" y="288.0"/>
+            <y:Fill color="#FFE0E0" color2="#FFE0E0" transparent="false"/>
+            <y:BorderStyle color="#C00000" type="dashed" width="1.0"/>
+            <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="30.84" modelName="custom" textColor="#000000" visible="true" width="307.56" x="56.22" y="11.58">⚠ 금지: Vulkan 호출 · 재submit · GPU 메모리 읽기
+VkQueue 는 외부 동기화 객체이고 이 프로젝트에 큐는 1개<y:LabelModel>
+                <y:SmartNodeLabelModel distance="4.0"/>
+              </y:LabelModel>
+              <y:ModelParameter>
+                <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+              </y:ModelParameter>
+            </y:NodeLabel>
+          </y:GenericNode>
+        </data>
+      </node>
+      </graph>
+    </node>
+    <node id="n2" yfiles.foldertype="group">
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/README.md §1 38행 'dma-buf 세 그룹(디코더 SAND / 전처리 NHCW / 원시 텐서)이 전부 zero-copy 로 오간다.' 실측 fd 수는 900프레임 동안 105개로 완전히 일정하다(display_e2e/summary.md §6).</data>
+      <data key="d6">
+        <y:ProxyAutoBoundsNode>
+          <y:Realizers active="0">
+            <y:GroupNode>
+              <y:Geometry height="311.5999999999999" width="480.0" x="760.0" y="430.0"/>
+              <y:Fill color="#F5F0C2" transparent="false"/>
+              <y:BorderStyle color="#000000" type="line" width="1.0"/>
+              <y:NodeLabel alignment="right" autoSizePolicy="node_width" backgroundColor="#404040" borderDistance="0.0" fontFamily="Dialog" fontSize="14" fontStyle="bold" hasLineColor="false" height="22.0" modelName="internal" modelPosition="t" textColor="#FFFFFF" visible="true" width="359.2" x="0.0" y="0.0">dma-buf 3그룹 — zero-copy, 전 구간 CPU 복사 0</y:NodeLabel>
+              <y:Shape type="roundrectangle"/>
+              <y:State closed="false" closedHeight="80.0" closedWidth="140.0" innerGraphDisplayEnabled="true"/>
+              <y:Insets bottom="15" bottomF="15.0" left="15" leftF="15.0" right="15" rightF="15.0" top="15" topF="15.0"/>
+              <y:BorderInsets bottom="0" bottomF="0.0" left="0" leftF="0.0" right="0" rightF="0.0" top="0" topF="0.0"/>
+            </y:GroupNode>
+            <y:GroupNode>
+              <y:Geometry height="80.0" width="140.0" x="760.0" y="430.0"/>
+              <y:Fill color="#F5F0C2" transparent="false"/>
+              <y:BorderStyle color="#000000" type="line" width="1.0"/>
+              <y:NodeLabel alignment="right" autoSizePolicy="node_width" backgroundColor="#404040" borderDistance="0.0" fontFamily="Dialog" fontSize="14" fontStyle="bold" hasLineColor="false" height="22.0" modelName="internal" modelPosition="t" textColor="#FFFFFF" visible="true" width="140.0" x="0.0" y="0.0">dma-buf 3그룹 — zero-copy, 전 구간 CPU 복사 0</y:NodeLabel>
+              <y:Shape type="roundrectangle"/>
+              <y:State closed="true" closedHeight="80.0" closedWidth="140.0" innerGraphDisplayEnabled="true"/>
+              <y:Insets bottom="15" bottomF="15.0" left="15" leftF="15.0" right="15" rightF="15.0" top="15" topF="15.0"/>
+              <y:BorderInsets bottom="0" bottomF="0.0" left="0" leftF="0.0" right="0" rightF="0.0" top="0" topF="0.0"/>
+            </y:GroupNode>
+          </y:Realizers>
+        </y:ProxyAutoBoundsNode>
+      </data>
+      <graph edgedefault="directed" id="n2:">
+      <node id="n2::n0">
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/common/frame_types.hpp struct DrmFrame. Y 와 UV 는 서로 다른 dma-buf 객체다(nb_objects=2): fd/size 와 uv_fd/uv_size. SAND128 주소식은 같은 파일 상단 주석.</data>
+        <data key="d6">
+          <y:GenericNode configuration="com.yworks.flowchart.data">
+            <y:Geometry height="66.3" width="420.0" x="790.0" y="475.0"/>
+            <y:Fill color="#FFFFCC" color2="#FFFFCC" transparent="false"/>
+            <y:BorderStyle color="#000000" type="line" width="1.0"/>
+            <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="44.26" modelName="custom" textColor="#000000" visible="true" width="322.52" x="48.74" y="11.02">① 디코더 소유 — SAND128 Y/UV
+modifier 0x0700000000000004 · 열 높이 Y 1088 / UV 544
+keepalive = std::shared_ptr&lt;AVFrame&gt;<y:LabelModel>
+                <y:SmartNodeLabelModel distance="4.0"/>
+              </y:LabelModel>
+              <y:ModelParameter>
+                <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+              </y:ModelParameter>
+            </y:NodeLabel>
+          </y:GenericNode>
+        </data>
+      </node>
+      <node id="n2::n1">
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/common/frame_types.hpp struct PreprocOutput, enum TensorLayout::Nhcw. main.cpp:1-34 'dmabuf: 초기화 때 슬롯별 출력 메모리를 dma-buf fd 로 export → HailoRunner::map_dmabuf 사전 매핑 → PreprocOutput.dmabuf_fd 로 set_dma_buffer'.</data>
+        <data key="d6">
+          <y:GenericNode configuration="com.yworks.flowchart.data">
+            <y:Geometry height="54.0" width="420.0" x="790.0" y="571.3"/>
+            <y:Fill color="#FFFFCC" color2="#FFFFCC" transparent="false"/>
+            <y:BorderStyle color="#000000" type="line" width="1.0"/>
+            <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="30.84" modelName="custom" textColor="#000000" visible="true" width="332.64" x="43.68" y="11.58">② Vulkan 소유 — NHCW 입력 640×640×3
+export_dmabuf_fd · idx = (dy*3+c)*640+dx · 1,228,800 B<y:LabelModel>
+                <y:SmartNodeLabelModel distance="4.0"/>
+              </y:LabelModel>
+              <y:ModelParameter>
+                <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+              </y:ModelParameter>
+            </y:NodeLabel>
+          </y:GenericNode>
+        </data>
+      </node>
+      <node id="n2::n2">
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/vulkan/ YoloPostproc 가 읽는 원시 출력 6스트림. 02_shaders/yolo_decode.comp 의 입력. 크기 출처: README.md §1 25행.</data>
+        <data key="d6">
+          <y:GenericNode configuration="com.yworks.flowchart.data">
+            <y:Geometry height="66.3" width="420.0" x="790.0" y="655.3"/>
+            <y:Fill color="#FFFFCC" color2="#FFFFCC" transparent="false"/>
+            <y:BorderStyle color="#000000" type="line" width="1.0"/>
+            <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="44.26" modelName="custom" textColor="#000000" visible="true" width="332.64" x="43.68" y="11.02">③ Vulkan 소유 — 원시 6텐서 (D2H) · 1,221,120 B
+16384 정렬 · cls(s)=2s, box(s)=2s+1
+P3 80×80/s8 · P4 40×40/s16 · P5 20×20(w_padded 24)/s32<y:LabelModel>
+                <y:SmartNodeLabelModel distance="4.0"/>
+              </y:LabelModel>
+              <y:ModelParameter>
+                <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+              </y:ModelParameter>
+            </y:NodeLabel>
+          </y:GenericNode>
+        </data>
+      </node>
+      </graph>
+    </node>
+    <node id="n3">
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:1-34 슬롯 규약: 'free → [GPU submit] → gpu 대기열 → [SandLetterbox::wait] → [HailoRunner::submit] → [HailoRT 완료 콜백 = compute_done] → [DisplayPipeline 표시 완료 = display_done] → 둘 다 서면 free'. --display off 면 display 조건이 없다(SlotExchange(need_display=false)). 실측 slot timeout 0 / slot wait median 0.000 ms (07_results/display_e2e/raw/disp_source_run1/stdout.log).</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.decision">
+          <y:Geometry height="66.3" width="480.0" x="100.0" y="890.0"/>
+          <y:Fill color="#E8EEF7" color2="#E8EEF7" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="44.26" modelName="custom" textColor="#000000" visible="true" width="219.12" x="130.44" y="11.02">SlotExchange — 슬롯 0..3 공용
+반납 = compute_done AND display_done
+블로킹 금지 · 5 s 타임아웃<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n4">
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:224 의 시작 시 검사. '⚠ 디코더 13프레임 제약: 동시에 약 13프레임을 넘게 잡으면 디코더가 에러 없이 멈춘다. matched 는 slots + gpu_depth 를, latest 는 gpu_depth + image_count 를 잡는다. 여유를 두고 10 에서 막는다.' 운용점 b2/s4 는 4+3=7 (실측 held_frames_max 4, 여유 6).</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="66.3" width="340.0" x="1300.0" y="75.0"/>
+          <y:Fill color="#FFFFFF" color2="#FFFFFF" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="44.26" modelName="custom" textColor="#000000" visible="true" width="275.44" x="32.28" y="11.02">제약: slots + gpu_depth ≤ 10
+디코더가 ~13프레임 초과 시 에러 없이 정지
+--gpu-depth 기본 3 · held_frames_max 로만 감지<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n5">
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:397-410 의 두 검사. '--postproc gpu 는 --mode dmabuf --layout nhcw 전용이다: HailoRawRunner 는 입력·출력을 dma-buf 로만 받고(호스트 포인터 경로 없음), 원시 출력 6스트림 경로는 NHCW 입력으로만 검증됐다.'</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="54.0" width="340.0" x="1300.0" y="171.3"/>
+          <y:Fill color="#FFFFFF" color2="#FFFFFF" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="30.84" modelName="custom" textColor="#000000" visible="true" width="332.0" x="4.0" y="11.58">전제: --postproc gpu ⇒ --mode dmabuf --layout nhcw 강제
+V3D GEM mmap 포인터를 HailoRT 가 DMA 매핑 못 한다<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n6">
+      <data key="d5">HailoRT dma 매핑과 infer_async 가 요구하는 크기가 다르다. 관련 코드는 /home/pi/workspace/yolo_vulkan_optimize/01_src/hailo/ HailoRawRunner::map_dmabuf / submit.</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="66.3" width="340.0" x="1300.0" y="255.3"/>
+          <y:Fill color="#FFFFFF" color2="#FFFFFF" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="44.26" modelName="custom" textColor="#000000" visible="true" width="316.36" x="11.82" y="11.02">함정: 크기 인자가 서로 다르다
+dma_map = lseek 실크기 / infer_async = hw_frame_size
+틀리면 HAILO_SUCCESS 인데 콜백이 안 온다<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n7">
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:1-34 '종료 순서' 주석 그대로. '창은 컨텍스트보다 늦게 죽어야 하므로 컨텍스트보다 먼저 선언한다.' export fd 는 러너가 unmap 한 뒤 닫는다 (main.cpp:397-410 부근 FdCloser export_fds).</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="79.7" width="340.0" x="1300.0" y="351.6"/>
+          <y:Fill color="#FFFFFF" color2="#FFFFFF" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="57.68" modelName="custom" textColor="#000000" visible="true" width="332.0" x="4.0" y="11.01">종료 순서 (역순 소멸)
+InferStage::drain → flush_results → DisplayPipeline::drain →
+SandLetterbox::clear_import_cache → 디코더 close → stage →
+display → export fd close → VulkanContext → WaylandWindow<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n8">
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/isp/ . 판정 근거: 07_results/isp_resize/summary.md . 파이프라인에 연결돼 있지 않다.</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="54.0" width="480.0" x="100.0" y="1030.0"/>
+          <y:Fill color="#D9D9D9" color2="#D9D9D9" transparent="false"/>
+          <y:BorderStyle color="#808080" type="dashed" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="30.84" modelName="custom" textColor="#000000" visible="true" width="285.12" x="97.44" y="11.58">01_src/isp/ — PiSP BE 리사이즈 (미연결)
+V3D 0 · CPU +0.89 ms · 검출 −2.33% 로 통합 보류<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n9">
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/infer_stage.hpp:1-17 'HostNmsStage: 오늘의 기준 경로. yvo::HailoRunner(HEF 내장 NMS 출력 1개)를 그대로 감싼다.' 인자 없이 실행하면 이 경로다(README.md §3). 수치: 07_results/op_point/summary.md §5.6 host b2/s4 CPU 2.921 ms/f, §3 reg_host_off 3.314 ms/f.</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="54.0" width="480.0" x="100.0" y="1114.0"/>
+          <y:Fill color="#D9D9D9" color2="#D9D9D9" transparent="false"/>
+          <y:BorderStyle color="#808080" type="dashed" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="30.84" modelName="custom" textColor="#000000" visible="true" width="296.12" x="91.94" y="11.58">HostNmsStage / HailoRunner (미연결, 그러나 기본값)
+회귀 기준 경로 · CPU 2.9~3.3 ms/f<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n10">
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/ . 측정·검증용 프로브다. 오버레이 기준선 표기 주의는 07_results/display_e2e/summary.md §7 참조.</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="54.0" width="480.0" x="100.0" y="1198.0"/>
+          <y:Fill color="#D9D9D9" color2="#D9D9D9" transparent="false"/>
+          <y:BorderStyle color="#808080" type="dashed" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="30.84" modelName="custom" textColor="#000000" visible="true" width="267.96" x="106.02" y="11.58">display_probe.comp · heap_sum.comp (미연결)
+프로브 전용 셰이더 — 파이프라인에 연결되지 않음<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n_src_note">
+      <data key="d5">이 다이어그램의 모든 수치와 규약 문장의 출처 목록. 경로는 /home/pi/workspace/yolo_vulkan_optimize/ 기준 상대경로다.</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="160.2" width="480.0" x="760.0" y="810.0"/>
+          <y:Fill color="#FFFFFF" color2="#FFFFFF" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="138.2" modelName="custom" textColor="#000000" visible="true" width="446.6" x="16.7" y="11.0">수치·규약 출처
+GPU 구간별 median : 07_results/display_e2e/summary.md §3.1
+실행별 원시 출력  : 07_results/display_e2e/raw/disp_source_run1/stdout.log
+운용점 · 최종 커맨드 : 07_results/op_point/summary.md §8
+스레드 · 슬롯 규약 : 01_src/pipeline/main.cpp:1-34
+slots+gpu_depth ≤ 10 : 01_src/pipeline/main.cpp:224
+--postproc gpu 전제 : 01_src/pipeline/main.cpp:397-410
+스레드 규율      : 01_src/pipeline/infer_stage.hpp:9-17
+콜백 람다 :136 / NMS 호출 :182 : gpu_postproc_stage.cpp
+버퍼 계약       : 01_src/common/frame_types.hpp<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n_leg_t">
+      <data key="d5">색 규약은 12_docs/pipeline_overview.graphml 과 공통이다. 12_docs/README.md 참조.</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="39.4" width="340.0" x="1300.0" y="481.3"/>
+          <y:Fill color="#FFFFFF" color2="#FFFFFF" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="17.42" modelName="custom" textColor="#000000" visible="true" width="210.76" x="64.62" y="10.99">범례 — 색 = 실행 주체, 점선 = 미연결<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n_leg0">
+      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="34.0" width="340.0" x="1300.0" y="523.3"/>
+          <y:Fill color="#99CC00" color2="#99CC00" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="17.42" modelName="custom" textColor="#000000" visible="true" width="181.72" x="79.14" y="8.29">V3D GPU — Vulkan 컴퓨트 셰이더<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n_leg1">
+      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="34.0" width="340.0" x="1300.0" y="565.3"/>
+          <y:Fill color="#FFCC00" color2="#FFCC00" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="17.42" modelName="custom" textColor="#000000" visible="true" width="201.52" x="69.24" y="8.29">Hailo-8 NPU — HailoRT 콜백 스레드<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n_leg2">
+      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="34.0" width="340.0" x="1300.0" y="607.3"/>
+          <y:Fill color="#E8EEF7" color2="#E8EEF7" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="17.42" modelName="custom" textColor="#000000" visible="true" width="102.96" x="118.52" y="8.29">CPU — 메인 스레드<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n_leg3">
+      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="34.0" width="340.0" x="1300.0" y="649.3"/>
+          <y:Fill color="#B39DDB" color2="#B39DDB" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="17.42" modelName="custom" textColor="#000000" visible="true" width="198.0" x="71.0" y="8.29">HW 디코더 — libavcodec DRM_PRIME<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n_leg4">
+      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="34.0" width="340.0" x="1300.0" y="691.3"/>
+          <y:Fill color="#4DB6E2" color2="#4DB6E2" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="17.42" modelName="custom" textColor="#000000" visible="true" width="200.2" x="69.9" y="8.29">표시 · present — Wayland 스왑체인<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n_leg5">
+      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="34.0" width="340.0" x="1300.0" y="733.3"/>
+          <y:Fill color="#FF0000" color2="#FF0000" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="17.42" modelName="custom" textColor="#000000" visible="true" width="62.48" x="138.76" y="8.29">소스 · 싱크<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n_leg6">
+      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="34.0" width="340.0" x="1300.0" y="775.3"/>
+          <y:Fill color="#FFFFCC" color2="#FFFFCC" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="17.42" modelName="custom" textColor="#000000" visible="true" width="180.4" x="79.8" y="8.29">데이터 — dma-buf 버퍼 (복사 0)<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n_leg7">
+      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="34.0" width="340.0" x="1300.0" y="817.3"/>
+          <y:Fill color="#FFE0E0" color2="#FFE0E0" transparent="false"/>
+          <y:BorderStyle color="#808080" type="dashed" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="17.42" modelName="custom" textColor="#000000" visible="true" width="129.8" x="105.1" y="8.29">금지 규칙 (스레드 규율)<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n_leg8">
+      <data key="d5">범례 항목. 색 규약은 12_docs/README.md 와 두 다이어그램에 공통으로 적용된다.</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="34.0" width="340.0" x="1300.0" y="859.3"/>
+          <y:Fill color="#D9D9D9" color2="#D9D9D9" transparent="false"/>
+          <y:BorderStyle color="#808080" type="dashed" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="17.42" modelName="custom" textColor="#000000" visible="true" width="214.28" x="62.86" y="8.29">미연결 경로 (코드에 있으나 연결 안 됨)<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <edge id="e0" source="n0::n0" target="n0::n1">
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="27.0" tx="0.0" ty="-27.0"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="true"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e1" source="n0::n1" target="n0::n2">
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="27.0" tx="0.0" ty="-27.0"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="true"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e2" source="n0::n2" target="n0::n3">
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="27.0" tx="0.0" ty="-27.0"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="true"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e3" source="n0::n3" target="n0::n4">
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="27.0" tx="0.0" ty="-27.0"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="true"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e4" source="n0::n4" target="n0::n5">
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="27.0" tx="0.0" ty="-27.0"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="true"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e5" source="n0::n5" target="n0::n6">
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="27.0" tx="0.0" ty="-27.0"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="true"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e6" source="n0::n6" target="n0::n7">
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="27.0" tx="0.0" ty="-27.0"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="true"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e7" source="n1::n0" target="n1::n1">
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="27.0" tx="0.0" ty="-27.0"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="true"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e8" source="n1::n1" target="n1::n2">
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="27.0" tx="0.0" ty="-27.0"/>
+          <y:LineStyle color="#808080" type="dashed" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="true"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e9" source="n0::n3" target="n1::n0">
+      <data key="d8">gpu_postproc_stage.cpp:136 의 람다가 HailoRT 콜백 스레드에서 불린다.</data>
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="240.0" sy="0.0" tx="-210.0" ty="0.0">
+            <y:Point x="655.0" y="399.0"/>
+            <y:Point x="655.0" y="147.0"/>
+          </y:Path>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" distance="2.0" fontFamily="Dialog" fontSize="10" fontStyle="plain" hasLineColor="false" height="16.2" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" visible="true" width="138.4" x="0.0" y="0.0">infer_async 완료 콜백 등록<y:LabelModel>
+              <y:SmartEdgeLabelModel autoRotationEnabled="false" defaultAngle="0.0" defaultDistance="10.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartEdgeLabelModelParameter angle="0.0" distance="10.0" distanceToCenter="true" position="right" ratio="0.5" segment="0"/>
+            </y:ModelParameter>
+          </y:EdgeLabel>
+          <y:BendStyle smoothed="true"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e10" source="n1::n1" target="n0::n4">
+      <data key="d8">push_ready_to_gpu() 가 batch.swap(ready_) 로 가져간다. 스레드 경계는 여기서만 넘는다.</data>
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="-210.0" sy="0.0" tx="240.0" ty="0.0">
+            <y:Point x="672.0" y="231.0"/>
+            <y:Point x="672.0" y="483.0"/>
+          </y:Path>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" distance="2.0" fontFamily="Dialog" fontSize="10" fontStyle="plain" hasLineColor="false" height="16.2" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" visible="true" width="150.0" x="0.0" y="0.0">ready_ 큐 (mutex + condvar)<y:LabelModel>
+              <y:SmartEdgeLabelModel autoRotationEnabled="false" defaultAngle="0.0" defaultDistance="10.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartEdgeLabelModelParameter angle="0.0" distance="10.0" distanceToCenter="true" position="right" ratio="0.5" segment="0"/>
+            </y:ModelParameter>
+          </y:EdgeLabel>
+          <y:BendStyle smoothed="true"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e11" source="n0::n0" target="n2::n0">
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="240.0" sy="0.0" tx="-210.0" ty="0.0">
+            <y:Point x="689.0" y="147.0"/>
+            <y:Point x="689.0" y="508.15"/>
+          </y:Path>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" distance="2.0" fontFamily="Dialog" fontSize="10" fontStyle="plain" hasLineColor="false" height="16.2" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" visible="true" width="10.0" x="0.0" y="0.0">①<y:LabelModel>
+              <y:SmartEdgeLabelModel autoRotationEnabled="false" defaultAngle="0.0" defaultDistance="10.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartEdgeLabelModelParameter angle="0.0" distance="10.0" distanceToCenter="true" position="right" ratio="0.5" segment="0"/>
+            </y:ModelParameter>
+          </y:EdgeLabel>
+          <y:BendStyle smoothed="true"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e12" source="n0::n2" target="n2::n1">
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="240.0" sy="0.0" tx="-210.0" ty="0.0">
+            <y:Point x="706.0" y="315.0"/>
+            <y:Point x="706.0" y="598.3"/>
+          </y:Path>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" distance="2.0" fontFamily="Dialog" fontSize="10" fontStyle="plain" hasLineColor="false" height="16.2" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" visible="true" width="10.0" x="0.0" y="0.0">②<y:LabelModel>
+              <y:SmartEdgeLabelModel autoRotationEnabled="false" defaultAngle="0.0" defaultDistance="10.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartEdgeLabelModelParameter angle="0.0" distance="10.0" distanceToCenter="true" position="right" ratio="0.5" segment="0"/>
+            </y:ModelParameter>
+          </y:EdgeLabel>
+          <y:BendStyle smoothed="true"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e13" source="n0::n4" target="n2::n2">
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="240.0" sy="0.0" tx="-210.0" ty="0.0">
+            <y:Point x="723.0" y="483.0"/>
+            <y:Point x="723.0" y="688.4499999999999"/>
+          </y:Path>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" distance="2.0" fontFamily="Dialog" fontSize="10" fontStyle="plain" hasLineColor="false" height="16.2" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" visible="true" width="10.0" x="0.0" y="0.0">③<y:LabelModel>
+              <y:SmartEdgeLabelModel autoRotationEnabled="false" defaultAngle="0.0" defaultDistance="10.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartEdgeLabelModelParameter angle="0.0" distance="10.0" distanceToCenter="true" position="right" ratio="0.5" segment="0"/>
+            </y:ModelParameter>
+          </y:EdgeLabel>
+          <y:BendStyle smoothed="true"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e14" source="n2::n0" target="n0::n7">
+      <data key="d8">display_convert.comp 가 디코더 SAND dma-buf 를 그대로 읽는다.</data>
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="-210.0" sy="0.0" tx="240.0" ty="0.0">
+            <y:Point x="740.0" y="508.15"/>
+            <y:Point x="740.0" y="735.0"/>
+          </y:Path>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" distance="2.0" fontFamily="Dialog" fontSize="10" fontStyle="plain" hasLineColor="false" height="28.4" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" visible="true" width="139.2" x="0.0" y="0.0">DisplayPipeline::retain
+표시용 원본 재사용 · 복사 0<y:LabelModel>
+              <y:SmartEdgeLabelModel autoRotationEnabled="false" defaultAngle="0.0" defaultDistance="10.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartEdgeLabelModelParameter angle="0.0" distance="10.0" distanceToCenter="true" position="right" ratio="0.5" segment="0"/>
+            </y:ModelParameter>
+          </y:EdgeLabel>
+          <y:BendStyle smoothed="true"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e15" source="n3" target="n0::n1">
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="-240.0" sy="0.0" tx="-240.0" ty="0.0">
+            <y:Point x="70.0" y="923.15"/>
+            <y:Point x="70.0" y="231.0"/>
+          </y:Path>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" distance="2.0" fontFamily="Dialog" fontSize="10" fontStyle="plain" hasLineColor="false" height="16.2" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" visible="true" width="100.8" x="0.0" y="0.0">acquire_poll(2 ms)<y:LabelModel>
+              <y:SmartEdgeLabelModel autoRotationEnabled="false" defaultAngle="0.0" defaultDistance="10.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartEdgeLabelModelParameter angle="0.0" distance="10.0" distanceToCenter="true" position="right" ratio="0.5" segment="0"/>
+            </y:ModelParameter>
+          </y:EdgeLabel>
+          <y:BendStyle smoothed="true"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e16" source="n0::n5" target="n3">
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="-240.0" sy="0.0" tx="-40.0" ty="-33.15">
+            <y:Point x="85.0" y="567.0"/>
+            <y:Point x="85.0" y="860.0"/>
+            <y:Point x="300.0" y="860.0"/>
+          </y:Path>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" distance="2.0" fontFamily="Dialog" fontSize="10" fontStyle="plain" hasLineColor="false" height="16.2" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" visible="true" width="123.2" x="0.0" y="0.0">complete(compute_done)<y:LabelModel>
+              <y:SmartEdgeLabelModel autoRotationEnabled="false" defaultAngle="0.0" defaultDistance="10.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartEdgeLabelModelParameter angle="0.0" distance="10.0" distanceToCenter="true" position="right" ratio="0.5" segment="0"/>
+            </y:ModelParameter>
+          </y:EdgeLabel>
+          <y:BendStyle smoothed="true"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e17" source="n0::n7" target="n3">
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="27.0" tx="30.0" ty="-33.15"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" distance="2.0" fontFamily="Dialog" fontSize="10" fontStyle="plain" hasLineColor="false" height="16.2" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" visible="true" width="123.2" x="0.0" y="0.0">complete(display_done)<y:LabelModel>
+              <y:SmartEdgeLabelModel autoRotationEnabled="false" defaultAngle="0.0" defaultDistance="10.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartEdgeLabelModelParameter angle="0.0" distance="10.0" distanceToCenter="true" position="right" ratio="0.5" segment="0"/>
+            </y:ModelParameter>
+          </y:EdgeLabel>
+          <y:BendStyle smoothed="true"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+  </graph>
+  <data key="d0">
+    <y:Resources/>
+  </data>
+</graphml>

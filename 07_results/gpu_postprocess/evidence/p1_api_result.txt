@@ -1,0 +1,26 @@
+# P1 결과 요약 (yvo_hailo_raw_probe)
+# pcie=8.0 GT/s PCIe x1, hef=/home/pi/workspace/yolo_vulkan_optimize/03_models/yolov11m.hef, video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4
+# batch=8, 요청 slots=16, compare_frames=40, bench_frames=200
+
+[infer_async] constructed=1 ok=1 slots=16 min_queue=16 infer_queue=16 scheduled=1
+        callbacks=56 failed=0 first_error=HAILO_SUCCESS(0)
+        fps=51.90 (min 51.89, max 51.92) latency median=142.38 p90=267.59 ms  temp 58.2 -> 67.9 C
+        error=-
+[read_async] constructed=1 ok=1 slots=16 min_queue=16 infer_queue=16 scheduled=1
+        callbacks=56 failed=0 first_error=HAILO_SUCCESS(0)
+        fps=0.00 (min 0.00, max 0.00) latency median=0.00 p90=0.00 ms  temp 67.5 -> 67.7 C
+        error=-
+
+primary api          : infer_async
+두 api 텐서 바이트 일치 : 40 / 40 frames
+픽스처                : 5 frames x 6 tensors, 5.82 MB -> /home/pi/workspace/yolo_vulkan_optimize/04_data/raw_tensors
+hailort.log errors    : 0 (추론 구간), 온도/클럭 warning: 0
+                        7 (전체 — Phase 3의 의도된 configure() 실패 7건 포함)
+
+합격 기준 판정
+  ① 원시 출력 6개, 이름/shape 일치           : PASS
+  ② get_quant_infos().size() == 1            : PASS
+  ③ api 중 최소 하나가 7콜백 전부 SUCCESS    : PASS (infer_async)
+  ④ match() ratio >= 0.95 (40 frames)       : PASS (best 1.0000)
+  ⑤ P5 열 20~23 제외가 맞다                  : PASS(약한 증거: 패딩이 threshold 미달) (제외 1.0000 / 포함 1.0000, 패딩 nonzero 204800/460800)
+  ⑥ batch 8, 200프레임 FPS >= 50, log error 0 : PASS (51.90 FPS, errors 0)

@@ -1,0 +1,558 @@
+#include "display/display_convert.hpp"
+
+#include <algorithm>
+#include <array>
+#include <cstring>
+#include <stdexcept>
+#include <string>
+
+#include "display_convert_spv.h" // 빌드 시 glslc 로 생성 (02_shaders/CMakeLists.txt)
+#include "vulkan/vk_check.hpp"
+#include "vulkan/vulkan_context.hpp"
+
+namespace yvo::display {
+
+using yvo::vk::ImportedDmaBuf;
+
+namespace {
+
+constexpr std::uint64_t kModBroadcomSand128 = 0x0700000000000004ull; // DRM_FORMAT_MOD_BROADCOM_SAND128
+constexpr std::uint64_t kModParamMask = 0x00ffffffffffff00ull;
+constexpr std::uint32_t kFourccNV12 = 0x3231564e;
+constexpr std::size_t kSandCol = 128;
+constexpr std::uint32_t kQueriesPerSlot = 4; // [0]=cmd 시작 [1]=디스패치 전 [2]=디스패치 후 [3]=cmd 끝
+
+int round_up4(int v) { return (v + 3) / 4 * 4; }
+
+} // namespace
+
+DisplayConvert::DisplayConvert(yvo::vk::VulkanContext& ctx, const DisplayConvertConfig& cfg)
+    : ctx_(ctx), cfg_(cfg), cache_(ctx, cfg.import_cache_entries) {
+    if (cfg_.num_slots <= 0) throw std::invalid_argument("DisplayConvert: num_slots must be > 0");
+    const auto& lim = ctx_.properties().limits;
+    if (cfg_.local_size_x == 0 || cfg_.local_size_y == 0 ||
+        cfg_.local_size_x * cfg_.local_size_y > lim.maxComputeWorkGroupInvocations ||
+        cfg_.local_size_x > lim.maxComputeWorkGroupSize[0] || cfg_.local_size_y > lim.maxComputeWorkGroupSize[1])
+        throw std::invalid_argument("DisplayConvert: local size " + std::to_string(cfg_.local_size_x) + "x" +
+                                    std::to_string(cfg_.local_size_y) + " exceeds device limits");
+    if (cfg_.max_dst_w <= 0) throw std::invalid_argument("DisplayConvert: max_dst_w must be > 0");
+    if (cfg_.timestamps && !ctx_.timestamps_supported()) cfg_.timestamps = false;
+    try {
+        create_pipeline();
+        create_lut();
+        create_slots();
+    } catch (...) {
+        destroy();
+        throw;
+    }
+}
+
+DisplayConvert::~DisplayConvert() { destroy(); }
+
+void DisplayConvert::create_pipeline() {
+    VkDevice dev = ctx_.device();
+
+    if (set_layout_ == VK_NULL_HANDLE) {
+        // 0: Y, 1: UV, 2: 출력 storage image, 3: 열 LUT
+        std::array<VkDescriptorSetLayoutBinding, 4> b{};
+        for (std::uint32_t i = 0; i < 4; ++i) {
+            b[i].binding = i;
+            b[i].descriptorType =
+                (i == 2) ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            b[i].descriptorCount = 1;
+            b[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+        }
+        VkDescriptorSetLayoutCreateInfo dl{};
+        dl.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        dl.bindingCount = static_cast<std::uint32_t>(b.size());
+        dl.pBindings = b.data();
+        YVO_VK_CHECK(vkCreateDescriptorSetLayout(dev, &dl, nullptr, &set_layout_));
+
+        VkPushConstantRange pcr{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(DisplayConvertPush)};
+        VkPipelineLayoutCreateInfo pl{};
+        pl.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        pl.setLayoutCount = 1;
+        pl.pSetLayouts = &set_layout_;
+        pl.pushConstantRangeCount = 1;
+        pl.pPushConstantRanges = &pcr;
+        YVO_VK_CHECK(vkCreatePipelineLayout(dev, &pl, nullptr, &pipeline_layout_));
+    }
+
+    VkShaderModuleCreateInfo smi{};
+    smi.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    smi.codeSize = sizeof(kDisplayConvertSpv);
+    smi.pCode = kDisplayConvertSpv;
+    VkShaderModule module = VK_NULL_HANDLE;
+    YVO_VK_CHECK(vkCreateShaderModule(dev, &smi, nullptr, &module));
+
+    // specialization constant 0/1 = local_size_x/y, 2 = kUniformScale (SPIR-V bool 은 32bit 로 넘긴다)
+    const std::array<std::uint32_t, 3> spec_data{cfg_.local_size_x, cfg_.local_size_y,
+                                                 cfg_.uniform_scale ? VK_TRUE : VK_FALSE};
+    const std::array<VkSpecializationMapEntry, 3> spec_map{{{0, 0, 4}, {1, 4, 4}, {2, 8, 4}}};
+    VkSpecializationInfo spec{};
+    spec.mapEntryCount = static_cast<std::uint32_t>(spec_map.size());
+    spec.pMapEntries = spec_map.data();
+    spec.dataSize = sizeof(spec_data);
+    spec.pData = spec_data.data();
+
+    VkComputePipelineCreateInfo cpi{};
+    cpi.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    cpi.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    cpi.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    cpi.stage.module = module;
+    cpi.stage.pName = "main";
+    cpi.stage.pSpecializationInfo = &spec;
+    cpi.layout = pipeline_layout_;
+    const VkResult r = vkCreateComputePipelines(dev, VK_NULL_HANDLE, 1, &cpi, nullptr, &pipeline_);
+    vkDestroyShaderModule(dev, module, nullptr);
+    YVO_VK_CHECK(r);
+
+    if (desc_pool_ == VK_NULL_HANDLE) {
+        const auto n = static_cast<std::uint32_t>(cfg_.num_slots);
+        const std::array<VkDescriptorPoolSize, 2> ps{
+            {{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 * n}, {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, n}}};
+        VkDescriptorPoolCreateInfo dp{};
+        dp.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        dp.maxSets = n;
+        dp.poolSizeCount = static_cast<std::uint32_t>(ps.size());
+        dp.pPoolSizes = ps.data();
+        YVO_VK_CHECK(vkCreateDescriptorPool(dev, &dp, nullptr, &desc_pool_));
+
+        VkCommandPoolCreateInfo cp{};
+        cp.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        cp.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        cp.queueFamilyIndex = ctx_.queue_family();
+        YVO_VK_CHECK(vkCreateCommandPool(dev, &cp, nullptr, &cmd_pool_));
+
+        if (cfg_.timestamps) {
+            VkQueryPoolCreateInfo qp{};
+            qp.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+            qp.queryType = VK_QUERY_TYPE_TIMESTAMP;
+            qp.queryCount = kQueriesPerSlot * n;
+            YVO_VK_CHECK(vkCreateQueryPool(dev, &qp, nullptr, &query_pool_));
+        }
+    }
+}
+
+void DisplayConvert::destroy_pipeline() {
+    if (pipeline_) vkDestroyPipeline(ctx_.device(), pipeline_, nullptr);
+    pipeline_ = VK_NULL_HANDLE;
+}
+
+void DisplayConvert::set_uniform_scale(bool on) {
+    if (cfg_.uniform_scale == on) return;
+    for (const Slot& s : slots_)
+        if (s.pending) throw std::logic_error("DisplayConvert::set_uniform_scale: slots still pending");
+    vkDeviceWaitIdle(ctx_.device()); // 파이프라인 교체는 재생성 경로에서만 일어난다(프레임 루프 안이 아니다)
+    destroy_pipeline();
+    cfg_.uniform_scale = on;
+    create_pipeline();
+}
+
+void DisplayConvert::create_slots() {
+    VkDevice dev = ctx_.device();
+    slots_.resize(static_cast<std::size_t>(cfg_.num_slots));
+    for (Slot& s : slots_) {
+        VkCommandBufferAllocateInfo cai{};
+        cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cai.commandPool = cmd_pool_;
+        cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        cai.commandBufferCount = 1;
+        YVO_VK_CHECK(vkAllocateCommandBuffers(dev, &cai, &s.cmd));
+
+        VkDescriptorSetAllocateInfo dai{};
+        dai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        dai.descriptorPool = desc_pool_;
+        dai.descriptorSetCount = 1;
+        dai.pSetLayouts = &set_layout_;
+        YVO_VK_CHECK(vkAllocateDescriptorSets(dev, &dai, &s.set));
+
+        // binding 3(열 LUT)은 고정이다. 0/1/2 는 프레임마다 갱신한다.
+        VkDescriptorBufferInfo lut{lut_buf_, 0, lut_size_};
+        VkWriteDescriptorSet w{};
+        w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        w.dstSet = s.set;
+        w.dstBinding = 3;
+        w.descriptorCount = 1;
+        w.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        w.pBufferInfo = &lut;
+        vkUpdateDescriptorSets(dev, 1, &w, 0, nullptr);
+    }
+}
+
+void DisplayConvert::create_lut() {
+    VkDevice dev = ctx_.device();
+    lut_size_ = static_cast<VkDeviceSize>(round_up4(cfg_.max_dst_w)) * 2 * 16; // 열마다 uvec4 x 2
+    VkBufferCreateInfo bci{};
+    bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bci.size = lut_size_;
+    bci.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+    bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    YVO_VK_CHECK(vkCreateBuffer(dev, &bci, nullptr, &lut_buf_));
+    VkMemoryRequirements req{};
+    vkGetBufferMemoryRequirements(dev, lut_buf_, &req);
+    const std::uint32_t type = ctx_.find_memory_type(
+        req.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    if (type == UINT32_MAX) throw std::runtime_error("DisplayConvert: no HOST_VISIBLE|HOST_COHERENT memory type");
+    VkMemoryAllocateInfo mai{};
+    mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    mai.allocationSize = req.size;
+    mai.memoryTypeIndex = type;
+    YVO_VK_CHECK(vkAllocateMemory(dev, &mai, nullptr, &lut_mem_));
+    YVO_VK_CHECK(vkBindBufferMemory(dev, lut_buf_, lut_mem_, 0));
+    void* p = nullptr;
+    YVO_VK_CHECK(vkMapMemory(dev, lut_mem_, 0, VK_WHOLE_SIZE, 0, &p));
+    lut_ptr_ = static_cast<std::uint32_t*>(p);
+    std::memset(lut_ptr_, 0, static_cast<std::size_t>(lut_size_));
+}
+
+// 열 LUT: cpu_letterbox_nv12_bt709() 와 같은 float 연산 순서로 열마다 샘플 위치·가중치를 계산한다.
+// (균일 스케일 경로에서만 쓰인다. 1:1 경로의 셰이더는 이 버퍼를 읽지 않는다.)
+void DisplayConvert::update_lut(const LutKey& k) {
+    if (lut_valid_ && k == lut_key_) return;
+    for (const Slot& s : slots_)
+        if (s.pending) YVO_VK_CHECK(vkWaitForFences(ctx_.device(), 1, &s.fence, VK_TRUE, UINT64_MAX));
+
+    const int new_w = static_cast<int>(static_cast<float>(k.src_w) * k.scale + 0.5f);
+    const float inv = 1.0f / k.scale;
+    const int cw = k.src_w / 2;
+    auto y_col = [&](int x) {
+        return static_cast<std::uint32_t>(x >> 7) * k.y_col_stride + static_cast<std::uint32_t>(x & 127);
+    };
+    auto uv_col = [&](int cx) {
+        const int x = cx * 2;
+        return static_cast<std::uint32_t>(x >> 7) * k.uv_col_stride + static_cast<std::uint32_t>(x & 127);
+    };
+    const int cols = round_up4(k.dst_w); // 마지막 4픽셀 묶음이 dst_w 를 넘어도 읽기가 유효하도록
+    for (int dx = 0; dx < cols; ++dx) {
+        std::uint32_t* e = lut_ptr_ + static_cast<std::size_t>(dx) * 8;
+        const bool pad = dx < k.pad_x || dx >= k.pad_x + new_w;
+        const int dxs = std::clamp(dx, k.pad_x, k.pad_x + new_w - 1);
+        const float sx = (static_cast<float>(dxs - k.pad_x) + 0.5f) * inv - 0.5f;
+        const float xs = std::clamp(sx, 0.0f, static_cast<float>(k.src_w - 1));
+        const int x0 = static_cast<int>(xs);
+        const int x1 = std::min(x0 + 1, k.src_w - 1);
+        const float fx = xs - static_cast<float>(x0);
+        const float cxs = std::clamp(sx * 0.5f, 0.0f, static_cast<float>(cw - 1));
+        const int cx0 = static_cast<int>(cxs);
+        const int cx1 = std::min(cx0 + 1, cw - 1);
+        const float fcx = cxs - static_cast<float>(cx0);
+        const std::uint32_t a[4] = {y_col(x0), y_col(x1), uv_col(cx0), uv_col(cx1)};
+        std::uint32_t shifts = 0;
+        for (int i = 0; i < 4; ++i) {
+            e[i] = a[i] >> 2;
+            shifts |= ((a[i] & 3u) * 8u) << (8 * i);
+        }
+        e[4] = shifts;
+        std::memcpy(&e[5], &fx, 4);
+        std::memcpy(&e[6], &fcx, 4);
+        e[7] = pad ? 1u : 0u;
+    }
+    lut_key_ = k;
+    lut_valid_ = true;
+}
+
+void DisplayConvert::destroy() {
+    VkDevice dev = ctx_.device();
+    if (dev == VK_NULL_HANDLE) return;
+    vkDeviceWaitIdle(dev); // 종료 시에만
+    for (Slot& s : slots_) {
+        if (s.y) cache_.unpin(*s.y);
+        if (s.uv && s.uv != s.y) cache_.unpin(*s.uv);
+        s.y = s.uv = nullptr;
+        s.frame = DrmFrame{};
+    }
+    slots_.clear();
+    if (lut_mem_) vkUnmapMemory(dev, lut_mem_);
+    if (lut_buf_) vkDestroyBuffer(dev, lut_buf_, nullptr);
+    if (lut_mem_) vkFreeMemory(dev, lut_mem_, nullptr);
+    lut_buf_ = VK_NULL_HANDLE;
+    lut_mem_ = VK_NULL_HANDLE;
+    lut_ptr_ = nullptr;
+    if (query_pool_) vkDestroyQueryPool(dev, query_pool_, nullptr);
+    if (cmd_pool_) vkDestroyCommandPool(dev, cmd_pool_, nullptr);
+    if (desc_pool_) vkDestroyDescriptorPool(dev, desc_pool_, nullptr);
+    destroy_pipeline();
+    if (pipeline_layout_) vkDestroyPipelineLayout(dev, pipeline_layout_, nullptr);
+    if (set_layout_) vkDestroyDescriptorSetLayout(dev, set_layout_, nullptr);
+    query_pool_ = VK_NULL_HANDLE;
+    cmd_pool_ = VK_NULL_HANDLE;
+    desc_pool_ = VK_NULL_HANDLE;
+    pipeline_layout_ = VK_NULL_HANDLE;
+    set_layout_ = VK_NULL_HANDLE;
+    cache_.clear();
+}
+
+void DisplayConvert::clear_import_cache() {
+    for (const Slot& s : slots_)
+        if (s.pending) throw std::logic_error("DisplayConvert::clear_import_cache: slots still pending");
+    cache_.clear();
+}
+
+VkCommandBuffer DisplayConvert::begin(int slot) {
+    if (slot < 0 || slot >= num_slots()) throw std::out_of_range("DisplayConvert::begin: bad slot");
+    Slot& s = slots_[static_cast<std::size_t>(slot)];
+    if (s.pending) throw std::logic_error("DisplayConvert::begin: slot " + std::to_string(slot) + " still pending");
+    YVO_VK_CHECK(vkResetCommandBuffer(s.cmd, 0));
+    VkCommandBufferBeginInfo bi{};
+    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    YVO_VK_CHECK(vkBeginCommandBuffer(s.cmd, &bi));
+    const auto q = static_cast<std::uint32_t>(slot) * kQueriesPerSlot;
+    if (query_pool_) {
+        vkCmdResetQueryPool(s.cmd, query_pool_, q, kQueriesPerSlot);
+        vkCmdWriteTimestamp2(s.cmd, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, query_pool_, q);
+    }
+    s.recording = true;
+    return s.cmd;
+}
+
+void DisplayConvert::record(int slot, const DrmFrame& f, VkImageView dst_view, VkExtent2D dst_extent) {
+    Slot& s = slots_.at(static_cast<std::size_t>(slot));
+    if (!s.recording) throw std::logic_error("DisplayConvert::record: begin() 을 먼저 불러야 한다");
+    if (static_cast<int>(dst_extent.width) > cfg_.max_dst_w)
+        throw std::invalid_argument("DisplayConvert: dst_w > max_dst_w (열 LUT 상한 초과)");
+
+    // ---- 입력 레이아웃 검증 (sand_letterbox 와 같은 규칙) ----
+    if ((f.modifier & ~kModParamMask) != kModBroadcomSand128)
+        throw std::invalid_argument("DisplayConvert: unsupported modifier (need Broadcom SAND128)");
+    if (f.drm_format != 0 && f.drm_format != kFourccNV12)
+        throw std::invalid_argument("DisplayConvert: unsupported DRM format (need NV12)");
+    if (f.width <= 0 || f.height <= 0 || (f.width % 2) || (f.height % 2))
+        throw std::invalid_argument("DisplayConvert: width/height must be positive and even");
+    if ((f.y_offset % 4) || (f.uv_offset % 4))
+        throw std::invalid_argument("DisplayConvert: y_offset/uv_offset must be multiples of 4");
+    const bool one_obj = (f.uv_fd == f.fd) || f.uv_fd < 0;
+    const std::size_t uv_obj_size = one_obj ? f.size : f.uv_size;
+    const auto w = static_cast<std::size_t>(f.width), h = static_cast<std::size_t>(f.height);
+    const std::size_t last_col = (w - 1) / kSandCol, last_x = (w - 1) % kSandCol;
+    const std::size_t y_stride = kSandCol * f.sand_col_height, uv_stride = kSandCol * f.uv_sand_col_height;
+    const std::size_t y_end = f.y_offset + last_col * y_stride + (h - 1) * kSandCol + last_x + 1;
+    const std::size_t uv_end = f.uv_offset + last_col * uv_stride + (h / 2 - 1) * kSandCol + last_x + 1;
+    if (y_end > f.size || uv_end > uv_obj_size || f.size > 0xffffffffull || uv_obj_size > 0xffffffffull)
+        throw std::invalid_argument("DisplayConvert: SAND layout exceeds dma-buf size");
+
+    // 1:1 경로의 전제. 어긋나면 균일 스케일 경로여야 한다(호스트가 spec constant 로 고른다).
+    const bool one_to_one = static_cast<int>(dst_extent.width) == f.width &&
+                            static_cast<int>(dst_extent.height) == f.height && (f.width % 4) == 0;
+    if (!cfg_.uniform_scale && !one_to_one)
+        throw std::logic_error("DisplayConvert: 1:1 경로인데 dst != src 다 (set_uniform_scale(true) 필요)");
+
+    ImportedDmaBuf& y = cache_.get(f.fd, f.size);
+    cache_.pin(y);
+    ImportedDmaBuf* uvp = &y;
+    try {
+        if (!one_obj) {
+            uvp = &cache_.get(f.uv_fd, f.uv_size);
+            cache_.pin(*uvp);
+        }
+    } catch (...) {
+        cache_.unpin(y);
+        throw;
+    }
+    ImportedDmaBuf& uv = *uvp;
+    if (y_end > y.range || uv_end > uv.range) {
+        cache_.unpin(y);
+        if (&uv != &y) cache_.unpin(uv);
+        throw std::invalid_argument("DisplayConvert: SAND layout exceeds imported buffer range");
+    }
+
+    try {
+        const int dw = static_cast<int>(dst_extent.width), dh = static_cast<int>(dst_extent.height);
+        DisplayConvertPush pc{};
+        pc.y_offset = static_cast<std::uint32_t>(f.y_offset);
+        pc.y_col_stride = static_cast<std::uint32_t>(y_stride);
+        pc.uv_offset = static_cast<std::uint32_t>(f.uv_offset);
+        pc.uv_col_stride = static_cast<std::uint32_t>(uv_stride);
+        pc.src_w = f.width;
+        pc.src_h = f.height;
+        pc.dst_w = dw;
+        pc.dst_h = dh;
+        pc.pad_value = cfg_.pad_value;
+        if (!cfg_.uniform_scale) {
+            pc.pad_x = pc.pad_y = 0;
+            pc.new_w = f.width;
+            pc.new_h = f.height;
+            pc.inv_scale = 1.0f;
+        } else {
+            const LetterboxParams lb = make_letterbox(f.width, f.height, dw, dh);
+            pc.pad_x = lb.pad_x;
+            pc.pad_y = lb.pad_y;
+            pc.new_w = static_cast<int>(static_cast<float>(f.width) * lb.scale + 0.5f);
+            pc.new_h = static_cast<int>(static_cast<float>(f.height) * lb.scale + 0.5f);
+            pc.inv_scale = 1.0f / lb.scale;
+            LutKey key;
+            key.src_w = f.width;
+            key.src_h = f.height;
+            key.dst_w = dw;
+            key.dst_h = dh;
+            key.pad_x = lb.pad_x;
+            key.pad_y = lb.pad_y;
+            key.scale = lb.scale;
+            key.y_col_stride = pc.y_col_stride;
+            key.uv_col_stride = pc.uv_col_stride;
+            update_lut(key);
+        }
+
+        // 슬롯이 pending 이 아니므로 이 디스크립터 셋을 쓰는 GPU 작업은 없다.
+        const std::array<VkDescriptorBufferInfo, 2> bi{
+            {{y.buffer, 0, VK_WHOLE_SIZE}, {uv.buffer, 0, VK_WHOLE_SIZE}}};
+        VkDescriptorImageInfo ii{};
+        ii.imageView = dst_view;
+        ii.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+        std::array<VkWriteDescriptorSet, 3> w3{};
+        for (std::uint32_t i = 0; i < 3; ++i) {
+            w3[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            w3[i].dstSet = s.set;
+            w3[i].dstBinding = i;
+            w3[i].descriptorCount = 1;
+        }
+        w3[0].descriptorType = w3[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        w3[0].pBufferInfo = &bi[0];
+        w3[1].pBufferInfo = &bi[1];
+        w3[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        w3[2].pImageInfo = &ii;
+        vkUpdateDescriptorSets(ctx_.device(), 3, w3.data(), 0, nullptr);
+
+        VkCommandBuffer cb = s.cmd;
+        const std::uint32_t q = ctx_.queue_family();
+        const std::uint32_t ext = ctx_.external_queue_family();
+
+        // 입력 dma-buf: 외부(디코더) → 컴퓨트 큐 소유권 acquire (sand_letterbox.cpp:363-387 패턴)
+        std::array<VkBufferMemoryBarrier2, 2> acq{};
+        const std::uint32_t nacq = (uv.buffer == y.buffer) ? 1u : 2u;
+        const std::array<const ImportedDmaBuf*, 2> ins{&y, &uv};
+        for (std::uint32_t i = 0; i < nacq; ++i) {
+            VkBufferMemoryBarrier2& b = acq[i];
+            b.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+            b.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+            b.srcAccessMask = VK_ACCESS_2_NONE;
+            b.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+            b.dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+            b.srcQueueFamilyIndex = ext;
+            b.dstQueueFamilyIndex = q;
+            b.buffer = ins[i]->buffer;
+            b.offset = 0;
+            b.size = VK_WHOLE_SIZE;
+        }
+        VkDependencyInfo di{};
+        di.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        di.bufferMemoryBarrierCount = nacq;
+        di.pBufferMemoryBarriers = acq.data();
+        vkCmdPipelineBarrier2(cb, &di);
+
+        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_, 0, 1, &s.set, 0, nullptr);
+        vkCmdPushConstants(cb, pipeline_layout_, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pc), &pc);
+
+        const auto qbase = static_cast<std::uint32_t>(slot) * kQueriesPerSlot;
+        if (query_pool_) vkCmdWriteTimestamp2(cb, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, query_pool_, qbase + 1);
+        const auto groups_x =
+            (static_cast<std::uint32_t>((dw + 3) / 4) + cfg_.local_size_x - 1) / cfg_.local_size_x;
+        const auto groups_y = (static_cast<std::uint32_t>(dh) + cfg_.local_size_y - 1) / cfg_.local_size_y;
+        vkCmdDispatch(cb, groups_x, groups_y, 1);
+        if (query_pool_)
+            vkCmdWriteTimestamp2(cb, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, query_pool_, qbase + 2);
+
+        // 입력 release (외부로 반납). 읽기만 했으므로 가용화할 쓰기는 없다.
+        std::array<VkBufferMemoryBarrier2, 2> rel{};
+        for (std::uint32_t i = 0; i < nacq; ++i) {
+            VkBufferMemoryBarrier2& b = rel[i];
+            b = acq[i];
+            b.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+            b.srcAccessMask = VK_ACCESS_2_NONE;
+            b.dstStageMask = VK_PIPELINE_STAGE_2_NONE;
+            b.dstAccessMask = VK_ACCESS_2_NONE;
+            b.srcQueueFamilyIndex = q;
+            b.dstQueueFamilyIndex = ext;
+        }
+        di.bufferMemoryBarrierCount = nacq;
+        di.pBufferMemoryBarriers = rel.data();
+        vkCmdPipelineBarrier2(cb, &di);
+    } catch (...) {
+        cache_.unpin(y);
+        if (&uv != &y) cache_.unpin(uv);
+        throw;
+    }
+
+    s.frame = f; // keepalive 복사: GPU 가 끝날 때까지 dma-buf 유지
+    s.y = &y;
+    s.uv = &uv;
+}
+
+void DisplayConvert::end_and_submit(int slot, VkSemaphore wait, VkSemaphore signal, VkFence fence) {
+    Slot& s = slots_.at(static_cast<std::size_t>(slot));
+    if (!s.recording) throw std::logic_error("DisplayConvert::end_and_submit: begin() 을 먼저 불러야 한다");
+    const auto qbase = static_cast<std::uint32_t>(slot) * kQueriesPerSlot;
+    if (query_pool_)
+        vkCmdWriteTimestamp2(s.cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, query_pool_, qbase + 3);
+    YVO_VK_CHECK(vkEndCommandBuffer(s.cmd));
+    s.recording = false;
+
+    VkCommandBufferSubmitInfo cbi{};
+    cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+    cbi.commandBuffer = s.cmd;
+    VkSemaphoreSubmitInfo wi{}, si2{};
+    wi.sType = si2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+    wi.semaphore = wait;
+    // 스왑체인 이미지 레이아웃 전환이 acquire 세마포어 대기 뒤에 확실히 오도록 ALL_COMMANDS 로 기다린다.
+    wi.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+    si2.semaphore = signal;
+    si2.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+    VkSubmitInfo2 si{};
+    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+    si.waitSemaphoreInfoCount = wait != VK_NULL_HANDLE ? 1u : 0u;
+    si.pWaitSemaphoreInfos = &wi;
+    si.signalSemaphoreInfoCount = signal != VK_NULL_HANDLE ? 1u : 0u;
+    si.pSignalSemaphoreInfos = &si2;
+    si.commandBufferInfoCount = 1;
+    si.pCommandBufferInfos = &cbi;
+    YVO_VK_CHECK(vkQueueSubmit2(ctx_.queue(), 1, &si, fence));
+    s.fence = fence;
+    s.pending = true;
+}
+
+bool DisplayConvert::ready(int slot) const {
+    const Slot& s = slots_.at(static_cast<std::size_t>(slot));
+    if (!s.pending) return true;
+    const VkResult r = vkGetFenceStatus(ctx_.device(), s.fence);
+    if (r == VK_NOT_READY) return false;
+    YVO_VK_CHECK(r);
+    return true;
+}
+
+void DisplayConvert::finish(int slot, std::uint64_t timeout_ns) {
+    Slot& s = slots_.at(static_cast<std::size_t>(slot));
+    if (!s.pending) return;
+    YVO_VK_CHECK(vkWaitForFences(ctx_.device(), 1, &s.fence, VK_TRUE, timeout_ns));
+
+    last_shader_ms_ = last_total_ms_ = -1.0;
+    if (query_pool_) {
+        std::array<std::uint64_t, kQueriesPerSlot> ts{};
+        const VkResult r = vkGetQueryPoolResults(
+            ctx_.device(), query_pool_, static_cast<std::uint32_t>(slot) * kQueriesPerSlot, kQueriesPerSlot,
+            sizeof(ts), ts.data(), sizeof(std::uint64_t), VK_QUERY_RESULT_64_BIT);
+        if (r == VK_SUCCESS) {
+            // sand_letterbox.cpp:579-593 의 유효 비트 마스킹과 같은 계산
+            const std::uint32_t bits = ctx_.timestamp_valid_bits();
+            const std::uint64_t mask = bits >= 64 ? ~0ull : ((1ull << bits) - 1);
+            const double period = static_cast<double>(ctx_.timestamp_period());
+            const std::uint64_t dshader = ((ts[2] & mask) - (ts[1] & mask)) & mask;
+            const std::uint64_t dtotal = ((ts[3] & mask) - (ts[0] & mask)) & mask;
+            last_shader_ms_ = static_cast<double>(dshader) * period * 1e-6;
+            last_total_ms_ = static_cast<double>(dtotal) * period * 1e-6;
+        } else if (r != VK_NOT_READY) {
+            YVO_VK_CHECK(r);
+        }
+    }
+
+    if (s.y) cache_.unpin(*s.y);
+    if (s.uv && s.uv != s.y) cache_.unpin(*s.uv);
+    s.y = s.uv = nullptr;
+    s.frame = DrmFrame{}; // keepalive 해제 → 디코더 풀로 반납
+    s.pending = false;
+    s.fence = VK_NULL_HANDLE;
+}
+
+} // namespace yvo::display

@@ -1,0 +1,74 @@
+yvo_postproc_probe --probe heapimport   (계획서 부록 B 1단계 = P0 관문)
+[vk] device=V3D 7.1.10.2  dmabuf import=1 (dedicated_only=0) export=1
+[vk] validation layer=1 sync=1  external_queue_family=4294967293 queue_family=0
+[vk] memoryTypeCount=1 heapCount=1
+      type 0: heap 0 flags 0x007
+[heap] /dev/dma_heap/vidbuf_cached (요청 크기는 align_up(hw_frame_size, 16384))
+
+== 텐서별 기록 ==
+[conv102_178] hw=30720 want=32768 dmabuf=32768  mmap 16384정렬=예
+    (1) VkMemoryFdPropertiesKHR::memoryTypeBits = 0x00000001
+    (2) req(size=dmabuf 32768) = 33024  → 여유 +256 B | align=256 typeBits=0x00000001
+        req(size=hw 30720) = 30976  → **headroom +256 B** (B.12 가 캐시할 값)
+    (3) requiresDedicatedAllocation=0 prefersDedicatedAllocation=0
+    (4) ImportedDmaBuf: size=32768 range=32512  ***** range < size — 축소가 발동했다 *****
+        ⇒ 축소 256 B. hw 대비 아직 여유 안 (range 32512 vs hw 30720)
+    (5) vkAllocateMemory = VK_SUCCESS
+    (6) DMA_BUF_IOCTL_SYNC START|WRITE=0 END|WRITE=0 (0 = 성공)
+    (7) 왕복: n_words=8128 groups=64  gpu=0x003f3d7a cpu=0x003f3d7a  일치
+[conv105_178] hw=38400 want=49152 dmabuf=49152  mmap 16384정렬=예
+    (1) VkMemoryFdPropertiesKHR::memoryTypeBits = 0x00000001
+    (2) req(size=dmabuf 49152) = 49408  → 여유 +256 B | align=256 typeBits=0x00000001
+        req(size=hw 38400) = 38656  → **headroom +256 B** (B.12 가 캐시할 값)
+    (3) requiresDedicatedAllocation=0 prefersDedicatedAllocation=0
+    (4) ImportedDmaBuf: size=49152 range=48896  ***** range < size — 축소가 발동했다 *****
+        ⇒ 축소 256 B. hw 대비 아직 여유 안 (range 48896 vs hw 38400)
+    (5) vkAllocateMemory = VK_SUCCESS
+    (6) DMA_BUF_IOCTL_SYNC START|WRITE=0 END|WRITE=0 (0 = 성공)
+    (7) 왕복: n_words=12224 groups=64  gpu=0x005f1d80 cpu=0x005f1d80  일치
+[conv71_178] hw=409600 want=409600 dmabuf=409600  mmap 16384정렬=예
+    (1) VkMemoryFdPropertiesKHR::memoryTypeBits = 0x00000001
+    (2) req(size=dmabuf 409600) = 409856  → 여유 +256 B | align=256 typeBits=0x00000001
+        req(size=hw 409600) = 409856  → **headroom +256 B** (B.12 가 캐시할 값)
+    (3) requiresDedicatedAllocation=0 prefersDedicatedAllocation=0
+    (4) ImportedDmaBuf: size=409600 range=409344  ***** range < size — 축소가 발동했다 *****
+        ⇒ 축소 256 B. hw 대비 ***** hw 를 잘라먹는다 ***** (range 409344 vs hw 409600)
+    (5) vkAllocateMemory = VK_SUCCESS
+    (6) DMA_BUF_IOCTL_SYNC START|WRITE=0 END|WRITE=0 (0 = 성공)
+    (7) 왕복: n_words=102336 groups=64  gpu=0x031c5801 cpu=0x031c5801  일치
+[conv74_178] hw=512000 want=524288 dmabuf=524288  mmap 16384정렬=예
+    (1) VkMemoryFdPropertiesKHR::memoryTypeBits = 0x00000001
+    (2) req(size=dmabuf 524288) = 524544  → 여유 +256 B | align=256 typeBits=0x00000001
+        req(size=hw 512000) = 512256  → **headroom +256 B** (B.12 가 캐시할 값)
+    (3) requiresDedicatedAllocation=0 prefersDedicatedAllocation=0
+    (4) ImportedDmaBuf: size=524288 range=524032  ***** range < size — 축소가 발동했다 *****
+        ⇒ 축소 256 B. hw 대비 아직 여유 안 (range 524032 vs hw 512000)
+    (5) vkAllocateMemory = VK_SUCCESS
+    (6) DMA_BUF_IOCTL_SYNC START|WRITE=0 END|WRITE=0 (0 = 성공)
+    (7) 왕복: n_words=131008 groups=64  gpu=0x03fb7b01 cpu=0x03fb7b01  일치
+[conv87_178] hw=102400 want=114688 dmabuf=114688  mmap 16384정렬=예
+    (1) VkMemoryFdPropertiesKHR::memoryTypeBits = 0x00000001
+    (2) req(size=dmabuf 114688) = 114944  → 여유 +256 B | align=256 typeBits=0x00000001
+        req(size=hw 102400) = 102656  → **headroom +256 B** (B.12 가 캐시할 값)
+    (3) requiresDedicatedAllocation=0 prefersDedicatedAllocation=0
+    (4) ImportedDmaBuf: size=114688 range=114432  ***** range < size — 축소가 발동했다 *****
+        ⇒ 축소 256 B. hw 대비 아직 여유 안 (range 114432 vs hw 102400)
+    (5) vkAllocateMemory = VK_SUCCESS
+    (6) DMA_BUF_IOCTL_SYNC START|WRITE=0 END|WRITE=0 (0 = 성공)
+    (7) 왕복: n_words=28608 groups=64  gpu=0x00de9888 cpu=0x00de9888  일치
+[conv90_178] hw=128000 want=131072 dmabuf=131072  mmap 16384정렬=예
+    (1) VkMemoryFdPropertiesKHR::memoryTypeBits = 0x00000001
+    (2) req(size=dmabuf 131072) = 131328  → 여유 +256 B | align=256 typeBits=0x00000001
+        req(size=hw 128000) = 128256  → **headroom +256 B** (B.12 가 캐시할 값)
+    (3) requiresDedicatedAllocation=0 prefersDedicatedAllocation=0
+    (4) ImportedDmaBuf: size=131072 range=130816  ***** range < size — 축소가 발동했다 *****
+        ⇒ 축소 256 B. hw 대비 아직 여유 안 (range 130816 vs hw 128000)
+    (5) vkAllocateMemory = VK_SUCCESS
+    (6) DMA_BUF_IOCTL_SYNC START|WRITE=0 END|WRITE=0 (0 = 성공)
+    (7) 왕복: n_words=32704 groups=64  gpu=0x00fe7a03 cpu=0x00fe7a03  일치
+
+[요약] import 6/6 · 왕복 일치 6/6 · range<size 6 · mmap 미정렬 0 · 검증레이어 errors 0
+[S1 판정] 조건부 합격 — range < size. B.12 헤드룸 필요
+[import cache] imports=6 hits=0
+[fd] 진입 7 · 컨텍스트 뒤 기준선 14 · heap/import 스코프 종료 후 14 → 누수 0
+[RESULT] heapimport PASS

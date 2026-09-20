@@ -1,0 +1,51 @@
+# F0 관문: 입력 dma-buf(H2D) + 출력 dma-buf(D2H) 동시 사용
+# pcie=8.0 GT/s PCIe x1 hef=/home/pi/workspace/yolo_vulkan_optimize/03_models/yolov11m.hef video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4
+# batch=8 slots=16 frames=16 api=both 출력계약(map=dmabuf_size, transfer=hw_frame_size)
+# 냉각: hailo 55.4 -> 55.4 C, 대기 0 s
+
+## 입력 버퍼 크기
+  입력: hw_frame_size=1228800 dmabuf_size=1245184 (차 +16384)
+
+## 입력 크기 계약 4조합 (한 셀: slots=2)
+api           dma_map(H2D)   transfer size    map_status                  issue  cb/기대   bytes    판정
+------------  -------------  ---------------  --------------------------  -----  --------  -------  ----
+infer_async   dmabuf_size    hw_frame_size    HAILO_SUCCESS(0)            ok      14/14     2/2     PASS
+infer_async   dmabuf_size    dmabuf_size      HAILO_SUCCESS(0)            ok      14/14     0/0     FAIL
+infer_async   hw_frame_size  hw_frame_size    HAILO_SUCCESS(0)            ok      14/14     2/2     PASS
+infer_async   hw_frame_size  dmabuf_size      HAILO_SUCCESS(0)            ok      14/14     0/0     FAIL
+read_async    dmabuf_size    hw_frame_size    HAILO_SUCCESS(0)            ok      14/14     2/2     PASS
+read_async    dmabuf_size    dmabuf_size      HAILO_SUCCESS(0)            FAIL     7/14     0/0     FAIL
+        error: HailoRT 실패: InputStream::write_async -> HAILO_STREAM_ABORT(63)
+read_async    hw_frame_size  hw_frame_size    HAILO_SUCCESS(0)            ok      14/14     2/2     PASS
+read_async    hw_frame_size  dmabuf_size      HAILO_SUCCESS(0)            FAIL     7/14     0/0     FAIL
+        error: HailoRT 실패: InputStream::write_async -> HAILO_STREAM_ABORT(63)
+
+## 본 실행 (입력 dma_map=dmabuf_size, 전송 크기=hw_frame_size)
+[infer_async]
+  A 기준(호스트 입력) : constructed=1 frames_ok=16/16 cb=112 실패=0 
+  B 관문(입력 dma-buf): constructed=1 frames_ok=16/16
+    dma_map_dmabuf(H2D) : 16회, 실패 0, status=HAILO_SUCCESS(0)
+    dma_map_dmabuf(D2H) : 96회, 실패 0, status=HAILO_SUCCESS(0) (H2D+D2H 총 0.326 ms)
+    콜백                : 112개 / 기대 112개 (프레임당 7), 실패 0, first_error=HAILO_SUCCESS(0)
+    A 대비 출력 6텐서 바이트 일치 : 16 / 16 frames
+  판정: PASS
+
+[read_async]
+  A 기준(호스트 입력) : constructed=1 frames_ok=16/16 cb=112 실패=0 
+  B 관문(입력 dma-buf): constructed=1 frames_ok=16/16
+    dma_map_dmabuf(H2D) : 16회, 실패 0, status=HAILO_SUCCESS(0)
+    dma_map_dmabuf(D2H) : 96회, 실패 0, status=HAILO_SUCCESS(0) (H2D+D2H 총 0.315 ms)
+    콜백                : 112개 / 기대 112개 (프레임당 7), 실패 0, first_error=HAILO_SUCCESS(0)
+    A 대비 출력 6텐서 바이트 일치 : 16 / 16 frames
+  판정: PASS
+
+## 합격 기준
+  ① 프레임당 콜백 7개 전부 SUCCESS : PASS (infer_async 112/112 실패 0, write_async 112/112 실패 0)
+  ② 출력 6텐서가 호스트 입력 실행과 바이트 일치 : PASS (infer_async 16/16, write_async 16/16)
+  ③ hailort.log warning 0 : PASS (전체 0건, unaligned buffer 0건, 온도/클럭 0건)
+     error: 본 실행 구간 0건, 전체 10건 (차 10건은 크기 계약 4조합 표의 **의도된** 거부다)
+  ④ fd 누수 0 : PASS (시작 6, 증거 파일 연 뒤 7, 종료 7 → +0)
+  ⑤ API 별 결과 : infer_async=PASS, write_async(read_async 경로)=PASS
+  ⑥ Vulkan 검증 레이어 : errors 0, warnings 24 (레이어 활성 yes)
+
+[결론] 입력 dma-buf(H2D) + 출력 dma-buf(D2H) 동시 사용 가능 — F0 관문 통과

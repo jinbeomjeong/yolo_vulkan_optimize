@@ -1,0 +1,34 @@
+# 단계 3a: RawSession -> yvo::HailoRawRunner 승격 스모크
+# pcie=8.0 GT/s PCIe x1 hef=/home/pi/workspace/yolo_vulkan_optimize/03_models/yolov11m.hef video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4
+# batch=8 요청slots=16 frames=16 api=infer_async 계약(map=dmabuf_size, transfer=hw_frame_size)
+# 냉각: hailo 58.1 -> 58.1 C, 대기 0 s
+
+## 러너가 HEF 메타만으로 파생한 모델 정보 (픽스처 파일을 읽지 않는다)
+  입력: yolov11m/input_layer1  640x640  hw_frame_size=1228800  min_queue=16  classes=80 reg_max=16
+
+## 텐서 번호 대응 (cls(s)=2s, box(s)=2s+1)
+  i  러너 스트림 이름                기준(derive_layout) 스트림 이름  grid(pad)  f   stride  bytes     scale         zp      같음
+  0  yolov11m/conv74_178             yolov11m/conv74_178             80x80(80)   80   8      512000    0.0034697596  0       yes
+  1  yolov11m/conv71_178             yolov11m/conv71_178             80x80(80)   64   8      409600    0.114550702   88      yes
+  2  yolov11m/conv90_178             yolov11m/conv90_178             40x40(40)   80  16      128000    0.00376578374  0       yes
+  3  yolov11m/conv87_178             yolov11m/conv87_178             40x40(40)   64  16      102400    0.0798219442  74      yes
+  4  yolov11m/conv105_178            yolov11m/conv105_178            20x20(24)   80  32      38400     0.00381877855  0       yes
+  5  yolov11m/conv102_178            yolov11m/conv102_178            20x20(24)   64  32      30720     0.0748218745  81      yes
+
+## A(RawSession) vs B(HailoRawRunner)
+  A: constructed=1 frames_ok=16/16 cb=112 실패=0
+  B: constructed=1 slots=16(min_queue=16) frames_ok=16/16 cb=616 실패=0
+  출력 6텐서 바이트 일치 : 16 / 16 frames (다른 바이트 0개)
+  B 처리량(파이프라인, 200 frames x3 중앙값): 51.40 FPS (min 51.39, max 51.41),
+     latency median 309.21 ms p90 309.77 ms, temp 58.5 -> 67.3 C
+
+## 합격 기준
+  ① 러너 생성 + 슬롯 bind 성공            : PASS
+  ② 텐서 번호 ↔ 스트림 이름 대응 일치     : PASS
+  ③ 콜백 실패 0, 프레임 16/16             : PASS
+  ④ f0 경로와 출력 6텐서 바이트 일치      : PASS (16/16)
+  ⑤ hailort.log error 0 / warning 0(온도·클럭 0) : PASS
+  ⑥ fd 누수 0                             : PASS (시작 6, 종료 6 → +0)
+  ⑦ Vulkan 검증 레이어 errors 0 (활성 yes)
+
+[결론] HailoRawRunner 는 RawSession 과 같은 출력을 낸다 — 승격 검증 통과

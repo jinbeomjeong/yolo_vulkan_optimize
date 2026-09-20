@@ -1,0 +1,49 @@
+yvo_postproc_probe --probe gpuab   (계획서 §6.2 P3)
+[gpuab] dir=04_data/raw_tensors frames=5  인터리브 3라운드 x (워밍업 30 + 측정 300)
+[env] SoC temp=69.7'C
+  throttled throttled=0xe0000
+
+[vk] device=V3D 7.1.10.2 timestamps=1 period=1.000 ns
+[plain] slots=5  headroom=0 B  heap_sync=n/a  tensor0 range=512000
+[heap] slots=5  headroom=256 B  heap_sync=on  tensor0 range=512000
+
+== ① G5 정확성 (같은 실행, 같은 픽스처) ==
+  [plain] slot 0  cpu=25 gpu=25 matched=25 onlyCPU=0 onlyGPU=0 score_bit_mismatch=0 max_coord_err=0.000122 px overflow=0
+  [plain] slot 1  cpu=20 gpu=20 matched=20 onlyCPU=0 onlyGPU=0 score_bit_mismatch=0 max_coord_err=0.000061 px overflow=0
+  [plain] slot 2  cpu=20 gpu=20 matched=20 onlyCPU=0 onlyGPU=0 score_bit_mismatch=0 max_coord_err=0.000122 px overflow=0
+  [plain] slot 3  cpu=30 gpu=30 matched=30 onlyCPU=0 onlyGPU=0 score_bit_mismatch=0 max_coord_err=0.000122 px overflow=0
+  [plain] slot 4  cpu=20 gpu=20 matched=20 onlyCPU=0 onlyGPU=0 score_bit_mismatch=0 max_coord_err=0.000122 px overflow=0
+  [heap] slot 0  cpu=25 gpu=25 matched=25 onlyCPU=0 onlyGPU=0 score_bit_mismatch=0 max_coord_err=0.000122 px overflow=0
+  [heap] slot 1  cpu=20 gpu=20 matched=20 onlyCPU=0 onlyGPU=0 score_bit_mismatch=0 max_coord_err=0.000061 px overflow=0
+  [heap] slot 2  cpu=20 gpu=20 matched=20 onlyCPU=0 onlyGPU=0 score_bit_mismatch=0 max_coord_err=0.000122 px overflow=0
+  [heap] slot 3  cpu=30 gpu=30 matched=30 onlyCPU=0 onlyGPU=0 score_bit_mismatch=0 max_coord_err=0.000122 px overflow=0
+  [heap] slot 4  cpu=20 gpu=20 matched=20 onlyCPU=0 onlyGPU=0 score_bit_mismatch=0 max_coord_err=0.000122 px overflow=0
+[G5 plain] PASS  후보 cpu=115 gpu=115  좌표 최대오차 0.000122 px (기준 < 0.25)  점수 비트 불일치 0  바이트합 일치
+[G5 heap] PASS  후보 cpu=115 gpu=115  좌표 최대오차 0.000122 px (기준 < 0.25)  점수 비트 불일치 0  바이트합 일치
+[교차] plain 과 heap 의 후보 집합이 바이트 단위로 동일한가: 예 (메모리 타입은 값 문제가 아니다 — B.7)
+
+== ② pass 1 GPU timestamp — plain ↔ heap 인터리브 3라운드 (연속 스트림) ==
+round  plain_median_ms  heap_median_ms  heap/plain
+    0           0.5623          0.5630      1.0013
+    1           0.5623          0.5618      0.9992
+    2           0.5620          0.5616      0.9994
+[plain] pass1_ms median 0.5622  p90 0.6291  min 0.5314  max 0.8903  n=900 | cmdbuf median 0.5693
+[heap] pass1_ms median 0.5622  p90 0.6282  min 0.5400  max 0.6950  n=900 | cmdbuf median 0.5692
+[비율] 라운드별 heap/plain 중앙값 = 0.9994 (전체 중앙값 기준 0.9999)
+[밴드 판정] A: 손해 없음 — GPU 가 읽는 버퍼도 heap 후보
+
+== ③ cpu_read_1.22MB — plain / heap / malloc 3자 인터리브 3라운드 x 10회 ==
+총 읽기 바이트 = 1221120 B (6 텐서 hw_frame_size 합)
+alloc    median_ms   p90_ms    min_ms    GB/s(median)  비고
+malloc       0.189     0.271     0.179         6.465  호스트 malloc (기준)
+heap         0.262     0.380     0.251         4.653  dma-heap 캐시 매핑, DMA_BUF_IOCTL_SYNC 포함
+plain        0.789     1.074     0.776         1.548  V3D HOST_COHERENT (캐시 없음)
+[cpu_read] heap/plain = 0.333배 (P2 실측 0.396/0.826 = 0.48배와 대조)
+⚠ malloc 행은 **낙관적 기준**이다: src·dst 가 둘 다 malloc 이고 같은 버퍼를 반복해서 읽으므로
+  L2/SLC 에 남는다. P2 의 malloc 0.244 ms 는 HailoRT 가 출력을 받은 버퍼를 읽은 것이라 조건이 다르다.
+  **판정에 쓰는 것은 heap 과 plain 의 비교다** — 이 둘은 같은 실행·같은 방법·같은 크기다.
+  heap 행의 sync 비용(START|READ + END|READ x 6텐서)은 시간에 포함돼 있다(부록 B.10 R6).
+
+[validation] errors=0 warnings=1
+[fd] 기준선 14 → 해제 후 14 → 누수 0  (heap 슬롯 5 x 텐서 6 dma-buf + import dup fd)
+[RESULT] gpuab PASS  (밴드 A)

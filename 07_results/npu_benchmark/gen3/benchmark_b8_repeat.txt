@@ -1,0 +1,65 @@
+Starting Measurements...
+Measuring FPS in HW-only mode
+[HailoRT] [warning] HEF was compiled assuming clock rate of 400 MHz, while the device clock rate is 350 MHz. FPS calculations might not be accurate.
+[HailoRT] [warning] HEF was compiled assuming clock rate of 400 MHz, while the device clock rate is 350 MHz. FPS calculations might not be accurate.
+Network yolov11m/yolov11m: 6% | 48 | FPS: 47.95 | ETA: 00:00:14
+[F[2KNetwork yolov11m/yolov11m: 13% | 104 | FPS: 51.95 | ETA: 00:00:13
+[F[2KNetwork yolov11m/yolov11m: 20% | 152 | FPS: 50.61 | ETA: 00:00:12
+[F[2KNetwork yolov11m/yolov11m: 26% | 205 | FPS: 51.20 | ETA: 00:00:11
+[F[2KNetwork yolov11m/yolov11m: 33% | 256 | FPS: 51.15 | ETA: 00:00:10
+[F[2KNetwork yolov11m/yolov11m: 40% | 306 | FPS: 50.95 | ETA: 00:00:09
+[F[2KNetwork yolov11m/yolov11m: 46% | 360 | FPS: 51.37 | ETA: 00:00:08
+[F[2KNetwork yolov11m/yolov11m: 53% | 408 | FPS: 50.95 | ETA: 00:00:07
+[F[2KNetwork yolov11m/yolov11m: 60% | 464 | FPS: 51.51 | ETA: 00:00:06
+[F[2KNetwork yolov11m/yolov11m: 66% | 512 | FPS: 51.15 | ETA: 00:00:05
+[F[2KNetwork yolov11m/yolov11m: 73% | 568 | FPS: 51.59 | ETA: 00:00:04
+[F[2KNetwork yolov11m/yolov11m: 80% | 616 | FPS: 51.28 | ETA: 00:00:03
+[F[2KNetwork yolov11m/yolov11m: 86% | 669 | FPS: 51.41 | ETA: 00:00:02
+[HailoRT] [warning] Got health monitor notification - System's clock has been changed from 350000000 to 300000000
+[F[2KNetwork yolov11m/yolov11m: 93% | 720 | FPS: 51.38 | ETA: 00:00:01
+[F[2KNetwork yolov11m/yolov11m: 100% | 768 | FPS: 51.15 | ETA: 00:00:00
+[F[2KNetwork yolov11m/yolov11m: 100% | 768 | FPS: 50.32 | ETA: 00:00:00
+Measuring FPS (and Power on supported platforms) in streaming mode
+[HailoRT] [warning] HEF was compiled assuming clock rate of 400 MHz, while the device clock rate is 300 MHz. FPS calculations might not be accurate.
+[HailoRT] [warning] HEF was compiled assuming clock rate of 400 MHz, while the device clock rate is 300 MHz. FPS calculations might not be accurate.
+Network yolov11m/yolov11m: 6% | 48 | FPS: 47.95 | ETA: 00:00:14
+[F[2KNetwork yolov11m/yolov11m: 13% | 96 | FPS: 47.95 | ETA: 00:00:13
+[F[2KNetwork yolov11m/yolov11m: 20% | 152 | FPS: 50.61 | ETA: 00:00:12
+[F[2KNetwork yolov11m/yolov11m: 26% | 200 | FPS: 49.95 | ETA: 00:00:11
+[F[2KNetwork yolov11m/yolov11m: 33% | 248 | FPS: 49.55 | ETA: 00:00:10
+[F[2KNetwork yolov11m/yolov11m: 40% | 304 | FPS: 50.61 | ETA: 00:00:09
+[F[2KNetwork yolov11m/yolov11m: 46% | 352 | FPS: 50.23 | ETA: 00:00:08
+[F[2KNetwork yolov11m/yolov11m: 53% | 400 | FPS: 49.95 | ETA: 00:00:07
+[F[2KNetwork yolov11m/yolov11m: 60% | 456 | FPS: 50.61 | ETA: 00:00:06
+[F[2KNetwork yolov11m/yolov11m: 66% | 504 | FPS: 50.35 | ETA: 00:00:05
+[F[2KNetwork yolov11m/yolov11m: 73% | 552 | FPS: 50.13 | ETA: 00:00:04
+[F[2KNetwork yolov11m/yolov11m: 80% | 608 | FPS: 50.61 | ETA: 00:00:03
+[F[2KNetwork yolov11m/yolov11m: 86% | 656 | FPS: 50.41 | ETA: 00:00:02
+[F[2KNetwork yolov11m/yolov11m: 93% | 708 | FPS: 50.52 | ETA: 00:00:01
+[F[2K[HailoRT] [warning] Got health monitor notification - System's clock has been changed from 300000000 to 250000000
+Network yolov11m/yolov11m: 100% | 760 | FPS: 50.64 | ETA: 00:00:00
+Measuring HW Latency
+[HailoRT] [warning] HEF was compiled assuming clock rate of 400 MHz, while the device clock rate is 250 MHz. FPS calculations might not be accurate.
+[HailoRT] [warning] HEF was compiled assuming clock rate of 400 MHz, while the device clock rate is 250 MHz. FPS calculations might not be accurate.
+Network yolov11m/yolov11m: 6% | 48 | HW Latency: 133.57 ms | ETA: 00:00:14
+[F[2KNetwork yolov11m/yolov11m: 13% | 96 | HW Latency: 133.48 ms | ETA: 00:00:13
+[F[2KNetwork yolov11m/yolov11m: 20% | 144 | HW Latency: 133.45 ms | ETA: 00:00:12
+[F[2KNetwork yolov11m/yolov11m: 26% | 192 | HW Latency: 133.49 ms | ETA: 00:00:11
+[F[2KNetwork yolov11m/yolov11m: 33% | 240 | HW Latency: 133.48 ms | ETA: 00:00:10
+[F[2KNetwork yolov11m/yolov11m: 40% | 288 | HW Latency: 133.44 ms | ETA: 00:00:09
+[F[2KNetwork yolov11m/yolov11m: 46% | 336 | HW Latency: 133.42 ms | ETA: 00:00:08
+[F[2KNetwork yolov11m/yolov11m: 53% | 384 | HW Latency: 133.40 ms | ETA: 00:00:07
+[F[2KNetwork yolov11m/yolov11m: 60% | 432 | HW Latency: 133.39 ms | ETA: 00:00:06
+[F[2KNetwork yolov11m/yolov11m: 66% | 480 | HW Latency: 133.37 ms | ETA: 00:00:05
+[F[2KNetwork yolov11m/yolov11m: 73% | 528 | HW Latency: 133.38 ms | ETA: 00:00:04
+[F[2KNetwork yolov11m/yolov11m: 80% | 576 | HW Latency: 133.37 ms | ETA: 00:00:03
+[F[2KNetwork yolov11m/yolov11m: 86% | 621 | HW Latency: 133.36 ms | ETA: 00:00:02
+[F[2KNetwork yolov11m/yolov11m: 93% | 665 | HW Latency: 133.40 ms | ETA: 00:00:01
+[F[2KNetwork yolov11m/yolov11m: 100% | 712 | HW Latency: 133.35 ms | ETA: 00:00:00
+
+=======
+Summary
+=======
+FPS     (hw_only)                 = 50.3225
+        (streaming)               = 50.6362
+Latency (hw)                      = 133.354 ms

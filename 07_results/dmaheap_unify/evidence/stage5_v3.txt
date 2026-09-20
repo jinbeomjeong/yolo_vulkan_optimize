@@ -1,0 +1,87 @@
+yvo_postproc_probe --probe v3   (계획서 §6.2 P3)
+[v3] 실패 강제 하네스 3변종: ① full-dirty ② line-dirty ③ stale-read(읽기 방향)
+[pcie] 8.0 GT/s PCIe x1 (0001:01:00.0)
+[thermal] chip temp before = 55.3 °C
+[v3] 프레임 A/B 준비 (영상 앞 20장 중 첫/마지막). 셀당 변종별 6회 반복, 창 4096 B, 라인 64 B
+
+======== heap_sync ON (규약대로 START/END|READ) ========
+[기준] 프레임 A 스냅샷의 0xA5 바이트 45개(①② 잡음 하한) · A≠B 바이트 전체 349248 / 창 5372 (③ 검출 가능 예산, 창 합계 24576 B)
+
+---- ① full-dirty: 전체 memset(0xA5), END|WRITE 생략 ----
+trial  gpu_mismatch  diff_bytes  0xA5_잔존
+    0             0           0          0
+    1             0           0          0
+    2             0           0          0
+    3             0           0          0
+    4             0           0          0
+    5             0           0          0
+
+---- ② line-dirty: 창 4096 B 안에서 64 B 라인마다 1바이트만 쓴다(부분 라인 → dirty 강제), END|WRITE 생략 ----
+trial  gpu_mismatch  diff_bytes(창)  0xA5_잔존
+    0             0               0          0
+    1             0               0          0
+    2             0               0          0
+    3             0               0          0
+    4             0               0          0
+    5             0               0          0
+
+---- ③ stale-read: 프레임 B 로 창 4096 B 를 읽어 캐시를 채운 뒤 DMA 가 프레임 A 를 쓴다 ----
+trial  gpu_mismatch  diff_bytes(창)  그중_B값(낡은_데이터)
+    0             0               0                      0  (acc=40310)
+    1             0               0                      0  (acc=40310)
+    2             0               0                      0  (acc=40310)
+    3             0               0                      0  (acc=40310)
+    4             0               0                      0  (acc=40310)
+    5             0               0                      0  (acc=40310)
+[validation] errors=0
+
+======== heap_sync OFF (sync 없음) ========
+[기준] 프레임 A 스냅샷의 0xA5 바이트 45개(①② 잡음 하한) · A≠B 바이트 전체 349248 / 창 5372 (③ 검출 가능 예산, 창 합계 24576 B)
+
+---- ① full-dirty: 전체 memset(0xA5), END|WRITE 생략 ----
+trial  gpu_mismatch  diff_bytes  0xA5_잔존
+    0             0           0          0
+    1             0           0          0
+    2             0           0          0
+    3             0           0          0
+    4             0           0          0
+    5             0           0          0
+
+---- ② line-dirty: 창 4096 B 안에서 64 B 라인마다 1바이트만 쓴다(부분 라인 → dirty 강제), END|WRITE 생략 ----
+trial  gpu_mismatch  diff_bytes(창)  0xA5_잔존
+    0             0               0          0
+    1             0               0          0
+    2             0               0          0
+    3             0               0          0
+    4             0               0          0
+    5             0               0          0
+
+---- ③ stale-read: 프레임 B 로 창 4096 B 를 읽어 캐시를 채운 뒤 DMA 가 프레임 A 를 쓴다 ----
+trial  gpu_mismatch  diff_bytes(창)  그중_B값(낡은_데이터)
+    0             0               0                      0  (acc=40310)
+    1             0               0                      0  (acc=40310)
+    2             0               0                      0  (acc=40310)
+    3             0               0                      0  (acc=40310)
+    4             0               0                      0  (acc=40310)
+    5             0               0                      0  (acc=40310)
+[validation] errors=0
+
+== V3 판정 ==
+heap_sync  변종         비교바이트     diff  0xA5잔존  낡은B값  gpu_mismatch/비교  검출예산
+on         full-dirty      7326720        0         0        0           0/36       0
+on         line-dirty       147456        0         0        0           0/36       0
+on         stale-read       147456        0         0        0           0/36       5372
+off        full-dirty      7326720        0         0        0           0/36       0
+off        line-dirty       147456        0         0        0           0/36       0
+off        stale-read       147456        0         0        0           0/36       5372
+[V3] heap_sync ON 에서 오염 0 (3변종 전부): PASS
+[V3] heap_sync OFF 에서 오염이 재현됐는가: 아니오
+     ⚠ 세 변종 모두 재현하지 못했다. **그래도 sync 는 그대로 유지한다.**
+       디바이스 트리에 `dma-coherent` 가 0건이라 커널이 V3D 를 비일관 장치로 취급하는 것이
+       '필요하다' 쪽의 구조적 근거이고, 이 실험은 그것을 반증하지 못한 것뿐이다(부록 A P3-④).
+       가능한 기제(미확정): ⓐ system heap 의 begin/end_cpu_access 가 attach 된 장치를 순회하며
+       이미 필요한 캐시 관리를 하고 있다, ⓑ PCIe DMA 가 CPU 캐시를 스누핑한다(ACP/IO-coherent),
+       ⓒ 추론 지연(ms) 동안 캐시가 자연 축출돼 조건 자체가 성립하지 않는다.
+       ⓒ 를 줄이려고 ②③ 은 창을 작게(부분 라인/priming) 잡았으나 그래도 재현되지 않았다.
+[hailort.log] error +0
+[RESULT] v3 PASS

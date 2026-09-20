@@ -1,0 +1,49 @@
+yvo_postproc_probe --probe live   (계획서 §6.2 P3)
+[live] hef=03_models/yolov11m.hef video=04_data/videos/video_h265.mp4 frames=20 api=read_async batch=1 slots=5
+[pcie] 8.0 GT/s PCIe x1 (0001:01:00.0)  fd(start)=7
+[thermal] chip temp before = 61.5 °C
+[alloc] heap  heap_sync=on  headroom=256 B
+[dmabuf] tensor 0  hw_frame_size=512000  dmabuf_size=524288  fd=14
+[dmabuf] tensor 1  hw_frame_size=409600  dmabuf_size=425984  fd=15
+[dmabuf] tensor 2  hw_frame_size=128000  dmabuf_size=131072  fd=16
+[dmabuf] tensor 3  hw_frame_size=102400  dmabuf_size=114688  fd=17
+[dmabuf] tensor 4  hw_frame_size=38400  dmabuf_size=49152  fd=18
+[dmabuf] tensor 5  hw_frame_size=30720  dmabuf_size=32768  fd=19
+[live] dma_map_dmabuf 30회 0.195 ms
+[live] 입력 프레임 20장 준비 (NHCW 1228800 B)
+
+== P3-(2) / V1 3자 대조: Hailo DMA 쓰기 → GPU 계산 합 ↔ CPU 캐시 매핑 읽기 합 ↔ malloc 스냅샷 합 ==
+  · shader : kChecksum 파이프라인이 V3D 로 읽어 더한 값
+  · mapped : CPU 가 힙 fd 의 캐시 매핑을 READ sync 구간 안에서 직접 읽어 더한 값
+  · malloc : 같은 READ 구간 안에서 malloc 버퍼로 memcpy 한 뒤 그 사본을 더한 값
+  ⚠ malloc 사본은 같은 매핑에서 떠온 것이라 **독립 경로가 아니다** — 매핑 읽기가 도중에 흔들리는
+    경우(찢어진 읽기)를 잡을 뿐, HailoRT 가 malloc 버퍼로 직접 받은 P2 의 기준과는 다르다.
+frame slot  tensor mismatch  cand  cpu_cand  matched  max_coord_err_px
+    0    0        0     25        25       25          0.000122
+    1    1        0     20        20       20          0.000061
+    2    2        0     20        20       20          0.000122
+    3    3        0     30        30       30          0.000122
+    4    4        0     20        20       20          0.000122
+    5    0        0     20        20       20          0.000000
+    6    1        0     20        20       20          0.000122
+    7    2        0     19        19       19          0.000122
+    8    3        0     20        20       20          0.000122
+    9    4        0     20        20       20          0.000000
+   10    0        0     19        19       19          0.000244
+   11    1        0     28        28       28          0.000244
+   12    2        0     26        26       26          0.000244
+   13    3        0     19        19       19          0.000122
+   14    4        0     18        18       18          0.000122
+   15    0        0     20        20       20          0.000000
+   16    1        0     21        21       21          0.000122
+   17    2        0     20        20       20          0.000122
+   18    3        0     11        11       11          0.000122
+   19    4        0     11        11       11          0.000000
+[P3-(2)] 바이트 합 PASS / 디코드 일치 PASS
+[V1] 3자 대조 PASS — 비교 120건(텐서 단위, 20프레임 x 6) · shader!=mapped 0 · shader!=malloc 0 (기준: 불일치 0)
+[live] pass1_ms median 0.5514 p90 0.6304 (NPU 동시 실행 상태 — 부록 A.8: 단독 벤치보다 높게 나온다)
+[hailort.log] error +0  온도·클럭 warning +0 
+[validation] errors=0 warnings=0
+[fd] start=7  세션 보유 중=47 (= 슬롯 5 x 텐서 6 dma-buf + HailoRT/Vulkan 내부)
+[RESULT] live PASS
+[fd] 해제 후 start=7 end=7  누수 없음

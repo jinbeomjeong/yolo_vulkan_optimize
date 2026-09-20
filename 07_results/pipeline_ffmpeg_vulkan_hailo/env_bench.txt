@@ -1,0 +1,9 @@
+# pipeline_bench 2026-09-20T09:15:29+09:00
+kernel: 6.18.50+rpt-rpi-2712
+soc temp: 66.4 C, hailo temp: 58.7 C
+throttled=0x80000
+frequency(0)=2400027136
+video: /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 frames: 0 runs: 3
+# after 2026-09-20T09:30:51+09:00
+soc temp: 67.5 C, hailo temp: 80.9 C
+throttled=0x80000

@@ -1,0 +1,15 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[hevc @ 0x5556768a0d10] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[hevc @ 0x55567691db30] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[vulkan] device: V3D 7.1.10.2 (api 1.3.354, driver 0x6802002), queue family 0, timestamps yes (period 1.000 ns, 64 bits), dma-buf import=1 export=1 dedicated_only=0, external qf=FOREIGN_EXT, validation=off
+config: slots=8 depth=2 local=32x8 layout=nhcw video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4
+saved sample: /home/pi/workspace/yolo_vulkan_optimize/07_results/isp_resize/samples/letterbox_frame100_nhcw.png
+[decode+gpu] frames=1816 wall=25.769 s fps=70.5 cpu=0.444 ms/frame (total 806 ms)
+[decode+gpu] gpu shader ms: median=5.018 p90=40.004 mean=14.129 min=2.035 max=44.480 (n=1816)
+[decode+gpu] host submit us: median=39.3 p90=77.0 | wait us: median=4929.8 p90=39841.9
+[decode+gpu] frames=1816 wall=4.740 s fps=383.1 cpu=0.436 ms/frame (total 792 ms)
+[decode+gpu] gpu shader ms: median=2.129 p90=2.286 mean=2.163 min=1.659 max=3.341 (n=1816)
+[decode+gpu] host submit us: median=42.0 p90=99.7 | wait us: median=13.9 p90=2038.9
+host read of output (memcpy 1228800 B from mapped slot): median=1.136 ms p90=1.300 ms
+import cache: entries=0 imports=72 hits=7192
+validation: layer=off messenger=on errors=0 warnings=1

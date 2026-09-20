@@ -1,0 +1,225 @@
+#version 450
+// 박스 테두리 + 클래스 라벨 + HUD 한 줄을 **표시용 RGBA storage image 에 직접 쓰는 컴퓨트 래스터라이저**.
+//
+// ── 왜 컴퓨트인가 (계획서 §5.4) ───────────────────────────────────────────────────────────────
+// **그래픽스 파이프라인을 쓰지 않는다.** V3D 는 타일 기반이라 컴퓨트가 이미 쓴 이미지에
+// LOAD_OP_LOAD 로 렌더패스를 열면 타일러가 프레임버퍼 전체를 읽고 다시 쓴다(720p RGBA 3.69 MB x 2
+// ≈ 3.6 ms). 박스 몇 개 그리려고 낼 비용이 아니다. 컴퓨트는 scatter write 만 하므로 그 비용이 0 이다.
+//
+// ── 경계 규약 ─────────────────────────────────────────────────────────────────────────────────
+// **규약의 원문은 `01_src/display/overlay_reference.hpp` 상단 R0~R8 블록이다.** 이 셰이더는 그
+// 규약의 GPU 번역이고, 같은 규약의 CPU 번역(`overlay_cpu_render()`)과 `05_tests/test_overlay.cpp` 가
+// **max 오차 0** 으로 비교한다. 규약을 바꿀 때는 저 헤더를 먼저 고친다.
+//   R1  정수 사각형은 round-half-up 후 **닫힌 범위** [ix1,ix2]x[iy1,iy2] (폭 = ix2-ix1+1)
+//   R2  좌표에 NaN/Inf 가 있으면 그 검출을 통째로 건너뛴다
+//   R3  테두리는 **안쪽으로만** 자란다 → 화면 경계에 붙은 박스도 잘리지 않는다
+//   R5  정수 사각형은 클리핑하지 않은 좌표로 계산하고, **쓰기 직전에 화면으로 자른다**
+//   R6  라벨 원점 = 박스 좌상단 위, 위에 16*s 가 없으면 박스 안쪽 상단. score 는 정수 두 자리
+//   R7  색 = class_color(clamp(cid,0,79)) RGB, 알파 항상 255. HUD 는 흰색 (4,4) 고정
+// 글리프 언패킹(행/비트 순서, 정수 배율)은 `01_src/common/glyph_font_8x16.hpp` 규약 1)~8).
+//
+// ── 디스패치 규약 ─────────────────────────────────────────────────────────────────────────────
+// **검출 하나당 워크그룹 하나.** vkCmdDispatchIndirect(cb, det_buf, 0) 가 DetBuf 맨 앞의
+// uvec3 dispatch 를 읽는다(VkDispatchIndirectCommand 호환, offset 0).
+//   · 생산자(현재는 CPU, 나중에 GPU NMS 셰이더)는 `dispatch = (max(count,1), 1, 1)` 로 쓴다.
+//   · 워크그룹 g 는 g < count 일 때 검출 g 를 그린다.
+//   · **워크그룹 0 은 추가로 HUD 한 줄을 그린다.** 그래서 count == 0 이어도(dispatch.x = 1)
+//     HUD 가 나온다. 생산자가 실수로 dispatch.x = count 로 써도 검출 매핑은 그대로 옳다
+//     (HUD 만 사라진다) — 인덱스가 밀리지 않게 일부러 이렇게 나눴다.
+// local_size_x 는 spec constant 0(기본 64 = V3D subgroup 16 의 배수).
+//
+// ── V3D 규율 (sand_letterbox.comp 주석의 실측 근거와 같다) ────────────────────────────────────
+//   · 바이트 로드 대신 **워드 로드 + 시프트**(글리프·이름·HUD 문자 전부)
+//   · 픽셀당 분기를 만들지 않는다 → 네 변을 **화면으로 미리 자른 사각형 4개**로 그리고
+//     루프 경계에 클리핑을 흡수한다(테두리 판정 조건식을 픽셀마다 평가하지 않는다)
+//   · 32비트 정수 곱셈은 umul24 에뮬레이션이라 비싸다 → 곱셈은 글리프 셀당 1회로 묶는다
+//   · 로컬 배열 + 루프를 쓰지 않는다(컴파일러가 못 푼다) → 라벨 문자는 함수로 그때그때 만든다
+//   · barrier()/shared memory 를 쓰지 않으므로 조기 return 이 발산해도 무해하다
+
+// spec 0 = local_size_x (호스트 OverlayConfig::local_size_x)
+layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
+// spec 1 = 텍스트를 그리는가 (라벨 + HUD). spec 2 = 정수 배율 s.
+layout(constant_id = 1) const bool kDrawText = true;
+layout(constant_id = 2) const int kTextScale = 1;
+
+// R7: HUD 원점 (overlay_reference.hpp 의 kHudOriginX/Y 와 같은 값)
+const int kHudOriginX = 4;
+const int kHudOriginY = 4;
+
+// 32 B. 후처리 트랙(§4.3)의 Rec 과 **같은 레이아웃**이다(anchor_key/keep 이 pad 자리를 쓴다).
+struct DetGpu {
+    float x1, y1, x2, y2;
+    float score;
+    uint class_id;
+    uint anchor_key;
+    uint keep;
+};
+
+layout(rgba8, set = 0, binding = 0) uniform writeonly image2D dst_image;
+
+// std430: dispatch 0..11 / count 12 / overflow 16 / text_bytes 20 / text[32] 24..151 / dets 152..
+// 호스트 OverlayDetBufHeader(152 B)와 static_assert 로 맞춰 둔다.
+layout(std430, set = 0, binding = 1) readonly buffer DetBuf {
+    uvec3 dispatch;    // VkDispatchIndirectCommand 호환 (offset 0)
+    uint count;
+    uint overflow;
+    uint text_bytes;
+    uint text[32];     // HUD ASCII (128 B)
+    DetGpu dets[];
+};
+
+// 글리프 표 + COCO 이름 표를 한 버퍼에 담는다(V3D 는 storage buffer 8개 한도이고 둘 다 읽기 전용 상수다).
+layout(std430, set = 0, binding = 2) readonly buffer FontBuf {
+    uint glyph[380];     // kGlyph8x16 (95 글리프 x 4 워드)
+    uint name_off[81];   // 클래스별 이름 시작 바이트 오프셋. name_off[80] = 총 바이트 수
+    uint name_bytes[];   // ASCII 를 4바이트씩 패킹
+};
+
+layout(push_constant, std430) uniform Params {
+    float sx, sy, tx, ty;   // R0 affine (원본 좌표 → 캔버스 좌표)
+    int dst_w, dst_h;
+    int line_width;         // R3
+    uint max_dets;          // dets[] 상한 (count 를 이 값으로 클램프한다)
+} pc;
+
+// R1
+int rnd(float v) { return int(floor(clamp(v, -32768.0, 32767.0) + 0.5)); }
+
+// R7
+vec4 class_color(uint cid) {
+    const uint c = min(cid, 79u);
+    const uint r = 255u - (c * 29u) % 256u;
+    const uint g = (c * 131u + 80u) % 256u;
+    const uint b = (c * 67u) % 256u;
+    return vec4(vec3(uvec3(r, g, b)) / 255.0, 1.0);
+}
+
+uint byte_of(uint w, uint b) { return (w >> (b * 8u)) & 0xffu; }
+
+// ── 밴드 채우기: 경계를 미리 자르므로 픽셀마다 분기가 없다 (R5) ───────────────────────────────
+// 가로로 긴 밴드(위·아래 변): 행마다 x 를 invocation 에 분배한다 → 쓰기가 연속이다.
+void band_h(int x0, int y0, int x1, int y1, vec4 c) {
+    x0 = max(x0, 0);
+    y0 = max(y0, 0);
+    x1 = min(x1, pc.dst_w - 1);
+    y1 = min(y1, pc.dst_h - 1);
+    const int step = int(gl_WorkGroupSize.x);
+    for (int y = y0; y <= y1; ++y)
+        for (int x = x0 + int(gl_LocalInvocationID.x); x <= x1; x += step) imageStore(dst_image, ivec2(x, y), c);
+}
+
+// 세로로 긴 밴드(왼·오른 변, 폭 = line_width): 행을 invocation 에 분배한다.
+void band_v(int x0, int y0, int x1, int y1, vec4 c) {
+    x0 = max(x0, 0);
+    y0 = max(y0, 0);
+    x1 = min(x1, pc.dst_w - 1);
+    y1 = min(y1, pc.dst_h - 1);
+    const int step = int(gl_WorkGroupSize.x);
+    for (int y = y0 + int(gl_LocalInvocationID.x); y <= y1; y += step)
+        for (int x = x0; x <= x1; ++x) imageStore(dst_image, ivec2(x, y), c);
+}
+
+// ── 문자 만들기 ───────────────────────────────────────────────────────────────────────────────
+// HUD: DetBuf 의 text[] 에서
+uint hud_char(uint j) { return byte_of(text[j >> 2], j & 3u); }
+
+// 라벨: "<name> <q/100>.<(q/10)%10><q%10>"  (R6). 문자열을 만들지 않고 j 번째 문자를 바로 계산한다.
+uint label_char(uint name_o, uint name_l, uint q, uint j) {
+    if (j < name_l) {
+        const uint k = name_o + j;
+        return byte_of(name_bytes[k >> 2], k & 3u);
+    }
+    const uint r = j - name_l;
+    if (r == 0u) return 32u;                      // ' '
+    if (r == 1u) return 48u + q / 100u;           // '0' 또는 '1'
+    if (r == 2u) return 46u;                      // '.'
+    if (r == 3u) return 48u + (q / 10u) % 10u;
+    return 48u + q % 10u;
+}
+
+// ── 글리프 렌더 (glyph_font_8x16.hpp 규약 1)~8) + R6) ────────────────────────────────────────
+// 작업 단위 = **(문자, 글리프 행)**. 문자당 16개이므로 인덱스 분해가 시프트·마스크만으로 끝난다
+// (`idx >> 4`, `idx & 15`). 문자 조회와 글리프 워드 로드가 **행마다 1회**로 묶여 셀(픽셀) 단위
+// 분배보다 8배 적고, 한 단위가 화면의 가로 8*s 픽셀 × s 행을 **연속으로** 쓴다.
+// 실측(1080p, 검출 80개, text_scale 2, local_size 128, 라벨 구간만):
+//   셀 단위 분배 1.07 ms → 행 단위 분배 0.82 ms → 가로 경계 검사 제거 0.56 ms.
+void draw_text_run(int x0, int y0, uint nchars, vec4 c, bool hud, uint name_o, uint name_l, uint q) {
+    const int s = max(kTextScale, 1);
+    const uint units = nchars * 16u;
+    const uint step = gl_WorkGroupSize.x;
+    for (uint idx = gl_LocalInvocationID.x; idx < units; idx += step) {
+        const uint ci = idx >> 4;
+        const int row = int(idx & 15u);
+        const uint ch = hud ? hud_char(ci) : label_char(name_o, name_l, q, ci);
+        // 규약 1): 32~126 밖은 공백(g = 0)으로 접는다 → 아무 픽셀도 찍히지 않는다
+        const uint g = (ch >= 32u && ch <= 126u) ? (ch - 32u) : 0u;
+        // 규약 2)~4): 워드 하나에 4행, 최하위 바이트가 더 위쪽 행. MSB(0x80)가 col = 0
+        const uint bits = byte_of(glyph[g * 4u + uint(row >> 2)], uint(row & 3));
+        if (bits == 0u) continue; // 빈 행은 바로 건너뛴다 (공백 문자와 글리프 상·하단 여백)
+        // 규약 6),7): px = x0 + ci*8*s + col*s + i,  py = y0 + row*s + j
+        const int px0 = x0 + int(ci) * (8 * s);
+        const int py0 = y0 + row * s;
+        for (int j = 0; j < s; ++j) {
+            const int py = py0 + j;
+            if (py < 0 || py >= pc.dst_h) continue;
+            for (int col = 0; col < 8; ++col) {
+                if (((bits >> uint(7 - col)) & 1u) == 0u) continue; // 규약 5): 꺼진 픽셀은 안 건드린다
+                const int cx = px0 + col * s;
+                // 가로 경계 검사를 하지 않는다: 범위 밖 imageStore 는 Vulkan 이 버리도록 보장하므로
+                // CPU 기준의 클리핑(R5)과 결과가 같고, 픽셀당 분기가 사라진다
+                // (display_convert.comp 의 store_px() 와 같은 근거).
+                for (int i = 0; i < s; ++i) imageStore(dst_image, ivec2(cx + i, py), c);
+            }
+        }
+    }
+}
+
+void draw_detection(uint i) {
+    const DetGpu d = dets[i];
+    // R2: 유한하지 않은 좌표면 통째로 건너뛴다
+    if (isnan(d.x1) || isnan(d.y1) || isnan(d.x2) || isnan(d.y2) || isinf(d.x1) || isinf(d.y1) || isinf(d.x2) ||
+        isinf(d.y2))
+        return;
+
+    // R0 + R1
+    const float fx1 = d.x1 * pc.sx + pc.tx;
+    const float fy1 = d.y1 * pc.sy + pc.ty;
+    const float fx2 = d.x2 * pc.sx + pc.tx;
+    const float fy2 = d.y2 * pc.sy + pc.ty;
+    const int ix1 = rnd(min(fx1, fx2));
+    const int ix2 = rnd(max(fx1, fx2));
+    const int iy1 = rnd(min(fy1, fy2));
+    const int iy2 = rnd(max(fy1, fy2));
+
+    const vec4 c = class_color(d.class_id);
+    const int w = max(pc.line_width, 1);
+
+    // R3: 안쪽으로 자라는 네 변. 네 밴드의 합집합 = R3 의 조건식 집합.
+    // 코너가 겹쳐 두 번 써도 같은 색이므로 결과가 같다(멱등).
+    band_h(ix1, iy1, ix2, min(iy1 + w - 1, iy2), c);              // 위
+    band_h(ix1, max(iy2 - w + 1, iy1), ix2, iy2, c);              // 아래
+    band_v(ix1, iy1, min(ix1 + w - 1, ix2), iy2, c);              // 왼
+    band_v(max(ix2 - w + 1, ix1), iy1, ix2, iy2, c);              // 오른
+
+    if (!kDrawText) return;
+    // R6: score → 정수 두 자리. 유한하지 않은 score 는 0 으로 접는다(CPU 기준과 같은 규칙).
+    const float sc = (isnan(d.score) || isinf(d.score)) ? 0.0 : clamp(d.score, 0.0, 1.0);
+    const uint q = uint(floor(sc * 100.0 + 0.5));
+    const uint cid = min(d.class_id, 79u);
+    const uint name_o = name_off[cid];
+    const uint name_l = name_off[cid + 1u] - name_o;
+    const int s = max(kTextScale, 1);
+    const int tx0 = max(ix1, 0);
+    const int ty0 = (iy1 - 16 * s >= 0) ? (iy1 - 16 * s) : max(iy1, 0);
+    draw_text_run(tx0, ty0, name_l + 5u, c, false, name_o, name_l, q);
+}
+
+void main() {
+    const uint g = gl_WorkGroupID.x;
+    // 워크그룹 0 은 HUD 를 **추가로** 그린다 (디스패치 규약 주석 참고)
+    if (kDrawText && g == 0u && text_bytes > 0u)
+        draw_text_run(kHudOriginX, kHudOriginY, min(text_bytes, 128u), vec4(1.0), true, 0u, 0u, 0u);
+
+    const uint n = min(count, pc.max_dets);
+    if (g < n) draw_detection(g);
+}

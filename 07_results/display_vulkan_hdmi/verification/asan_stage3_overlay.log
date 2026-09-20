@@ -1,0 +1,102 @@
+Running main() from ./googletest/src/gtest_main.cc
+[==========] Running 18 tests from 7 test suites.
+[----------] Global test environment set-up.
+[----------] 1 test from OverlayOverflow
+[ RUN      ] OverlayOverflow.TruncatesAndFlags
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[       OK ] OverlayOverflow.TruncatesAndFlags (643 ms)
+[----------] 1 test from OverlayOverflow (643 ms total)
+
+[----------] 1 test from OverlayAffineScale
+[ RUN      ] OverlayAffineScale.UniformScaleMatchesCpu
+[       OK ] OverlayAffineScale.UniformScaleMatchesCpu (144 ms)
+[----------] 1 test from OverlayAffineScale (144 ms total)
+
+[----------] 2 tests from OverlayDeterminism
+[ RUN      ] OverlayDeterminism.TenRepeatsIdenticalBoxes
+[       OK ] OverlayDeterminism.TenRepeatsIdenticalBoxes (1232 ms)
+[ RUN      ] OverlayDeterminism.TenRepeatsIdenticalWithText
+[       OK ] OverlayDeterminism.TenRepeatsIdenticalWithText (1232 ms)
+[----------] 2 tests from OverlayDeterminism (2465 ms total)
+
+[----------] 1 test from OverlayVsOpenCV
+[ RUN      ] OverlayVsOpenCV.GeometryWithinOnePixel
+[vs OpenCV] mask IoU 1.0000  inter 2480  union 2480  far(>20px) 0
+[       OK ] OverlayVsOpenCV.GeometryWithinOnePixel (30 ms)
+[----------] 1 test from OverlayVsOpenCV (30 ms total)
+
+[----------] 1 test from OverlayValidation
+[ RUN      ] OverlayValidation.NoErrors
+[validation] errors=0 warnings=1 layer=off
+[       OK ] OverlayValidation.NoErrors (0 ms)
+[----------] 1 test from OverlayValidation (0 ms total)
+
+[----------] 6 tests from LineWidth/OverlayGeometry
+[ RUN      ] LineWidth/OverlayGeometry.BoundaryCasesMatchCpu/lw1
+[geometry lw=1] 변경 픽셀 4338 (GPU) / 4338 (CPU)
+[       OK ] LineWidth/OverlayGeometry.BoundaryCasesMatchCpu/lw1 (326 ms)
+[ RUN      ] LineWidth/OverlayGeometry.BoundaryCasesMatchCpu/lw2
+[geometry lw=2] 변경 픽셀 8183 (GPU) / 8183 (CPU)
+[       OK ] LineWidth/OverlayGeometry.BoundaryCasesMatchCpu/lw2 (322 ms)
+[ RUN      ] LineWidth/OverlayGeometry.BoundaryCasesMatchCpu/lw3
+[geometry lw=3] 변경 픽셀 12129 (GPU) / 12129 (CPU)
+[       OK ] LineWidth/OverlayGeometry.BoundaryCasesMatchCpu/lw3 (317 ms)
+[ RUN      ] LineWidth/OverlayGeometry.EightyDetectionsMatchCpu/lw1
+[       OK ] LineWidth/OverlayGeometry.EightyDetectionsMatchCpu/lw1 (326 ms)
+[ RUN      ] LineWidth/OverlayGeometry.EightyDetectionsMatchCpu/lw2
+[       OK ] LineWidth/OverlayGeometry.EightyDetectionsMatchCpu/lw2 (318 ms)
+[ RUN      ] LineWidth/OverlayGeometry.EightyDetectionsMatchCpu/lw3
+[       OK ] LineWidth/OverlayGeometry.EightyDetectionsMatchCpu/lw3 (321 ms)
+[----------] 6 tests from LineWidth/OverlayGeometry (1933 ms total)
+
+[----------] 6 tests from TextScale/OverlayText
+[ RUN      ] TextScale/OverlayText.LabelsAndHudMatchCpu/s1
+[text s=1] 변경 픽셀 19755
+[       OK ] TextScale/OverlayText.LabelsAndHudMatchCpu/s1 (318 ms)
+[ RUN      ] TextScale/OverlayText.LabelsAndHudMatchCpu/s2
+[text s=2] 변경 픽셀 29004
+[       OK ] TextScale/OverlayText.LabelsAndHudMatchCpu/s2 (318 ms)
+[ RUN      ] TextScale/OverlayText.HudOnlyWithNoDetections/s1
+[       OK ] TextScale/OverlayText.HudOnlyWithNoDetections/s1 (50 ms)
+[ RUN      ] TextScale/OverlayText.HudOnlyWithNoDetections/s2
+[       OK ] TextScale/OverlayText.HudOnlyWithNoDetections/s2 (46 ms)
+[ RUN      ] TextScale/OverlayText.FullAsciiRangeInHud/s1
+[       OK ] TextScale/OverlayText.FullAsciiRangeInHud/s1 (313 ms)
+[ RUN      ] TextScale/OverlayText.FullAsciiRangeInHud/s2
+[       OK ] TextScale/OverlayText.FullAsciiRangeInHud/s2 (326 ms)
+[----------] 6 tests from TextScale/OverlayText (1374 ms total)
+
+[----------] Global test environment tear-down
+[==========] 18 tests from 7 test suites ran. (6592 ms total)
+[  PASSED  ] 18 tests.
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+== probe overlay (P7) ==
+
+-- ① 박스 테두리 (CPU 기준과 비트 일치, 1920x1080, 검출 80개) --
+line_width 1 : max_err 0  diff_px 0  변경 px 46560 (CPU 46560)  PASS
+line_width 2 : max_err 0  diff_px 0  변경 px 92480 (CPU 92480)  PASS
+line_width 3 : max_err 0  diff_px 0  변경 px 137760 (CPU 137760)  PASS
+
+-- ② 글리프 (라벨 + HUD, CPU 기준과 비트 일치) --
+text_scale 1 : 라벨 max_err 0 diff_px 0 (변경 px 28027) | HUD ASCII 32~126 max_err 0 diff_px 0 (변경 px 2750)  PASS
+text_scale 2 : 라벨 max_err 0 diff_px 0 (변경 px 39820) | HUD ASCII 32~126 max_err 0 diff_px 0 (변경 px 11000)  PASS
+
+-- ③ GPU timestamp (오프스크린 연속 스트림 30프레임, depth 3, local_size_x=128) --
+size         dets   text  lw       median      p90      min      max         px    ns/px
+1920x1080    80     on    2         1.022    1.044    1.017    4.457     180754     5.66
+1920x1080    80     off   2         0.503    0.689    0.463    3.964      92480     5.44
+1920x1080    40     on    2         0.554    0.559    0.550    3.994      91772     6.03
+1920x1080    5      on    2         0.151    0.155    0.148    3.593      16856     8.98
+1920x1080    0      on    2         0.043    0.045    0.042    3.470       1608    26.86
+640x640      80     on    2         0.932    0.937    0.928    4.366      87977    10.59
+640x640      40     on    2         0.506    0.508    0.505    0.522      44653    11.33
+640x640      5      on    2         0.139    0.140    0.138    0.154      10676    12.99
+
+검출 80개(1080p, 텍스트 on) median = 1.022 ms  기준 < 0.7 ms → FAIL
+검출 5개(실측 평균 5.21/frame) median = 0.151 ms
+참고: display_convert.comp 의 순차 쓰기 최적치는 2.05 ns/px 다(1920x1080 1:1, 4.23 ms).
+      오버레이는 얇은 테두리·글리프를 흩뿌려 쓰므로 px 당 비용이 그보다 높다.
+
+vk validation errors 0 warnings 1 (layer off)
+
+판정: ① 테두리 PASS  ② 글리프 PASS  ③ GPU < 0.7 ms FAIL  ④ 검증 errors 0 PASS

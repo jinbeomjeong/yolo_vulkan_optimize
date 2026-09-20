@@ -1,0 +1,17 @@
+[vulkan WARNING] Layer "VK_LAYER_KHRONOS_validation" forced enabled due to env var 'VK_LOADER_LAYERS_ENABLE'
+[vulkan WARNING] Layer "VK_LAYER_KHRONOS_validation" forced enabled due to env var 'VK_LOADER_LAYERS_ENABLE'
+[cfg] video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 1920x1080 mode=dmabuf batch=8 slots=16 gpu_depth=3 device=V3D 7.1.10.2
+[hevc @ 0x5555c9b3f510] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+== yvo_pipeline (dmabuf, batch 8, slots 16, gpu_depth 3) ==
+frames          200 (decoded 200, errors 0)
+wall            3.991 s, 50.11 FPS
+cpu             17.424 ms/frame (process user+sys 3484.7 ms, 87% of one core)
+decode call ms  mean 0.472  median 0.104  p90 1.347  max 12.924
+gpu shader ms   mean 2.668  median 2.251  p90 5.556  max 6.566
+npu latency ms  mean 300.592  median 302.219  p90 304.430  max 464.796
+e2e latency ms  mean 324.446  median 309.866  p90 446.155  max 470.470  (decode 반환 → NPU 완료 콜백)
+slot wait ms    mean 17.976  p90 136.633  (메인 스레드가 빈 슬롯을 기다린 시간)
+detections      606 total, 3.03 / frame
+hailo chip temp 64.7 -> 67.6 C
+soc temp        66.4 -> 68.6 C
+vk validation   errors 0, warnings 2

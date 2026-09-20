@@ -1,0 +1,12 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+frame    0 (pts 0): content 640x360 at (0,140), max_err=0 mean_err=0.00000 hist[0]=691200 [1]=0 [2]=0 [>=3]=0 pad_mismatch=0 gpu=2.131 ms
+frame  100 (pts 100): content 640x360 at (0,140), max_err=0 mean_err=0.00000 hist[0]=691200 [1]=0 [2]=0 [>=3]=0 pad_mismatch=0 gpu=5.560 ms
+frame  500 (pts 500): content 640x360 at (0,140), max_err=0 mean_err=0.00000 hist[0]=691200 [1]=0 [2]=0 [>=3]=0 pad_mismatch=0 gpu=5.558 ms
+frame  900 (pts 900): content 640x360 at (0,140), max_err=0 mean_err=0.00000 hist[0]=691200 [1]=0 [2]=0 [>=3]=0 pad_mismatch=0 gpu=5.542 ms
+frame 1815 (pts 1815): content 640x360 at (0,140), max_err=0 mean_err=0.00000 hist[0]=691200 [1]=0 [2]=0 [>=3]=0 pad_mismatch=0 gpu=5.731 ms
+frame    0 (pts 0) NHCW: bytes=1228800 mismatch=0 max_err=0 (worst idx 0: row 0 ch 0 col 0) same_as_nhwc=1 gpu=2.133 ms
+frame  100 (pts 100) NHCW: bytes=1228800 mismatch=0 max_err=0 (worst idx 0: row 0 ch 0 col 0) same_as_nhwc=1 gpu=2.057 ms
+frame  500 (pts 500) NHCW: bytes=1228800 mismatch=0 max_err=0 (worst idx 0: row 0 ch 0 col 0) same_as_nhwc=1 gpu=2.100 ms
+frame  900 (pts 900) NHCW: bytes=1228800 mismatch=0 max_err=0 (worst idx 0: row 0 ch 0 col 0) same_as_nhwc=1 gpu=2.091 ms
+frame 1815 (pts 1815) NHCW: bytes=1228800 mismatch=0 max_err=0 (worst idx 0: row 0 ch 0 col 0) same_as_nhwc=1 gpu=2.169 ms
+[  PASSED  ] 10 tests.

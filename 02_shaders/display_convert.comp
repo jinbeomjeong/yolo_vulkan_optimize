@@ -1,0 +1,222 @@
+#version 450
+// SAND128 NV12 dma-buf → 표시용 RGBA storage image (BT.709 limited → sRGB, 감마 인코딩된 값 그대로)
+//
+// 기준 구현: 01_src/common/sand.hpp 의 주소 규칙 + 01_src/common/cpu_letterbox.hpp 의 색 수식.
+// **BT.709 수식은 02_shaders/sand_letterbox.comp:94-101 을 그대로 옮긴 것이다**(precise 포함) —
+// 표시 색이 전처리 경로와 한 비트도 달라지면 안 된다.
+//
+// 출력은 VK_FORMAT_R8G8B8A8_UNORM storage image 다. 이유(계획서 §5.6):
+//   ① Vulkan 에서 _SRGB 포맷은 storage image 가 될 수 없다
+//   ② shaderStorageImageWriteWithoutFormat=false 라 포맷 한정자가 필수이고 GLSL 에 bgra8 이 없다 → rgba8 뿐
+//   ③ 아래 수식이 내놓는 값은 이미 감마 인코딩된 sRGB 0~255 → UNORM 이면 변환 없이 통과한다
+// byte/255.0 은 UNORM 양자화(round(v*255))에서 정확히 원래 바이트로 되돌아온다.
+//
+// ── 두 경로 (specialization constant 2: kUniformScale) ────────────────────────────────────────
+//  kUniformScale = false : **1:1 경로**(dst == src). 이것이 표시 기본 경로다.
+//      sand_letterbox.comp 을 복사한 것이 **아니다** — 1:1 이라 스케일 LUT 도 4-tap bilinear 도
+//      letterbox 패딩도 없다. de-SAND 주소 계산 + BT.709 + RGBA 패킹뿐이다.
+//      · 루마: sx = dx, fx = 0 이라 **샘플이 정확히 1개**다. 4픽셀이 같은 SAND 열의 연속 4바이트이므로
+//        (dst_w 가 4의 배수, SAND 열 폭 128 도 4의 배수) **워드 로드 1회**로 전부 꺼낸다.
+//      · 크로마: chroma_location=left 라 세로는 두 행 사이 보간이 필요하고(fcy), 가로는 짝수 dx 에서 0,
+//        홀수 dx 에서 정확히 0.5 다. 4픽셀에 필요한 크로마 열은 q0,q1,q2 세 개뿐이고 두 행이므로
+//        **워드 로드 4회**로 끝난다(q0,q1 이 한 워드, q2 가 다음 워드).
+//      → 4픽셀당 로드 5회. byte load 대신 워드 로드 + 시프트를 쓰는 이유는 V3D 에서 byte load 의
+//        명령 수가 4배이기 때문이다(sand_letterbox.comp 주석의 실측 근거와 같은 규율).
+//      · 보간 순서는 CPU 기준(cpu_letterbox.hpp: **가로 먼저, 세로 나중**)과 똑같이 맞춘다.
+//        순서를 바꾸면 부동소수점 결과가 달라져 비트 일치가 깨진다.
+//  kUniformScale = true : **균일 스케일 경로**(창 크기가 원본과 다를 때만). 이때만 bilinear 이고
+//      sand_letterbox.comp 과 같은 열 LUT 를 쓴다(V3D 는 32비트 정수 곱이 umul24 에뮬레이션이라 비싸다).
+//
+// V3D 최적화 규율(모두 sand_letterbox.comp 주석의 측정 근거와 같다):
+//   워드 로드 + 시프트 / lane 별 분기 회피 / 로컬 배열+루프 금지(컴파일러가 못 푼다) /
+//   32비트 정수 곱셈 최소화(1:1 경로는 4픽셀당 열 곱 2회뿐) / workgroup invocation 은 크게(64~256).
+// barrier()/shared memory 를 쓰지 않으므로 범위 밖 invocation 은 바로 return 해도 된다.
+
+// 워크그룹 크기: specialization constant 0/1 (호스트 DisplayConvertConfig::local_size_x/y)
+layout(local_size_x_id = 0, local_size_y_id = 1, local_size_z = 1) in;
+// 균일 스케일 경로 여부: specialization constant 2
+layout(constant_id = 2) const bool kUniformScale = false;
+
+layout(std430, set = 0, binding = 0) readonly buffer YBuf { uint y_words[]; };
+layout(std430, set = 0, binding = 1) readonly buffer UVBuf { uint uv_words[]; };
+layout(rgba8, set = 0, binding = 2) uniform writeonly image2D dst_image;
+// 열 LUT (kUniformScale 일 때만 쓴다. sand_letterbox.comp 의 것과 같은 규약)
+layout(std430, set = 0, binding = 3) readonly buffer ColLut { uvec4 col_lut[]; };
+
+// 호스트 DisplayConvertPush(56 B)와 같은 순서
+layout(push_constant, std430) uniform Params {
+    uint y_offset;      // 4의 배수 (호스트 검사)
+    uint y_col_stride;  // 바이트. 128 의 배수이므로 >> 2 로 워드 간격이 된다
+    uint uv_offset;     // 4의 배수 (호스트 검사)
+    uint uv_col_stride;
+    int src_w;
+    int src_h;
+    int dst_w;          // 4의 배수를 권장(아니어도 동작한다 — 범위 밖 imageStore 는 버려진다)
+    int dst_h;
+    int pad_x;
+    int pad_y;
+    int new_w;
+    int new_h;
+    float inv_scale;
+    uint pad_value;
+} pc;
+
+uint to_u8(float v) {
+    precise float c = clamp(v, 0.0, 255.0) + 0.5;
+    return uint(c);
+}
+
+// BT.709 limited → RGB. sand_letterbox.comp:94-101 과 **완전히 같은 수식·같은 순서**다.
+uvec3 bt709_to_rgb(float Y, float U, float V) {
+    precise float yf = (Y - 16.0) * (255.0 / 219.0);
+    precise float uf = (U - 128.0) * (255.0 / 224.0);
+    precise float vf = (V - 128.0) * (255.0 / 224.0);
+    precise float R = yf + 1.5748 * vf;
+    precise float G = yf - 0.187324 * uf - 0.468124 * vf;
+    precise float B = yf + 1.8556 * uf;
+    return uvec3(to_u8(R), to_u8(G), to_u8(B));
+}
+
+void store_px(int dx, int dy, uvec3 rgb) {
+    // 범위 밖 좌표의 imageStore 는 Vulkan 이 버리도록 보장하므로 경계 분기가 필요 없다.
+    imageStore(dst_image, ivec2(dx, dy), vec4(vec3(rgb) / 255.0, 1.0));
+}
+
+float byte_at(uint w, uint sh) { return float((w >> sh) & 0xffu); }
+
+// ── 균일 스케일 경로: sand_letterbox.comp 의 shade() 와 같은 LUT 규약 ────────────────────────
+uvec3 shade_lut(int dx, uint pv, uint yw0, uint yw1, float fy, uint cw0, uint cw1, float fcy) {
+    const uvec4 cols = col_lut[2 * dx];
+    const uvec4 aux = col_lut[2 * dx + 1];
+    const float fx = uintBitsToFloat(aux.y);
+    const float fcx = uintBitsToFloat(aux.z);
+    const uint sy0 = aux.x & 0xffu;
+    const uint sy1 = (aux.x >> 8) & 0xffu;
+    const uint su0 = (aux.x >> 16) & 0xffu;
+    const uint su1 = aux.x >> 24;
+
+    float a = byte_at(y_words[yw0 + cols.x], sy0);
+    float b = byte_at(y_words[yw0 + cols.y], sy1);
+    float c = byte_at(y_words[yw1 + cols.x], sy0);
+    float d = byte_at(y_words[yw1 + cols.y], sy1);
+    precise float top = a + (b - a) * fx;
+    precise float bot = c + (d - c) * fx;
+    precise float Y = top + (bot - top) * fy;
+
+    uint wa = uv_words[cw0 + cols.z] >> su0;
+    uint wc = uv_words[cw1 + cols.z] >> su0;
+    vec2 ua = vec2(float(wa & 0xffu), float((wa >> 8) & 0xffu));
+    vec2 uc = vec2(float(wc & 0xffu), float((wc >> 8) & 0xffu));
+    uint wb = uv_words[cw0 + cols.w] >> su1;
+    uint wd = uv_words[cw1 + cols.w] >> su1;
+    vec2 ub = vec2(float(wb & 0xffu), float((wb >> 8) & 0xffu));
+    vec2 ud = vec2(float(wd & 0xffu), float((wd >> 8) & 0xffu));
+    precise vec2 ctop = ua + (ub - ua) * fcx;
+    precise vec2 cbot = uc + (ud - uc) * fcx;
+    precise vec2 UV = ctop + (cbot - ctop) * fcy;
+
+    const uvec3 rgb = bt709_to_rgb(Y, UV.x, UV.y);
+    return (aux.w != 0u) ? uvec3(pv) : rgb;
+}
+
+void scale_path(int dx0, int dy) {
+    const uint pv = pc.pad_value & 0xffu;
+    const bool row_in = dy >= pc.pad_y && dy < pc.pad_y + pc.new_h;
+    if (!row_in) {
+        const uvec3 p = uvec3(pv);
+        store_px(dx0 + 0, dy, p);
+        store_px(dx0 + 1, dy, p);
+        store_px(dx0 + 2, dy, p);
+        store_px(dx0 + 3, dy, p);
+        return;
+    }
+    precise float sy = (float(dy - pc.pad_y) + 0.5) * pc.inv_scale - 0.5;
+    precise float ys = clamp(sy, 0.0, float(pc.src_h - 1));
+    int y0 = int(ys);
+    int y1 = min(y0 + 1, pc.src_h - 1);
+    precise float fy = ys - float(y0);
+
+    int ch = pc.src_h >> 1;
+    precise float cy = (sy + 0.5) * 0.5 - 0.5;
+    precise float cys = clamp(cy, 0.0, float(ch - 1));
+    int cy0 = int(cys);
+    int cy1 = min(cy0 + 1, ch - 1);
+    precise float fcy = cys - float(cy0);
+
+    const uint yw0 = (pc.y_offset >> 2) + uint(y0) * 32u;
+    const uint yw1 = (pc.y_offset >> 2) + uint(y1) * 32u;
+    const uint cw0 = (pc.uv_offset >> 2) + uint(cy0) * 32u;
+    const uint cw1 = (pc.uv_offset >> 2) + uint(cy1) * 32u;
+
+    // 4픽셀을 명시적으로 풀어 쓴다(로컬 배열·루프를 두면 V3D 컴파일러가 풀지 못해 느려진다)
+    store_px(dx0 + 0, dy, shade_lut(dx0 + 0, pv, yw0, yw1, fy, cw0, cw1, fcy));
+    store_px(dx0 + 1, dy, shade_lut(dx0 + 1, pv, yw0, yw1, fy, cw0, cw1, fcy));
+    store_px(dx0 + 2, dy, shade_lut(dx0 + 2, pv, yw0, yw1, fy, cw0, cw1, fcy));
+    store_px(dx0 + 3, dy, shade_lut(dx0 + 3, pv, yw0, yw1, fy, cw0, cw1, fcy));
+}
+
+// ── 1:1 경로 ─────────────────────────────────────────────────────────────────────────────────
+void fast_path(int dx0, int dy) {
+    // 루마: 같은 SAND 열의 연속 4바이트 = 워드 1개. (dx0 % 4 == 0 이고 열 폭 128 도 4의 배수)
+    const uint ycsw = pc.y_col_stride >> 2;
+    const uint yrow = (pc.y_offset >> 2) + uint(dy) * 32u;
+    const uint yw = y_words[yrow + uint(dx0 >> 7) * ycsw + uint((dx0 & 127) >> 2)];
+
+    // 크로마 행: chroma_location=left → 세로는 두 루마 행의 가운데. CPU 기준과 같은 float 연산 순서.
+    const int ch = pc.src_h >> 1;
+    precise float sy = float(dy);
+    precise float cy = (sy + 0.5) * 0.5 - 0.5;
+    precise float cys = clamp(cy, 0.0, float(ch - 1));
+    const int cy0 = int(cys);
+    const int cy1 = min(cy0 + 1, ch - 1);
+    precise float fcy = cys - float(cy0);
+
+    const uint ucsw = pc.uv_col_stride >> 2;
+    const uint crow0 = (pc.uv_offset >> 2) + uint(cy0) * 32u;
+    const uint crow1 = (pc.uv_offset >> 2) + uint(cy1) * 32u;
+
+    // 크로마 열 q0 = dx0/2, q1 = q0+1 → 바이트 dx0..dx0+3 = 워드 1개 (U0,V0,U1,V1)
+    const uint coff0 = uint(dx0 >> 7) * ucsw + uint((dx0 & 127) >> 2);
+    const uint wa = uv_words[crow0 + coff0];
+    const uint wb = uv_words[crow1 + coff0];
+    // 크로마 열 q2 = q0+2 → 바이트 dx0+4. 마지막 묶음에서는 cw-1 로 클램프된다(CPU 의 min(cx0+1, cw-1)).
+    const int bx2 = min(dx0 + 4, pc.src_w - 2);
+    const uint coff2 = uint(bx2 >> 7) * ucsw + uint((bx2 & 127) >> 2);
+    const uint sh2 = uint(bx2 & 3) * 8u;   // 클램프되지 않으면 0, 클램프되면 16
+    const uint wc = uv_words[crow0 + coff2] >> sh2;
+    const uint wd = uv_words[crow1 + coff2] >> sh2;
+
+    // (U, V) 쌍: a* = 행 cy0, b* = 행 cy1
+    const vec2 a0 = vec2(float(wa & 0xffu), float((wa >> 8) & 0xffu));
+    const vec2 a1 = vec2(float((wa >> 16) & 0xffu), float(wa >> 24));
+    const vec2 a2 = vec2(float(wc & 0xffu), float((wc >> 8) & 0xffu));
+    const vec2 b0 = vec2(float(wb & 0xffu), float((wb >> 8) & 0xffu));
+    const vec2 b1 = vec2(float((wb >> 16) & 0xffu), float(wb >> 24));
+    const vec2 b2 = vec2(float(wd & 0xffu), float((wd >> 8) & 0xffu));
+
+    // 짝수 dx: fcx = 0 → 가로 보간 결과가 그 열 값 그대로다(a + (b-a)*0.0 == a, 비트 단위로).
+    precise vec2 uv0 = a0 + (b0 - a0) * fcy;
+    precise vec2 uv2 = a1 + (b1 - a1) * fcy;
+    // 홀수 dx: fcx = 0.5. **가로 먼저, 세로 나중** — CPU 기준(bilinear_u8)과 같은 순서여야 한다.
+    precise vec2 t1 = a0 + (a1 - a0) * 0.5;
+    precise vec2 o1 = b0 + (b1 - b0) * 0.5;
+    precise vec2 uv1 = t1 + (o1 - t1) * fcy;
+    precise vec2 t3 = a1 + (a2 - a1) * 0.5;
+    precise vec2 o3 = b1 + (b2 - b1) * 0.5;
+    precise vec2 uv3 = t3 + (o3 - t3) * fcy;
+
+    store_px(dx0 + 0, dy, bt709_to_rgb(byte_at(yw, 0u), uv0.x, uv0.y));
+    store_px(dx0 + 1, dy, bt709_to_rgb(byte_at(yw, 8u), uv1.x, uv1.y));
+    store_px(dx0 + 2, dy, bt709_to_rgb(byte_at(yw, 16u), uv2.x, uv2.y));
+    store_px(dx0 + 3, dy, bt709_to_rgb(byte_at(yw, 24u), uv3.x, uv3.y));
+}
+
+void main() {
+    const int groups_per_row = (pc.dst_w + 3) >> 2;
+    const int gx = int(gl_GlobalInvocationID.x);
+    const int dy = int(gl_GlobalInvocationID.y);
+    if (gx >= groups_per_row || dy >= pc.dst_h) return; // barrier 없음
+    const int dx0 = gx * 4;
+    if (kUniformScale) scale_path(dx0, dy);
+    else fast_path(dx0, dy);
+}

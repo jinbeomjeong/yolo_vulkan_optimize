@@ -1,0 +1,58 @@
+Starting Measurements...
+Measuring FPS in HW-only mode
+Network yolov11m/yolov11m: 6% | 12 | FPS: 11.99 | ETA: 00:00:14
+[F[2KNetwork yolov11m/yolov11m: 13% | 25 | FPS: 12.49 | ETA: 00:00:13
+[F[2KNetwork yolov11m/yolov11m: 20% | 38 | FPS: 12.65 | ETA: 00:00:12
+[F[2KNetwork yolov11m/yolov11m: 26% | 50 | FPS: 12.49 | ETA: 00:00:11
+[F[2KNetwork yolov11m/yolov11m: 33% | 63 | FPS: 12.59 | ETA: 00:00:10
+[F[2KNetwork yolov11m/yolov11m: 40% | 76 | FPS: 12.65 | ETA: 00:00:09
+[F[2KNetwork yolov11m/yolov11m: 46% | 88 | FPS: 12.56 | ETA: 00:00:08
+[F[2KNetwork yolov11m/yolov11m: 53% | 101 | FPS: 12.61 | ETA: 00:00:07
+[F[2KNetwork yolov11m/yolov11m: 60% | 114 | FPS: 12.65 | ETA: 00:00:06
+[F[2KNetwork yolov11m/yolov11m: 66% | 126 | FPS: 12.59 | ETA: 00:00:05
+[F[2KNetwork yolov11m/yolov11m: 73% | 139 | FPS: 12.62 | ETA: 00:00:04
+[F[2KNetwork yolov11m/yolov11m: 80% | 152 | FPS: 12.65 | ETA: 00:00:03
+[F[2KNetwork yolov11m/yolov11m: 86% | 164 | FPS: 12.60 | ETA: 00:00:02
+[F[2KNetwork yolov11m/yolov11m: 93% | 177 | FPS: 12.63 | ETA: 00:00:01
+[F[2KNetwork yolov11m/yolov11m: 100% | 190 | FPS: 12.65 | ETA: 00:00:00
+[F[2KNetwork yolov11m/yolov11m: 100% | 190 | FPS: 12.64 | ETA: 00:00:00
+Measuring FPS (and Power on supported platforms) in streaming mode
+Network yolov11m/yolov11m: 6% | 12 | FPS: 11.99 | ETA: 00:00:14
+[F[2KNetwork yolov11m/yolov11m: 13% | 25 | FPS: 12.49 | ETA: 00:00:13
+[F[2KNetwork yolov11m/yolov11m: 20% | 38 | FPS: 12.65 | ETA: 00:00:12
+[F[2KNetwork yolov11m/yolov11m: 26% | 50 | FPS: 12.49 | ETA: 00:00:11
+[F[2KNetwork yolov11m/yolov11m: 33% | 63 | FPS: 12.59 | ETA: 00:00:10
+[F[2KNetwork yolov11m/yolov11m: 40% | 76 | FPS: 12.65 | ETA: 00:00:09
+[F[2KNetwork yolov11m/yolov11m: 46% | 88 | FPS: 12.56 | ETA: 00:00:08
+[F[2KNetwork yolov11m/yolov11m: 53% | 101 | FPS: 12.61 | ETA: 00:00:07
+[F[2KNetwork yolov11m/yolov11m: 60% | 114 | FPS: 12.65 | ETA: 00:00:06
+[F[2KNetwork yolov11m/yolov11m: 66% | 126 | FPS: 12.59 | ETA: 00:00:05
+[F[2KNetwork yolov11m/yolov11m: 73% | 139 | FPS: 12.62 | ETA: 00:00:04
+[F[2KNetwork yolov11m/yolov11m: 80% | 152 | FPS: 12.65 | ETA: 00:00:03
+[F[2KNetwork yolov11m/yolov11m: 86% | 164 | FPS: 12.60 | ETA: 00:00:02
+[F[2KNetwork yolov11m/yolov11m: 93% | 177 | FPS: 12.63 | ETA: 00:00:01
+[F[2KNetwork yolov11m/yolov11m: 100% | 190 | FPS: 12.65 | ETA: 00:00:00
+[F[2KNetwork yolov11m/yolov11m: 100% | 190 | FPS: 12.64 | ETA: 00:00:00
+Measuring HW Latency
+Network yolov11m/yolov11m: 6% | 12 | HW Latency: 62.01 ms | ETA: 00:00:14
+[F[2KNetwork yolov11m/yolov11m: 13% | 25 | HW Latency: 61.98 ms | ETA: 00:00:13
+[F[2KNetwork yolov11m/yolov11m: 20% | 38 | HW Latency: 61.98 ms | ETA: 00:00:12
+[F[2KNetwork yolov11m/yolov11m: 26% | 50 | HW Latency: 61.97 ms | ETA: 00:00:11
+[F[2KNetwork yolov11m/yolov11m: 33% | 63 | HW Latency: 61.97 ms | ETA: 00:00:10
+[F[2KNetwork yolov11m/yolov11m: 40% | 76 | HW Latency: 61.97 ms | ETA: 00:00:09
+[F[2KNetwork yolov11m/yolov11m: 46% | 88 | HW Latency: 61.97 ms | ETA: 00:00:08
+[F[2KNetwork yolov11m/yolov11m: 53% | 101 | HW Latency: 61.97 ms | ETA: 00:00:07
+[F[2KNetwork yolov11m/yolov11m: 60% | 114 | HW Latency: 61.97 ms | ETA: 00:00:06
+[F[2KNetwork yolov11m/yolov11m: 66% | 126 | HW Latency: 61.97 ms | ETA: 00:00:05
+[F[2KNetwork yolov11m/yolov11m: 73% | 139 | HW Latency: 61.97 ms | ETA: 00:00:04
+[F[2KNetwork yolov11m/yolov11m: 80% | 152 | HW Latency: 61.97 ms | ETA: 00:00:03
+[F[2KNetwork yolov11m/yolov11m: 86% | 164 | HW Latency: 61.97 ms | ETA: 00:00:02
+[F[2KNetwork yolov11m/yolov11m: 93% | 177 | HW Latency: 61.97 ms | ETA: 00:00:01
+[F[2KNetwork yolov11m/yolov11m: 100% | 189 | HW Latency: 61.97 ms | ETA: 00:00:00
+
+=======
+Summary
+=======
+FPS     (hw_only)                 = 12.5729
+        (streaming)               = 12.6396
+Latency (hw)                      = 61.9693 ms

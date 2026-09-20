@@ -1,0 +1,39 @@
+2026-09-20T00:36:38+09:00
+00:36:38 chip_temp 59.8
+temp=64.2'C
+throttled=0x0
+== b8_repeat rc=0
+Measuring FPS (and Power on supported platforms) in streaming mode
+FPS     (hw_only)                 = 51.7104
+        (streaming)               = 51.7112
+Latency (hw)                      = 126.348 ms
+2026-09-20T00:37:24+09:00
+00:37:24 chip_temp 82.3
+temp=65.3'C
+throttled=0x0
+2026-09-20T00:37:24+09:00
+00:39:54 chip_temp 63.9
+temp=63.7'C
+throttled=0x0
+== b16 rc=0
+Measuring FPS (and Power on supported platforms) in streaming mode
+FPS     (hw_only)                 = 43.7143
+        (streaming)               = 43.7155
+Latency (hw)                      = 299.515 ms
+2026-09-20T00:40:40+09:00
+00:40:40 chip_temp 82.2
+temp=67.5'C
+throttled=0x0
+2026-09-20T00:40:40+09:00
+00:43:10 chip_temp 63.8
+temp=64.2'C
+throttled=0x0
+== b8_repeat2 rc=0
+Measuring FPS (and Power on supported platforms) in streaming mode
+FPS     (hw_only)                 = 51.7095
+        (streaming)               = 51.644
+Latency (hw)                      = 126.343 ms
+2026-09-20T00:43:56+09:00
+00:43:56 chip_temp 86.6
+temp=67.5'C
+throttled=0x0

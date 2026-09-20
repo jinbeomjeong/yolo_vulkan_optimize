@@ -1,0 +1,84 @@
+Internal ctest changing into directory: /home/pi/workspace/yolo_vulkan_optimize/build
+Test project /home/pi/workspace/yolo_vulkan_optimize/build
+      Start  1: Frames/PreprocTest.MatchesCpuReference/frame0  # GetParam() = 0
+ 1/39 Test  #1: Frames/PreprocTest.MatchesCpuReference/frame0  # GetParam() = 0 ................   Passed    5.17 sec
+      Start  2: Frames/PreprocTest.MatchesCpuReference/frame100  # GetParam() = 100
+ 2/39 Test  #2: Frames/PreprocTest.MatchesCpuReference/frame100  # GetParam() = 100 ............   Passed    5.17 sec
+      Start  3: Frames/PreprocTest.MatchesCpuReference/frame500  # GetParam() = 500
+ 3/39 Test  #3: Frames/PreprocTest.MatchesCpuReference/frame500  # GetParam() = 500 ............   Passed    5.17 sec
+      Start  4: Frames/PreprocTest.MatchesCpuReference/frame900  # GetParam() = 900
+ 4/39 Test  #4: Frames/PreprocTest.MatchesCpuReference/frame900  # GetParam() = 900 ............   Passed    5.16 sec
+      Start  5: Frames/PreprocTest.MatchesCpuReference/frame1815  # GetParam() = 1815
+ 5/39 Test  #5: Frames/PreprocTest.MatchesCpuReference/frame1815  # GetParam() = 1815 ..........   Passed    5.17 sec
+      Start  6: Frames/PreprocTest.NhcwMatchesCpuReference/frame0  # GetParam() = 0
+ 6/39 Test  #6: Frames/PreprocTest.NhcwMatchesCpuReference/frame0  # GetParam() = 0 ............   Passed    5.19 sec
+      Start  7: Frames/PreprocTest.NhcwMatchesCpuReference/frame100  # GetParam() = 100
+ 7/39 Test  #7: Frames/PreprocTest.NhcwMatchesCpuReference/frame100  # GetParam() = 100 ........   Passed    5.13 sec
+      Start  8: Frames/PreprocTest.NhcwMatchesCpuReference/frame500  # GetParam() = 500
+ 8/39 Test  #8: Frames/PreprocTest.NhcwMatchesCpuReference/frame500  # GetParam() = 500 ........   Passed    5.16 sec
+      Start  9: Frames/PreprocTest.NhcwMatchesCpuReference/frame900  # GetParam() = 900
+ 9/39 Test  #9: Frames/PreprocTest.NhcwMatchesCpuReference/frame900  # GetParam() = 900 ........   Passed    5.14 sec
+      Start 10: Frames/PreprocTest.NhcwMatchesCpuReference/frame1815  # GetParam() = 1815
+10/39 Test #10: Frames/PreprocTest.NhcwMatchesCpuReference/frame1815  # GetParam() = 1815 ......   Passed    5.15 sec
+      Start 11: Frames/IspPreprocTest.MatchesCpuReference/frame0  # GetParam() = 0
+11/39 Test #11: Frames/IspPreprocTest.MatchesCpuReference/frame0  # GetParam() = 0 .............   Passed    5.18 sec
+      Start 12: Frames/IspPreprocTest.MatchesCpuReference/frame100  # GetParam() = 100
+12/39 Test #12: Frames/IspPreprocTest.MatchesCpuReference/frame100  # GetParam() = 100 .........   Passed    5.15 sec
+      Start 13: Frames/IspPreprocTest.MatchesCpuReference/frame500  # GetParam() = 500
+13/39 Test #13: Frames/IspPreprocTest.MatchesCpuReference/frame500  # GetParam() = 500 .........   Passed    5.27 sec
+      Start 14: Frames/IspPreprocTest.MatchesCpuReference/frame900  # GetParam() = 900
+14/39 Test #14: Frames/IspPreprocTest.MatchesCpuReference/frame900  # GetParam() = 900 .........   Passed    5.18 sec
+      Start 15: Frames/IspPreprocTest.MatchesCpuReference/frame1815  # GetParam() = 1815
+15/39 Test #15: Frames/IspPreprocTest.MatchesCpuReference/frame1815  # GetParam() = 1815 .......   Passed    5.15 sec
+      Start 16: Frames/IspPreprocTest.NeonRepackMatchesScalar/frame0  # GetParam() = 0
+16/39 Test #16: Frames/IspPreprocTest.NeonRepackMatchesScalar/frame0  # GetParam() = 0 .........   Passed    5.18 sec
+      Start 17: Frames/IspPreprocTest.NeonRepackMatchesScalar/frame100  # GetParam() = 100
+17/39 Test #17: Frames/IspPreprocTest.NeonRepackMatchesScalar/frame100  # GetParam() = 100 .....   Passed    5.14 sec
+      Start 18: Frames/IspPreprocTest.NeonRepackMatchesScalar/frame500  # GetParam() = 500
+18/39 Test #18: Frames/IspPreprocTest.NeonRepackMatchesScalar/frame500  # GetParam() = 500 .....   Passed    5.16 sec
+      Start 19: Frames/IspPreprocTest.NeonRepackMatchesScalar/frame900  # GetParam() = 900
+19/39 Test #19: Frames/IspPreprocTest.NeonRepackMatchesScalar/frame900  # GetParam() = 900 .....   Passed    5.17 sec
+      Start 20: Frames/IspPreprocTest.NeonRepackMatchesScalar/frame1815  # GetParam() = 1815
+20/39 Test #20: Frames/IspPreprocTest.NeonRepackMatchesScalar/frame1815  # GetParam() = 1815 ...   Passed    5.17 sec
+      Start 21: OverlayOverflow.TruncatesAndFlags
+21/39 Test #21: OverlayOverflow.TruncatesAndFlags ..............................................   Passed    0.27 sec
+      Start 22: OverlayAffineScale.UniformScaleMatchesCpu
+22/39 Test #22: OverlayAffineScale.UniformScaleMatchesCpu ......................................   Passed    0.22 sec
+      Start 23: OverlayDeterminism.TenRepeatsIdenticalBoxes
+23/39 Test #23: OverlayDeterminism.TenRepeatsIdenticalBoxes ....................................   Passed    0.36 sec
+      Start 24: OverlayDeterminism.TenRepeatsIdenticalWithText
+24/39 Test #24: OverlayDeterminism.TenRepeatsIdenticalWithText .................................   Passed    0.35 sec
+      Start 25: OverlayVsOpenCV.GeometryWithinOnePixel
+25/39 Test #25: OverlayVsOpenCV.GeometryWithinOnePixel .........................................   Passed    0.21 sec
+      Start 26: OverlayValidation.NoErrors
+26/39 Test #26: OverlayValidation.NoErrors .....................................................   Passed    0.21 sec
+      Start 27: LineWidth/OverlayGeometry.BoundaryCasesMatchCpu/lw1  # GetParam() = 1
+27/39 Test #27: LineWidth/OverlayGeometry.BoundaryCasesMatchCpu/lw1  # GetParam() = 1 ..........   Passed    0.25 sec
+      Start 28: LineWidth/OverlayGeometry.BoundaryCasesMatchCpu/lw2  # GetParam() = 2
+28/39 Test #28: LineWidth/OverlayGeometry.BoundaryCasesMatchCpu/lw2  # GetParam() = 2 ..........   Passed    0.25 sec
+      Start 29: LineWidth/OverlayGeometry.BoundaryCasesMatchCpu/lw3  # GetParam() = 3
+29/39 Test #29: LineWidth/OverlayGeometry.BoundaryCasesMatchCpu/lw3  # GetParam() = 3 ..........   Passed    0.24 sec
+      Start 30: LineWidth/OverlayGeometry.EightyDetectionsMatchCpu/lw1  # GetParam() = 1
+30/39 Test #30: LineWidth/OverlayGeometry.EightyDetectionsMatchCpu/lw1  # GetParam() = 1 .......   Passed    0.26 sec
+      Start 31: LineWidth/OverlayGeometry.EightyDetectionsMatchCpu/lw2  # GetParam() = 2
+31/39 Test #31: LineWidth/OverlayGeometry.EightyDetectionsMatchCpu/lw2  # GetParam() = 2 .......   Passed    0.25 sec
+      Start 32: LineWidth/OverlayGeometry.EightyDetectionsMatchCpu/lw3  # GetParam() = 3
+32/39 Test #32: LineWidth/OverlayGeometry.EightyDetectionsMatchCpu/lw3  # GetParam() = 3 .......   Passed    0.25 sec
+      Start 33: TextScale/OverlayText.LabelsAndHudMatchCpu/s1  # GetParam() = 1
+33/39 Test #33: TextScale/OverlayText.LabelsAndHudMatchCpu/s1  # GetParam() = 1 ................   Passed    0.26 sec
+      Start 34: TextScale/OverlayText.LabelsAndHudMatchCpu/s2  # GetParam() = 2
+34/39 Test #34: TextScale/OverlayText.LabelsAndHudMatchCpu/s2  # GetParam() = 2 ................   Passed    0.25 sec
+      Start 35: TextScale/OverlayText.HudOnlyWithNoDetections/s1  # GetParam() = 1
+35/39 Test #35: TextScale/OverlayText.HudOnlyWithNoDetections/s1  # GetParam() = 1 .............   Passed    0.22 sec
+      Start 36: TextScale/OverlayText.HudOnlyWithNoDetections/s2  # GetParam() = 2
+36/39 Test #36: TextScale/OverlayText.HudOnlyWithNoDetections/s2  # GetParam() = 2 .............   Passed    0.21 sec
+      Start 37: TextScale/OverlayText.FullAsciiRangeInHud/s1  # GetParam() = 1
+37/39 Test #37: TextScale/OverlayText.FullAsciiRangeInHud/s1  # GetParam() = 1 .................   Passed    0.24 sec
+      Start 38: TextScale/OverlayText.FullAsciiRangeInHud/s2  # GetParam() = 2
+38/39 Test #38: TextScale/OverlayText.FullAsciiRangeInHud/s2  # GetParam() = 2 .................   Passed    0.26 sec
+      Start 39: test_detections
+39/39 Test #39: test_detections ................................................................   Passed   18.72 sec
+
+100% tests passed, 0 tests failed out of 39
+
+Total Test time (real) = 126.67 sec

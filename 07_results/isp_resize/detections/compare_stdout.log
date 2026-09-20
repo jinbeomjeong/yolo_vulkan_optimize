@@ -1,0 +1,54 @@
+############ isp_A_nhwc_b8 vs gpu_nhcw_b8 ############
+label            : isp_A_nhwc_b8 vs gpu_nhcw_b8
+frames           : 1816
+detections ref   : 9457
+detections test  : 9237  (-2.33 %)
+match @ IoU 0.5 : 8069 / 10163 = 0.7940
+match @ IoU 0.7 : 7987 / 10163 = 0.7859
+match @ IoU 0.9 : 5993 / 10163 = 0.5897
+
+class                 ref   test    diff
+car                   5767   5778    +0.19 %
+traffic light         1654   1492    -9.79 %
+person                1483   1458    -1.69 %
+truck                  228    199   -12.72 %
+bicycle                150    146    -2.67 %
+chair                   79     71   -10.13 %
+bus                     33     48   +45.45 %
+fire hydrant            23     13   -43.48 %
+motorcycle              15     18   +20.00 %
+stop sign               10      8   -20.00 %
+airplane                 9      2   -77.78 %
+train                    4      1   -75.00 %
+bench                    1      1    +0.00 %
+bird                     1      2  +100.00 %
+
+saved: 07_results/isp_resize/detections/compare_isp_A_nhwc_b8.csv
+############ isp_C_nhcw_b8 vs gpu_nhcw_b8 ############
+label            : isp_C_nhcw_b8 vs gpu_nhcw_b8
+frames           : 1816
+detections ref   : 9457
+detections test  : 9237  (-2.33 %)
+match @ IoU 0.5 : 8069 / 10163 = 0.7940
+match @ IoU 0.7 : 7987 / 10163 = 0.7859
+match @ IoU 0.9 : 5993 / 10163 = 0.5897
+
+class                 ref   test    diff
+car                   5767   5778    +0.19 %
+traffic light         1654   1492    -9.79 %
+person                1483   1458    -1.69 %
+truck                  228    199   -12.72 %
+bicycle                150    146    -2.67 %
+chair                   79     71   -10.13 %
+bus                     33     48   +45.45 %
+fire hydrant            23     13   -43.48 %
+motorcycle              15     18   +20.00 %
+stop sign               10      8   -20.00 %
+airplane                 9      2   -77.78 %
+train                    4      1   -75.00 %
+bench                    1      1    +0.00 %
+bird                     1      2  +100.00 %
+
+saved: 07_results/isp_resize/detections/compare_isp_C_nhcw_b8.csv
+
+[exited with code 0]

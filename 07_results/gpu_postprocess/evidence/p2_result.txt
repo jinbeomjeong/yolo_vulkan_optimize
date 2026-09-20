@@ -1,0 +1,42 @@
+# P2 결과 (yvo_hailo_raw_probe --probe p2)
+# pcie=8.0 GT/s PCIe x1 hef=03_models/yolov11m.hef video=04_data/videos/video_h265.mp4
+# batch=8 slots=16 compare_frames=30 api=both alloc=malloc,heap,vulkan
+# 냉각: hailo 57.2 -> 57.2 C, 대기 0 s
+
+[heap] api=infer_async dma_map=dmabuf_size read_async=hw_frame_size slots=16
+  dma_map_dmabuf : 96회, 실패 0, status=HAILO_SUCCESS(0), 총 0.611 ms (0.006 ms/회)
+  콜백           : 210개, 실패 0, first_error=HAILO_SUCCESS(0)
+  malloc 대비 바이트 일치 : 30 / 30 frames
+  pool 보유 시 열린 fd    : 106 (시작 6)
+  tensor 0: hw_frame_size=30720 dmabuf_size=32768 (차 +2048)
+  tensor 1: hw_frame_size=38400 dmabuf_size=49152 (차 +10752)
+  tensor 2: hw_frame_size=409600 dmabuf_size=409600 (차 +0)
+  tensor 3: hw_frame_size=512000 dmabuf_size=524288 (차 +12288)
+  tensor 4: hw_frame_size=102400 dmabuf_size=114688 (차 +12288)
+  tensor 5: hw_frame_size=128000 dmabuf_size=131072 (차 +3072)
+
+[vulkan] api=infer_async dma_map=dmabuf_size read_async=hw_frame_size slots=16
+  dma_map_dmabuf : 96회, 실패 0, status=HAILO_SUCCESS(0), 총 0.261 ms (0.003 ms/회)
+  콜백           : 210개, 실패 0, first_error=HAILO_SUCCESS(0)
+  malloc 대비 바이트 일치 : 30 / 30 frames
+  pool 보유 시 열린 fd    : 112 (시작 6)
+  tensor 0: hw_frame_size=30720 dmabuf_size=49152 (차 +18432)
+  tensor 1: hw_frame_size=38400 dmabuf_size=65536 (차 +27136)
+  tensor 2: hw_frame_size=409600 dmabuf_size=425984 (차 +16384)
+  tensor 3: hw_frame_size=512000 dmabuf_size=540672 (차 +28672)
+  tensor 4: hw_frame_size=102400 dmabuf_size=131072 (차 +28672)
+  tensor 5: hw_frame_size=128000 dmabuf_size=147456 (차 +19456)
+
+합격 기준 판정 (계획서 §6.2 P2)
+  ① dma_map_dmabuf(fd, size, D2H) == SUCCESS : PASS (vulkan HAILO_SUCCESS(0) / heap HAILO_SUCCESS(0))
+  ② read_async(fd, ...) 콜백 SUCCESS         : PASS (vulkan 실패 0 / heap 실패 0)
+  ③ 6 텐서가 malloc 결과와 바이트 일치       : PASS (vulkan 30/30, heap 30/30)
+  ④ size 조합 중 최소 하나 동작              : PASS (dma_map=dmabuf_size, read_async=hw_frame_size)
+  ⑤ dma_map_dmabuf 96회 총 < 100 ms         : PASS (0.261 ms)
+  ⑥ cpu_read_1.22MB_ms 세 방식 출력          : 기록 (07_results/gpu_postprocess/evidence/p2_cpu_read.txt)
+
+hailort.log: error 0건(최종 실행 구간), 온도/클럭 warning 0건 
+            + size 조합 표에서 의도된 크기 불일치 거부 8건 (전체 8건)
+열린 fd: 프로세스 시작 6, 증거 파일 3개 연 뒤 9(기준선), 종료 9 → 누수 +0
+
+[결론] 계획서 §4.2 채택안(Vulkan 소유 dma-buf) 그대로 진행 가능

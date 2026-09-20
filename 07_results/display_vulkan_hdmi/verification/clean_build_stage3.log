@@ -1,0 +1,88 @@
+-- The CXX compiler identification is GNU 14.2.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found Vulkan: /usr/lib/aarch64-linux-gnu/libvulkan.so (found version "1.4.309") found components: glslc glslangValidator
+-- Found OpenCV: /usr (found version "4.10.0")
+-- Found GTest: /usr/lib/aarch64-linux-gnu/cmake/GTest/GTestConfig.cmake (found version "1.15.0")
+-- Checking for module 'wayland-client'
+--   Found wayland-client, version 1.24.0
+-- The C compiler identification is GNU 14.2.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- libpisp 1.7.0 - yvo_isp를 빌드한다.
+-- Found PkgConfig: /usr/bin/pkg-config (found version "1.8.1")
+-- Checking for modules 'libavformat;libavcodec;libavutil'
+--   Found libavformat, version 61.7.103
+--   Found libavcodec, version 61.19.101
+--   Found libavutil, version 59.39.100
+-- Checking for module 'libdrm'
+--   Found libdrm, version 2.4.134
+-- Configuring done (0.7s)
+-- Generating done (0.1s)
+-- Build files have been written to: /tmp/claude-1000/-home-pi-workspace-yolo-vulkan-optimize/98ddfb9e-c51a-49ae-a824-3eff99cac1c2/scratchpad/build-clean
+[1/59] wayland-scanner client-header presentation-time
+[2/59] wayland-scanner client-header viewporter
+[3/59] wayland-scanner client-header xdg-shell
+[4/59] wayland-scanner private-code xdg-shell
+[5/59] wayland-scanner private-code viewporter
+[6/59] wayland-scanner private-code presentation-time
+[7/59] Building C object 01_src/display/CMakeFiles/yvo_wayland_protocols.dir/generated/xdg-shell-protocol.c.o
+[8/59] Building C object 01_src/display/CMakeFiles/yvo_wayland_protocols.dir/generated/viewporter-protocol.c.o
+[9/59] Building C object 01_src/display/CMakeFiles/yvo_wayland_protocols.dir/generated/presentation-time-protocol.c.o
+[10/59] glslc + spirv-val sand_letterbox.comp
+[11/59] Linking C static library 01_src/display/libyvo_wayland_protocols.a
+[12/59] glslc + spirv-val display_probe.comp
+[13/59] glslc + spirv-val display_convert.comp
+[14/59] embed display_probe.spv -> display_probe_spv.h
+[15/59] glslc + spirv-val overlay_boxes.comp
+[16/59] embed overlay_boxes.spv -> overlay_boxes_spv.h
+[17/59] embed sand_letterbox.spv -> sand_letterbox_spv.h
+[18/59] embed display_convert.spv -> display_convert_spv.h
+[19/59] Building CXX object 01_src/isp/CMakeFiles/yvo_isp.dir/nhcw_repack.cpp.o
+[20/59] Building CXX object 01_src/pipeline/CMakeFiles/yvo_decoder.dir/ffmpeg_drm_decoder.cpp.o
+[21/59] Building CXX object 01_src/vulkan/CMakeFiles/yvo_vulkan.dir/dmabuf_export.cpp.o
+[22/59] Building CXX object 01_src/vulkan/CMakeFiles/yvo_vulkan.dir/dmabuf_import.cpp.o
+[23/59] Building CXX object 01_src/vulkan/CMakeFiles/yvo_vulkan.dir/vulkan_context.cpp.o
+[24/59] Building CXX object 01_src/display/CMakeFiles/yvo_display.dir/wayland_window.cpp.o
+[25/59] Building CXX object 01_src/hailo/CMakeFiles/yvo_hailo.dir/hailo_runner.cpp.o
+[26/59] Building CXX object 01_src/isp/CMakeFiles/yvo_isp.dir/isp_resizer.cpp.o
+[27/59] Linking CXX static library 01_src/hailo/libyvo_hailo.a
+[28/59] Building CXX object 01_src/vulkan/CMakeFiles/yvo_vulkan.dir/sand_letterbox.cpp.o
+[29/59] Linking CXX static library 01_src/vulkan/libyvo_vulkan.a
+[30/59] Building CXX object 01_src/hailo/CMakeFiles/yvo_hailo_selftest.dir/tools/hailo_selftest.cpp.o
+[31/59] Building CXX object 01_src/display/CMakeFiles/yvo_display.dir/display_convert.cpp.o
+[32/59] Linking CXX static library 01_src/isp/libyvo_isp.a
+[33/59] Building CXX object 01_src/display/CMakeFiles/yvo_display.dir/vk_swapchain.cpp.o
+[34/59] Building CXX object 01_src/display/CMakeFiles/yvo_display.dir/overlay_renderer.cpp.o
+[35/59] Linking CXX static library 01_src/display/libyvo_display.a
+[36/59] Linking CXX static library 01_src/pipeline/libyvo_decoder.a
+[37/59] Building CXX object 01_src/isp/CMakeFiles/yvo_isp_probe.dir/tools/isp_probe.cpp.o
+[38/59] Building CXX object 01_src/pipeline/CMakeFiles/yvo_drm_dump.dir/tools/drm_dump.cpp.o
+[39/59] Building CXX object 01_src/isp/CMakeFiles/yvo_isp_bench.dir/tools/isp_bench.cpp.o
+[40/59] Building CXX object 01_src/vulkan/CMakeFiles/yvo_preproc_bench.dir/tools/preproc_bench.cpp.o
+[41/59] Building CXX object 01_src/display/CMakeFiles/yvo_display_probe.dir/tools/display_probe.cpp.o
+[42/59] Building CXX object 01_src/pipeline/CMakeFiles/yvo_pipeline.dir/main.cpp.o
+[43/59] Linking CXX executable 01_src/hailo/yvo_hailo_selftest
+[44/59] Linking CXX executable 01_src/vulkan/yvo_preproc_bench
+[45/59] Linking CXX executable 01_src/display/yvo_display_probe
+[46/59] Linking CXX executable 01_src/isp/yvo_isp_probe
+[47/59] Building CXX object 05_tests/CMakeFiles/test_preproc.dir/test_preproc.cpp.o
+[48/59] Linking CXX executable 01_src/isp/yvo_isp_bench
+[49/59] Linking CXX executable 01_src/pipeline/yvo_drm_dump
+[50/59] Linking CXX executable 01_src/pipeline/yvo_pipeline
+[51/59] Building CXX object 01_src/hailo/CMakeFiles/yvo_hailo_raw_probe.dir/tools/hailo_raw_probe.cpp.o
+[52/59] Linking CXX executable 01_src/hailo/yvo_hailo_raw_probe
+[53/59] Building CXX object 05_tests/CMakeFiles/test_isp_preproc.dir/test_isp_preproc.cpp.o
+[54/59] Linking CXX executable 05_tests/test_preproc
+[55/59] Building CXX object 05_tests/CMakeFiles/test_detections.dir/test_detections.cpp.o
+[56/59] Linking CXX executable 05_tests/test_detections
+[57/59] Linking CXX executable 05_tests/test_isp_preproc
+[58/59] Building CXX object 05_tests/CMakeFiles/test_overlay.dir/test_overlay.cpp.o
+[59/59] Linking CXX executable 05_tests/test_overlay
+EXIT=0

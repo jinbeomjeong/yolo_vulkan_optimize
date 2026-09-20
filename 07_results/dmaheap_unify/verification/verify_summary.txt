@@ -1,0 +1,16 @@
+# verify 스킬 결과 (P0 heapimport, 2026-09-20)
+
+1) 빌드 경고 0
+   cmake --build build --clean-first 2>&1 | grep -ciE 'warning|error'  ->  0
+
+2) ctest
+   100% tests passed, 0 tests failed out of 39   (Total Test time 125.91 sec)
+
+3) Vulkan 검증 레이어 (--validation --sync-validation)
+   validation layer=1 sync=1, errors=0
+
+4) ASan/UBSan (build-asan/, -fsanitize=address,undefined)
+   종료 코드 0, sanitizer 출력 0줄, LeakSanitizer 누수 0 (asan_stdout_p0.log)
+   fd 누수 0 (heap/import 스코프 진입 전 14 -> 종료 후 14)
+
+5) hailort.log — 해당 없음 (이 프로브는 NPU 를 쓰지 않는다)

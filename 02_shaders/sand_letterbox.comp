@@ -1,0 +1,170 @@
+#version 450
+// SAND128 NV12 → letterbox RGB888 (BT.709 limited range), 출력 레이아웃 NHWC 또는 NHCW
+//
+// 기준 구현: 01_src/common/cpu_letterbox.hpp (cpu_letterbox_nv12_bt709) + common/sand.hpp 주소 규칙.
+// invocation 하나가 출력 한 행의 연속 4픽셀(12바이트 = uint 3개)을 계산해 32bit 단위로 쓴다.
+//   gl_GlobalInvocationID.x = 4픽셀 묶음 번호(0..dst_w/4-1), .y = 출력 행
+// 출력 레이아웃은 specialization constant 2(kOutNhcw)로 고르며 픽셀 값 계산은 완전히 같다. 쓰기 주소·패킹만 다르다.
+//   NHWC(기본, packed RGB888): idx = (dy * dst_w + dx) * 3 + c, 워드 3개가 연속
+//   NHCW(HailoRT 장치 형식):   idx = (dy * 3 + c) * dst_w + dx, 워드 3개가 dst_w/4 간격
+//   4픽셀 묶음이라 NHCW에서도 채널별 4바이트가 연속이고, dst_w와 dx0가 4의 배수라 워드 정렬이 항상 맞는다.
+// 입력 Y/UV는 dma-buf를 그대로 import한 SSBO(uint 배열)이고, 바이트는 시프트로 꺼낸다.
+//   Y(x, y)   = y_offset  + (x >> 7) * y_col_stride  + y  * 128 + (x & 127)
+//   UV(x, cy) = uv_offset + (x >> 7) * uv_col_stride + cy * 128 + (x & 127)   (x 짝수 = U, 홀수 = V)
+//
+// 열 LUT(binding 3): 출력 열 dx마다 호스트가 미리 계산한 값 (SandLetterbox::build_lut, CPU 기준과 같은 float 연산).
+//   col_lut[2*dx+0] = (Y x0 열 워드, Y x1 열 워드, UV cx0 열 워드, UV cx1 열 워드)
+//                     열 워드 = ((x >> 7) * col_stride + (x & 127)) >> 2  (행 성분은 셰이더가 더한다)
+//   col_lut[2*dx+1] = (바이트 시프트 묶음: y0 | y1 << 8 | uv0 << 16 | uv1 << 24 (각 0/8/16/24),
+//                      floatBits(fx), floatBits(fcx), 패딩 열이면 1 아니면 0)
+//   패딩 열(dx < pad_x 또는 dx >= pad_x + new_w)은 가장 가까운 콘텐츠 열의 값을 복사해 두어 읽기가 항상 유효하다.
+// V3D는 32bit 정수 곱셈이 없고(umul24 에뮬레이션) 셰이더 시간 대부분이 샘플 주소 계산·로드라서 열 성분을 LUT로 뺐다
+// (16x4 워크그룹 기준 5.07 → 4.64 ms, V3D 7.1).
+// barrier()/shared memory를 쓰지 않으므로 범위 밖 invocation은 바로 return 해도 된다.
+
+// 워크그룹 크기: specialization constant 0/1 (호스트 SandLetterboxConfig::local_size_x/y)
+layout(local_size_x_id = 0, local_size_y_id = 1, local_size_z = 1) in;
+// 출력 레이아웃: specialization constant 2 (호스트 SandLetterboxConfig::out_layout, VkBool32로 전달)
+layout(constant_id = 2) const bool kOutNhcw = false;
+
+layout(std430, set = 0, binding = 0) readonly buffer YBuf { uint y_words[]; };
+layout(std430, set = 0, binding = 1) readonly buffer UVBuf { uint uv_words[]; };
+layout(std430, set = 0, binding = 2) writeonly buffer OutBuf { uint out_words[]; };
+layout(std430, set = 0, binding = 3) readonly buffer ColLut { uvec4 col_lut[]; };
+
+// 호스트 SandLetterboxPush(56 B)와 같은 순서
+layout(push_constant, std430) uniform Params {
+    uint y_offset;      // 4의 배수 (호스트 검사)
+    uint y_col_stride;
+    uint uv_offset;     // 4의 배수 (호스트 검사)
+    uint uv_col_stride;
+    int src_w;
+    int src_h;
+    int dst_w;
+    int dst_h;
+    int pad_x;
+    int pad_y;
+    int new_w;
+    int new_h;
+    float inv_scale;
+    uint pad_value;
+} pc;
+
+float byte_at(uint w, uint sh) { return float((w >> sh) & 0xffu); }
+
+uint to_u8(float v) {
+    precise float c = clamp(v, 0.0, 255.0) + 0.5;
+    return uint(c);
+}
+
+// 콘텐츠 픽셀 하나의 RGB (각 성분 0..255)
+// yw0/yw1: 루마 행 y0/y1의 행 워드 주소, cw0/cw1: 크로마 행 cy0/cy1의 행 워드 주소
+uvec3 shade(int dx, uint pv, uint yw0, uint yw1, float fy, uint cw0, uint cw1, float fcy) {
+    const uvec4 cols = col_lut[2 * dx];
+    const uvec4 aux = col_lut[2 * dx + 1];
+    const float fx = uintBitsToFloat(aux.y);
+    const float fcx = uintBitsToFloat(aux.z);
+    const uint sy0 = aux.x & 0xffu;
+    const uint sy1 = (aux.x >> 8) & 0xffu;
+    const uint su0 = (aux.x >> 16) & 0xffu;
+    const uint su1 = aux.x >> 24;
+
+    // Y bilinear. 분기 없이 네 샘플을 모두 읽는다(V3D에서 lane별 분기는 샘플 생략보다 비싸다: 16x4 기준 4.6 → 3.5 ms)
+    float a = byte_at(y_words[yw0 + cols.x], sy0);
+    float b = byte_at(y_words[yw0 + cols.y], sy1);
+    float c = byte_at(y_words[yw1 + cols.x], sy0);
+    float d = byte_at(y_words[yw1 + cols.y], sy1);
+    precise float top = a + (b - a) * fx;
+    precise float bot = c + (d - c) * fx;
+    precise float Y = top + (bot - top) * fy;
+
+    // UV bilinear (chroma_location = left). U/V는 같은 워드의 연속 두 바이트.
+    uint wa = uv_words[cw0 + cols.z] >> su0;
+    uint wc = uv_words[cw1 + cols.z] >> su0;
+    vec2 ua = vec2(float(wa & 0xffu), float((wa >> 8) & 0xffu));
+    vec2 uc = vec2(float(wc & 0xffu), float((wc >> 8) & 0xffu));
+    uint wb = uv_words[cw0 + cols.w] >> su1;
+    uint wd = uv_words[cw1 + cols.w] >> su1;
+    vec2 ub = vec2(float(wb & 0xffu), float((wb >> 8) & 0xffu));
+    vec2 ud = vec2(float(wd & 0xffu), float((wd >> 8) & 0xffu));
+    precise vec2 ctop = ua + (ub - ua) * fcx;
+    precise vec2 cbot = uc + (ud - uc) * fcx;
+    precise vec2 UV = ctop + (cbot - ctop) * fcy;
+
+    // BT.709 limited → RGB
+    precise float yf = (Y - 16.0) * (255.0 / 219.0);
+    precise float uf = (UV.x - 128.0) * (255.0 / 224.0);
+    precise float vf = (UV.y - 128.0) * (255.0 / 224.0);
+    precise float R = yf + 1.5748 * vf;
+    precise float G = yf - 0.187324 * uf - 0.468124 * vf;
+    precise float B = yf + 1.8556 * uf;
+    const uvec3 rgb = uvec3(to_u8(R), to_u8(G), to_u8(B));
+    return (aux.w != 0u) ? uvec3(pv) : rgb;
+}
+
+// 패딩 열은 LUT가 가장 가까운 콘텐츠 열을 가리키고 aux.w = 1이므로, 분기 없이 계산한 뒤 pad_value로 바꾼다.
+uvec3 pixel(int dx, uint pv, uint yw0, uint yw1, float fy, uint cw0, uint cw1, float fcy) {
+    return shade(dx, pv, yw0, yw1, fy, cw0, cw1, fcy);
+}
+
+void main() {
+    const int groups_per_row = pc.dst_w >> 2;
+    const int gx = int(gl_GlobalInvocationID.x);
+    const int dy = int(gl_GlobalInvocationID.y);
+    if (gx >= groups_per_row || dy >= pc.dst_h) return; // barrier 없음
+
+    // 쓰기 주소: 행 시작 워드 + 채널 간격. NHWC는 연속 3워드, NHCW는 groups_per_row(= dst_w/4) 간격 3워드다.
+    const uint row_word = uint(dy) * uint(groups_per_row) * 3u;
+    const uint base = kOutNhcw ? row_word + uint(gx) : row_word + uint(gx) * 3u;
+    const uint cstep = kOutNhcw ? uint(groups_per_row) : 1u;
+    const uint pv = pc.pad_value & 0xffu;
+    const uint pad4 = pv * 0x01010101u;
+
+    const int dx0 = gx * 4;
+    const bool row_in = dy >= pc.pad_y && dy < pc.pad_y + pc.new_h;
+    if (!row_in || dx0 + 3 < pc.pad_x || dx0 >= pc.pad_x + pc.new_w) {
+        out_words[base] = pad4;
+        out_words[base + cstep] = pad4;
+        out_words[base + 2u * cstep] = pad4;
+        return;
+    }
+
+    // 행 단위 값(4픽셀 공통): 루마 행 y0/y1, 크로마 행 cy0/cy1 (cpu_letterbox.hpp와 같은 식)
+    precise float sy = (float(dy - pc.pad_y) + 0.5) * pc.inv_scale - 0.5;
+    precise float ys = clamp(sy, 0.0, float(pc.src_h - 1));
+    int y0 = int(ys);
+    int y1 = min(y0 + 1, pc.src_h - 1);
+    precise float fy = ys - float(y0);
+
+    int ch = pc.src_h >> 1;
+    precise float cy = (sy + 0.5) * 0.5 - 0.5;
+    precise float cys = clamp(cy, 0.0, float(ch - 1));
+    int cy0 = int(cys);
+    int cy1 = min(cy0 + 1, ch - 1);
+    precise float fcy = cys - float(cy0);
+
+    // 행 워드 주소 (offset과 128이 4의 배수이므로 워드 단위로 나눠 떨어진다)
+    const uint yw0 = (pc.y_offset >> 2) + uint(y0) * 32u;
+    const uint yw1 = (pc.y_offset >> 2) + uint(y1) * 32u;
+    const uint cw0 = (pc.uv_offset >> 2) + uint(cy0) * 32u;
+    const uint cw1 = (pc.uv_offset >> 2) + uint(cy1) * 32u;
+
+    // 4픽셀을 명시적으로 풀어 쓴다(로컬 배열·루프를 두면 V3D 컴파일러가 풀지 못해 느려진다)
+    uvec3 c0 = pixel(dx0 + 0, pv, yw0, yw1, fy, cw0, cw1, fcy);
+    uvec3 c1 = pixel(dx0 + 1, pv, yw0, yw1, fy, cw0, cw1, fcy);
+    uvec3 c2 = pixel(dx0 + 2, pv, yw0, yw1, fy, cw0, cw1, fcy);
+    uvec3 c3 = pixel(dx0 + 3, pv, yw0, yw1, fy, cw0, cw1, fcy);
+    uvec3 w;
+    if (kOutNhcw) { // 채널마다 4픽셀이 한 워드
+        w.x = c0.r | (c1.r << 8) | (c2.r << 16) | (c3.r << 24);
+        w.y = c0.g | (c1.g << 8) | (c2.g << 16) | (c3.g << 24);
+        w.z = c0.b | (c1.b << 8) | (c2.b << 16) | (c3.b << 24);
+    } else {
+        w.x = c0.r | (c0.g << 8) | (c0.b << 16) | (c1.r << 24);
+        w.y = c1.g | (c1.b << 8) | (c2.r << 16) | (c2.g << 24);
+        w.z = c2.b | (c3.r << 8) | (c3.g << 16) | (c3.b << 24);
+    }
+    out_words[base] = w.x;
+    out_words[base + cstep] = w.y;
+    out_words[base + 2u * cstep] = w.z;
+}

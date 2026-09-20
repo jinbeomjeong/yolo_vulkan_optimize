@@ -1,0 +1,42 @@
+yvo_postproc_probe --probe live   (계획서 §6.2 P3)
+[live] hef=03_models/yolov11m.hef video=04_data/videos/video_h265.mp4 frames=20 api=read_async batch=1 slots=4
+[pcie] 8.0 GT/s PCIe x1 (0001:01:00.0)  fd(start)=7
+[thermal] chip temp before = 58.2 °C
+[dmabuf] tensor 0  hw_frame_size=512000  dmabuf_size=540672  fd=13
+[dmabuf] tensor 1  hw_frame_size=409600  dmabuf_size=425984  fd=14
+[dmabuf] tensor 2  hw_frame_size=128000  dmabuf_size=147456  fd=15
+[dmabuf] tensor 3  hw_frame_size=102400  dmabuf_size=131072  fd=16
+[dmabuf] tensor 4  hw_frame_size=38400  dmabuf_size=65536  fd=17
+[dmabuf] tensor 5  hw_frame_size=30720  dmabuf_size=49152  fd=18
+[live] dma_map_dmabuf 24회 0.085 ms
+[live] 입력 프레임 20장 준비 (NHCW 1228800 B)
+
+== P3-(2) 셰이더 계산 바이트 합 == CPU 계산 합 (원시 출력 dma-buf) ==
+frame slot  tensor mismatch  cand  cpu_cand  matched  max_coord_err_px
+    0    0        0     25        25       25          0.000122
+    1    1        0     20        20       20          0.000061
+    2    2        0     20        20       20          0.000122
+    3    3        0     30        30       30          0.000122
+    4    0        0     20        20       20          0.000122
+    5    1        0     20        20       20          0.000000
+    6    2        0     20        20       20          0.000122
+    7    3        0     19        19       19          0.000122
+    8    0        0     20        20       20          0.000122
+    9    1        0     20        20       20          0.000000
+   10    2        0     19        19       19          0.000244
+   11    3        0     28        28       28          0.000244
+   12    0        0     26        26       26          0.000244
+   13    1        0     19        19       19          0.000122
+   14    2        0     18        18       18          0.000122
+   15    3        0     20        20       20          0.000000
+   16    0        0     21        21       21          0.000122
+   17    1        0     20        20       20          0.000122
+   18    2        0     11        11       11          0.000122
+   19    3        0     11        11       11          0.000000
+[P3-(2)] 바이트 합 PASS / 디코드 일치 PASS
+[live] pass1_ms median 0.5656 p90 0.6259 (NPU 동시 실행 상태 — 부록 A.8: 단독 벤치보다 높게 나온다)
+[hailort.log] error +0  온도·클럭 warning +0 
+[validation] errors=0 warnings=2
+[fd] start=7  세션 보유 중=40 (= 슬롯 4 x 텐서 6 dma-buf + HailoRT/Vulkan 내부)
+[RESULT] live PASS
+[fd] 해제 후 start=7 end=7  누수 없음

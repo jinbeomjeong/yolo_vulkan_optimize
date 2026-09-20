@@ -1,0 +1,16 @@
+[2026-09-20 20:51:51.527] [651528] [HailoRT] [info] [vdevice.cpp:535] [create] Creating vdevice with params: device_count: 1, scheduling_algorithm: ROUND_ROBIN, multi_process_service: false
+[2026-09-20 20:51:51.537] [651528] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-20 20:51:51.537] [651528] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-20 20:51:51.537] [651528] [HailoRT] [info] [vdevice.cpp:682] [create] VDevice Infos: 0001:01:00.0
+[2026-09-20 20:51:51.545] [651528] [HailoRT] [info] [internal_buffer_manager.cpp:77] [print_execution_results] Planned internal buffer memory: CMA=0 CMA-Desc=983040 Pinned=13570048. memory to edge layer usage factor is 0.8803268
+[2026-09-20 20:51:51.545] [651528] [HailoRT] [info] [internal_buffer_manager.cpp:86] [print_execution_results] Default Internal buffer planner executed successfully
+[2026-09-20 20:51:51.579] [651528] [HailoRT] [info] [device_internal.cpp:57] [configure] Configuring HEF took 41.99924 milliseconds
+[2026-09-20 20:51:51.580] [651528] [HailoRT] [info] [vdevice.cpp:780] [configure] Configuring HEF on VDevice took 42.262834 milliseconds
+[2026-09-20 20:52:17.824] [651920] [HailoRT] [info] [vdevice.cpp:535] [create] Creating vdevice with params: device_count: 1, scheduling_algorithm: ROUND_ROBIN, multi_process_service: false
+[2026-09-20 20:52:17.837] [651920] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-20 20:52:17.837] [651920] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-20 20:52:17.837] [651920] [HailoRT] [info] [vdevice.cpp:682] [create] VDevice Infos: 0001:01:00.0
+[2026-09-20 20:52:17.845] [651920] [HailoRT] [info] [internal_buffer_manager.cpp:77] [print_execution_results] Planned internal buffer memory: CMA=0 CMA-Desc=983040 Pinned=13570048. memory to edge layer usage factor is 0.8803268
+[2026-09-20 20:52:17.845] [651920] [HailoRT] [info] [internal_buffer_manager.cpp:86] [print_execution_results] Default Internal buffer planner executed successfully
+[2026-09-20 20:52:17.881] [651920] [HailoRT] [info] [device_internal.cpp:57] [configure] Configuring HEF took 43.244968 milliseconds
+[2026-09-20 20:52:17.881] [651920] [HailoRT] [info] [vdevice.cpp:780] [configure] Configuring HEF on VDevice took 43.540785 milliseconds

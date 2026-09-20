@@ -1,0 +1,20 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[cfg] video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 1920x1080 mode=dmabuf layout=nhcw batch=2 slots=4 gpu_depth=3 postproc=gpu/export device=V3D 7.1.10.2
+[hevc @ 0x518000011480] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+== yvo_pipeline (dmabuf, nhcw, batch 2, slots 4, gpu_depth 3, postproc gpu/export) ==
+frames          100 (decoded 100, errors 0)
+wall            2.918 s, 34.27 FPS
+cpu             2.612 ms/frame (process user+sys 261.2 ms, 9% of one core)
+decode call ms  mean 0.509  median 0.186  p90 0.248  max 25.475
+gpu shader ms   mean 2.255  median 2.173  p90 2.397  max 6.000
+npu latency ms  mean 109.227  median 109.813  p90 111.077  max 149.350
+e2e latency ms  mean 143.008  median 158.630  p90 167.725  max 212.975  (decode 반환 → NPU 완료 콜백)
+slot wait ms    mean 27.477  p90 53.584  (메인 스레드가 빈 슬롯을 기다린 시간)
+gpu post ms     mean 0.739  median 0.562  p90 0.700  max 7.148  (yolo_decode.comp pass 1)
+cpu nms us      mean 16.912  median 15.694  p90 24.978  max 50.778  (cpu_nms_greedy_by_class)
+candidates      mean 13.36  max 30  overflow frames 0
+slot hold ms    mean 3.669  median 2.002  p90 2.850  max 97.671  (NPU 완료 콜백 → 슬롯 반납)
+detections      203 total, 2.03 / frame
+hailo chip temp 54.2 -> 56.5 C
+soc temp        71.4 -> 69.2 C
+vk validation   errors 0, warnings 1

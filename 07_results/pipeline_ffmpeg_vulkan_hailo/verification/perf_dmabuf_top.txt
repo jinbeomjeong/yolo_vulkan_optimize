@@ -1,0 +1,40 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 5K of event 'cycles:P'
+# Event count (approx.): 13136623484
+#
+# Overhead  Shared Object            Symbol                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+# ........  .......................  ...................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................
+#
+    76.23%  libhailort.so.4.24.0     [.] 0x00000000001c10cc
+     6.35%  libhailort.so.4.24.0     [.] 0x000000000030ffac
+     5.77%  ld-linux-aarch64.so.1    [.] do_lookup_x
+     1.38%  libhailort.so.4.24.0     [.] 0x000000000030ffcc
+     0.72%  libhailort.so.4.24.0     [.] 0x00000000001c10dc
+     0.70%  libhailort.so.4.24.0     [.] 0x00000000001c10d4
+     0.42%  libhailort.so.4.24.0     [.] 0x000000000030ffd4
+     0.39%  [kernel.kallsyms]        [k] __pi_dcache_clean_poc
+     0.36%  ld-linux-aarch64.so.1    [.] _dl_relocate_object_no_relro
+     0.31%  libc.so.6                [.] _int_malloc
+     0.29%  [kernel.kallsyms]        [k] dma_direct_unmap_sg
+     0.29%  [kernel.kallsyms]        [k] __pi_dcache_inval_poc
+     0.29%  libhailort.so.4.24.0     [.] 0x0000000000317e3c
+     0.26%  [kernel.kallsyms]        [k] __arch_copy_to_user
+     0.22%  [kernel.kallsyms]        [k] __pi_clear_page
+     0.18%  libLLVM.so.19.1          [.] 0x0000000003f0be90
+     0.17%  [kernel.kallsyms]        [k] el0_da
+     0.16%  [kernel.kallsyms]        [k] dma_direct_sync_sg_for_device
+     0.14%  libc.so.6                [.] __memset_zva64
+     0.13%  libavcodec.so.61.19.101  [.] 0x00000000003d4748
+     0.13%  [kernel.kallsyms]        [k] next_uptodate_folio
+     0.13%  [kernel.kallsyms]        [k] mas_empty_area_rev
+     0.13%  ld-linux-aarch64.so.1    [.] _dl_lookup_symbol_x
+     0.12%  libc.so.6                [.] __memcpy_generic
+     0.12%  libhailort.so.4.24.0     [.] 0x00000000001a64c0
+     0.11%  [kernel.kallsyms]        [k] _raw_spin_unlock_irqrestore
+     0.10%  libc.so.6                [.] cfree@GLIBC_2.17
+     0.10%  libhailort.so.4.24.0     [.] 0x000000000030ffa8
+     0.10%  libc.so.6                [.] memcmp

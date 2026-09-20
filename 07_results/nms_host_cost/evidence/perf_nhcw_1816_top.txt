@@ -1,0 +1,65 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 30K of event 'cycles:P'
+# Event count (approx.): 12353118628
+#
+# Overhead  Command         Shared Object                Symbol                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+# ........  ..............  ...........................  ...................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................
+#
+    45.95%  yvo_pipeline    libhailort.so.4.24.0         [.] 0x000000000030ffac
+    10.07%  yvo_pipeline    libhailort.so.4.24.0         [.] 0x000000000030ffcc
+     6.39%  yvo_pipeline    ld-linux-aarch64.so.1        [.] do_lookup_x
+     2.05%  yvo_pipeline    libhailort.so.4.24.0         [.] 0x000000000030ffd4
+     1.55%  yvo_pipeline    [kernel.kallsyms]            [k] __pi_dcache_inval_poc
+     0.85%  yvo_pipeline    libc.so.6                    [.] cfree@GLIBC_2.17
+     0.84%  yvo_pipeline    libc.so.6                    [.] _int_malloc
+     0.67%  yvo_pipeline    [kernel.kallsyms]            [k] el0_svc
+     0.66%  yvo_pipeline    [kernel.kallsyms]            [k] __arch_copy_to_user
+     0.64%  yvo_pipeline    libc.so.6                    [.] malloc
+     0.63%  yvo_pipeline    [hailo_pci]                  [k] hailo_vdma_launch_transfer
+     0.62%  yvo_pipeline    [kernel.kallsyms]            [k] _raw_spin_unlock_irqrestore
+     0.50%  yvo_pipeline    [hailo_pci]                  [k] hailo_resource_write8
+     0.46%  av:hevc:df3     libc.so.6                    [.] __memset_zva64
+     0.46%  av:hevc:df1     libc.so.6                    [.] __memset_zva64
+     0.45%  av:hevc:df2     libc.so.6                    [.] __memset_zva64
+     0.42%  av:hevc:df4     libc.so.6                    [.] __memset_zva64
+     0.40%  av:hevc:df0     libc.so.6                    [.] __memset_zva64
+     0.28%  yvo_pipeline    ld-linux-aarch64.so.1        [.] _dl_relocate_object_no_relro
+     0.28%  yvo_pipeline    libc.so.6                    [.] _int_free_chunk
+     0.26%  yvo_pipeline    libc.so.6                    [.] __aarch64_swp4_rel
+     0.25%  yvo_pipeline    yvo_pipeline                 [.] std::_Sp_counted_base<(__gnu_cxx::_Lock_policy)2>::_M_release()
+     0.24%  yvo_pipeline    libc.so.6                    [.] __memcpy_generic
+     0.22%  yvo_pipeline    [hailo_pci]                  [k] hailo_vdma_engine_fill_irq_data
+     0.21%  yvo_pipeline    libc.so.6                    [.] __aarch64_cas8_rel
+     0.19%  yvo_pipeline    [kernel.kallsyms]            [k] _raw_spin_unlock_irq
+     0.19%  yvo_pipeline    ld-linux-aarch64.so.1        [.] _dl_lookup_symbol_x
+     0.19%  yvo_pipeline    libavutil.so.59.39.100       [.] av_buffer_unref
+     0.18%  yvo_pipeline    libc.so.6                    [.] pthread_mutex_lock@@GLIBC_2.17
+     0.18%  yvo_pipeline    libc.so.6                    [.] __syscall_cancel_arch
+     0.18%  yvo_pipeline    [hailo_pci]                  [k] hailo_vdma_continuous_buffer_free
+     0.17%  yvo_pipeline    [hailo_pci]                  [k] hailo_vdma_engine_read_timestamps
+     0.16%  av:hevc:df0     [kernel.kallsyms]            [k] _raw_spin_unlock_irqrestore
+     0.16%  yvo_pipeline    [kernel.kallsyms]            [k] fput
+     0.15%  yvo_pipeline    libavutil.so.59.39.100       [.] av_frame_unref
+     0.15%  yvo_pipeline    libc.so.6                    [.] __aarch64_cas4_acq
+     0.14%  yvo_pipeline    [kernel.kallsyms]            [k] __pi_memset_generic
+     0.14%  yvo_pipeline    [kernel.kallsyms]            [k] __pi_clear_page
+     0.13%  yvo_pipeline    [kernel.kallsyms]            [k] queue_work_on
+     0.12%  yvo_pipeline    [kernel.kallsyms]            [k] finish_task_switch.isra.0
+     0.12%  yvo_pipeline    libhailort.so.4.24.0         [.] 0x0000000000310104
+     0.12%  yvo_pipeline    [kernel.kallsyms]            [k] fdget
+     0.12%  yvo_pipeline    libc.so.6                    [.] __aarch64_cas8_acq
+     0.12%  yvo_pipeline    libc.so.6                    [.] __GI___ioctl
+     0.11%  yvo_pipeline    libhailort.so.4.24.0         [.] 0x0000000000310374
+     0.11%  yvo_pipeline    libc.so.6                    [.] _int_free_create_chunk
+     0.11%  yvo_pipeline    ld-linux-aarch64.so.1        [.] check_match
+     0.11%  yvo_pipeline    [kernel.kallsyms]            [k] __arch_copy_from_user
+     0.10%  yvo_pipeline    libhailort.so.4.24.0         [.] 0x000000000030ffa8
+
+
+#
+# (Tip: To add Node.js USDT(User-Level Statically Defined Tracing): perf buildid-cache --add `which node`)
+#

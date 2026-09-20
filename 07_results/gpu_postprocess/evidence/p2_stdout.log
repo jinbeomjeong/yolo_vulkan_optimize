@@ -1,0 +1,140 @@
+[HailoRT] [error] CHECK failed - for output 'yolov11m/conv102_178', passed buffer size is 32768 (expected 30720)
+[env] pcie current_link_speed=8.0 GT/s PCIe width=x1 (8.0 GT/s = Gen3)
+[info] frames=20 letterbox scale=0.333333 pad=(0,140) input=1228800 B (NHCW)
+[p2] cooling: hailo 54.4 -> 54.4 C, waited 0 s (기준: >75 C 면 65 C 까지, 최대 120 s)
+[p2] 기준 malloc(infer_async): frames_ok=20 cb=140 failed=0 cpu_read median=0.221 ms
+# P2-④ size 인자 4조합 전수 시도 (계획서 §4.2)
+# pcie=8.0 GT/s PCIe x1 hef=/home/pi/workspace/yolo_vulkan_optimize/03_models/yolov11m.hef
+# 한 셀: slots=2, frames=2. bytes 는 --alloc malloc 결과와의 바이트 단위 비교다.
+# hw_frame_size = 512000/409600/128000/102400/38400/30720,  dmabuf_size = 그것을 16384로 올림
+
+alloc   api           dma_map size   read_async size  map_status                  issue  cb/fail  bytes      판정
+------  ------------  -------------  ---------------  --------------------------  -----  -------  ---------  ----
+heap    infer_async   hw_frame_size  hw_frame_size    HAILO_SUCCESS(0)            ok      14/0     2/2       PASS
+[p2 matrix] heap/infer_async map=hw_frame_size read=hw_frame_size -> PASS
+[warn] RawSession: drain 시한 초과 — 콜백이 오지 않았다
+[HailoRT] [error] CHECK failed - for output 'yolov11m/conv102_178', passed buffer size is 32768 (expected 30720)
+heap    infer_async   hw_frame_size  dmabuf_size      HAILO_SUCCESS(0)            lost     6/6     0/0       FAIL
+        error: drain 시한 초과: 제출한 프레임의 콜백이 오지 않았다
+[p2 matrix] heap/infer_async map=hw_frame_size read=dmabuf_size -> FAIL
+heap    infer_async   dmabuf_size    hw_frame_size    HAILO_SUCCESS(0)            ok      14/0     2/2       PASS
+[p2 matrix] heap/infer_async map=dmabuf_size read=hw_frame_size -> PASS
+[warn] RawSession: drain 시한 초과 — 콜백이 오지 않았다
+[HailoRT] [error] CHECK failed - for output 'yolov11m/conv102_178', passed buffer size is 32768 (expected 30720)
+heap    infer_async   dmabuf_size    dmabuf_size      HAILO_SUCCESS(0)            lost     6/6     0/0       FAIL
+        error: drain 시한 초과: 제출한 프레임의 콜백이 오지 않았다
+[p2 matrix] heap/infer_async map=dmabuf_size read=dmabuf_size -> FAIL
+heap    read_async    hw_frame_size  hw_frame_size    HAILO_SUCCESS(0)            ok      14/0     2/2       PASS
+[p2 matrix] heap/read_async map=hw_frame_size read=hw_frame_size -> PASS
+[warn] RawSession: drain 시한 초과 — 콜백이 오지 않았다
+[HailoRT] [error] CHECK failed - for output 'yolov11m/conv102_178', passed buffer size is 32768 (expected 30720)
+heap    read_async    hw_frame_size  dmabuf_size      HAILO_SUCCESS(0)            FAIL     7/6     0/0       FAIL
+        error: HailoRT 실패: OutputStream::read_async -> HAILO_STREAM_ABORT(63)
+[p2 matrix] heap/read_async map=hw_frame_size read=dmabuf_size -> FAIL
+heap    read_async    dmabuf_size    hw_frame_size    HAILO_SUCCESS(0)            ok      14/0     2/2       PASS
+[p2 matrix] heap/read_async map=dmabuf_size read=hw_frame_size -> PASS
+[warn] RawSession: drain 시한 초과 — 콜백이 오지 않았다
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[HailoRT] [error] CHECK failed - for output 'yolov11m/conv102_178', passed buffer size is 49152 (expected 30720)
+heap    read_async    dmabuf_size    dmabuf_size      HAILO_SUCCESS(0)            FAIL     7/6     0/0       FAIL
+        error: HailoRT 실패: OutputStream::read_async -> HAILO_STREAM_ABORT(63)
+[p2 matrix] heap/read_async map=dmabuf_size read=dmabuf_size -> FAIL
+vulkan  infer_async   hw_frame_size  hw_frame_size    HAILO_SUCCESS(0)            ok      14/0     2/2       PASS
+[p2 matrix] vulkan/infer_async map=hw_frame_size read=hw_frame_size -> PASS
+[warn] RawSession: drain 시한 초과 — 콜백이 오지 않았다
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[HailoRT] [error] CHECK failed - for output 'yolov11m/conv102_178', passed buffer size is 49152 (expected 30720)
+vulkan  infer_async   hw_frame_size  dmabuf_size      HAILO_SUCCESS(0)            lost     6/6     0/0       FAIL
+        error: drain 시한 초과: 제출한 프레임의 콜백이 오지 않았다
+[p2 matrix] vulkan/infer_async map=hw_frame_size read=dmabuf_size -> FAIL
+vulkan  infer_async   dmabuf_size    hw_frame_size    HAILO_SUCCESS(0)            ok      14/0     2/2       PASS
+[p2 matrix] vulkan/infer_async map=dmabuf_size read=hw_frame_size -> PASS
+[warn] RawSession: drain 시한 초과 — 콜백이 오지 않았다
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[HailoRT] [error] CHECK failed - for output 'yolov11m/conv102_178', passed buffer size is 49152 (expected 30720)
+vulkan  infer_async   dmabuf_size    dmabuf_size      HAILO_SUCCESS(0)            lost     6/6     0/0       FAIL
+        error: drain 시한 초과: 제출한 프레임의 콜백이 오지 않았다
+[p2 matrix] vulkan/infer_async map=dmabuf_size read=dmabuf_size -> FAIL
+vulkan  read_async    hw_frame_size  hw_frame_size    HAILO_SUCCESS(0)            ok      14/0     2/2       PASS
+[p2 matrix] vulkan/read_async map=hw_frame_size read=hw_frame_size -> PASS
+[warn] RawSession: drain 시한 초과 — 콜백이 오지 않았다
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[HailoRT] [error] CHECK failed - for output 'yolov11m/conv102_178', passed buffer size is 49152 (expected 30720)
+vulkan  read_async    hw_frame_size  dmabuf_size      HAILO_SUCCESS(0)            FAIL     7/6     0/0       FAIL
+        error: HailoRT 실패: OutputStream::read_async -> HAILO_STREAM_ABORT(63)
+[p2 matrix] vulkan/read_async map=hw_frame_size read=dmabuf_size -> FAIL
+vulkan  read_async    dmabuf_size    hw_frame_size    HAILO_SUCCESS(0)            ok      14/0     2/2       PASS
+[p2 matrix] vulkan/read_async map=dmabuf_size read=hw_frame_size -> PASS
+[warn] RawSession: drain 시한 초과 — 콜백이 오지 않았다
+vulkan  read_async    dmabuf_size    dmabuf_size      HAILO_SUCCESS(0)            FAIL     7/6     0/0       FAIL
+        error: HailoRT 실패: OutputStream::read_async -> HAILO_STREAM_ABORT(63)
+[p2 matrix] vulkan/read_async map=dmabuf_size read=dmabuf_size -> FAIL
+
+# 이 단계에서 hailort.log 에 찍힌 error 8건은 **의도된** 크기 불일치 거부다
+
+[선택] dma_map=dmabuf_size read_async=hw_frame_size (통과 조합 8 / 전체 16)
+  tensor 0: hw_frame_size=30720
+  tensor 1: hw_frame_size=38400
+  tensor 2: hw_frame_size=409600
+  tensor 3: hw_frame_size=512000
+  tensor 4: hw_frame_size=102400
+  tensor 5: hw_frame_size=128000
+# P2 결과 (yvo_hailo_raw_probe --probe p2)
+# pcie=8.0 GT/s PCIe x1 hef=/home/pi/workspace/yolo_vulkan_optimize/03_models/yolov11m.hef video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4
+# batch=8 slots=16 compare_frames=20 api=both alloc=malloc,heap,vulkan
+# 냉각: hailo 54.4 -> 54.4 C, 대기 0 s
+
+# P2-⑥ cpu_read_1.22MB_ms — 6 텐서 전체를 CPU 가 순차 memcpy 로 읽는 시간
+# 총 1221120 B, 반복 100회(워밍업 3회 제외). 참고: V3D 출력 버퍼 순차 memcpy 1,228,800 B = 0.85~0.87 ms
+alloc    median_ms   p90_ms    min_ms    GB/s(median)   비고
+-------  ----------  --------  --------  ------------   ----
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[heap] api=infer_async dma_map=dmabuf_size read_async=hw_frame_size slots=16
+  dma_map_dmabuf : 96회, 실패 0, status=HAILO_SUCCESS(0), 총 0.598 ms (0.006 ms/회)
+  콜백           : 140개, 실패 0, first_error=HAILO_SUCCESS(0)
+  malloc 대비 바이트 일치 : 20 / 20 frames
+  pool 보유 시 열린 fd    : 106 (시작 6)
+  tensor 0: hw_frame_size=30720 dmabuf_size=32768 (차 +2048)
+  tensor 1: hw_frame_size=38400 dmabuf_size=49152 (차 +10752)
+  tensor 2: hw_frame_size=409600 dmabuf_size=409600 (차 +0)
+  tensor 3: hw_frame_size=512000 dmabuf_size=524288 (차 +12288)
+  tensor 4: hw_frame_size=102400 dmabuf_size=114688 (차 +12288)
+  tensor 5: hw_frame_size=128000 dmabuf_size=131072 (차 +3072)
+
+[vulkan] api=infer_async dma_map=dmabuf_size read_async=hw_frame_size slots=16
+  dma_map_dmabuf : 96회, 실패 0, status=HAILO_SUCCESS(0), 총 0.264 ms (0.003 ms/회)
+  콜백           : 140개, 실패 0, first_error=HAILO_SUCCESS(0)
+  malloc 대비 바이트 일치 : 20 / 20 frames
+  pool 보유 시 열린 fd    : 112 (시작 6)
+  tensor 0: hw_frame_size=30720 dmabuf_size=49152 (차 +18432)
+  tensor 1: hw_frame_size=38400 dmabuf_size=65536 (차 +27136)
+  tensor 2: hw_frame_size=409600 dmabuf_size=425984 (차 +16384)
+  tensor 3: hw_frame_size=512000 dmabuf_size=540672 (차 +28672)
+  tensor 4: hw_frame_size=102400 dmabuf_size=131072 (차 +28672)
+  tensor 5: hw_frame_size=128000 dmabuf_size=147456 (차 +19456)
+
+malloc        0.221     0.253     0.211         5.519   호스트 malloc (기준)
+heap          0.262     0.288     0.254         4.664   DMA_BUF_IOCTL_SYNC 포함, 캐시됨
+vulkan        0.818     0.830     0.796         1.492   V3D HOST_COHERENT (캐시 없음)
+
+총 읽기 바이트 = 1221120 B (6 텐서 hw_frame_size 합)
+합격 기준 판정 (계획서 §6.2 P2)
+  ① dma_map_dmabuf(fd, size, D2H) == SUCCESS : PASS (vulkan HAILO_SUCCESS(0) / heap HAILO_SUCCESS(0))
+  ② read_async(fd, ...) 콜백 SUCCESS         : PASS (vulkan 실패 0 / heap 실패 0)
+  ③ 6 텐서가 malloc 결과와 바이트 일치       : PASS (vulkan 20/20, heap 20/20)
+  ④ size 조합 중 최소 하나 동작              : PASS (dma_map=dmabuf_size, read_async=hw_frame_size)
+  ⑤ dma_map_dmabuf 96회 총 < 100 ms         : PASS (0.264 ms)
+  ⑥ cpu_read_1.22MB_ms 세 방식 출력          : 기록 (/home/pi/workspace/yolo_vulkan_optimize/07_results/gpu_postprocess/evidence/p2_cpu_read.txt)
+
+hailort.log: error 0건(최종 실행 구간), 온도/클럭 warning 0건 
+            + size 조합 표에서 의도된 크기 불일치 거부 8건 (전체 8건)
+열린 fd: 프로세스 시작 6, 증거 파일 3개 연 뒤 9(기준선), 종료 9 → 누수 +0
+
+[결론] 계획서 §4.2 채택안(Vulkan 소유 dma-buf) 그대로 진행 가능
+
+[P2] PASS (vulkan PASS, heap PASS)
+[p2] fd: 시작 6, 기준선 9, 종료 9 (누수 +0)

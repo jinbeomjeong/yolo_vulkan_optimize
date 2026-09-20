@@ -1,0 +1,10 @@
+date: 2026-09-20T02:41:23+09:00
+uname: Linux raspberry 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64 GNU/Linux
+temp: temp=67.5'C
+throttled: throttled=0x80000
+arm_clock: frequency(0)=1500019456
+governor:       4 ondemand 
+loadavg: 0.97 0.95 1.01 1/409 67555
+gst: gst-launch-1.0 version 1.26.2 GStreamer 1.26.2 
+hailo0 users (readable /proc only): 
+hailo/vulkan processes: 67536 /bin/bash -c source /home/pi/.claude/shell-snapshots/snapshot-bash-1789831411078-h9eeih.sh 2>/dev/null || true && shopt -u extglob 2>/dev/null || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'cd /home/pi/workspace/yolo_vulkan_optimize; OUT_DIR=07_results/decode_benchmark/ffpipe ONLY='"'"'^h265_E_'"'"' COOL_C=70 COOL_MAX_S=30 bash 09_scripts/decode_bench.sh; echo EXIT=$?; cat 07_results/decode_benchmark/ffpipe/results.csv; grep -h '"'"'caps ='"'"' 07_results/decode_benchmark/ffpipe/raw/h265_E_ffpipe_S2_nt4_run1.log | sort -u | head; tail -2 07_results/decode_benchmark/ffpipe/raw/h265_E_ffpipe_S1_run1.log' < /dev/null && pwd -P >| /tmp/claude-e896-cwd;

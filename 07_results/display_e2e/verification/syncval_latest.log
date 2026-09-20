@@ -1,0 +1,26 @@
+[hevc @ 0x55567cec7ce0] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+== yvo_pipeline (dmabuf, nhcw, batch 2, slots 4, gpu_depth 3, postproc gpu/export) ==
+frames          150 (decoded 150, errors 0)
+wall            4.344 s, 34.53 FPS
+cpu             3.375 ms/frame (process user+sys 506.3 ms, 12% of one core)
+decode call ms  mean 0.280  median 0.112  p90 0.142  max 18.459
+gpu shader ms   mean 1.438  median 2.070  p90 2.222  max 6.082
+npu latency ms  mean 103.743  median 106.059  p90 107.817  max 123.706
+e2e latency ms  mean 141.747  median 130.845  p90 169.734  max 209.387  (decode 반환 → NPU 완료 콜백)
+slot wait ms    mean 27.470  p90 55.871  (메인 스레드가 빈 슬롯을 기다린 시간)
+gpu post ms     mean 0.605  median 0.573  p90 0.666  max 4.027  (yolo_decode.comp pass 1)
+cpu nms us      mean 2.451  median 2.324  p90 3.835  max 4.797  (cpu_nms_greedy_by_class)
+candidates      mean 17.29  max 35  overflow frames 0
+slot hold ms    mean 5.152  median 4.702  p90 6.123  max 46.658  (NPU 완료 콜백 → 슬롯 반납)
+disp convert ms mean 3.865  median 4.311  p90 4.529  (display_convert.comp)
+disp overlay ms mean 0.096  median 0.080  p90 0.144  (overlay_boxes.comp)
+present 간격 ms median 16.692  p90 50.553  (n=148)
+glass-to-glass  mean 30.84  median 29.91  p90 42.17  (n=150, 디코드 → 화면 도달)
+display         presented 150, dropped 0, recreates 1, overlay overflow 0
+held frames max 2 (디코더 한계 약 13), slot timeout 0
+detections      454 total, 3.03 / frame
+hailo chip temp 63.0 -> 64.9 C
+soc temp        69.7 -> 69.7 C
+vk validation   errors 0, warnings 0
+RESULT_CSV,latest,dmabuf,nhcw,2,4,150,4.344,34.53,3.375,0.280,1.438,2.222,103.74,107.82,141.75,169.73,454,63.0,64.9,69.7,69.7,1
+RESULT_CSV2,latest,gpu,export,0.6052,0.6659,2.451,17.29,35,0,1,wayland,latest,asap,3.8650,4.5286,0.0959,16.692,30.84,42.17,150,0,1,2,0

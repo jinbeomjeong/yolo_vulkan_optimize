@@ -1,0 +1,16 @@
+[hevc @ 0x555637a2a160] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[hevc @ 0x555637d48290] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+== yvo_isp_pipeline (dmabuf, nhcw/cpu, batch 8, slots 16) ==
+frames          1816 (decoded 1816, errors 0)
+wall            35.392 s, 51.31 FPS
+cpu             5.880 ms/frame (process user+sys 10678.7 ms, 30% of one core)
+decode call ms  mean 1.133  median 0.234  p90 3.691  max 45.909
+isp wall ms     mean 4.348  median 3.390  p90 7.279  max 20.210
+repack ms       mean 1.289  median 0.967  p90 1.749  max 11.022  (cpu)
+npu latency ms  mean 293.333  median 295.816  p90 305.841  max 337.695
+e2e latency ms  mean 311.178  median 302.275  p90 395.368  max 427.409  (decode 반환 → NPU 완료 콜백)
+slot wait ms    mean 11.632  p90 84.910
+detections      9237 total, 5.09 / frame
+hailo chip temp 63.7 -> 76.0 C
+soc temp        80.1 -> 82.9 C
+RESULT_CSV,isp_C_nhcw_b8,dmabuf,nhcw,8,16,1816,35.392,51.31,5.880,1.133,4.348,7.279,293.33,305.84,311.18,395.37,9237,63.7,76.0,80.1,82.9,1

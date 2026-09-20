@@ -1,0 +1,19 @@
+[info] batch=1 slots=4 async_queue_size=8 in=640x640 (1228800 B) out=160320 B classes=80 max/cls=100
+[info] read 8 frames (NV12) in 430.5 ms, chip temp start 56.4 C
+[info] letterbox scale=0.333333 pad_x=0 pad_y=140
+[info] cpu letterbox: 8.66 ms/frame (참고용, 스칼라 기준 구현)
+[frame 0] 3 dets: person=1 car=2
+    car            0.904  (1203.7, 714.4)-(1440.0, 871.3)
+    car            0.802  (915.9, 708.7)-(1008.1, 779.4)
+    person         0.256  (1691.2, 725.9)-(1757.9, 842.4)
+[frame 1] 3 dets: car=3
+[frame 2] 3 dets: car=3
+[frame 3] 5 dets: person=1 car=4
+[frame 4] 3 dets: car=3
+[frame 5] 3 dets: car=3
+[frame 6] 3 dets: car=3
+[frame 7] 2 dets: car=2
+[info] saved /home/pi/workspace/yolo_vulkan_optimize/07_results/pipeline_ffmpeg_vulkan_hailo/selftest/frame0_detections.png, /home/pi/workspace/yolo_vulkan_optimize/07_results/pipeline_ffmpeg_vulkan_hailo/selftest/frame0_letterbox_input.png
+[stream] batch=1 slots=4 frames=300 fps=24.19 latency(ms) median=163.68 p90=163.82 max=164.70 errors=0 chip_temp=61.6C
+[seq] batch=1 frames=50 latency(ms) median=40.90 p90=41.01 (batch>1이면 스케줄러 타임아웃 영향 가능)
+[info] chip temp end 62.3 C

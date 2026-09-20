@@ -1,0 +1,4 @@
+label,tool,mode,layout,batch,slots,runs,frames,fps_median,wall_s_median,cpu_ms_per_frame_median,decode_ms_mean_median,pre_ms_mean_median,pre_ms_p90_median,npu_ms_mean_median,npu_ms_p90_median,e2e_ms_mean_median,e2e_ms_p90_median,detections_median,hailo_t1_median,soc_t1_median,fps_min,fps_max,cpu_ms_min,cpu_ms_max,detections_min,detections_max,hailo_t1_max,hailort_warnings,hailort_errors,all_ok
+gpu_nhcw_b8,gpu,dmabuf,nhcw,8,16,6,1816,51.640,35.168,3.218,0.319,2.718,5.562,302.050,304.105,325.900,445.145,9457.000,81.400,68.650,51.60,51.64,3.150,3.265,9457,9457,82.0,0,0,1
+isp_A_nhwc_b8,isp,dmabuf,nhwc,8,16,6,1816,51.620,35.180,4.720,1.089,2.052,2.486,304.135,307.700,322.185,434.295,9237.000,81.350,68.650,51.45,51.64,4.543,5.538,9237,9237,81.8,0,0,1
+isp_C_nhcw_b8,isp,dmabuf,nhcw,8,16,6,1816,51.595,35.197,4.112,0.579,1.891,2.298,302.890,306.950,321.505,435.060,9237.000,81.300,68.100,51.31,51.64,4.013,5.880,9237,9237,81.9,0,0,1

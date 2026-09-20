@@ -1,0 +1,292 @@
+Internal ctest changing into directory: /home/pi/workspace/yolo_vulkan_optimize/build
+UpdateCTestConfiguration  from :/home/pi/workspace/yolo_vulkan_optimize/build/DartConfiguration.tcl
+UpdateCTestConfiguration  from :/home/pi/workspace/yolo_vulkan_optimize/build/DartConfiguration.tcl
+Test project /home/pi/workspace/yolo_vulkan_optimize/build
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 11
+    Start 11: test_detections
+
+11: Test command: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests/test_detections
+11: Working Directory: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests
+11: Test timeout computed to be: 600
+11: Running main() from ./googletest/src/gtest_main.cc
+11: [==========] Running 3 tests from 1 test suite.
+11: [----------] Global test environment set-up.
+11: [----------] 3 tests from DetectionsTest
+11: [vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+11: [hevc @ 0x5555c8952970] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+11: [vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+11: [hevc @ 0x5555c8a2ed80] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+11: [ RUN      ] DetectionsTest.GpuPtrMatchesCpu
+11: [gpu_ptr] frames 100, detections cpu 203 / gpu_ptr 203, matched 203, ratio 1.0000, preproc bit-identical 100/100
+11: [       OK ] DetectionsTest.GpuPtrMatchesCpu (0 ms)
+11: [ RUN      ] DetectionsTest.GpuDmabufMatchesCpu
+11: [gpu_dmabuf] frames 100, detections cpu 203 / gpu_dmabuf 203, matched 203, ratio 1.0000, preproc bit-identical 100/100
+11: [       OK ] DetectionsTest.GpuDmabufMatchesCpu (0 ms)
+11: [ RUN      ] DetectionsTest.GpuDmabufNhcwMatchesCpu
+11: [gpu_dmabuf_nhcw] frames 100, detections cpu 203 / gpu_dmabuf_nhcw 203, matched 203, ratio 1.0000, preproc bit-identical 100/100
+11: [       OK ] DetectionsTest.GpuDmabufNhcwMatchesCpu (0 ms)
+11: [----------] 3 tests from DetectionsTest (0 ms total)
+11: 
+11: [----------] Global test environment tear-down
+11: [==========] 3 tests from 1 test suite ran. (18593 ms total)
+11: [  PASSED  ] 3 tests.
+1/1 Test #11: test_detections ..................   Passed   18.64 sec
+
+The following tests passed:
+	test_detections
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =  18.65 sec
+Internal ctest changing into directory: /home/pi/workspace/yolo_vulkan_optimize/build
+UpdateCTestConfiguration  from :/home/pi/workspace/yolo_vulkan_optimize/build/DartConfiguration.tcl
+UpdateCTestConfiguration  from :/home/pi/workspace/yolo_vulkan_optimize/build/DartConfiguration.tcl
+Test project /home/pi/workspace/yolo_vulkan_optimize/build
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 1
+      Start  1: Frames/PreprocTest.MatchesCpuReference/frame0  # GetParam() = 0
+
+1: Test command: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests/test_preproc "--gtest_filter=Frames/PreprocTest.MatchesCpuReference/frame0" "--gtest_also_run_disabled_tests"
+1: Working Directory: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests
+1: Test timeout computed to be: 300
+1: Running main() from ./googletest/src/gtest_main.cc
+1: Note: Google Test filter = Frames/PreprocTest.MatchesCpuReference/frame0
+1: [==========] Running 1 test from 1 test suite.
+1: [----------] Global test environment set-up.
+1: [----------] 1 test from Frames/PreprocTest
+1: [vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+1: [hevc @ 0x55556c1f0b80] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+1: [ RUN      ] Frames/PreprocTest.MatchesCpuReference/frame0
+1: frame    0 (pts 0): content 640x360 at (0,140), max_err=0 mean_err=0.00000 hist[0]=691200 [1]=0 [2]=0 [>=3]=0 pad_mismatch=0 gpu=2.120 ms
+1: [       OK ] Frames/PreprocTest.MatchesCpuReference/frame0 (3 ms)
+1: [----------] 1 test from Frames/PreprocTest (3 ms total)
+1: 
+1: [----------] Global test environment tear-down
+1: [==========] 1 test from 1 test suite ran. (4838 ms total)
+1: [  PASSED  ] 1 test.
+ 1/10 Test  #1: Frames/PreprocTest.MatchesCpuReference/frame0  # GetParam() = 0 .............   Passed    5.10 sec
+test 2
+      Start  2: Frames/PreprocTest.MatchesCpuReference/frame100  # GetParam() = 100
+
+2: Test command: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests/test_preproc "--gtest_filter=Frames/PreprocTest.MatchesCpuReference/frame100" "--gtest_also_run_disabled_tests"
+2: Working Directory: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests
+2: Test timeout computed to be: 300
+2: Running main() from ./googletest/src/gtest_main.cc
+2: Note: Google Test filter = Frames/PreprocTest.MatchesCpuReference/frame100
+2: [==========] Running 1 test from 1 test suite.
+2: [----------] Global test environment set-up.
+2: [----------] 1 test from Frames/PreprocTest
+2: [vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+2: [hevc @ 0x5555cb6127e0] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+2: [ RUN      ] Frames/PreprocTest.MatchesCpuReference/frame100
+2: frame  100 (pts 100): content 640x360 at (0,140), max_err=0 mean_err=0.00000 hist[0]=691200 [1]=0 [2]=0 [>=3]=0 pad_mismatch=0 gpu=5.553 ms
+2: [       OK ] Frames/PreprocTest.MatchesCpuReference/frame100 (2 ms)
+2: [----------] 1 test from Frames/PreprocTest (2 ms total)
+2: 
+2: [----------] Global test environment tear-down
+2: [==========] 1 test from 1 test suite ran. (4818 ms total)
+2: [  PASSED  ] 1 test.
+ 2/10 Test  #2: Frames/PreprocTest.MatchesCpuReference/frame100  # GetParam() = 100 .........   Passed    5.11 sec
+test 3
+      Start  3: Frames/PreprocTest.MatchesCpuReference/frame500  # GetParam() = 500
+
+3: Test command: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests/test_preproc "--gtest_filter=Frames/PreprocTest.MatchesCpuReference/frame500" "--gtest_also_run_disabled_tests"
+3: Working Directory: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests
+3: Test timeout computed to be: 300
+3: Running main() from ./googletest/src/gtest_main.cc
+3: Note: Google Test filter = Frames/PreprocTest.MatchesCpuReference/frame500
+3: [==========] Running 1 test from 1 test suite.
+3: [----------] Global test environment set-up.
+3: [----------] 1 test from Frames/PreprocTest
+3: [vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+3: [hevc @ 0x5555db5bf6b0] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+3: [ RUN      ] Frames/PreprocTest.MatchesCpuReference/frame500
+3: frame  500 (pts 500): content 640x360 at (0,140), max_err=0 mean_err=0.00000 hist[0]=691200 [1]=0 [2]=0 [>=3]=0 pad_mismatch=0 gpu=5.586 ms
+3: [       OK ] Frames/PreprocTest.MatchesCpuReference/frame500 (2 ms)
+3: [----------] 1 test from Frames/PreprocTest (2 ms total)
+3: 
+3: [----------] Global test environment tear-down
+3: [==========] 1 test from 1 test suite ran. (7130 ms total)
+3: [  PASSED  ] 1 test.
+ 3/10 Test  #3: Frames/PreprocTest.MatchesCpuReference/frame500  # GetParam() = 500 .........   Passed    7.42 sec
+test 4
+      Start  4: Frames/PreprocTest.MatchesCpuReference/frame900  # GetParam() = 900
+
+4: Test command: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests/test_preproc "--gtest_filter=Frames/PreprocTest.MatchesCpuReference/frame900" "--gtest_also_run_disabled_tests"
+4: Working Directory: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests
+4: Test timeout computed to be: 300
+4: Running main() from ./googletest/src/gtest_main.cc
+4: Note: Google Test filter = Frames/PreprocTest.MatchesCpuReference/frame900
+4: [==========] Running 1 test from 1 test suite.
+4: [----------] Global test environment set-up.
+4: [----------] 1 test from Frames/PreprocTest
+4: [vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+4: [hevc @ 0x5555f368fc70] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+4: [ RUN      ] Frames/PreprocTest.MatchesCpuReference/frame900
+4: frame  900 (pts 900): content 640x360 at (0,140), max_err=0 mean_err=0.00000 hist[0]=691200 [1]=0 [2]=0 [>=3]=0 pad_mismatch=0 gpu=5.556 ms
+4: [       OK ] Frames/PreprocTest.MatchesCpuReference/frame900 (2 ms)
+4: [----------] 1 test from Frames/PreprocTest (2 ms total)
+4: 
+4: [----------] Global test environment tear-down
+4: [==========] 1 test from 1 test suite ran. (6336 ms total)
+4: [  PASSED  ] 1 test.
+ 4/10 Test  #4: Frames/PreprocTest.MatchesCpuReference/frame900  # GetParam() = 900 .........   Passed    6.70 sec
+test 5
+      Start  5: Frames/PreprocTest.MatchesCpuReference/frame1815  # GetParam() = 1815
+
+5: Test command: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests/test_preproc "--gtest_filter=Frames/PreprocTest.MatchesCpuReference/frame1815" "--gtest_also_run_disabled_tests"
+5: Working Directory: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests
+5: Test timeout computed to be: 300
+5: Running main() from ./googletest/src/gtest_main.cc
+5: Note: Google Test filter = Frames/PreprocTest.MatchesCpuReference/frame1815
+5: [==========] Running 1 test from 1 test suite.
+5: [----------] Global test environment set-up.
+5: [----------] 1 test from Frames/PreprocTest
+5: [vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+5: [hevc @ 0x555611e14290] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+5: [ RUN      ] Frames/PreprocTest.MatchesCpuReference/frame1815
+5: frame 1815 (pts 1815): content 640x360 at (0,140), max_err=0 mean_err=0.00000 hist[0]=691200 [1]=0 [2]=0 [>=3]=0 pad_mismatch=0 gpu=5.457 ms
+5: [       OK ] Frames/PreprocTest.MatchesCpuReference/frame1815 (3 ms)
+5: [----------] 1 test from Frames/PreprocTest (3 ms total)
+5: 
+5: [----------] Global test environment tear-down
+5: [==========] 1 test from 1 test suite ran. (4832 ms total)
+5: [  PASSED  ] 1 test.
+ 5/10 Test  #5: Frames/PreprocTest.MatchesCpuReference/frame1815  # GetParam() = 1815 .......   Passed    5.11 sec
+test 6
+      Start  6: Frames/PreprocTest.NhcwMatchesCpuReference/frame0  # GetParam() = 0
+
+6: Test command: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests/test_preproc "--gtest_filter=Frames/PreprocTest.NhcwMatchesCpuReference/frame0" "--gtest_also_run_disabled_tests"
+6: Working Directory: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests
+6: Test timeout computed to be: 300
+6: Running main() from ./googletest/src/gtest_main.cc
+6: Note: Google Test filter = Frames/PreprocTest.NhcwMatchesCpuReference/frame0
+6: [==========] Running 1 test from 1 test suite.
+6: [----------] Global test environment set-up.
+6: [----------] 1 test from Frames/PreprocTest
+6: [vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+6: [hevc @ 0x5556502a3be0] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+6: [ RUN      ] Frames/PreprocTest.NhcwMatchesCpuReference/frame0
+6: frame    0 (pts 0) NHCW: bytes=1228800 mismatch=0 max_err=0 (worst idx 0: row 0 ch 0 col 0) same_as_nhwc=1 gpu=2.121 ms
+6: [       OK ] Frames/PreprocTest.NhcwMatchesCpuReference/frame0 (2 ms)
+6: [----------] 1 test from Frames/PreprocTest (2 ms total)
+6: 
+6: [----------] Global test environment tear-down
+6: [==========] 1 test from 1 test suite ran. (4821 ms total)
+6: [  PASSED  ] 1 test.
+ 6/10 Test  #6: Frames/PreprocTest.NhcwMatchesCpuReference/frame0  # GetParam() = 0 .........   Passed    5.11 sec
+test 7
+      Start  7: Frames/PreprocTest.NhcwMatchesCpuReference/frame100  # GetParam() = 100
+
+7: Test command: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests/test_preproc "--gtest_filter=Frames/PreprocTest.NhcwMatchesCpuReference/frame100" "--gtest_also_run_disabled_tests"
+7: Working Directory: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests
+7: Test timeout computed to be: 300
+7: Running main() from ./googletest/src/gtest_main.cc
+7: Note: Google Test filter = Frames/PreprocTest.NhcwMatchesCpuReference/frame100
+7: [==========] Running 1 test from 1 test suite.
+7: [----------] Global test environment set-up.
+7: [----------] 1 test from Frames/PreprocTest
+7: [vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+7: [hevc @ 0x5555a1715bc0] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+7: [ RUN      ] Frames/PreprocTest.NhcwMatchesCpuReference/frame100
+7: frame  100 (pts 100) NHCW: bytes=1228800 mismatch=0 max_err=0 (worst idx 0: row 0 ch 0 col 0) same_as_nhwc=1 gpu=2.044 ms
+7: [       OK ] Frames/PreprocTest.NhcwMatchesCpuReference/frame100 (2 ms)
+7: [----------] 1 test from Frames/PreprocTest (2 ms total)
+7: 
+7: [----------] Global test environment tear-down
+7: [==========] 1 test from 1 test suite ran. (4817 ms total)
+7: [  PASSED  ] 1 test.
+ 7/10 Test  #7: Frames/PreprocTest.NhcwMatchesCpuReference/frame100  # GetParam() = 100 .....   Passed    5.11 sec
+test 8
+      Start  8: Frames/PreprocTest.NhcwMatchesCpuReference/frame500  # GetParam() = 500
+
+8: Test command: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests/test_preproc "--gtest_filter=Frames/PreprocTest.NhcwMatchesCpuReference/frame500" "--gtest_also_run_disabled_tests"
+8: Working Directory: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests
+8: Test timeout computed to be: 300
+8: Running main() from ./googletest/src/gtest_main.cc
+8: Note: Google Test filter = Frames/PreprocTest.NhcwMatchesCpuReference/frame500
+8: [==========] Running 1 test from 1 test suite.
+8: [----------] Global test environment set-up.
+8: [----------] 1 test from Frames/PreprocTest
+8: [vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+8: [hevc @ 0x55559aa99770] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+8: [ RUN      ] Frames/PreprocTest.NhcwMatchesCpuReference/frame500
+8: frame  500 (pts 500) NHCW: bytes=1228800 mismatch=0 max_err=0 (worst idx 0: row 0 ch 0 col 0) same_as_nhwc=1 gpu=2.095 ms
+8: [       OK ] Frames/PreprocTest.NhcwMatchesCpuReference/frame500 (2 ms)
+8: [----------] 1 test from Frames/PreprocTest (2 ms total)
+8: 
+8: [----------] Global test environment tear-down
+8: [==========] 1 test from 1 test suite ran. (4811 ms total)
+8: [  PASSED  ] 1 test.
+ 8/10 Test  #8: Frames/PreprocTest.NhcwMatchesCpuReference/frame500  # GetParam() = 500 .....   Passed    5.09 sec
+test 9
+      Start  9: Frames/PreprocTest.NhcwMatchesCpuReference/frame900  # GetParam() = 900
+
+9: Test command: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests/test_preproc "--gtest_filter=Frames/PreprocTest.NhcwMatchesCpuReference/frame900" "--gtest_also_run_disabled_tests"
+9: Working Directory: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests
+9: Test timeout computed to be: 300
+9: Running main() from ./googletest/src/gtest_main.cc
+9: Note: Google Test filter = Frames/PreprocTest.NhcwMatchesCpuReference/frame900
+9: [==========] Running 1 test from 1 test suite.
+9: [----------] Global test environment set-up.
+9: [----------] 1 test from Frames/PreprocTest
+9: [vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+9: [hevc @ 0x55566aa34b80] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+9: [ RUN      ] Frames/PreprocTest.NhcwMatchesCpuReference/frame900
+9: frame  900 (pts 900) NHCW: bytes=1228800 mismatch=0 max_err=0 (worst idx 0: row 0 ch 0 col 0) same_as_nhwc=1 gpu=2.107 ms
+9: [       OK ] Frames/PreprocTest.NhcwMatchesCpuReference/frame900 (2 ms)
+9: [----------] 1 test from Frames/PreprocTest (2 ms total)
+9: 
+9: [----------] Global test environment tear-down
+9: [==========] 1 test from 1 test suite ran. (4833 ms total)
+9: [  PASSED  ] 1 test.
+ 9/10 Test  #9: Frames/PreprocTest.NhcwMatchesCpuReference/frame900  # GetParam() = 900 .....   Passed    5.12 sec
+test 10
+      Start 10: Frames/PreprocTest.NhcwMatchesCpuReference/frame1815  # GetParam() = 1815
+
+10: Test command: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests/test_preproc "--gtest_filter=Frames/PreprocTest.NhcwMatchesCpuReference/frame1815" "--gtest_also_run_disabled_tests"
+10: Working Directory: /home/pi/workspace/yolo_vulkan_optimize/build/05_tests
+10: Test timeout computed to be: 300
+10: Running main() from ./googletest/src/gtest_main.cc
+10: Note: Google Test filter = Frames/PreprocTest.NhcwMatchesCpuReference/frame1815
+10: [==========] Running 1 test from 1 test suite.
+10: [----------] Global test environment set-up.
+10: [----------] 1 test from Frames/PreprocTest
+10: [vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+10: [hevc @ 0x555598ddd420] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+10: [ RUN      ] Frames/PreprocTest.NhcwMatchesCpuReference/frame1815
+10: frame 1815 (pts 1815) NHCW: bytes=1228800 mismatch=0 max_err=0 (worst idx 0: row 0 ch 0 col 0) same_as_nhwc=1 gpu=2.042 ms
+10: [       OK ] Frames/PreprocTest.NhcwMatchesCpuReference/frame1815 (2 ms)
+10: [----------] 1 test from Frames/PreprocTest (2 ms total)
+10: 
+10: [----------] Global test environment tear-down
+10: [==========] 1 test from 1 test suite ran. (4803 ms total)
+10: [  PASSED  ] 1 test.
+10/10 Test #10: Frames/PreprocTest.NhcwMatchesCpuReference/frame1815  # GetParam() = 1815 ...   Passed    5.09 sec
+
+The following tests passed:
+	Frames/PreprocTest.MatchesCpuReference/frame0  # GetParam() = 0
+	Frames/PreprocTest.MatchesCpuReference/frame100  # GetParam() = 100
+	Frames/PreprocTest.MatchesCpuReference/frame500  # GetParam() = 500
+	Frames/PreprocTest.MatchesCpuReference/frame900  # GetParam() = 900
+	Frames/PreprocTest.MatchesCpuReference/frame1815  # GetParam() = 1815
+	Frames/PreprocTest.NhcwMatchesCpuReference/frame0  # GetParam() = 0
+	Frames/PreprocTest.NhcwMatchesCpuReference/frame100  # GetParam() = 100
+	Frames/PreprocTest.NhcwMatchesCpuReference/frame500  # GetParam() = 500
+	Frames/PreprocTest.NhcwMatchesCpuReference/frame900  # GetParam() = 900
+	Frames/PreprocTest.NhcwMatchesCpuReference/frame1815  # GetParam() = 1815
+
+100% tests passed, 0 tests failed out of 10
+
+Total Test time (real) =  54.97 sec

@@ -1,0 +1,16 @@
+asan_p3_fixture.log
+asan_p3_live.log
+asan_runner_8f.log
+asan_ubsan_raw_probe.log
+ctest_11of11.log
+ctest_golden_numbers.log
+f0_rerun_after_promotion.txt
+p3_regression_ctest_p6_p8.log
+runner_validation_layers_8f.log
+--- ctest 재확인(러너 변경 후) ---
+
+100% tests passed, 0 tests failed out of 39
+
+Total Test time (real) = 126.44 sec
+
+[exited with code 0]

@@ -1,0 +1,51 @@
+# raw_runner_backpressure bench 2026-09-20T20:40:59+09:00
+kernel: 6.18.50+rpt-rpi-2712
+soc temp: 64.2 C, hailo temp: 55.5 C
+throttled=0xe0000
+frequency(0)=2400017408
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/01_src/pipeline/yvo_pipeline
+bin md5: 0d9d829d69662e32624617ec676a66f5
+bin mtime: 2026-09-20 20:34:33.229957017 +0900
+Firmware Version: 4.24.0 (release,app,extended context switch buffer)
+video: /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 frames: 900 runs: 3
+[20:40:59] run 1/3 host_b2s4 (hailo 55.4 C)
+  wall            25.738 s, 34.97 FPS cpu             2.921 ms/frame (process user+sys 2629.2 ms, 10% of one core)  warn=0 err=0 rc=0
+[20:41:26] run 1/3 gpu_b2s4 (hailo 66.6 C)
+  wall            25.738 s, 34.97 FPS cpu             1.057 ms/frame (process user+sys 951.3 ms, 4% of one core) cpu nms us      mean 2.564  median 2.407  p90 3.685  max 9.685  (cpu_nms_greedy_by_class)  warn=0 err=0 rc=0
+[20:41:53] run 1/3 host_b8s16 (hailo 73.2 C)
+  wall            17.471 s, 51.51 FPS cpu             2.985 ms/frame (process user+sys 2686.2 ms, 15% of one core)  warn=0 err=0 rc=0
+  cooling (칩 온도 80.0 C > 75 C): hailo 79.8 C -> <= 65 C (max 120s)
+  cooled 65s, hailo 64.6 C
+[20:43:20] run 1/3 gpu_b8s16 (hailo 64.6 C)
+  wall            17.481 s, 51.48 FPS cpu             1.152 ms/frame (process user+sys 1036.5 ms, 6% of one core) cpu nms us      mean 2.249  median 2.112  p90 3.611  max 9.204  (cpu_nms_greedy_by_class)  warn=0 err=0 rc=0
+[20:43:39] run 2/3 host_b2s4 (hailo 74.1 C)
+  wall            25.750 s, 34.95 FPS cpu             2.914 ms/frame (process user+sys 2622.8 ms, 10% of one core)  warn=0 err=0 rc=0
+  cooling (칩 온도 78.7 C > 75 C): hailo 78.5 C -> <= 65 C (max 120s)
+  cooled 65s, hailo 64.6 C
+[20:45:14] run 2/3 gpu_b2s4 (hailo 64.6 C)
+  wall            25.750 s, 34.95 FPS cpu             1.122 ms/frame (process user+sys 1009.6 ms, 4% of one core) cpu nms us      mean 2.684  median 2.555  p90 3.889  max 7.889  (cpu_nms_greedy_by_class)  warn=0 err=0 rc=0
+[20:45:41] run 2/3 host_b8s16 (hailo 73.0 C)
+  wall            17.469 s, 51.52 FPS cpu             3.210 ms/frame (process user+sys 2889.2 ms, 17% of one core)  warn=0 err=0 rc=0
+  cooling (칩 온도 80.3 C > 75 C): hailo 80.0 C -> <= 65 C (max 120s)
+  cooled 70s, hailo 64.5 C
+[20:47:13] run 2/3 gpu_b8s16 (hailo 64.5 C)
+  wall            17.479 s, 51.49 FPS cpu             1.175 ms/frame (process user+sys 1057.2 ms, 6% of one core) cpu nms us      mean 2.561  median 2.445  p90 4.002  max 8.630  (cpu_nms_greedy_by_class)  warn=0 err=0 rc=0
+[20:47:31] run 3/3 host_b2s4 (hailo 74.2 C)
+  wall            25.739 s, 34.97 FPS cpu             3.114 ms/frame (process user+sys 2803.0 ms, 11% of one core)  warn=0 err=0 rc=0
+  cooling (칩 온도 78.9 C > 75 C): hailo 78.7 C -> <= 65 C (max 120s)
+  cooled 65s, hailo 64.8 C
+[20:49:06] run 3/3 gpu_b2s4 (hailo 64.8 C)
+  wall            25.742 s, 34.96 FPS cpu             1.158 ms/frame (process user+sys 1042.3 ms, 4% of one core) cpu nms us      mean 2.930  median 2.740  p90 4.169  max 12.185  (cpu_nms_greedy_by_class)  warn=0 err=0 rc=0
+[20:49:33] run 3/3 host_b8s16 (hailo 73.2 C)
+  wall            17.482 s, 51.48 FPS cpu             3.135 ms/frame (process user+sys 2821.7 ms, 16% of one core)  warn=0 err=0 rc=0
+  cooling (칩 온도 80.4 C > 75 C): hailo 80.3 C -> <= 65 C (max 120s)
+  cooled 70s, hailo 64.7 C
+[20:51:05] run 3/3 gpu_b8s16 (hailo 64.7 C)
+  wall            17.486 s, 51.47 FPS cpu             1.123 ms/frame (process user+sys 1010.3 ms, 6% of one core) cpu nms us      mean 2.370  median 2.260  p90 3.740  max 22.685  (cpu_nms_greedy_by_class)  warn=0 err=0 rc=0
+label,postproc,runs,batch_median,slots_median,frames_median,wall_s_median,fps_median,cpu_ms_per_frame_median,decode_ms_mean_median,gpu_ms_mean_median,gpu_ms_p90_median,npu_ms_mean_median,npu_ms_p90_median,e2e_ms_mean_median,e2e_ms_p90_median,detections_median,hailo_t0_median,hailo_t1_median,soc_t0_median,soc_t1_median,ok_median,gpu_post_mean_median,gpu_post_p90_median,cpu_nms_us_mean_median,cand_mean_median,cand_max_median,cand_overflow_median,cool_wait_s_median,hailort_warnings_median,hailort_errors_median,in_flight_median,fps_min,fps_max
+host_b2s4,host,3,2.000,4.000,900.000,25.739,34.970,2.921,0.153,2.243,2.299,111.330,111.900,142.050,168.730,3369.000,73.600,79.400,67.500,67.000,1.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,3.890,34.95,34.97
+gpu_b2s4,gpu,3,2.000,4.000,900.000,25.742,34.960,1.122,0.136,2.171,2.237,110.310,111.180,142.580,168.180,3369.000,64.800,73.700,68.100,67.000,1.000,0.685,0.708,2.684,16.810,45.000,0.000,65.000,0.000,0.000,3.860,34.95,34.97
+host_b8s16,host,3,8.000,16.000,900.000,17.471,51.510,3.135,0.325,2.675,5.560,301.240,304.300,325.110,445.840,3369.000,72.800,80.900,67.500,67.500,1.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,15.520,51.48,51.52
+gpu_b8s16,gpu,3,8.000,16.000,900.000,17.481,51.480,1.152,0.200,2.208,2.328,297.160,302.650,327.240,445.710,3369.000,64.500,74.900,65.900,67.000,1.000,1.069,3.978,2.370,16.810,45.000,0.000,70.000,0.000,0.000,15.290,51.47,51.49
+

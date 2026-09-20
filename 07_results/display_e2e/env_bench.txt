@@ -1,0 +1,14 @@
+# display_bench 2026-09-20T21:43:34+09:00
+kernel: 6.18.50+rpt-rpi-2712
+soc temp: 67.5 C, hailo temp: 57.9 C
+throttled=0xe0000
+frequency(0)=2400033792
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/01_src/pipeline/yvo_pipeline
+bin md5: 0c0ef2d3bf8ed25771e7c4dd73f64921
+video: /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 frames: 900 runs: 3
+wayland: /run/user/1000/wayland-0
+# after 2026-09-20T21:54:41+09:00
+soc temp: 67.5 C, hailo temp: 72.6 C
+bin md5 (측정 후): 0c0ef2d3bf8ed25771e7c4dd73f64921
+throttled=0xe0000

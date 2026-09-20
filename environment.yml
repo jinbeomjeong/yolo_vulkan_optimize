@@ -1,0 +1,14 @@
+name: hailo-yolo
+channels:
+  - conda-forge
+dependencies:
+  - pip
+  - python=3.13
+  - numpy
+  - pip:
+      - opencv-python-headless
+      - pandas
+      - matplotlib
+      - pycocotools
+      # HailoRT wheel (Hailo Developer Zone에서 수동 다운로드, 런타임 4.24.0과 버전 일치 필수)
+      - /home/pi/Downloads/hailort-4.24.0-cp313-cp313-linux_aarch64.whl

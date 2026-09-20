@@ -1,0 +1,13 @@
+HailoRT-CLI version 4.24.0
+Executing on device: 0001:01:00.0
+Identifying board
+Control Protocol Version: 2
+Firmware Version: 4.24.0 (release,app,extended context switch buffer)
+Logger Version: 0
+Device Architecture: HAILO8
+
+
+current_link_speed: 5.0 GT/s PCIe
+current_link_width: 1
+max_link_speed: 8.0 GT/s PCIe
+max_link_width: 4
