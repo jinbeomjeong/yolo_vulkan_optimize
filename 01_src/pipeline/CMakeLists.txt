@@ -1,9 +1,5 @@
 # yvo_decoder 는 01_src/decode/ 로 옮겼다(2026-09-22).
 
-# 확인 도구: descriptor 덤프, de-SAND 비교, 디코드 성능
-yvo_add_tool(yvo_drm_dump tools/drm_dump.cpp
-  LIBS yvo_decoder yvo_toolkit)
-
 # 추론 단계(InferStage 구현). **OpenCV 에 의존하지 않는다** — 그래야 05_tests 가 링크할 수 있다.
 #   infer_stage.hpp   : 헤더 전용(HostNmsStage 포함)
 #   gpu_postproc_stage: HailoRawRunner + YoloPostproc + cpu_nms 글루

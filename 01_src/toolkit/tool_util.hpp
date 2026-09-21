@@ -1,12 +1,12 @@
 #pragma once
-// 진단 도구(01_src/*/tools/, pipeline/main.cpp)가 공유하는 작은 헬퍼.
+// 진단 도구(01_src/tools/, pipeline/main.cpp)가 공유하는 작은 헬퍼.
 //
 // 2026-09-21 이전에는 아래 함수들이 도구마다 복사돼 있었다(동기화 장치 없음):
-//   soc_temperature()    pipeline/main.cpp ↔ isp/tools/isp_pipeline.cpp          (바이트 동일)
-//   fmt(), count_open_fds() hailo/tools/hailo_raw_probe.cpp ↔ vulkan/tools/postproc_probe.cpp
-//   Nv12Frame, read_nv12_frames() hailo/tools/hailo_selftest.cpp ↔ hailo_raw_probe.cpp (필드가 달랐다)
-//   cpu_ms()             pipeline/main.cpp · pipeline/tools/drm_dump.cpp · isp/tools/{isp_bench,isp_pipeline}.cpp ·
-//                        vulkan/tools/preproc_bench.cpp — 5벌. 파이프라인의 대표 지표(CPU ms/frame)를 재는 함수다
+//   soc_temperature()    pipeline/main.cpp ↔ tools/isp/isp_pipeline.cpp          (바이트 동일)
+//   fmt(), count_open_fds() tools/hailo/hailo_raw_probe.cpp ↔ tools/vulkan/postproc_probe.cpp
+//   Nv12Frame, read_nv12_frames() tools/hailo/hailo_selftest.cpp ↔ hailo_raw_probe.cpp (필드가 달랐다)
+//   cpu_ms()             pipeline/main.cpp · tools/decode/drm_dump.cpp · tools/isp/{isp_bench,isp_pipeline}.cpp ·
+//                        tools/vulkan/preproc_bench.cpp — 5벌. 파이프라인의 대표 지표(CPU ms/frame)를 재는 함수다
 //
 // 라이브러리 코드는 이 헤더를 include 하지 않는다 — 도구 전용이다.
 #include <cmath>

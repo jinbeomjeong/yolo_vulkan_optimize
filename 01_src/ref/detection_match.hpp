@@ -1,7 +1,7 @@
 // 검출 결과 비교 규칙 — **저장소 전체의 단일 구현**.
 //
 // 쓰는 곳: `05_tests/test_detections.cpp`, `05_tests/test_postproc.cpp`,
-//          `01_src/hailo/tools/hailo_raw_probe.cpp`. 파이썬 사본은 `06_tools/python/compare_detections.py`.
+//          `01_src/tools/hailo/hailo_raw_probe.cpp`. 파이썬 사본은 `06_tools/python/compare_detections.py`.
 //
 // ⚠ **규칙을 바꾸지 마라.** 파이썬 사본과 **동치**여야 한다. 동치성이 깨지면 C++ 게이트(ctest)와
 //   파이썬 집계가 서로 다른 판정을 낸다.

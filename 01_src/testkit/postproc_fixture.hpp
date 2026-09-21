@@ -2,7 +2,7 @@
 // GPU 후처리 픽스처(04_data/raw_tensors/)의 읽기·비교 — **테스트와 프로브의 단일 구현**.
 //
 // 쓰는 곳: 05_tests/test_postproc.cpp (PostprocFixture.* 게이트),
-//          01_src/vulkan/tools/postproc_probe.cpp (--probe fixture/sweep/gpuab/live).
+//          01_src/tools/vulkan/postproc_probe.cpp (--probe fixture/sweep/gpuab/live).
 //
 // 2026-09-21 이전에는 이 코드(JSON 파서 · 픽스처 로더 · G5 비교 · G6 정규형, 약 200행)가 두 파일에
 // 따로 있었고 **이미 갈라져 있었다**: 테스트 쪽 JSON 파서는 문자열 이스케이프를 처리하지 않았고

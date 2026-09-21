@@ -84,7 +84,7 @@ CPU 억제: 2.2~2.7 µs/frame. 후보 수 mean 16.81 / max 45 (상한 4096, over
 
 즉 후처리 이관 자체의 처리량 비용은 **-1.2 % ~ -0.6 %** 수준이고, 관측된 -30 % / -3.7 % 는
 러너의 백프레셔 버그다. → **수정 완료**(위 참조). `hailo_raw_probe.cpp` 의 `RawSession` 도 같이 고쳤다.
-남은 같은 패턴: `01_src/vulkan/tools/postproc_probe.cpp:1309-1313`(임계값 1 의 직렬 제출이라 처리량 영향 없음).
+남은 같은 패턴: `01_src/tools/vulkan/postproc_probe.cpp:1309-1313`(임계값 1 의 직렬 제출이라 처리량 영향 없음).
 
 ## 파일
 - `results_raw.csv` 실행별, `results.csv` 설정별 중앙값

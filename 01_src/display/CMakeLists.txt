@@ -85,15 +85,3 @@ target_link_libraries(yvo_display
   PUBLIC yvo_vulkan yvo_ref
   PRIVATE PkgConfig::YVO_WAYLAND yvo_wayland_protocols yvo_shaders)
 yvo_target_defaults(yvo_display)
-
-# 프로브: 계획서 §6.3 (P4 surface / P5 present / P6 context-regression / P8 convert).
-# P8 은 디코더 SAND dma-buf 를 입력으로 쓴다. yvo_decoder 는 항상 있으므로 YVO_HAVE_DECODER 도 항상 1 이다
-# (소스의 #ifdef 는 문서의 file:line 을 지키려고 남겨 두었다).
-yvo_add_tool(yvo_display_probe tools/display_probe.cpp
-  LIBS yvo_display yvo_shaders yvo_decoder yvo_toolkit yvo_testkit_display
-  DEFINES YVO_HAVE_DECODER=1)
-
-# DisplayPipeline 단독 프로브 (마일스톤 7). yvo_pipeline 을 건드리지 않고 표시 경로만 재현한다:
-# display_probe 의 run_convert_display() 수치를 DisplayPipeline 경유로 다시 내는 것이 목적이다.
-yvo_add_tool(yvo_display_pipeline_probe tools/display_pipeline_probe.cpp
-  LIBS yvo_display yvo_decoder yvo_toolkit)

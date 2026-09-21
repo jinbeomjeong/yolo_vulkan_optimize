@@ -22,7 +22,7 @@
 `infer_async()` 가 요청당 1 을 내부에서 이미 세기 때문에 수동 쌍은 이중 계수였고,
 그 탓에 in-flight 상한이 `num_slots/2` 로 깎여 있었다.
 근거 실측은 `evidence/ongoing_counter_sweep.txt`(프레임당 증가량 1 vs 2).
-`01_src/hailo/tools/hailo_raw_probe.cpp` 의 `RawSession` 도 같은 패턴이라 함께 고쳤다.
+`01_src/tools/hailo/hailo_raw_probe.cpp` 의 `RawSession` 도 같은 패턴이라 함께 고쳤다.
 
 ## 3. 처리량 (900프레임 × 3회 중앙값)
 
@@ -56,5 +56,5 @@ in-flight = FPS × npu_ms_mean / 1000.
 - `min_queue`(스트림 `get_async_max_queue_size` 최솟값)는 이 수정과 무관하다. batch 2 에서 여전히 8 이라
   `--slots 16 --batch 2` 는 시작 시 거부된다. 다만 batch 2 는 `s4` 에서 이미 ~35 FPS 천장에 닿아
   `s8` 로 올려도 FPS 는 34.97 그대로이고 NPU 지연만 110 → 224 ms 로 늘어난다(실측). 운용점은 `b2/s4` 유지.
-- `01_src/vulkan/tools/postproc_probe.cpp:1309-1313` 에 같은 수동 쌍이 남아 있다. 임계값이 1(직렬 제출)이라
+- `01_src/tools/vulkan/postproc_probe.cpp:1309-1313` 에 같은 수동 쌍이 남아 있다. 임계값이 1(직렬 제출)이라
   처리량에 영향은 없지만, 그 파일 소유 세션이 같은 방식으로 정리하는 편이 좋다.

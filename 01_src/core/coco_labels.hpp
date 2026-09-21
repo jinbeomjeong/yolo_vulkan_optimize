@@ -1,6 +1,6 @@
 // COCO 80클래스 라벨과 클래스별 색 — 정의를 한 곳에 모은다.
 //
-// 이 헤더가 존재하는 이유: 같은 표가 01_src/pipeline/main.cpp 와 01_src/hailo/tools/hailo_selftest.cpp 에
+// 이 헤더가 존재하는 이유: 같은 표가 01_src/pipeline/main.cpp 와 01_src/tools/hailo/hailo_selftest.cpp 에
 // 각각 복사돼 있었고, 클래스 색 공식도 두 곳에 흩어져 있었다. GPU 오버레이 셰이더(CPU 기준 구현 포함)가
 // 같은 색을 내야 하므로 정의가 갈라질 여지를 구조적으로 없앤다.
 //

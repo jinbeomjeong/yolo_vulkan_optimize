@@ -294,7 +294,7 @@ layout(constant_id = 2) const bool kOutNhcw = false;
 > spec constant면 **같은 SPIR-V 하나로 실행 중에 값만 바꿔 가며 20~26조합을 잰다.**
 
 실제로 이 프로젝트의 워크그룹 스윕은 전부 그렇게 했다 —
-전처리 [`yvo_preproc_bench --sweep`](../01_src/vulkan/tools/preproc_bench.cpp),
+전처리 [`yvo_preproc_bench --sweep`](../01_src/tools/vulkan/preproc_bench.cpp),
 후처리 `yvo_postproc_probe --probe sweep`(26조합), 표시 `yvo_display_probe --probe convert --sweep`(23조합).
 `kOutNhcw`(출력 레이아웃), `kUniformScale`(표시 스케일 경로), `kChecksum`(검증 모드),
 `kDrawText`/`kTextScale`(오버레이) 도 전부 spec constant다 — **한 벌의 GLSL로 두 가지 셰이더를

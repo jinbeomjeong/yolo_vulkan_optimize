@@ -49,7 +49,8 @@
 ├── vulkan/     GPU (Vulkan 컴퓨트)              ┘ 링크하지 않는다
 ├── display/    화면 표시 (Wayland + 스왑체인)   — vulkan과 별도 라이브러리
 ├── isp/        ISP 전처리 — 구현됐지만 미사용
-└── pipeline/   이 전부를 묶는 실행 파일 main.cpp
+├── pipeline/   이 전부를 묶는 실행 파일 main.cpp
+└── tools/      빌드되는 진단·측정 도구 12개 ({hailo,vulkan,display,isp,decode}/ — 측정 대상 도메인 기준)
 ```
 
 ### 왜 일부러 갈라 뒀나
@@ -187,7 +188,8 @@ cmake -S . -B build -G Ninja && cmake --build build
 
 **본체는 하나다**: `build/bin/yvo_pipeline`
 
-나머지는 전부 **진단 도구**다. 각 도구는 "이 단계만 따로 돌려 본다"는 목적이 있다.
+나머지는 전부 **진단 도구**다(소스는 [`01_src/tools/`](../01_src/tools/), 실행파일은 모두 `build/bin/`).
+각 도구는 "이 단계만 따로 돌려 본다"는 목적이 있다.
 
 | 도구 | 무엇을 따로 보나 | NPU 필요? |
 |---|---|---|

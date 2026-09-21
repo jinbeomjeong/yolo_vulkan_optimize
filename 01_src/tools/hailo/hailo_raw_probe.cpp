@@ -62,7 +62,7 @@
 #include "core/frame_types.hpp"
 #include "hailo/hailo_raw_runner.hpp"
 #include "hailo/hailo_runner.hpp"
-#include "hailo/tools/p2_out_buffers.hpp"
+#include "tools/hailo/p2_out_buffers.hpp"
 #include "toolkit/stats.hpp"
 #include "toolkit/tool_util.hpp"
 #include "core/hailo_align.hpp"

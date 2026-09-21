@@ -3,7 +3,7 @@
 // 계획서 부록 B.11의 일원화 대상이다. 같은 일을 세 번 구현했던 것을 여기 하나로 모은다:
 //   · core/dmabuf_map.hpp  DmaBufReadMap   — 남의 fd를 읽기 전용 매핑 (할당 안 함). **그대로 남는다.**
 //                                              내부 ioctl만 이 헤더의 dma_sync_* 로 위임한다.
-//   · hailo/tools/p2_out_buffers.hpp HeapOutPool — DmaHeapPool 위의 얇은 어댑터로 축소됐다.
+//   · tools/hailo/p2_out_buffers.hpp HeapOutPool — DmaHeapPool 위의 얇은 어댑터로 축소됐다.
 //   · (2026-09-21 흡수 완료) isp/dma_heap_buffer.hpp DmaHeapBuffers 는 제거하고 이 풀로 옮겼다.
 //
 // **Vulkan 심볼을 쓰지 않는다.** yvo_core는 INTERFACE 라이브러리라 이 헤더를 더해도 링크 그래프가

@@ -8,7 +8,7 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행�
 
 | 대역 | 폴더 |
 |---|---|
-| 코드 | `01_src/{core,ref,toolkit,testkit,decode,hailo,vulkan,display,isp,pipeline}/`, `02_shaders/` (GLSL, SPIR-V 산출물은 `build/`) |
+| 코드 | `01_src/{core,ref,toolkit,testkit,decode,hailo,vulkan,display,isp,pipeline,tools}/`, `02_shaders/` (GLSL, SPIR-V 산출물은 `build/`) |
 | 자산 | `03_models/` (HEF), `04_data/{videos,raw_tensors}/` |
 | 검증·측정 | `05_tests/` (GoogleTest 7종), `06_tools/{bench,python,probes}/`, `07_results/<실험>/` |
 | 문서 | `08_learn/` (자습 교재), `09_diagrams/` (yEd `.graphml`), `10_paper/` (논문 초고) |
@@ -33,7 +33,7 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행�
   - **`YVO_BUILD_TESTS`일 때**: `GTest`(→ `GTest::gtest_main`)
   - `pybind11`·`nlohmann_json`은 **쓰지 않는다.** `find_package` 호출이 없다.
     nlohmann_json은 conda prefix에만 있어 다른 시스템 헤더를 가릴 위험이 있어 의도적으로 뺐다
-    (`05_tests/test_postproc.cpp`, `01_src/vulkan/tools/postproc_probe.cpp` 주석).
+    (`05_tests/test_postproc.cpp`, `01_src/tools/vulkan/postproc_probe.cpp` 주석).
   - Google Benchmark 의존은 2026-09-21에 제거했다(소비자가 0개인 configure 하드 의존이었다).
 - 셰이더: `glslc`, `glslangValidator`, `spirv-val`/`spirv-opt`, Khronos 검증 레이어.
 - 테스트·측정: GoogleTest(CPU 기준 구현 대비 GPU/NPU 경로 결과 비교), `perf`, `valgrind`, `gdb`.

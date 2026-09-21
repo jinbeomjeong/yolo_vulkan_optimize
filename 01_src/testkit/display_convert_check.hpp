@@ -1,7 +1,7 @@
 #pragma once
 // display_convert.comp(1:1 경로)를 CPU 기준 구현과 **비트 단위로** 대조한다.
 //
-// 쓰는 곳: 05_tests/test_display_convert.cpp (ctest 게이트), display/tools/display_probe.cpp (P8).
+// 쓰는 곳: 05_tests/test_display_convert.cpp (ctest 게이트), tools/display/display_probe.cpp (P8).
 //
 // 왜 필요한가 (2026-09-21):
 //   BT.709 limited → RGB 계수가 세 벌 있다 — ref/cpu_letterbox.hpp(CPU 기준),

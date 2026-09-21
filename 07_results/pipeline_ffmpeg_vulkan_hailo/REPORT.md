@@ -47,14 +47,14 @@ Detection (원본 1920x1080 좌표) → JSON Lines / PNG
 | `01_src/ref/cpu_letterbox.hpp` | CPU letterbox 기준 구현(GPU 셰이더와 같은 수식) | hailo-expert |
 | `01_src/core/dmabuf_map.hpp` | dma-buf CPU 읽기 매핑(DMA_BUF_IOCTL_SYNC) | vulkan-expert |
 | `01_src/decode/ffmpeg_drm_decoder.{hpp,cpp}` | libavcodec HW 디코더 → DrmFrame | cpp-expert |
-| `01_src/pipeline/tools/drm_dump.cpp` → `yvo_drm_dump` | descriptor 덤프, de-SAND 바이트 비교, 디코드 성능 | cpp-expert |
+| `01_src/tools/decode/drm_dump.cpp` → `yvo_drm_dump` | descriptor 덤프, de-SAND 바이트 비교, 디코드 성능 | cpp-expert |
 | `01_src/vulkan/vulkan_context.{hpp,cpp}` | V3D 장치 선택, 확장, 검증 메시지 카운터 | vulkan-expert |
 | `01_src/vulkan/dmabuf_import.{hpp,cpp}` | dma-buf → VkBuffer import와 캐시 | vulkan-expert |
 | `01_src/vulkan/sand_letterbox.{hpp,cpp}` | 전처리기(submit/wait, 슬롯, timestamp, dma-buf export) | vulkan-expert |
 | `02_shaders/sand_letterbox.comp` | 전처리 컴퓨트 셰이더 | vulkan-expert |
-| `01_src/vulkan/tools/preproc_bench.cpp` → `yvo_preproc_bench` | 디코드 + 전처리 성능 | vulkan-expert |
+| `01_src/tools/vulkan/preproc_bench.cpp` → `yvo_preproc_bench` | 디코드 + 전처리 성능 | vulkan-expert |
 | `01_src/hailo/hailo_runner.{hpp,cpp}` | HailoRT 비동기 러너, NMS 파싱 | hailo-expert |
-| `01_src/hailo/tools/hailo_selftest.cpp` → `yvo_hailo_selftest` | CPU 전처리 기반 러너 검증과 처리량 | hailo-expert |
+| `01_src/tools/hailo/hailo_selftest.cpp` → `yvo_hailo_selftest` | CPU 전처리 기반 러너 검증과 처리량 | hailo-expert |
 | `01_src/pipeline/main.cpp` → `yvo_pipeline` | 통합 앱 | cpp-expert |
 | `05_tests/test_preproc.cpp` | GPU 전처리 vs CPU 기준 (GTest) | vulkan-expert |
 | `05_tests/test_detections.cpp` | CPU / GPU ptr / GPU dmabuf / GPU dmabuf NHCW 검출 비교 (GTest) | cpp-expert |
@@ -184,7 +184,7 @@ NHCW 기준값은 `cpu_letterbox_nv12_bt709()` 결과를 `rgb_packed_to_nhcw()`�
 
 위 표의 **"NPU만 50.0 FPS"** 는 측정 창 artifact 때문에 낮게 나온 값이다. 실제 결핍이 아니다.
 
-`01_src/hailo/tools/hailo_selftest.cpp`의 측정 창은
+`01_src/tools/hailo/hailo_selftest.cpp`의 측정 창은
 `t_bench0`(warmup 프레임을 **submit** 한 시각) → `t_bench1`(마지막 프레임 **완료** 시각)이다.
 마지막 submit 이후 파이프라인에 남은 `slots`개가 빠지는 시간이 창에 포함되므로
 

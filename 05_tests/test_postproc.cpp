@@ -92,7 +92,7 @@ std::string env_str(const char* name, const char* fallback) {
 //
 // nlohmann_json 은 이 시스템에서 conda prefix 에만 있어(다른 시스템 헤더를 가릴 위험) 테스트 하나를
 // 위해 그 include 경로를 끌어오지 않는다. 스키마가 고정돼 있으므로 필요한 만큼만 직접 읽는다.
-// (같은 이유로 `01_src/vulkan/tools/postproc_probe.cpp` 도 자체 리더를 쓴다 — 그 파일은 읽기만 했다.)
+// (같은 이유로 `01_src/tools/vulkan/postproc_probe.cpp` 도 자체 리더를 쓴다 — 그 파일은 읽기만 했다.)
 // 픽스처 읽기·비교는 testkit/postproc_fixture.hpp 하나뿐이다(프로브와 공유).
 
 // ═══════════════════════════════════════════════ PostprocFixture (NPU 불필요)

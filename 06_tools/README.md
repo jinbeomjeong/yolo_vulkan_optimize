@@ -1,6 +1,7 @@
 # 06_tools — 빌드 밖 자동화·도구
 
-CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_src/`](../01_src/) 에 있다.
+CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_src/`](../01_src/) 에 있다
+(빌드되는 진단·측정 도구 12개는 [`01_src/tools/`](../01_src/tools/), 실행파일은 `build/bin/`).
 
 2026-09-21 폴더 재배치에서 만들었다. 이전에는 `08_python/`(파이썬)과 `09_scripts/`(셸)로
 나뉘어 있었는데, 파이썬 파일 2개가 서로 다른 폴더에 흩어져 경계가 무너진 상태였다.
@@ -19,7 +20,8 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 | `isp_pipeline_bench.sh` | ISP 포함 전체 파이프라인 | `07_results/isp_resize/pipeline/` |
 
 공통 환경변수: `RUNS`(기본 3), `FRAMES`, `ONLY`(설정 id grep), `APPEND=1`, `BIN`, `OUT_DIR`,
-`COOL_C`/`HOT_C`/`COOL_MAX_S`. 측정 규약은 [`.claude/skills/measure`](../.claude/skills/measure/SKILL.md).
+`COOL_C`/`HOT_C`/`COOL_MAX_S`, `BUILD_DIR`(기본 `build`)·`BIN_DIR`(기본 `$BUILD_DIR/bin`)·`PY_HAILO`
+(셋 다 [`lib/common.sh`](bench/lib/common.sh) 한 곳에서 정의), `CHECK_ONLY=1`(바이너리 존재만 확인하고 락·냉각 전에 종료). 측정 규약은 [`.claude/skills/measure`](../.claude/skills/measure/SKILL.md).
 
 > ⚠ `pipeline_bench.sh` 의 `configs` 형식(`id|mode|layout|batch|slots` 5필드)은 **바꾸지 마라.**
 > 다른 스크립트들이 이걸 대조군 기준으로 쓴다.

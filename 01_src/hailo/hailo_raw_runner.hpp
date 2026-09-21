@@ -2,7 +2,7 @@
 //
 // hailo_runner.{hpp,cpp} 가 HEF 내장 NMS 출력 1개를 호스트에서 파싱하는 **기준 경로**라면,
 // 이쪽은 NMS 앞단의 원시 텐서 6개를 **dma-buf 로 받아 GPU 후처리에 넘기는 프로덕션 경로**다.
-// 01_src/hailo/tools/hailo_raw_probe.cpp 의 RawSession(F0 관문 통과, 51.90 FPS)에서 승격했다.
+// 01_src/tools/hailo/hailo_raw_probe.cpp 의 RawSession(F0 관문 통과, 51.90 FPS)에서 승격했다.
 //
 // 흐름: Hef::create → VDevice(ROUND_ROBIN) → create_configure_params(batch, 스트림 전부 ASYNC)
 //       → VDevice::configure → 슬롯별 bind_slot(dma-buf fd 7개 매핑)

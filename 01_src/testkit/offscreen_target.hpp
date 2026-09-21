@@ -2,7 +2,7 @@
 // 오프스크린 렌더 타깃 — STORAGE 이미지 + (선택) 호스트 되읽기 버퍼 + 펜스.
 // 컴퓨트 셰이더가 쓴 결과를 CPU 기준 구현과 **비트 단위로** 대조하는 정확도 검사에 쓴다.
 //
-// 쓰는 곳: display/tools/display_probe.cpp (P7 overlay · P8 convert),
+// 쓰는 곳: tools/display/display_probe.cpp (P7 overlay · P8 convert),
 //          testkit/display_convert_check.hpp (→ 05_tests/test_display_convert.cpp),
 //          05_tests/test_overlay.cpp.
 //
