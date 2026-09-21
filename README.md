@@ -13,6 +13,8 @@ Vulkan(V3D GPU)으로 밀어낸** 프로젝트다. 디코드·전처리·추론�
 
 검출 수는 표시 off/on, 두 페이싱 전부 **3369 로 동일**하다.
 근거: [`07_results/display_e2e/summary.md`](07_results/display_e2e/summary.md) §3·§3.2.
+이 수치는 억제를 **CPU**(`cpu_nms_greedy_by_class`, 지금의 `--nms cpu`)로 하던 때의 측정이다.
+GPU NMS(`--nms gpu`, 기본)로 바꾼 뒤의 재측정은 아직 없다.
 
 ---
 
@@ -32,8 +34,8 @@ Vulkan(V3D GPU)으로 밀어낸** 프로젝트다. 디코드·전처리·추론�
    원시 6텐서 1,221,120 B  ── D2H dma-buf            │
       │                                              │
       ▼  yolo_decode.comp                 [V3D GPU]  │
-   후보 ~16개                                        │
-      ▼  cpu_nms_greedy_by_class          [CPU]      │
+   후보 ~16개  (같은 커맨드 버퍼)                    │
+      ▼  efficient_nms.comp               [V3D GPU]  │
    Detection (원본 1920×1080 좌표)                    │
       │                                              │
       ▼──────────────────────────────────────────────┘
@@ -133,9 +135,9 @@ wall            4.612 s, 29.49 FPS
 **요약 머리의 `[interrupted]` 를 확인해라.** 부분 실행 값을 전체 실행 값으로 오인하면 안 된다.
 
 - **두 번 연속 누르면 즉시 강제 종료**한다(`_exit(130)`, 요약 없음). 정상 종료가 지연될 때의 탈출구다.
-- 전체화면에서는 **창 닫기·키보드로 종료할 수 없다.** 키 입력을 처리하지 않는다
-  (`wayland_window.hpp` — xkbcommon 의존성을 의도적으로 뺐다). 창 모드에서는 닫기 버튼이 동작하지만
-  창 모드 자체가 표시 변환을 2.6배 느리게 하므로 측정에는 쓰지 마라.
+- 표시 창의 종료 키는 **물리 키 기준**이다(`wayland_window.cpp` — xkbcommon 없이 evdev 키코드로 판정한다).
+  창 모드의 닫기 버튼은 중단이 아니라 정상 종료로 처리되지만, 창 모드 자체가 표시 변환을 2.6배 느리게 하므로
+  측정에는 쓰지 마라.
 - 통계가 필요하고 중단 시점을 미리 정할 수 있으면 **`--frames N`** 이 더 깔끔하다.
   입력 영상 끝에서는 자동으로 정상 종료한다(1,816프레임, 약 60초).
 
@@ -147,7 +149,8 @@ wall            4.612 s, 29.49 FPS
 |---|---|---|
 | `--mode ptr\|dmabuf` | `ptr` | **`dmabuf` 필수.** V3D 포인터는 Hailo 가 DMA 매핑하지 못한다 |
 | `--layout nhwc\|nhcw` | `nhwc` | **`nhcw` 필수.** HailoRT 의 CPU 입력 변환(약 14 ms/f)을 없앤다. dmabuf 전용 |
-| `--postproc host\|gpu` | `host` | `gpu` 는 원시 출력 + `yolo_decode.comp` + CPU 억제. **`dmabuf`+`nhcw` 전용** |
+| `--postproc host\|gpu` | `host` | `gpu` 는 원시 출력 + `yolo_decode.comp` + `--nms` 억제. **`dmabuf`+`nhcw` 전용** |
+| `--nms gpu\|cpu\|verify` | `gpu` | `--postproc gpu` 의 억제 위치. `gpu` 는 `efficient_nms.comp`(CPU 기준과 비트 일치, 보장 못 하는 프레임만 자동 CPU 처리), `cpu` 는 `cpu_nms_greedy_by_class`, `verify` 는 매 프레임 둘을 비트 비교 |
 | `--batch N` / `--slots N` | 8 / `max(4,batch*2)` | 운용점. §3.3 참조 |
 | `--gpu-depth N` | 3 | GPU 동시 프레임 상한. **지연에 영향 없음**(실측 1 vs 3 동일) |
 | `--display off\|on` | `off` | HDMI 실시간 표시 |
@@ -173,6 +176,8 @@ wall            4.612 s, 29.49 FPS
 | `display dropped` | 0 | 표시를 버린 프레임 |
 | `vk validation errors` | **0** | `warnings 1` 은 알려진 무해 항목(장치 스캔) |
 | `detections` | 입력이 같으면 동일해야 함 | 경로를 바꿔도 검출이 변하면 회귀다 |
+| `nms fallback` | score 0.2 에서 **0** | GPU NMS 가 비트 일치를 보장 못 해 CPU 로 처리한 프레임(용량 초과 / IoU 가 0.7 ± 4e-6 안) |
+| `nms verify mismatch` | **0** | `--nms verify` 에서 GPU·CPU 결과가 비트 단위로 다른 프레임 |
 
 ⚠ **`--display-pace asap` + 표시 on 에서는 GPU timestamp 의 `mean` 을 믿지 마라.**
 median 을 써라(V3D 가 커맨드 버퍼를 합치면서 한쪽 구간이 0에 가깝게 잡힌다 — 원인 미확정).
@@ -183,12 +188,13 @@ median 을 써라(V3D 가 커맨드 버퍼를 합치면서 한쪽 구간이 0에
 ## 6. 검증
 
 ```bash
-ctest --test-dir build        # 46/46 통과해야 한다
+ctest --test-dir build        # 54/54 통과해야 한다
 ```
 
 | 테스트 | NPU | 무엇을 보는가 |
 |---|---|---|
-| `PostprocFixture.*` (4개) | 불필요 | GPU 후처리 vs CPU 기준: 후보 수 동일, 점수 **비트 일치**, 좌표 < 0.25 px, 10회 결정성 |
+| `PostprocFixture.*` (5개) | 불필요 | GPU 후처리 vs CPU 기준: 후보 수 동일, 점수 **비트 일치**, 좌표 < 0.25 px, 10회 결정성, GPU NMS 결과 **비트 일치** |
+| `EfficientNms.*` (7개) | 불필요 | 합성 입력: 동점, 클래스 정원 100 초과, 클래스 간 겹침, 용량 초과·IoU 보호대 → CPU 처리 신호, 결정성 |
 | `test_postproc_live` | 필요 | host 경로 vs GPU 경로 검출 매칭 (≥ 0.95) |
 | `test_detections` | 필요 | CPU/GPU 전처리 경로 검출 일치 |
 | `test_preproc` | 불필요 | GPU 전처리가 CPU 기준과 **비트 일치**(max 오차 0) |

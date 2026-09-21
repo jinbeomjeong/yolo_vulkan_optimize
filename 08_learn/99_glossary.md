@@ -136,6 +136,7 @@
 | **sigmoid** | 숫자를 0~1로 누르는 함수. **이 모델의 클래스 출력에는 적용하지 않는다** → [03](03_yolo_tensor.md) |
 | **IoU** | Intersection over Union. 두 박스가 얼마나 겹치는지(0~1) → [03](03_yolo_tensor.md) |
 | **NMS** | Non-Maximum Suppression. 겹친 박스 중 점수 높은 것만 남기는 것 → [03](03_yolo_tensor.md) |
+| **EfficientNMS** | TensorRT의 GPU NMS 플러그인. Filter → Sort → 타일+상태 방송 구조. 이 프로젝트 `efficient_nms.comp`의 설계 원형 → [11](11_tensorrt_efficient_nms.md), [03](03_yolo_tensor.md) |
 | **양자화 (quantization)** | 실수를 정수(여기서는 8비트)로 줄여 저장하는 것. `값 = (q − zero_point) × scale` → [03](03_yolo_tensor.md) |
 | **zero-point / scale** | 양자화를 되돌리는 두 숫자 → [03](03_yolo_tensor.md) |
 | **COCO 80 클래스** | 이 모델이 구분하는 객체 종류 80가지(사람·차·신호등 등) → [03](03_yolo_tensor.md) |
@@ -174,6 +175,7 @@
 | **정본** | 어떤 수치의 공식 출처 문서. 이 프로젝트에서는 `07_results/*/summary.md` → [08](08_method.md) |
 | **신뢰 불가** | 측정 중 온도·클럭 경고가 떠서 성능 수치를 쓸 수 없다는 표시 → [08](08_method.md) |
 | **인용 금지** | 결함 상태이거나 왜곡된 것이 확인돼 쓰면 안 되는 수치 → [08](08_method.md) |
+| **보호대 (guard band)** | GPU NMS에서 IoU가 임계값에 너무 가까워 CPU와 판정이 갈릴 수 있는 좁은 구간(0.7 ± 4e-6). 걸린 프레임은 CPU로 처리한다 → [03](03_yolo_tensor.md) |
 | **`yvo_`** | 이 프로젝트 빌드 타깃 이름의 접두사 (yolo vulkan optimize) → [09](09_code_map.md) |
 
 ---

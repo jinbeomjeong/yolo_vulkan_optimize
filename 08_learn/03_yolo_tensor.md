@@ -510,6 +510,28 @@ D 0.60  IoU(C,D)=0.75  0.7 초과 → 억제 ✘
 정상이므로 서로 억제하면 안 된다. 이 프로젝트 함수 이름이
 `cpu_nms_greedy_by_class()`인 이유다.
 
+### GPU에서는 어떻게 하나 — 순차 알고리즘을 병렬로
+
+greedy NMS는 본래 **순차적**이다. B가 억제되는지는 A가 살아남았는지에 달려 있고,
+A가 살아남았는지는 그보다 앞선 후보들에 달려 있다. 그래서 GPU로 옮길 때는
+"한 번에 한 후보씩 판정하되, **그 판정을 받은 뒤의 IoU 비교는 모두가 동시에**" 하는 구조를 쓴다.
+TensorRT EfficientNMS의 방식이고([11장](11_tensorrt_efficient_nms.md) §5.4),
+이 프로젝트의 [`efficient_nms.comp`](../02_shaders/efficient_nms.comp)가 그것을 Vulkan으로 옮긴 것이다.
+
+```
+워크그룹 1개(256 invocation) = 프레임 1장
+1. 후보를 shared memory에 올려 (score, anchor_key) 순으로 정렬한다   (bitonic sort)
+2. i = 0, 1, 2, ... 순서로:
+     i를 맡은 invocation(리더)이 판정을 방송한다
+       생존(1)  → 나머지 전원이 "살아 있는 같은 클래스의 뒤쪽 후보"와 IoU를 동시에 비교
+       탈락(-1) → 아무도 계산하지 않는다
+3. 생존자만 정렬 순서대로 모아 쓴다
+```
+
+결과는 CPU 함수와 **비트 단위로 같아야** 한다(`--nms verify`가 매 프레임 비교한다).
+단 IoU가 임계값 0.7에 **아주 가까운**(±4e-6) 쌍은 CPU와 GPU의 부동소수 반올림 차이로 판정이
+갈릴 수 있어서, 그런 쌍이 있는 프레임만 CPU 함수로 처리한다(보호대, guard band).
+
 ---
 
 ## 3.8 이 프로젝트에서는
@@ -695,6 +717,9 @@ h, w, class가 전부 0~79라 각각 7비트에 들어가고 scale_id는 0~2다.
 "전순서"란 **임의의 두 원소에 대해 어느 쪽이 앞인지가 항상 유일하게 정해지는 순서**를
 말한다. 점수가 같아도 `anchor_key`로 갈리므로 동점이 없다.
 
+> GPU NMS([`efficient_nms.comp`](../02_shaders/efficient_nms.comp))의 정렬 키도 이 전순서다.
+> int64가 없는 V3D에서는 score 비트와 `anchor_key`를 두 단계로 비교한다.
+>
 > 결과: 출력 순서가 실행마다 달라도 **정렬 후에는 항상 같은 배열**이 된다.
 > 실측으로 **10회 반복 전부 바이트 단위 동일**이 확인됐다
 > ([`07_results/gpu_postprocess/summary.md`](../07_results/gpu_postprocess/summary.md) P3 G6).
@@ -747,15 +772,16 @@ NPU 원시 출력 6텐서 (UINT8 NHCW, 합계 1,221,120 B)
    후보 ~16개 (약 1.6 KB)  ← 1.22 MB 가 여기서 1/800 로 줄었다
    │
    ▼
-⑦ greedy NMS (클래스별, IoU 0.7)   ← CPU. 후보가 적어 수 µs
+⑦ greedy NMS (클래스별, IoU 0.7)   ← GPU(efficient_nms.comp). 드문 경계 프레임만 CPU
    │
    ▼
    최종 검출 (프레임당 약 5개)
 ```
 
 ①~⑥은 GPU 셰이더([`yolo_decode.comp`](../02_shaders/yolo_decode.comp)),
-⑦은 CPU([`cpu_nms_greedy_by_class`](../01_src/ref/cpu_yolov8_decode.hpp))다.
-**왜 이렇게 나눴는지**(전부 GPU로 하지 않은 이유)는
+⑦은 같은 커맨드 버퍼의 GPU 셰이더([`efficient_nms.comp`](../02_shaders/efficient_nms.comp))이고,
+그 기준 구현은 CPU 함수([`cpu_nms_greedy_by_class`](../01_src/ref/cpu_yolov8_decode.hpp))다(`--nms cpu`로 그 함수를 쓸 수도 있다).
+⑦을 한동안 CPU에 두었던 이유와 GPU로 옮긴 경위는
 [05_vulkan_compute.md](05_vulkan_compute.md)와 [10_why_this_design.md](10_why_this_design.md)에서 다룬다.
 
 ---

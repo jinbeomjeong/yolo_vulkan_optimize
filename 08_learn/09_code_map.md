@@ -19,7 +19,7 @@
 | 대역 | 폴더 | 무엇이 있나 |
 |---|---|---|
 | **코드** | [`01_src/`](../01_src/) | C++ 소스 전부. 하위 폴더는 §9.2 |
-| | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 — 본 파이프라인 4개 + `diag/` 진단 전용 2개 (`.comp`) |
+| | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 — 본 파이프라인 5개 + `diag/` 진단 전용 2개 (`.comp`) |
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
 | | `04_data/` | 입력 영상(지금은 `video_h265.mp4` 하나)과 테스트용 원시 텐서 픽스처 (git에 없음) |
 | **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 테스트 7종 |
@@ -117,6 +117,7 @@ GPU 셰이더는 전부 CPU 기준 구현의 **번역본**이고, 원문은 `01_
 |---|---|
 | [`ref/cpu_letterbox.hpp`](../01_src/ref/cpu_letterbox.hpp) 주석 1)~5) | [`sand_letterbox.comp`](../02_shaders/sand_letterbox.comp) |
 | [`ref/cpu_yolov8_decode.hpp`](../01_src/ref/cpu_yolov8_decode.hpp) 주석 1)~7) | [`yolo_decode.comp`](../02_shaders/yolo_decode.comp) |
+| 같은 헤더의 `cpu_nms_greedy_by_class()`·`iou_xyxy()` | [`efficient_nms.comp`](../02_shaders/efficient_nms.comp) (구조는 [11장](11_tensorrt_efficient_nms.md)) |
 | [`ref/sand.hpp`](../01_src/ref/sand.hpp) | 위 두 셰이더의 주소 계산 |
 | [`ref/overlay_reference.hpp`](../01_src/ref/overlay_reference.hpp) 규약 R0~R8 | [`overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) |
 
@@ -132,26 +133,27 @@ GPU 셰이더는 전부 CPU 기준 구현의 **번역본**이고, 원문은 `01_
 | dma-buf 주고받기 | [`vulkan/dmabuf_import.cpp`](../01_src/vulkan/dmabuf_import.cpp), [`dmabuf_export.cpp`](../01_src/vulkan/dmabuf_export.cpp) |
 | NPU (기준 경로) | [`hailo/hailo_runner.cpp`](../01_src/hailo/hailo_runner.cpp) |
 | NPU (실제 쓰는 경로) | [`hailo/hailo_raw_runner.cpp`](../01_src/hailo/hailo_raw_runner.cpp) |
-| GPU 후처리 | [`vulkan/yolo_postproc.cpp`](../01_src/vulkan/yolo_postproc.cpp), [`pipeline/gpu_postproc_stage.cpp`](../01_src/pipeline/gpu_postproc_stage.cpp) |
+| GPU 후처리 | [`vulkan/yolo_postproc.cpp`](../01_src/vulkan/yolo_postproc.cpp), [`vulkan/efficient_nms.cpp`](../01_src/vulkan/efficient_nms.cpp), [`pipeline/gpu_postproc_stage.cpp`](../01_src/pipeline/gpu_postproc_stage.cpp) |
 | 화면 표시 | [`display/display_pipeline.cpp`](../01_src/display/display_pipeline.cpp), [`vk_swapchain.cpp`](../01_src/display/vk_swapchain.cpp) |
 
 ---
 
-## 9.4 셰이더 — 본 4개 + 진단 2개
+## 9.4 셰이더 — 본 5개 + 진단 2개
 
 전부 `02_shaders/` 에 있고 확장자는 `.comp`(컴퓨트 셰이더)다. 진단 전용 2개는 `02_shaders/diag/` 에 따로 두고
-(`yvo_shaders_diag`), 도구만 링크한다. 본 4개는 `yvo_shaders` 다.
+(`yvo_shaders_diag`), 도구만 링크한다. 본 5개는 `yvo_shaders` 다.
 
 | 셰이더 | 하는 일 | 파이프라인에서 |
 |---|---|---|
 | [`sand_letterbox.comp`](../02_shaders/sand_letterbox.comp) | SAND128 NV12 → letterbox RGB → NHWC 또는 NHCW | ② 전처리 |
 | [`yolo_decode.comp`](../02_shaders/yolo_decode.comp) | 원시 텐서 → 후보 박스 압축 | ④ 후처리 |
+| [`efficient_nms.comp`](../02_shaders/efficient_nms.comp) | 후보 정렬 + 클래스별 greedy 억제 (TRT EfficientNMS 구조) | ④ 후처리 |
 | [`display_convert.comp`](../02_shaders/display_convert.comp) | SAND128 NV12 → 화면용 RGBA | ⑥ 표시 변환 |
 | [`overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) | 박스·라벨·HUD 그리기 | ⑦ 오버레이 |
 | [`diag/display_probe.comp`](../02_shaders/diag/display_probe.comp) | 고정 테스트 패턴 | 진단 전용 |
 | [`diag/heap_sum.comp`](../02_shaders/diag/heap_sum.comp) | 바이트 합 리덕션 | 진단 전용 |
 
-앞의 4개가 실제 파이프라인에서 돌고, 뒤의 2개는 **"이 경로가 정말 동작하는가"를 가르는 관문**용이다.
+앞의 5개가 실제 파이프라인에서 돌고, 뒤의 2개는 **"이 경로가 정말 동작하는가"를 가르는 관문**용이다.
 
 ### 셰이더 읽을 때 알아 둘 것
 
@@ -182,7 +184,7 @@ cmake -S . -B build -G Ninja && cmake --build build
 | `yvo_toolkit` | 헤더만 (INTERFACE) | 도구·앱 전용 헬퍼. 라이브러리는 링크하지 않는다 |
 | `yvo_testkit_postproc` / `yvo_testkit_display` | 헤더만 (INTERFACE) | 테스트·프로브 공용 검증 하네스 |
 | `yvo_warnings` | 경고 플래그만 | `-Wall -Wextra -Wpedantic` |
-| `yvo_shaders` | 컴파일된 셰이더 헤더 (본 4개) | 링크하면 include 경로가 붙는다 |
+| `yvo_shaders` | 컴파일된 셰이더 헤더 (본 5개) | 링크하면 include 경로가 붙는다 |
 | `yvo_shaders_diag` | 진단 셰이더 헤더 (`diag/` 2개) | 도구만 링크한다 |
 | `yvo_hailo` | NPU | **`yvo_vulkan`에 의존하지 않는다** |
 | `yvo_vulkan` | GPU | |
@@ -225,7 +227,8 @@ ctest --test-dir build
 | 테스트 | NPU | 합격 기준 |
 |---|---|---|
 | `test_preproc` | 불필요 | GPU 전처리가 CPU 기준과 **NHCW에서 바이트 완전 일치** |
-| `PostprocFixture.*` (4개) | **불필요** | 후보 수 동일, 점수 **비트 일치**, 좌표 오차 < 0.25 px, 10회 결정성 |
+| `PostprocFixture.*` (5개) | **불필요** | 후보 수 동일, 점수 **비트 일치**, 좌표 오차 < 0.25 px, 10회 결정성, GPU NMS 결과 **비트 일치**(score 0.2·0.01) |
+| `EfficientNms.*` (7개) | **불필요** | 합성 DetBuf: 동점, 클래스 정원, 클래스 간 겹침, 용량 초과·IoU 보호대 신호, 0/1개, 결정성 |
 | `test_postproc_live` | 필요 | host 경로 vs GPU 경로 검출 매칭 ≥ 0.95 |
 | `test_detections` | 필요 | 네 경로(CPU/GPU-ptr/GPU-dmabuf/NHCW) 검출 일치 |
 | `test_overlay` | 불필요 | 오버레이 GPU vs CPU 기준 **오차 0** |
@@ -317,7 +320,7 @@ build/bin/yvo_pipeline --video ... --hef ...
 
 **Q4. NPU가 다른 사람에게 잡혀 있을 때도 돌릴 수 있는 테스트가 있는가?**
 
-있다. `PostprocFixture.*`(4개), `test_preproc`, `test_overlay` 는 NPU가 필요 없다.
+있다. `PostprocFixture.*`(5개), `EfficientNms.*`(7개), `test_preproc`, `test_overlay` 는 NPU가 필요 없다.
 후처리 테스트를 일부러 두 개로 쪼갠 이유가 이것이다.
 
 **Q5. 처음 코드를 읽는다면 어디부터 봐야 하는가?**

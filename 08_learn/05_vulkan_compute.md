@@ -43,7 +43,7 @@ CPU로 하면 207만 번을 순서대로 도는데 GPU는 수백 개를 동시�
 그래서 만들어진 것이 **컴퓨트 셰이더(compute shader)** 다. 화면도 삼각형도 텍스처도 없이,
 **버퍼(숫자 배열)를 읽어서 버퍼에 쓰는 것만 하는 셰이더**다.
 
-이 프로젝트의 셰이더 4개는 전부 컴퓨트 셰이더다. 그림을 "그리는" 셰이더는 하나도 없다
+이 프로젝트의 셰이더 5개는 전부 컴퓨트 셰이더다. 그림을 "그리는" 셰이더는 하나도 없다
 (박스를 그리는 셰이더조차 컴퓨트다 — 이유는 §5.10에서 설명한다).
 
 ### CUDA도 OpenCL도 아니고 왜 Vulkan인가
@@ -214,12 +214,18 @@ invocation 55개는 담당할 데이터가 없다.** 그대로 두면 배열 밖
 
 **단, 함정이 하나 있다.** 워크그룹 안에서 `barrier()`(모두 여기까지 오면 같이 가자)를 쓴다면,
 일부 invocation이 `barrier()` 전에 `return` 해 버리면 나머지가 **영원히 기다린다.**
-이 프로젝트의 셰이더 4개는 전부 `barrier()` 와 shared memory를 **쓰지 않으므로** 조기 return이
-안전하다. 그래서 셰이더 주석마다 이렇게 적혀 있다:
+앞의 셰이더 4개(전처리·디코드·표시 변환·오버레이)는 `barrier()` 와 shared memory를 **쓰지 않으므로**
+조기 return이 안전하다. 그래서 셰이더 주석마다 이렇게 적혀 있다:
 
 ```glsl
 if (gx >= groups_per_row || dy >= pc.dst_h) return; // barrier 없음
 ```
+
+**예외는 [`efficient_nms.comp`](../02_shaders/efficient_nms.comp) 하나다.** 워크그룹 하나(256 invocation)가
+프레임 한 장의 후보를 shared memory에 올려 정렬하고 억제하므로 `barrier()` 가 수십 번 나온다.
+그래서 이 셰이더는 "내 몫이 없으면 return" 대신 **`continue` 로 건너뛰고 barrier에는 모두 도착한다.**
+return은 전원이 같은 shared 값을 보고 함께 빠지는 곳(용량 초과 등)에만 있다 — 이것을
+**균일 제어 흐름**(uniform control flow)이라 한다. 설계는 [11장](11_tensorrt_efficient_nms.md) §5.4 의 번역이다.
 
 ---
 
@@ -510,7 +516,7 @@ VUID가 왜 중요한가? **그 번호로 스펙 원문을 정확히 찾을 수 
 | 항목 | 값 | 이것이 뭘 막는가 |
 |---|---|---|
 | `maxComputeWorkGroupInvocations` | **256** | 워크그룹 하나에 invocation 256개까지. `local_size_x*y*z ≤ 256` |
-| `maxComputeSharedMemorySize` | 32 KB | shared memory 한도 (이 프로젝트는 아예 안 쓴다) |
+| `maxComputeSharedMemorySize` | 32 KB | shared memory 한도 (`efficient_nms.comp` 만 약 24.9 KB 쓴다. 후보 상한 1024개가 이 한도에서 나왔다) |
 | subgroup 크기 | **16** | 분기가 갈라지는 단위 |
 | `maxPerStageDescriptorStorageBuffers` | **8** | **한 셰이더가 SSBO를 8개까지만 본다** ← 아래 참조 |
 | **`descriptorIndexing`** | **false** | **버퍼를 배열로 두고 인덱스로 고를 수 없다** ← 아래 참조 |
@@ -558,7 +564,7 @@ NPU는 프레임마다 텐서 **6개**를 내놓는다(스케일 3개 × {클래
 
 **하드웨어 한계 두 개가 파이프라인 구조를 바꾼 사례**다.
 
-### 셰이더 4개가 하는 일 (한 줄씩)
+### 셰이더 5개가 하는 일 (한 줄씩)
 
 | 셰이더 | 입력 → 출력 | 하는 일 | 실측 중앙값 |
 |---|---|---|---:|
@@ -566,8 +572,9 @@ NPU는 프레임마다 텐서 **6개**를 내놓는다(스케일 3개 × {클래
 | [`yolo_decode.comp`](../02_shaders/yolo_decode.comp) | 원시 6텐서 → 후보 박스 ~16개 | dequantize + DFL softmax + threshold + 좌표 역변환 | **0.626 ms** |
 | [`display_convert.comp`](../02_shaders/display_convert.comp) | 디코더 SAND128 NV12 → 스왑체인 RGBA | de-SAND + YUV→RGB (1:1) | **4.153 ms** |
 | [`overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) | 검출 목록 → 스왑체인 RGBA | 박스 테두리 + 라벨 글자 + HUD 그리기 | **0.128 ms** |
+| [`efficient_nms.comp`](../02_shaders/efficient_nms.comp) | 후보 박스 → 최종 검출 | bitonic 정렬 + 클래스별 greedy 억제 | 측정 전 |
 
-합 **6.995 ms**, 프레임 주기 28.6 ms의 24.5%다
+합 **6.995 ms**(`efficient_nms.comp` 추가 전 4개), 프레임 주기 28.6 ms의 24.5%다
 ([`display_e2e/summary.md`](../07_results/display_e2e/summary.md) §3.1, `disp_asap`).
 색 변환식과 letterbox 규칙의 상세는 [07_video_display.md](07_video_display.md),
 텐서 해석은 [03_yolo_tensor.md](03_yolo_tensor.md) 에 있다.

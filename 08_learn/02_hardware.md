@@ -487,7 +487,7 @@ NHCW 레이아웃의 상세는 → [06_zerocopy_dmabuf.md](06_zerocopy_dmabuf.md
 
 | 칩 | 위치 | 맡은 단계 | 코드 |
 |---|---|---|---|
-| **CPU** Cortex-A76 ×4 @2.4 GHz | SoC 안 | 전체 지휘, 슬롯 수명 관리, NMS | [`01_src/pipeline/`](../01_src/pipeline/) |
+| **CPU** Cortex-A76 ×4 @2.4 GHz | SoC 안 | 전체 지휘, 슬롯 수명 관리 (NMS는 GPU, 드문 경계 프레임만 CPU) | [`01_src/pipeline/`](../01_src/pipeline/) |
 | **비디오 디코더** (HEVC 전용) | SoC 안 | ① mp4 → 프레임 (dma-buf) | libavcodec DRM_PRIME |
 | **GPU** VideoCore VII / V3D 7.1 | SoC 안 | ② 전처리, ④ 후처리, ⑥ 표시 변환, ⑦ 오버레이 | [`02_shaders/`](../02_shaders/) |
 | **NPU** Hailo-8 | **SoC 밖, PCIe Gen3 x1** | ③ YOLO 추론 | [`01_src/hailo/`](../01_src/hailo/) |

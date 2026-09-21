@@ -721,7 +721,7 @@ SoC 쪽 `vcgencmd get_throttled`는 계속 0이었으므로 **Pi가 아니라 Ha
    │                 · 슬롯을 free 큐에 넣는다
    │                 · Vulkan 금지, 재제출 금지, 짧게
    ▼
- (메인 스레드가) GPU 후처리 submit → yolo_decode.comp → CPU NMS
+ (메인 스레드가) GPU 후처리 submit → yolo_decode.comp → efficient_nms.comp
 ```
 
 **병목은 오른쪽 세로줄 전체**다. 왼쪽에서 무엇을 개선해도 처리량은 오르지 않는다.
