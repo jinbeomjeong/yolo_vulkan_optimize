@@ -19,11 +19,11 @@
 | 대역 | 폴더 | 무엇이 있나 |
 |---|---|---|
 | **코드** | [`01_src/`](../01_src/) | C++ 소스 전부. 하위 폴더는 §9.2 |
-| | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 — 본 파이프라인 5개 + `diag/` 진단 전용 2개 (`.comp`) |
+| | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 — 본 파이프라인 5개 + `diag/` 진단 전용 2개 (`.comp`). `overlay_boxes.comp` 는 버퍼 변형까지 SPIR-V 2개로 빌드 |
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
 | | `04_data/` | 입력 영상(지금은 `video_h265.mp4` 하나)과 테스트용 원시 텐서 픽스처 (git에 없음) |
-| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 테스트 7종 |
-| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 7개), `python/`(5개), `probes/`(일회성 소스) |
+| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 6개(`test_postproc_live` 를 따로 세면 7), ctest 항목 78개 |
+| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 7개), `python/`(5개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
 | | [`07_results/`](../07_results/) | 실험별 측정 원시 출력과 `summary.md` |
 | **문서** | [`08_learn/`](00_README.md) | 지금 읽고 있는 이 자습 교재 12장 |
 | | [`09_diagrams/`](../09_diagrams/) | yEd로 여는 파이프라인 다이어그램 2장 |
@@ -52,7 +52,7 @@
 ├── decode/     HW HEVC 디코더 (FFmpeg DRM_PRIME → DrmFrame)
 ├── hailo/      NPU (HailoRT)                    ┐ 이 둘은 서로
 ├── vulkan/     GPU (Vulkan 컴퓨트)              ┘ 링크하지 않는다
-├── display/    화면 표시 (Wayland + 스왑체인)   — vulkan과 별도 라이브러리
+├── display/    화면 표시 (Vulkan 합성·스왑체인 + HVS 평면 스캔아웃: Wayland linux-dmabuf / KMS atomic)   — vulkan과 별도 라이브러리
 ├── isp/        ISP 전처리 — 구현됐지만 미사용
 ├── pipeline/   이 전부를 묶는 실행 파일 main.cpp
 └── tools/      빌드되는 진단·측정 도구 10개 ({hailo,vulkan,display,isp,decode}/ — 측정 대상 도메인 기준)
@@ -94,9 +94,9 @@ GPU 전처리를 테스트하는 `test_preproc`을 빌드할 때 Wayland 라이�
 
 ### 2단계 — main.cpp 머리 주석을 읽는다 (1시간)
 
-**[`01_src/pipeline/main.cpp`](../01_src/pipeline/main.cpp) 1~34행**
+**[`01_src/pipeline/main.cpp`](../01_src/pipeline/main.cpp) 1~49행**
 
-코드가 아니라 **주석 34줄**이다. 여기에 이 프로젝트의 운영 규칙이 전부 들어 있다:
+코드가 아니라 **주석 49줄**이다. 여기에 이 프로젝트의 운영 규칙이 전부 들어 있다:
 
 - 스레드 구조 (메인 스레드 / HailoRT 콜백 스레드)
 - **슬롯 규약** — 슬롯을 언제 반납하는가. 반납 조건이 **둘**이라는 것
@@ -106,7 +106,7 @@ GPU 전처리를 테스트하는 `test_preproc`을 빌드할 때 Wayland 라이�
 
 > ⚠ **여기 적힌 함정이 실제 함정이다.** 예를 들어 "디코더는 약 13프레임 이상 붙잡으면
 > 에러 없이 조용히 멈춘다"는 문장 때문에 `slots + gpu_depth <= 10` 검사가
-> [`main.cpp:276`](../01_src/pipeline/main.cpp) 에 들어 있다.
+> [`main.cpp:350`](../01_src/pipeline/main.cpp) 에 들어 있다(HVS 평면 백엔드용 보유 검사는 바로 위 :336-349).
 
 ### 3단계 — 수식의 원문을 본다 (2시간)
 
@@ -134,7 +134,8 @@ GPU 셰이더는 전부 CPU 기준 구현의 **번역본**이고, 원문은 `01_
 | NPU (기준 경로) | [`hailo/hailo_runner.cpp`](../01_src/hailo/hailo_runner.cpp) |
 | NPU (실제 쓰는 경로) | [`hailo/hailo_raw_runner.cpp`](../01_src/hailo/hailo_raw_runner.cpp) |
 | GPU 후처리 | [`vulkan/yolo_postproc.cpp`](../01_src/vulkan/yolo_postproc.cpp), [`vulkan/efficient_nms.cpp`](../01_src/vulkan/efficient_nms.cpp), [`pipeline/gpu_postproc_stage.cpp`](../01_src/pipeline/gpu_postproc_stage.cpp) |
-| 화면 표시 | [`display/display_pipeline.cpp`](../01_src/display/display_pipeline.cpp), [`vk_swapchain.cpp`](../01_src/display/vk_swapchain.cpp) |
+| 화면 표시 (Vulkan 합성) | [`display/display_pipeline.cpp`](../01_src/display/display_pipeline.cpp), [`vk_swapchain.cpp`](../01_src/display/vk_swapchain.cpp) |
+| 화면 표시 (HVS 평면) | [`display/plane_display.cpp`](../01_src/display/plane_display.cpp), [`wayland_plane_scanout.cpp`](../01_src/display/wayland_plane_scanout.cpp), [`kms_scanout.cpp`](../01_src/display/kms_scanout.cpp), [`overlay_plane.cpp`](../01_src/display/overlay_plane.cpp), [`drm_state.cpp`](../01_src/display/drm_state.cpp) — 둘 다 [`display_sink.hpp`](../01_src/display/display_sink.hpp) 인터페이스 뒤에 있다 |
 
 ---
 
@@ -142,6 +143,8 @@ GPU 셰이더는 전부 CPU 기준 구현의 **번역본**이고, 원문은 `01_
 
 전부 `02_shaders/` 에 있고 확장자는 `.comp`(컴퓨트 셰이더)다. 진단 전용 2개는 `02_shaders/diag/` 에 따로 두고
 (`yvo_shaders_diag`), 도구만 링크한다. 본 5개는 `yvo_shaders` 다.
+`yvo_shaders` 의 SPIR-V 산출물은 6개다 — `overlay_boxes.comp` 를 `YVO_OVERLAY_BUFFER` 로 한 번 더 컴파일한
+`overlay_boxes_buf.spv`(HVS 박스 평면용, storage buffer 에 그린다)가 더 있다. 문법은 [05장](05_vulkan_compute.md) 빌드 파이프라인.
 
 | 셰이더 | 하는 일 | 파이프라인에서 |
 |---|---|---|
@@ -149,7 +152,7 @@ GPU 셰이더는 전부 CPU 기준 구현의 **번역본**이고, 원문은 `01_
 | [`yolo_decode.comp`](../02_shaders/yolo_decode.comp) | 원시 텐서 → 후보 박스 압축 | ④ 후처리 |
 | [`efficient_nms.comp`](../02_shaders/efficient_nms.comp) | 후보 정렬 + 클래스별 greedy 억제 (TRT EfficientNMS 구조) | ④ 후처리 |
 | [`display_convert.comp`](../02_shaders/display_convert.comp) | SAND128 NV12 → 화면용 RGBA | ⑥ 표시 변환 |
-| [`overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) | 박스·라벨·HUD 그리기 | ⑦ 오버레이 |
+| [`overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) | 박스·라벨·HUD 그리기 (변형 `overlay_boxes_buf`: AB24 dma-buf 버퍼에) | ⑦ 오버레이 |
 | [`diag/display_probe.comp`](../02_shaders/diag/display_probe.comp) | 고정 테스트 패턴 | 진단 전용 |
 | [`diag/heap_sum.comp`](../02_shaders/diag/heap_sum.comp) | 바이트 합 리덕션 | 진단 전용 |
 
@@ -184,11 +187,11 @@ cmake -S . -B build -G Ninja && cmake --build build
 | `yvo_toolkit` | 헤더만 (INTERFACE) | 도구·앱 전용 헬퍼. 라이브러리는 링크하지 않는다 |
 | `yvo_testkit_postproc` / `yvo_testkit_display` | 헤더만 (INTERFACE) | 테스트·프로브 공용 검증 하네스 |
 | `yvo_warnings` | 경고 플래그만 | `-Wall -Wextra -Wpedantic` |
-| `yvo_shaders` | 컴파일된 셰이더 헤더 (본 5개) | 링크하면 include 경로가 붙는다 |
+| `yvo_shaders` | 컴파일된 셰이더 헤더 (본 5개 + 버퍼 변형 1 = 6개) | 링크하면 include 경로가 붙는다 |
 | `yvo_shaders_diag` | 진단 셰이더 헤더 (`diag/` 2개) | 도구만 링크한다 |
 | `yvo_hailo` | NPU | **`yvo_vulkan`에 의존하지 않는다** |
 | `yvo_vulkan` | GPU | |
-| `yvo_display` | 화면 표시 | Wayland 없으면 조용히 빠진다 |
+| `yvo_display` | 화면 표시 (Vulkan 합성 + HVS 평면: wayland-planes / kms, libdrm 링크) | Wayland 없으면 조용히 빠진다(kms 백엔드도 함께) |
 | `yvo_isp` | ISP | `libpisp` 없으면 통째로 빠진다 |
 | `yvo_decoder` | 디코드 | libavcodec + libdrm |
 | `yvo_stages` | 후처리 글루 | OpenCV에 의존하지 않는다(테스트가 링크할 수 있게) |
@@ -231,7 +234,7 @@ ctest --test-dir build
 | `EfficientNms.*` (7개) | **불필요** | 합성 DetBuf: 동점, 클래스 정원, 클래스 간 겹침, 용량 초과·IoU 보호대 신호, 0/1개, 결정성 |
 | `test_postproc_live` | 필요 | host 경로 vs GPU 경로 검출 매칭 ≥ 0.95 |
 | `test_detections` | 필요 | 네 경로(CPU/GPU-ptr/GPU-dmabuf/NHCW) 검출 일치 |
-| `test_overlay` | 불필요 | 오버레이 GPU vs CPU 기준 **오차 0** |
+| `test_overlay` | 불필요 | 오버레이 GPU vs CPU 기준 **오차 0**. `OverlayPlane.*`·`Clear/OverlayPlaneMode.*`(박스 평면 dma-buf 비트 일치·잔상 0), `DrmState.*`(debugfs 파서), `KmsScanout.*`(card1 탐색·AddFB2 — DRM master 를 가져가지 않고, 아무도 master 가 아니면 skip) |
 | `test_display_convert` | 불필요 | 표시 변환(1:1)이 CPU 기준과 **오차 0**. BT.709 계수의 세 번째 사본을 지킨다 |
 | `test_isp_preproc` | 불필요(ISP 필요) | 패딩은 오차 0, 내용은 MAE ≤ 3.0 |
 
@@ -277,7 +280,7 @@ C++ 테스트의 판정 규칙([`01_src/ref/detection_match.hpp`](../01_src/ref/
 | 폴더 | 내용 |
 |---|---|
 | [`06_tools/python/`](../06_tools/python/) | `compare_detections.py`(검출 비교), `gen_glyph_font_8x16.py`(폰트 헤더 생성 — 빌드에 관여하지 않는 재현 기록), `check_links.py`(문서 링크·`file:line`·`--stale` 옛 경로), `check_structure.py`(폴더 배치 규칙), `relocate.py`(매핑표 기반 이동) |
-| [`06_tools/probes/`](../06_tools/probes/) | 일회성 프로브 소스. 빌드 대상이 아니며, 어떤 실험에서 쓴 것인지는 해당 `summary.md`에 적혀 있다 |
+| [`06_tools/probes/`](../06_tools/probes/) | 일회성 프로브 소스. 빌드 대상이 아니며, 어떤 실험에서 쓴 것인지는 해당 `summary.md`에 적혀 있다. `hvs_probe/` 는 외부 저장소 헤더 기준이라 이 저장소에서 그대로는 빌드되지 않는다 |
 
 ---
 
@@ -320,12 +323,12 @@ build/bin/yvo_pipeline --video ... --hef ...
 
 **Q4. NPU가 다른 사람에게 잡혀 있을 때도 돌릴 수 있는 테스트가 있는가?**
 
-있다. `PostprocFixture.*`(5개), `EfficientNms.*`(7개), `test_preproc`, `test_overlay` 는 NPU가 필요 없다.
+있다. `PostprocFixture.*`(5개), `EfficientNms.*`(7개), `test_preproc`, `test_overlay` 는 NPU가 필요 없다(`test_overlay` 의 `KmsScanout.*` 는 card1 과 HW 디코더를 쓴다).
 후처리 테스트를 일부러 두 개로 쪼갠 이유가 이것이다.
 
 **Q5. 처음 코드를 읽는다면 어디부터 봐야 하는가?**
 
-`01_src/core/frame_types.hpp`(자료형 4개) → `01_src/pipeline/main.cpp` 1~34행(운영 규칙 주석)
+`01_src/core/frame_types.hpp`(자료형 4개) → `01_src/pipeline/main.cpp` 1~49행(운영 규칙 주석)
 → `01_src/ref/cpu_yolov8_decode.hpp` 상단 주석(수식 원문) 순서다.
 **셰이더를 먼저 읽으면 안 된다** — 최적화 때문에 수식이 안 보인다.
 

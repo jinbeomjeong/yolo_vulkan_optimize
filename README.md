@@ -46,6 +46,10 @@ GPU NMS(`--nms gpu`, 기본)로 바꾼 뒤의 재측정은 아직 없다.
 
 dma-buf 세 그룹(디코더 SAND / 전처리 NHCW / 원시 텐서)이 전부 zero-copy 로 오간다.
 
+> **표시에는 대안 경로가 하나 더 있다** — `--display-backend wayland-planes` / `kms`(§3.5).
+> 디코더 SAND 를 `display_convert` 없이 HVS 영상 평면에 올리고, 박스는 GPU 가 AB24 dma-buf(네 번째 그룹)에 그려
+> 그 위 평면에 올린다. YUV→RGB 와 블렌딩은 HVS 가 한다.
+
 > **구간별 지연 수치는 여기 적지 않는다.** 같은 값이 세 곳에 복제돼 있다가 한 번 어긋난 적이 있어
 > (`09_diagrams/README.md` 의 정렬 기록), 2026-09-21 에 이 도식에서는 **흐름만** 남겼다.
 > 구간 median 은 [`display_e2e/summary.md`](07_results/display_e2e/summary.md) §3.1 이 정본이고,
@@ -61,8 +65,9 @@ cmake -S . -B build -G Ninja && cmake --build build
 
 빌드 경고는 **0줄**이어야 한다. 셰이더는 `glslc -Werror` + `spirv-val` 을 자동으로 통과한다.
 
-의존: HailoRT 4.24.0, Vulkan(V3DV), libavcodec, wayland-client + wayland-protocols, OpenCV, GTest.
-표시 경로는 wayland 가 없으면 조용히 빠지고 나머지는 그대로 빌드된다.
+의존: HailoRT 4.24.0, Vulkan(V3DV), libavcodec, libdrm, wayland-client + wayland-protocols, OpenCV, GTest.
+표시 경로(`yvo_display`, kms 백엔드 포함)는 wayland 가 없으면 조용히 빠지고 나머지는 그대로 빌드된다.
+wayland-protocols 에 staging `color-representation` XML 이 없으면 그 요청만 빠진다(`wayland-planes` 의 색 range 지정 불가).
 
 ---
 
@@ -134,12 +139,47 @@ wall            4.612 s, 29.49 FPS
 
 **요약 머리의 `[interrupted]` 를 확인해라.** 부분 실행 값을 전체 실행 값으로 오인하면 안 된다.
 
+> ⚠ **예외 — 스왑체인 표시가 멈춘 경우.** 컴포지터가 frame 콜백을 주지 않으면(labwc 가 HDMI 를 잃고 headless 출력만 쥔 경우)
+> Vulkan 경로는 `vkQueuePresentKHR` 안에서 무기한 기다리고 **SIGTERM 도 먹지 않는다**(`kill -9` 필요). §9 참조.
+> HVS 평면 백엔드(§3.5)는 frame 콜백을 50 ms 까지만 기다려 이 문제가 없다.
+
 - **두 번 연속 누르면 즉시 강제 종료**한다(`_exit(130)`, 요약 없음). 정상 종료가 지연될 때의 탈출구다.
 - 표시 창의 종료 키는 **물리 키 기준**이다(`wayland_window.cpp` — xkbcommon 없이 evdev 키코드로 판정한다).
   창 모드의 닫기 버튼은 중단이 아니라 정상 종료로 처리되지만, 창 모드 자체가 표시 변환을 2.6배 느리게 하므로
   측정에는 쓰지 마라.
 - 통계가 필요하고 중단 시점을 미리 정할 수 있으면 **`--frames N`** 이 더 깔끔하다.
   입력 영상 끝에서는 자동으로 정상 종료한다(1,816프레임, 약 60초).
+
+### 3.5 HVS 평면 표시 (`wayland-planes` / `kms`) — 구현·검증됨, 정식 측정 전
+
+V3D 가 표시 변환을 하지 않는 두 번째 표시 방식이다. 디코더 SAND 버퍼를 **디스플레이 컨트롤러(HVS)의 영상 평면**에 그대로 올리고,
+박스는 GPU 가 AB24 버퍼에 그려 **그 위 평면**에 올린다. YUV→RGB 와 블렌딩은 HVS 가 스캔아웃 중에 한다.
+두 백엔드 모두 실제 HDMI 에서 평면 배치와 색(BT.709 limited)을 debugfs 로 확인했지만, **기존 경로와 비교한 정식 측정은 아직 없다**
+(설명: [`08_learn/07_video_display.md`](08_learn/07_video_display.md) §7.12).
+
+```bash
+# wayland-planes — labwc 가 두 평면을 배치한다 (전체화면 강제)
+XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
+build/bin/yvo_pipeline \
+  --video 04_data/videos/video_h265.mp4 --mode dmabuf --layout nhcw --postproc gpu \
+  --batch 2 --slots 4 --display on --display-backend wayland-planes
+
+# kms — KMS atomic 으로 직접 커밋한다. DRM master 가 필요하다
+loginctl list-sessions                 # 데스크톱이 아닌 tty 세션 id 를 찾는다
+loginctl activate <tty 세션 id>         # (또는 sudo chvt 3) 모니터가 콘솔로 바뀌고 labwc 가 master 를 놓는다
+build/bin/yvo_pipeline \
+  --video 04_data/videos/video_h265.mp4 --mode dmabuf --layout nhcw --postproc gpu \
+  --batch 2 --slots 4 --display on --display-backend kms
+loginctl activate <데스크톱 세션 id>    # (또는 sudo chvt 7) 데스크톱으로 돌아간다
+```
+
+- **kms 실행 중에는 VT 를 바꾸지 마라.** labwc 가 master 를 받지 못해 데스크톱이 검게 남을 수 있다. 끝내는 것은 Ctrl+C / SIGTERM 으로.
+  master 를 못 얻으면 누가 쥐고 있는지 알려 주고 초기화 전에 **종료 코드 2** 로 끝난다. lightdm 은 멈출 필요가 없다.
+- kms 는 종료할 때 이전 KMS 상태 복원을 시도하지만 지금은 `EINVAL` 로 실패하고 평면 끄기로 폴백한다(콘솔이 검게 남는다). 데스크톱으로 돌아가면 복구된다.
+- `wayland-planes` 의 색: labwc 가 color-representation 의 range 를 뒤집어 넘기므로 기본값(`auto`)은 full 을 요청해 limited 를 얻는다.
+  매 실행 요약의 `scanout ... color_ok 1` 을 확인해라.
+- `--display-pace source` 에서는 batch 2 의 몰림을 펴려고 커밋 간격을 "소스 간격 − 8 ms" 이상으로 벌린다
+  ([`notes/wayland_planes_pacing_gate.md`](07_results/display_vulkan_hdmi/notes/wayland_planes_pacing_gate.md)).
 
 ---
 
@@ -154,7 +194,10 @@ wall            4.612 s, 29.49 FPS
 | `--batch N` / `--slots N` | 8 / `max(4,batch*2)` | 운용점. §3.3 참조 |
 | `--gpu-depth N` | 3 | GPU 동시 프레임 상한. **지연에 영향 없음**(실측 1 vs 3 동일) |
 | `--display off\|on` | `off` | HDMI 실시간 표시 |
-| `--display-fullscreen` | 꺼짐 | **반드시 켠다.** 창 모드는 에러·경고 없이 표시 변환이 **2.6배**(4.22 → 10.92 ms) 느려진다 |
+| `--display-backend auto\|wayland\|offscreen\|wayland-planes\|kms` | `auto` | `auto` = Wayland 창이 열리면 `wayland`, 아니면 `offscreen`. `wayland` = Vulkan 합성 + 스왑체인(strict — 실패하면 종료), `offscreen` = 화면 없이 변환만. `wayland-planes`/`kms` = HVS 평면 스캔아웃(§3.5, strict) |
+| `--display-color-range auto\|full\|limited` | `auto` | 평면 백엔드가 요청할 COLOR_RANGE. `auto` = wayland-planes 는 full(labwc 뒤집힘 우회), kms 는 limited |
+| `--display-connector NAME` | 첫 연결 HDMI-A | `kms` 의 출력 커넥터(다른 백엔드에서는 경고 후 무시) |
+| `--display-fullscreen` | 꺼짐 | **반드시 켠다.** 창 모드는 에러·경고 없이 표시 변환이 **2.6배**(4.22 → 10.92 ms) 느려진다. 평면 백엔드는 자동으로 전체화면이다 |
 | `--display-sync matched\|latest` | `matched` | `matched` 는 프레임과 그 검출을 정확히 맞춘다. `latest` 는 화면을 즉시 띄우고 박스만 뒤처진다 |
 | `--display-pace source\|asap` | 표시 on 이면 `source` | 소스 fps 로 페이싱. `asap` 이면 큐가 꽉 차 glass 101.20 → 130.75 ms (둘 다 median) |
 | `--postproc-alloc export\|heap` | `export` | **`heap` 은 쓰지 마라** — 3자 일관성(PCIe DMA ↔ CPU 캐시 ↔ V3D)이 미검증이다 |
@@ -178,6 +221,9 @@ wall            4.612 s, 29.49 FPS
 | `detections` | 입력이 같으면 동일해야 함 | 경로를 바꿔도 검출이 변하면 회귀다 |
 | `nms fallback` | score 0.2 에서 **0** | GPU NMS 가 비트 일치를 보장 못 해 CPU 로 처리한 프레임(용량 초과 / IoU 가 0.7 ± 4e-6 안) |
 | `nms verify mismatch` | **0** | `--nms verify` 에서 GPU·CPU 결과가 비트 단위로 다른 프레임 |
+| `scanout zero_copy, color_ok, hvs_underrun delta` | **1, 1, 0** | 평면 백엔드 전용. debugfs 로 본 실제 평면 배치(영상 NV12/SAND128 + 박스 AB24 위)·색(BT.709 limited)·HVS 언더런. 읽지 못하면 `unverified` |
+| `scanout overlay skipped, frame-callback timeouts, busy reuse` | 0 근처 | 박스 링이 비어 박스 갱신을 건너뜀 / frame 콜백 50 ms 초과 / 전송층이 거부한 커밋 |
+| `kms: flips, flip_timeouts, master_lost` · `kms: shutdown ...` | flips = presented, 0, `no` | kms 전용. flip 이벤트 1 s 워치독, 실행 중 master 상실, 종료 시 복원 결과 |
 
 ⚠ **`--display-pace asap` + 표시 on 에서는 GPU timestamp 의 `mean` 을 믿지 마라.**
 median 을 써라(V3D 가 커맨드 버퍼를 합치면서 한쪽 구간이 0에 가깝게 잡힌다 — 원인 미확정).
@@ -188,7 +234,7 @@ median 을 써라(V3D 가 커맨드 버퍼를 합치면서 한쪽 구간이 0에
 ## 6. 검증
 
 ```bash
-ctest --test-dir build        # 54/54 통과해야 한다
+ctest --test-dir build        # 78/78 통과해야 한다
 ```
 
 | 테스트 | NPU | 무엇을 보는가 |
@@ -198,7 +244,7 @@ ctest --test-dir build        # 54/54 통과해야 한다
 | `test_postproc_live` | 필요 | host 경로 vs GPU 경로 검출 매칭 (≥ 0.95) |
 | `test_detections` | 필요 | CPU/GPU 전처리 경로 검출 일치 |
 | `test_preproc` | 불필요 | GPU 전처리가 CPU 기준과 **비트 일치**(max 오차 0) |
-| `test_overlay` | 불필요 | 오버레이 셰이더 vs CPU 기준 비트 일치 |
+| `test_overlay` | 불필요 | 오버레이 셰이더 vs CPU 기준 비트 일치. 박스 평면 dma-buf(`OverlayPlane.*`, 잔상 0), debugfs 파서(`DrmState.*`), KMS 탐색·AddFB2(`KmsScanout.*` — card1 사용, master 는 가져가지 않는다) |
 | `test_display_convert` | 불필요 | 표시 변환 셰이더(1:1) vs CPU 기준 **비트 일치**. BT.709 계수 세 번째 사본의 게이트 |
 | `test_isp_preproc` | 불필요(ISP 필요) | ISP 전처리 vs CPU 기준. **비트 일치가 아니다**(리샘플 커널이 다르다) — 패딩만 오차 0, 내용은 MAE ≤ 3.0 |
 
@@ -214,7 +260,7 @@ python 06_tools/python/compare_detections.py ref/detections.jsonl test/detection
 
 ```bash
 bash 06_tools/bench/op_point_bench.sh    # 운용점 스윕 (배치·슬롯)
-bash 06_tools/bench/display_bench.sh     # 표시 e2e (M5a 기준선 + M4)
+bash 06_tools/bench/display_bench.sh     # 표시 e2e (M5a 기준선 + M4). CSV 59열 — 이전(48·53열) CSV 와 APPEND 불가
 bash 06_tools/bench/pipeline_bench.sh    # 기존 9설정 회귀 기준선
 bash 06_tools/bench/decode_bench.sh      # 디코드 경로 비교
 ```
@@ -243,6 +289,7 @@ bash 06_tools/bench/decode_bench.sh      # 디코드 경로 비교
 | `yvo_display_probe` | 표시 경로 프로브 (surface/present/convert/overlay) |
 | `yvo_display_pipeline_probe` | `DisplayPipeline` 단독 검증 (`yvo_pipeline` 미사용) |
 | `yvo_isp_*` | PiSP BE(ISP) 전처리 — **통합 보류 상태** |
+| `06_tools/probes/hvs_probe/` | (빌드 안 함) HVS 두 평면 스캔아웃 KMS/Wayland 프로브 소스. [`notes/kms_vs_wayland.md`](07_results/display_vulkan_hdmi/notes/kms_vs_wayland.md) 의 근거 |
 
 화면에 실제로 나왔는지는 사람 눈 없이 확인한다:
 
@@ -263,6 +310,9 @@ grim -o HDMI-A-1 shot.png
 | `HAILO_OUT_OF_PHYSICAL_DEVICES` | 다른 프로세스가 NPU 를 쓰고 있다. Hailo-8 은 보드에 하나뿐이다 |
 | 성능이 들쭉날쭉 | 칩 온도를 봐라. 90 °C대에서 클럭이 400→250 MHz 로 떨어진다 |
 | FPS 가 예상의 절반 | 과거에 러너 백프레셔 이중 계수 결함이 있었다(해소됨). `in-flight = FPS × npu_latency` 가 `slots` 에 가까운지 봐라 |
+| 표시 on 인데 멈춤, SIGTERM 도 안 먹음 | labwc 가 HDMI 를 잃었다(`wlr-randr` 에 `Headless output` 만 보임). 활성 VT 가 데스크톱이 아니거나 Xwayland 가 DRM master 를 가져간 경우다. `kill -9` 로 끝내고, `cat /sys/kernel/debug/dri/1/clients` 에서 master 를 확인한 뒤 Xwayland 를 끝내고 VT 를 한 번 토글(`loginctl activate` 로 tty ↔ 데스크톱)한다 |
+| `--display-backend kms` 가 종료 코드 2 | DRM master 를 못 얻었다(데스크톱이 활성). §3.5 대로 비데스크톱 VT 를 활성화한 뒤 실행 |
+| 평면 백엔드인데 `color_ok 0` | 컴포지터 COLOR_RANGE 처리가 바뀌었을 수 있다. `--display-color-range` 를 바꿔 보고 debugfs `range=` 를 확인 |
 
 ---
 
@@ -280,7 +330,7 @@ grim -o HDMI-A-1 shot.png
 
 ### 아직 열려 있는 것
 
-목록의 정본은 **[`07_results/README.md`](07_results/README.md#아직-열려-있는-것)** 다(9항목).
+목록의 정본은 **[`07_results/README.md`](07_results/README.md#아직-열려-있는-것)** 다(13항목).
 여기서는 운용에 바로 영향을 주는 셋만 적는다.
 
 - **연속 운용 발열** — 측정이 전부 26초짜리다. 몇 시간 도는 운용에서 `b2/s4` 의 30 fps 여유(+16%)가

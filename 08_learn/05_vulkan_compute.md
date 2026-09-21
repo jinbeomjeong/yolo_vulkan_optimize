@@ -45,6 +45,7 @@ CPU로 하면 207만 번을 순서대로 도는데 GPU는 수백 개를 동시�
 
 이 프로젝트의 셰이더 5개는 전부 컴퓨트 셰이더다. 그림을 "그리는" 셰이더는 하나도 없다
 (박스를 그리는 셰이더조차 컴퓨트다 — 이유는 §5.10에서 설명한다).
+소스는 5개지만 SPIR-V 산출물은 6개다 — `overlay_boxes.comp` 를 storage-buffer 변형으로 한 번 더 컴파일한다(이 장 끝 빌드 파이프라인).
 
 ### CUDA도 OpenCL도 아니고 왜 Vulkan인가
 
@@ -521,6 +522,7 @@ VUID가 왜 중요한가? **그 번호로 스펙 원문을 정확히 찾을 수 
 | `maxPerStageDescriptorStorageBuffers` | **8** | **한 셰이더가 SSBO를 8개까지만 본다** ← 아래 참조 |
 | **`descriptorIndexing`** | **false** | **버퍼를 배열로 두고 인덱스로 고를 수 없다** ← 아래 참조 |
 | `shaderStorageImageWriteWithoutFormat` | **false** | storage image에 쓰려면 GLSL에 포맷 한정자 필수 (→ [07_video_display.md](07_video_display.md)) |
+| `R8G8B8A8_UNORM` `linearTilingFeatures` | `0xc980` — **STORAGE_IMAGE 없음** (optimal 은 있음) | 컴퓨트가 LINEAR 이미지에 쓸 수 없다 → HVS 박스 평면(AB24 LINEAR)은 storage buffer 에 그린다 (`overlay_boxes_buf.spv`, [`overlay_plane.hpp`](../01_src/display/overlay_plane.hpp), [07장](07_video_display.md) §7.12) |
 | 32비트 정수 곱셈 | **없음** (umul24 에뮬레이션) | 셰이더 안의 곱셈이 비싸다 → 주소 계산을 덧셈 누적으로 |
 | 메모리 타입 | `DEVICE_LOCAL｜HOST_VISIBLE｜HOST_COHERENT` **하나뿐** | → [06_zerocopy_dmabuf.md](06_zerocopy_dmabuf.md) 의 주제 |
 
@@ -571,7 +573,7 @@ NPU는 프레임마다 텐서 **6개**를 내놓는다(스케일 3개 × {클래
 | [`sand_letterbox.comp`](../02_shaders/sand_letterbox.comp) | 디코더 SAND128 NV12 → NHCW 640×640×3 | de-SAND + 축소 + YUV→RGB + letterbox 패딩 | **2.088 ms** |
 | [`yolo_decode.comp`](../02_shaders/yolo_decode.comp) | 원시 6텐서 → 후보 박스 ~16개 | dequantize + DFL softmax + threshold + 좌표 역변환 | **0.626 ms** |
 | [`display_convert.comp`](../02_shaders/display_convert.comp) | 디코더 SAND128 NV12 → 스왑체인 RGBA | de-SAND + YUV→RGB (1:1) | **4.153 ms** |
-| [`overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) | 검출 목록 → 스왑체인 RGBA | 박스 테두리 + 라벨 글자 + HUD 그리기 | **0.128 ms** |
+| [`overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) | 검출 목록 → 스왑체인 RGBA (변형 `overlay_boxes_buf`: → AB24 dma-buf 버퍼) | 박스 테두리 + 라벨 글자 + HUD 그리기 | **0.128 ms** (image 경로) |
 | [`efficient_nms.comp`](../02_shaders/efficient_nms.comp) | 후보 박스 → 최종 검출 | bitonic 정렬 + 클래스별 greedy 억제 | 측정 전 |
 
 합 **6.995 ms**(`efficient_nms.comp` 추가 전 4개), 프레임 주기 28.6 ms의 24.5%다
@@ -679,6 +681,11 @@ RGBA 이미지 **쓰기** 쪽이고, 세로로 긴 영역이 이미지 타일에
 측정 재현성에 직접 기여한다.
 
 이름 규칙은 `snake_case.comp` → `kCamelCaseSpv` 다 (`sand_letterbox.comp` → `kSandLetterboxSpv`).
+
+**변형(variant)**: 같은 소스를 매크로만 바꿔 한 번 더 컴파일하려면 항목을 `<src>@<out_name>@<DEF1>[,<DEF2>...]` 로 쓴다.
+`overlay_boxes.comp@overlay_boxes_buf@YVO_OVERLAY_BUFFER` 가 `-DYVO_OVERLAY_BUFFER` 로 컴파일돼
+`overlay_boxes_buf.spv` / `kOverlayBoxesBufSpv` 가 된다(glslc 플래그·spirv-val·DEPFILE 은 그대로 적용).
+빈 정의(`X,`)는 configure 에서 막는다 — glslc 는 인자 없는 `-D` 에 에러를 찍고도 **종료 코드 0** 을 돌려주기 때문이다.
 
 ---
 

@@ -39,7 +39,7 @@
 | 04 | [NPU와 HailoRT](04_npu_hailort.md) | NPU란, HEF, 배치와 슬롯, 비동기 추론, PCIe 상한 | 02, 03 |
 | 05 | [Vulkan 컴퓨트](05_vulkan_compute.md) | GPU로 계산하기, 셰이더·워크그룹·descriptor set, V3D의 한계 | 02 |
 | 06 | [zero-copy와 dma-buf](06_zerocopy_dmabuf.md) | DMA, 캐시 일관성, dma-buf, Vulkan external memory. **가장 중요한 챕터** | 02, 05 |
-| 07 | [영상과 화면 표시](07_video_display.md) | 코덱, YUV·NV12·SAND128, letterbox, Wayland·스왑체인 | 02, 05 |
+| 07 | [영상과 화면 표시](07_video_display.md) | 코덱, YUV·NV12·SAND128, letterbox, Wayland·스왑체인, HVS 평면 스캔아웃(Wayland/KMS) | 02, 05 |
 | 08 | [측정과 검증의 방법론](08_method.md) | 왜 성능 수치를 믿을 수 없나, 중앙값·냉각·대조군, 검증 절차 | 01, 02 |
 | 09 | [코드 지도](09_code_map.md) | 폴더 구조, 읽는 순서, 빌드, 테스트, 도구 | 01 |
 | 10 | [왜 이렇게 만들었는가](10_why_this_design.md) | **배경지식 → 관측 → 결정의 사슬 8개.** 이 교재의 목적지 | 02~08 |
@@ -105,7 +105,8 @@ GPU 메모리를 CPU로 읽는 설계를 무심코 넣거나, 오염된 조건�
 
 이 프로젝트 문서에는 **에러를 내지 않고 잘못 도는** 사례가 계속 나온다:
 창 모드에서 표시가 2.6배 느려지는 것, 디코더가 프레임을 13개 넘게 붙잡으면 멈추는 것,
-백프레셔 계수가 겹쳐 성능이 절반이 되는 것, 틀린 크기를 줘도 성공을 반환하는 API.
+백프레셔 계수가 겹쳐 성능이 절반이 되는 것, 틀린 크기를 줘도 성공을 반환하는 API,
+컴포지터가 평면의 색 범위(limited/full)를 뒤집어 넘기는 것, 컴포지터가 HDMI 를 잃으면 스왑체인 present 가 영원히 멈추는 것([07장](07_video_display.md) §7.9·§7.12).
 
 이게 이 프로젝트가 계측과 검증에 그렇게 공을 들이는 이유다. ([08장](08_method.md))
 

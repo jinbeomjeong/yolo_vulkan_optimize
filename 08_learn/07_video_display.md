@@ -7,6 +7,7 @@
 > [`01_src/ref/cpu_letterbox.hpp`](../01_src/ref/cpu_letterbox.hpp) 상단 수식 주석,
 > [`01_src/display/vk_swapchain.hpp`](../01_src/display/vk_swapchain.hpp),
 > [`01_src/display/wayland_window.hpp`](../01_src/display/wayland_window.hpp),
+> [`01_src/display/plane_display.hpp`](../01_src/display/plane_display.hpp) 상단 주석(§7.12),
 > [`07_results/display_vulkan_hdmi/summary.md`](../07_results/display_vulkan_hdmi/summary.md)
 
 ---
@@ -372,8 +373,12 @@ CPU 기준 구현과 GPU 셰이더가 **비트 단위로 일치**해야 하기 �
 | `xdg_surface` | surface를 "창"으로 승격시킨다. `ack_configure` 로 크기 협상 |
 | `xdg_toplevel` | 제목·app_id·전체화면·닫기 이벤트 |
 
-**붙이지 않는 것**도 명시돼 있다 — `wl_shm`(공유 메모리 버퍼: 스왑체인이 대신한다),
-`wl_seat`/키보드(xkbcommon 의존성을 피하려고. 종료는 창 닫기와 SIGINT로 충분), EGL.
+여기에 `wl_seat` + `wl_keyboard` 도 붙인다 — **종료 키(Esc/q/Ctrl+C)만** 본다. 전체화면 창이 키보드 포커스를
+가져가면 터미널의 Ctrl+C 가 프로그램에 닿지 않기 때문이다(키 해석은 evdev 코드만 보고 xkbcommon 은 쓰지 않는다).
+HVS 평면 백엔드(§7.12)일 때만 `zwp_linux_dmabuf_v1`, `wl_subcompositor`, `wp_presentation`, `wp_viewporter`,
+color-representation 을 추가로 붙인다.
+
+**붙이지 않는 것** — `wl_shm`(공유 메모리 버퍼: 스왑체인이나 dma-buf 가 대신한다), EGL.
 
 ### VkSurfaceKHR와 스왑체인
 
@@ -568,9 +573,18 @@ Vulkan 확장 두 개가 이것을 푼다.
 > 같은 실행의 NPU e2e median이 75.3 ms이므로 **표시 경로가 더하는 지연은 약 26 ms**
 > (GPU 변환 4.2 ms + present 1~2 vsync)다.
 
-Wayland에도 같은 목적의 `wp_presentation` 프로토콜이 있지만, **일부러 쓰지 않는다** —
+Wayland에도 같은 목적의 `wp_presentation` 프로토콜이 있지만, **스왑체인 경로에서는 일부러 쓰지 않는다** —
 "목적이 겹치는 두 수단을 이중으로 두지 않는다"는 판단이다
 ([`vk_swapchain.hpp`](../01_src/display/vk_swapchain.hpp)).
+스왑체인이 없는 HVS 평면 백엔드(§7.12)는 반대로 `wp_presentation`(wayland-planes)이나
+KMS flip 이벤트 시각(kms)으로 glass-to-glass 를 잰다.
+
+> ⚠ **present 가 영원히 멈추는 경우** — FIFO 스왑체인은 컴포지터의 frame 콜백을 기다린다.
+> labwc 가 HDMI 를 잃고 headless 출력만 쥐고 있으면(예: 활성 VT 가 데스크톱이 아니고 DRM master 를
+> 다른 프로세스가 쥔 경우) 콜백이 오지 않고, `vkQueuePresentKHR` 가 드라이버(Mesa WSI) 안에서 무기한 기다린다.
+> 우리 SIGINT/SIGTERM 핸들러는 플래그만 세우므로 **SIGTERM 으로도 끝나지 않는다**(SIGKILL 필요).
+> 원인 설명은 Mesa 소스로 확인하지 않은 추정이다. 실행 전에 `wlr-randr` 에 HDMI 출력이 있는지 본다.
+> HVS 평면 백엔드는 frame 콜백을 50 ms 까지만 기다리므로 이 함정에 걸리지 않는다.
 
 ---
 
@@ -605,7 +619,8 @@ Wayland에도 같은 목적의 `wp_presentation` 프로토콜이 있지만, **�
 > [`README.md`](../README.md) §4가 "**반드시 켠다**"고 적어 두었고,
 > [`display_e2e/summary.md`](../07_results/display_e2e/summary.md) §1도 경고를 반복한다.
 > 근본 해법은 `wp_viewporter` 로 스왑체인을 1920×1080 고정으로 잡고 축소를
-> **Pi 5의 HVS 하드웨어**에 맡기는 것이다(labwc 가 광고하는 것은 확인했으나 미구현. 2026-09-21 에 쓰지 않던 bind·진단 코드를 지웠으므로 구현할 때 다시 붙인다).
+> **Pi 5의 HVS 하드웨어**에 맡기는 것이다. **스왑체인 경로에는 아직 구현하지 않았다.**
+> `wp_viewporter` 는 HVS 평면 백엔드(§7.12)에서만 bind 한다. 그 백엔드는 변환 자체를 HVS 가 하므로 이 함정이 없다.
 
 ### 함정 ② 표시 해상도를 낮추면 **더 비싸진다**
 
@@ -690,9 +705,120 @@ Wayland에도 같은 목적의 `wp_presentation` 프로토콜이 있지만, **�
 [`main.cpp`](../01_src/pipeline/main.cpp) 는 `WaylandWindow` 를 `VulkanContext` **보다 먼저 선언**한다
 (C++는 선언의 역순으로 파괴하므로).
 
+> 이 순환은 **스왑체인 경로의 문제**다. HVS 평면 백엔드(§7.12)는 스왑체인이 없어 `VulkanContext` 를
+> present 없이 만든다. `wayland-planes` 는 창만 먼저 열고, `kms` 는 창 없이 `KmsScanout`(DRM master 획득)을
+> `VulkanContext`·NPU 보다 **먼저** 만든다. master 를 못 얻으면 비싼 초기화 전에 종료 코드 2로 끝내기 위해서다.
+
 ---
 
-## 7.12 자가 점검
+## 7.12 이 프로젝트에서는 — HVS 평면 스캔아웃 (`wayland-planes` / `kms`)
+
+§7.8의 경로는 V3D가 NV12 SAND를 RGB로 바꾸고 박스를 그린 뒤 스왑체인으로 넘긴다. 그런데 Pi 5의 디스플레이
+컨트롤러 **HVS**는 원래 **평면(plane)** 여러 장을 스캔아웃하면서 스케일·YUV→RGB 변환·알파 블렌딩을 하드웨어로 한다.
+그래서 두 번째 표시 방식을 만들었다(2026-09-22). 기존 경로는 그대로 두고 `--display-backend` 로 고른다.
+
+```
+   기존 (wayland, 기본)   디코더 SAND ─▶ display_convert.comp(V3D) ─┐
+                                     overlay_boxes.comp(V3D) ───┴▶ RGBA 스왑체인 ─▶ labwc ─▶ HVS
+   HVS 평면 (wayland-planes / kms)
+                          디코더 SAND ─────────────(변환 없음)──────▶ HVS 영상 평면 (plane 83, NV12 SAND128)
+                          overlay_boxes_buf.spv(V3D) ─▶ AB24 dma-buf ▶ HVS 박스 평면 (plane 107, zpos 위)
+                                                              HVS 가 YUV→RGB + 블렌딩 → HDMI
+```
+
+| 값 | 전송 | 필요한 것 |
+|---|---|---|
+| `wayland-planes` | 부모 wl_surface 에 NV12 SAND `wl_buffer`(linux-dmabuf), **sync subsurface** 에 박스 `wl_buffer`. 평면 배치는 labwc 가 한다 | labwc, **전체화면**(강제한다. 창 모드면 labwc 가 GPU로 합성해 버린다) |
+| `kms` | KMS atomic 으로 두 평면을 직접 커밋한다 | card1 의 **DRM master**. 데스크톱이 떠 있으면 못 얻는다(아래) |
+
+코드: [`plane_display.hpp`](../01_src/display/plane_display.hpp)(공통부 `PlaneDisplay` 와 전송 인터페이스 `PlaneScanout`),
+[`wayland_plane_scanout.hpp`](../01_src/display/wayland_plane_scanout.hpp), [`kms_scanout.hpp`](../01_src/display/kms_scanout.hpp),
+[`overlay_plane.hpp`](../01_src/display/overlay_plane.hpp)(박스 버퍼), [`drm_state.hpp`](../01_src/display/drm_state.hpp)(debugfs 판정).
+`main.cpp` 는 두 경로를 [`display_sink.hpp`](../01_src/display/display_sink.hpp) 인터페이스 하나로만 본다.
+
+### 박스 평면 — V3D는 linear 이미지에 쓰지 못한다
+
+HVS가 읽을 박스 버퍼는 **LINEAR** 배치여야 한다(평면 `IN_FORMATS` 에 AB24 LINEAR). 그런데 이 장치는
+`R8G8B8A8_UNORM` 의 `linearTilingFeatures` 에 **STORAGE_IMAGE 비트가 없다**(DRM modifier LINEAR도 같다).
+컴퓨트가 LINEAR 이미지에 `imageStore` 할 수 없다는 뜻이다. 그래서 박스는 **storage buffer** 에 그린다 —
+`overlay_boxes.comp` 를 `YVO_OVERLAY_BUFFER` 로 한 번 더 컴파일한 `overlay_boxes_buf.spv` 가 packed RGBA를 pitch 단위로 쓴다
+(빌드 문법은 [05장](05_vulkan_compute.md) 빌드 파이프라인). 메모리 바이트 순서 R,G,B,A = DRM `ABGR8888`(AB24)이다.
+
+- 버퍼는 3개짜리 링이다. 다시 쓰려면 **GPU 완료와 스캔아웃 release 를 둘 다** 받아야 한다.
+- 셰이더는 박스 픽셀만 쓰므로 이전 프레임 박스를 지워야 한다. 8.3 MB 전체를 지우면 비싸서,
+  **직전에 그린 검출을 같은 셰이더로 (0,0,0,0) 다시 그리는** 방식(erase)을 기본으로 한다.
+- 외부 메모리라 매 프레임 끝에 우리 큐 → `VK_QUEUE_FAMILY_FOREIGN_EXT` 로 소유권을 넘기고, 재사용할 때 되받는다.
+
+### 프레임을 더 오래 쥔다
+
+기존 경로는 GPU 변환이 끝나면(submit 펜스) 디코더 프레임을 놓는다. 평면 경로에서는 **HVS가 디코더 버퍼 자체를
+스캔아웃**하므로, 그 버퍼가 화면에서 내려갈 때까지(`wl_buffer.release` / 다음 flip) 놓을 수 없다.
+`display_done` 이 1~2 vsync 늦어지고, 디코더 프레임 보유 계산도 이 백엔드용으로 따로 한다(`main.cpp` 보유 가드).
+
+### 커밋 간격 게이트
+
+`--batch 2` 는 검출을 두 장씩 한꺼번에 내놓는다. 준비되는 대로 커밋하면 present 간격이 16.7 ms / 66.7 ms 로
+번갈아 나온다(judder). 그래서 `--display-pace source` 에서는 커밋 간격을 **소스 간격 − 8 ms** 이상으로 벌린다.
+대가는 짝의 두 번째 프레임이 한 vblank 늦는 것이다. 지연이 중요하면 `--display-sync latest --display-pace asap`.
+→ [`notes/wayland_planes_pacing_gate.md`](../07_results/display_vulkan_hdmi/notes/wayland_planes_pacing_gate.md)
+
+### 색 범위 — 컴포지터가 뒤집는다 (조용히 틀리는 함정 하나 더)
+
+평면에 NV12를 올리면 YUV→RGB 계수와 range 를 **평면 속성**(`COLOR_ENCODING`, `COLOR_RANGE`)이 정한다.
+§7.3의 BT.709 limited 를 여기서도 맞춰야 한다.
+
+- **kms**: 앱이 매 커밋 `BT.709` / `limited` 를 직접 넣는다.
+- **wayland-planes**: color-representation 프로토콜로 요청하는데, labwc 0.20.1 + wlroots 0.20.2 조합은
+  **range 를 뒤집어서** 커널에 넘긴다(limited 를 요청하면 full 로 나간다). 요청하지 않으면 BT.601 full 이 된다.
+  그래서 기본값(`--display-color-range auto`)은 **full 을 요청해 limited 가 나오게** 하는 우회("fullhack")다.
+  컴포지터가 업데이트되면 조용히 틀어질 수 있으므로 **debugfs 로 실제 평면 상태를 확인한다**(아래).
+  → [`notes/kms_vs_wayland.md`](../07_results/display_vulkan_hdmi/notes/kms_vs_wayland.md) §4
+
+### debugfs 로 "정말 평면에 올라갔는가"를 판정한다
+
+"zero-copy 로 스캔아웃된다"는 말은 로그만으로는 믿을 수 없다(창 모드처럼 컴포지터가 조용히 GPU 합성으로 바꿀 수 있다).
+`PlaneDisplay` 는 시작 후와 종료 직전에 `/sys/kernel/debug/dri/1/state` 를 읽어 판정한다.
+
+```
+[scanout] debugfs start (presented 60): active=2 video=plane[83] NV12/SAND128 zpos=0
+          enc='ITU-R BT.709 YCbCr' range='YCbCr limited range' | boxes=plane[107] AB24 zpos=1 | hvs_underrun=0
+```
+
+요약의 `scanout zero_copy 1, color_ok 1, hvs_underrun delta 0` 과 RESULT_CSV2 뒤쪽 6필드가 이 판정이다.
+debugfs 를 읽지 못하면 `unverified` 로 남는다.
+
+### kms 는 데스크톱을 끄지 않고 돌린다
+
+KMS 커밋에는 card1 의 DRM master 가 필요하고, 평소에는 labwc 가 쥐고 있다. lightdm 을 멈추면 데스크톱 세션이
+통째로 죽는다. 대신 **데스크톱이 아닌 VT 를 활성화**하면 logind 가 labwc 의 master 를 거둬 가고, 그때 card1 을
+연 프로세스가 master 를 자동으로 받는다.
+
+```bash
+loginctl list-sessions                  # tty 세션 id 확인 (sudo 불필요)
+loginctl activate <tty 세션 id>          # 또는 sudo chvt 3 — 모니터가 콘솔로 바뀐다
+build/bin/yvo_pipeline ... --display on --display-backend kms
+loginctl activate <데스크톱 세션 id>      # 또는 sudo chvt 7 — labwc 가 master 를 되찾는다
+```
+
+- **실행 중에 VT 를 전환하지 않는다.** labwc 가 master 를 못 받아 데스크톱이 검게 남을 수 있다.
+  종료는 Ctrl+C / SIGTERM 으로 먼저 한다.
+- master 를 못 얻으면 누가 쥐고 있는지를 알려 주고 NPU·GPU 초기화 전에 종료 코드 2로 끝난다.
+- 종료 때 이전 KMS 상태 복원을 시도하지만 지금은 `EINVAL` 로 실패하고 평면 끄기로 폴백한다
+  (labwc 의 FB 가 바뀐 것으로 추정). 데스크톱으로 돌아가면 labwc 가 화면을 새로 잡으므로 실사용 문제는 없다.
+- Xwayland 가 비활성 VT 동안 card1 을 새로 열면 **Xwayland 가 master 를 가져가** labwc 가 headless 로 남는다.
+  이때는 Xwayland 를 끝내고 VT 를 한 번 더 토글한다.
+- 첫 커밋은 블로킹 모드셋이라 그 직후 프레임의 지연·간격은 측정에서 뺀다.
+
+### 무엇이 확인됐고 무엇이 남았나
+
+두 백엔드 모두 실제 HDMI 에서 영상 평면 `NV12/SAND128` + 박스 평면 `AB24`(영상 위), `BT.709 / limited`,
+`hvs_underrun` 증가 0, V3D 표시 변환 0을 debugfs 로 확인했다. 검증 레이어 errors 0, ASan 0, `--nms verify` 불일치 0.
+**지연·CPU 를 기존 경로와 비교한 정식 측정은 아직 없다**(개발 중 1회 실행 값만 있어 여기에는 적지 않는다).
+열린 항목은 [`07_results/README.md`](../07_results/README.md) 에 있다.
+
+---
+
+## 7.13 자가 점검
 
 **Q1. 이 보드에서 H.264 영상을 쓰면 왜 느린가?**
 
@@ -754,6 +880,18 @@ Vulkan으로 import하고 SAND 주소 계산을 셰이더가 하게 한 것이�
 무엇보다 **CPU 기준 구현과의 비트 일치가 깨져서 "GPU가 맞는지" 검증할 수단이 사라진다**
 (`test_preproc` 은 NHWC·NHCW 양쪽에서 **max 오차 0** 을 요구한다).
 근거: [`cpu_letterbox.hpp`](../01_src/ref/cpu_letterbox.hpp) 상단 수식 주석 2)~4).
+
+**Q8. HVS 평면 백엔드에서 박스를 왜 이미지가 아니라 버퍼에 그리는가?**
+
+HVS 박스 평면은 LINEAR 배치 버퍼를 읽는데, 이 장치의 `R8G8B8A8_UNORM` 은 **LINEAR 타일링에서 STORAGE_IMAGE 를 지원하지 않는다**.
+컴퓨트가 LINEAR 이미지에 쓸 수 없으니 같은 셰이더를 storage-buffer 변형(`overlay_boxes_buf.spv`)으로 컴파일해
+packed RGBA 를 pitch 단위로 쓴다. 근거: [`overlay_plane.hpp`](../01_src/display/overlay_plane.hpp) 머리 주석, 이 장 §7.12.
+
+**Q9. wayland-planes 에서 limited range 를 원하는데 왜 full 을 요청하는가?**
+
+labwc 0.20.1 + wlroots 0.20.2 조합이 color-representation 의 range 를 뒤집어 커널에 넘기기 때문이다. 요청 full → 평면 limited.
+컴포지터 버그에 기댄 우회라서 debugfs 로 실제 `COLOR_RANGE` 를 매 실행 확인한다(`scanout color_ok`).
+근거: [`notes/kms_vs_wayland.md`](../07_results/display_vulkan_hdmi/notes/kms_vs_wayland.md) §4.
 
 ---
 

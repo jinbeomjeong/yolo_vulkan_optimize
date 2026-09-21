@@ -114,6 +114,19 @@
 | **present** | 그린 이미지를 화면에 내보내는 것 → [07](07_video_display.md) |
 | **present mode (FIFO / MAILBOX / IMMEDIATE)** | 화면 갱신과 어떻게 맞출지. FIFO는 vsync에 맞춰 대기 → [07](07_video_display.md) |
 | **vsync / tearing** | 화면 갱신 주기에 맞추는 것 / 안 맞췄을 때 화면이 찢어져 보이는 현상 → [07](07_video_display.md) |
+| **HVS** | Pi 5 의 디스플레이 컨트롤러(Hardware Video Scaler). 평면 여러 장을 스캔아웃하면서 스케일·YUV→RGB·알파 블렌딩을 한다. GPU(V3D)와 별개 → [07](07_video_display.md) §7.12 |
+| **평면 (plane) / 스캔아웃 (scanout)** | 디스플레이 컨트롤러가 겹쳐 내보내는 버퍼 한 장 / 버퍼를 읽어 모니터 신호로 내보내는 것 → [07](07_video_display.md) §7.12 |
+| **direct scanout (zero-copy 스캔아웃)** | 컴포지터가 합성하지 않고 클라이언트 버퍼를 그대로 평면에 올리는 것 → [07](07_video_display.md) §7.12 |
+| **KMS / atomic commit** | 리눅스 커널의 화면 설정 API(Kernel Mode Setting) / 평면·CRTC 속성 여러 개를 한 번에 적용하는 요청 → [07](07_video_display.md) §7.12 |
+| **CRTC / 커넥터** | KMS 에서 스캔아웃 타이밍을 만드는 단위 / HDMI 같은 출력 단자 → [07](07_video_display.md) §7.12 |
+| **DRM master** | 화면 설정(모드셋·평면 커밋)을 할 권한을 가진 단 하나의 프로세스. 평소 컴포지터(labwc)가 쥔다 → [07](07_video_display.md) §7.12 |
+| **VT (가상 터미널)** | Ctrl+Alt+F1~ 로 바꾸는 콘솔/세션 화면. 데스크톱이 비활성 VT 로 가면 master 를 놓는다(`loginctl activate`, `chvt`) → [07](07_video_display.md) §7.12 |
+| **subsurface** | Wayland 에서 부모 surface 위에 붙는 자식 surface. 박스 평면을 이것으로 올린다 → [07](07_video_display.md) §7.12 |
+| **zpos** | 평면의 겹침 순서. 클수록 위 → [07](07_video_display.md) §7.12 |
+| **AB24 (ABGR8888)** | DRM 픽셀 포맷 이름. 메모리 바이트 순서가 R,G,B,A 라 Vulkan `R8G8B8A8` 과 같다 → [07](07_video_display.md) §7.12 |
+| **DRM modifier** | 버퍼의 타일 배치를 나타내는 64비트 값(LINEAR, SAND128 등) → [06](06_zerocopy_dmabuf.md), [07](07_video_display.md) |
+| **COLOR_ENCODING / COLOR_RANGE** | YUV 평면의 변환 계수(BT.601/709)와 값 범위(limited/full)를 정하는 평면 속성. Wayland 에서는 color-representation 프로토콜로 요청한다 → [07](07_video_display.md) §7.12 |
+| **debugfs (`/sys/kernel/debug/dri/1/state`)** | 커널이 보여 주는 현재 KMS 상태. 평면에 무엇이 올라갔는지를 판정하는 근거 → [07](07_video_display.md) §7.12 |
 
 ---
 

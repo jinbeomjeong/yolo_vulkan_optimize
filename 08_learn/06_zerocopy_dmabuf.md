@@ -443,7 +443,7 @@ G 640개, B 640개)인데 우리 셰이더가 **NHWC**(RGB RGB RGB …)로 내�
 
 ## 6.8 dma-buf 세 그룹 — 실제로 무엇이 어디로 오가나
 
-이 프로젝트에는 dma-buf가 **세 무리** 있다. 각각 만든 주체와 소비자가 다르다.
+이 프로젝트에는 dma-buf가 **세 무리** 있다(HVS 평면 표시 백엔드를 쓰면 네 번째가 생긴다 — 이 절 끝). 각각 만든 주체와 소비자가 다르다.
 
 ```
  ╔═ 그룹 ① 디코더 SAND ═══════════════════════════════════════════════════════╗
@@ -481,6 +481,16 @@ G 640개, B 640개)인데 우리 셰이더가 **NHWC**(RGB RGB RGB …)로 내�
   `DrmFrame.keepalive` 를 놓는 순간 디코더 풀로 반납된다.
 - 그룹 ②③은 **우리(Vulkan)가 만들고 export 해서 NPU에게 준다.**
   소유권이 우리에게 있으니 정렬·크기를 우리가 통제할 수 있다 — 이것이 §6.12·§6.13에서 중요해진다.
+
+> **HVS 평면 표시 백엔드(`--display-backend wayland-planes` / `kms`)에서는 두 가지가 달라진다**
+> ([07장](07_video_display.md) §7.12).
+> - 그룹 ①의 표시 쪽 소비자가 `display_convert.comp` 가 아니라 **디스플레이 컨트롤러(HVS) 자체**다.
+>   labwc 에 `wl_buffer` 로 넘기거나(linux-dmabuf) KMS 프레임버퍼로 등록(`drmModeAddFB2WithModifiers`)해 그대로 스캔아웃한다.
+>   그래서 GPU 변환이 끝난 시점이 아니라 **화면에서 내려갈 때**(`wl_buffer.release` / 다음 flip)까지 keepalive 를 쥔다.
+> - **그룹 ④ 박스 평면**: Vulkan(DmaBufExporter)이 만든 AB24 LINEAR 버퍼 3개 링(1920×1080, pitch 7680 B).
+>   GPU(`overlay_boxes_buf.spv`)가 쓰고 HVS 가 읽는다. 외부 장치가 읽는 버퍼라 매 프레임 끝에
+>   `VK_QUEUE_FAMILY_FOREIGN_EXT` 로 **큐 패밀리 소유권을 넘기고**(release), 다시 쓰기 전에 되받는다(acquire).
+>   GPU 완료는 펜스를 폴링해 확인한 뒤 넘긴다(dma-buf 암묵 펜스에 기대지 않는다).
 
 **그리고 CPU가 큰 버퍼를 읽는 곳이 하나도 없다.** §6.7의 교훈이 구조에 새겨진 결과다.
 CPU가 읽는 것은 GPU가 압축해 준 후보 목록 약 1.6 KB뿐이고,

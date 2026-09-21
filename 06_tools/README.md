@@ -12,7 +12,7 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 | 스크립트 | 무엇을 재나 | 출력 |
 |---|---|---|
 | `op_point_bench.sh` | 운용점 스윕 (batch·slots) — 최종 결론의 근거 | `07_results/op_point/` |
-| `display_bench.sh` | 화면 표시 포함 종단간 | `07_results/display_e2e/` |
+| `display_bench.sh` | 화면 표시 포함 종단간. `results_raw.csv` 59열(RESULT_CSV 22 + RESULT_CSV2 뒤 33 + 스크립트 4) — 48·53열 옛 CSV 와 `APPEND=1` 불가 | `07_results/display_e2e/` |
 | `pipeline_bench.sh` | 회귀 기준선 (고정 9설정) | `07_results/pipeline_ffmpeg_vulkan_hailo/` |
 | `decode_bench.sh` | 디코드 경로 비교 | `07_results/decode_benchmark/` |
 | `backpressure_bench.sh` | 백프레셔 결함 전후 비교 | `07_results/raw_runner_backpressure/` |
@@ -55,4 +55,4 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 |---|---|
 | `dmabuf_modifier_dump.c` | 컴포지터가 광고하는 dma-buf format/modifier 덤프 — [`07_results/display_vulkan_hdmi/`](../07_results/display_vulkan_hdmi/summary.md) |
 | `ongoing_probe.cpp` | 백프레셔 계수 관찰 — [`07_results/raw_runner_backpressure/`](../07_results/raw_runner_backpressure/summary.md) |
-| `hvs_probe/` | KMS 직접·Wayland 전체화면에서 NV12 SAND 영상 평면 + AB24 박스 평면을 HVS가 블렌딩하는지 비교 — [`kms_vs_wayland.md`](../07_results/display_vulkan_hdmi/notes/kms_vs_wayland.md). 원래 `yvo_pipeline_port` 저장소(git 밖)에서 그 저장소 헤더(`common/`, `display/overlay_reference.hpp`, `pipeline/ffmpeg_drm_decoder`)에 맞춰 빌드했다. 메모의 `tools/hvs_probe/` 가 이 폴더다 |
+| `hvs_probe/` | KMS 직접·Wayland 전체화면에서 NV12 SAND 영상 평면 + AB24 박스 평면을 HVS가 블렌딩하는지 비교 — [`kms_vs_wayland.md`](../07_results/display_vulkan_hdmi/notes/kms_vs_wayland.md). 원래 `yvo_pipeline_port` 저장소(git 밖)에서 그 저장소 헤더(`common/`, `display/overlay_reference.hpp`, `pipeline/ffmpeg_drm_decoder`)에 맞춰 빌드했다. 메모의 `tools/hvs_probe/` 가 이 폴더다. 원시 증거는 [`07_results/display_vulkan_hdmi/evidence/hvs_review/`](../07_results/display_vulkan_hdmi/evidence/hvs_review/README.md)(검증 로그는 같은 실험의 `verification/hvs_review/`) |
