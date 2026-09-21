@@ -107,6 +107,8 @@ for t in r.iter("type"):
 | maxStorageBufferRange | 1 GB |
 | timestampPeriod | 1 ns (timestampComputeAndGraphics 지원) |
 | 지원 기능 | shaderFloat16, shaderInt8, 8/16bit storage, `VK_EXT_external_memory_dma_buf`, `VK_KHR_external_memory_fd` |
+| `R8G8B8A8_UNORM` linearTilingFeatures | `0xc980` — **STORAGE_IMAGE 없음**(DRM modifier LINEAR 도 같다). LINEAR 버퍼에 컴퓨트로 쓰려면 storage buffer 를 쓴다(`overlay_plane.hpp`) |
+| 디스플레이 | HVS 평면: 영상 plane 83(Primary, NV12 SAND128 가능), 박스 plane 107(Overlay, AB24 LINEAR). `01_src/display/plane_display.hpp` |
 | CPU | Cortex-A76 ×4 (NEON), 통합 메모리(UMA) |
 
 - 값이 의심되거나 코드가 의존하면 `vulkaninfo`로 다시 확인한다. 하드코딩보다 런타임 조회를 우선한다.

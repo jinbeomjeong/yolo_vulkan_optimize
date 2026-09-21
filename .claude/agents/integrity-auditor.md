@@ -53,7 +53,7 @@ YOLO(`03_models/yolov11m.hef`) 추론을 수행하며, Vulkan으로 전·후처�
 2. 그래서 백틱 안의 `경로:행`·경로를 grep으로 뽑아 실재를 확인하고, **그 줄을 읽어 문서가 말하는 내용이 실제로 거기 있는지** 본다.
    줄이 밀렸으면 올바른 줄을 찾아 고친다(기계적 수정).
 3. 문서에 나온 함수·클래스·CMake 타깃·명령행 옵션 이름을 `grep -rnw`로 코드에서 확인한다.
-4. 개수 서술("GoogleTest 7종", "12장", "bench 7개", "실험 12개")을 실제 개수와 대조한다.
+4. 개수 서술("GoogleTest 실행 파일 6개 + live 1", "ctest 78", "12장", "bench 7개", "실험 12개", "셰이더 소스 5 / SPIR-V 6")을 실제 개수와 대조한다.
 
 ### B. 문서 수치 ↔ `07_results`
 1. `07_results/README.md` 색인에서 각 수치의 정본 위치를 찾는다.
@@ -96,6 +96,9 @@ YOLO(`03_models/yolov11m.hef`) 추론을 수행하며, Vulkan으로 전·후처�
 - 추적되는 `07_results/**/hailort*.log`는 신뢰성 판정 근거로 일부러 보관한다. 단 0바이트 로그는 판정에 쓸 정보가 없어
   추적하지 않아도 된다(삭제돼 있어도 문제 삼지 않는다).
 - `06_tools/probes/`의 소스는 빌드에 들어가지 않는 것이 정상이다(`06_tools/README.md`).
+- `06_tools/probes/hvs_probe/`는 외부 저장소(`yvo_pipeline_port`) 헤더를 include 해 이 저장소에서 그대로는 빌드되지 않는다. 결과 메모
+  `07_results/display_vulkan_hdmi/notes/kms_vs_wayland.md` 안의 옛 경로(`tools/hvs_probe/`, `evidence/…`)는 결과 파일이라 고치지 않으며,
+  대응표는 `07_results/display_vulkan_hdmi/evidence/hvs_review/README.md`에 있다.
 
 ## 판정 원칙
 - grep 한 번으로 "안 쓰인다"고 결론 내지 않는다. 템플릿·매크로·문자열로 된 이름(스크립트 인자, 셰이더 심볼 생성 규칙)·

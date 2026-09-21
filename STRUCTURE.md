@@ -57,7 +57,7 @@
 | `decode/` | `yvo_decoder` | FFmpeg + DRM PRIME 디코더 | |
 | `hailo/` | `yvo_hailo` | HailoRT 래퍼 | Vulkan 의존 |
 | `vulkan/` | `yvo_vulkan` | Vulkan 컨텍스트, dma-buf import/export, 전처리·후처리 호스트 코드 | HailoRT 의존 |
-| `display/` | `yvo_display` | Wayland 창, 스왑체인, 표시 변환, 오버레이 | |
+| `display/` | `yvo_display` | 표시: Vulkan 합성(Wayland 창, 스왑체인, 표시 변환, 오버레이)과 HVS 평면 스캔아웃(`PlaneDisplay`, Wayland linux-dmabuf / KMS atomic, 박스 평면, debugfs 판정) | |
 | `isp/` | `yvo_isp` | PiSP BE 전처리 (파이프라인 미연결, 보류) | |
 | `pipeline/` | `yvo_stages`, `yvo_pipeline` | 단계 조립과 앱 본체 `main.cpp` | |
 | `tools/<도메인>/` | `yvo_*` 실행파일 | **빌드되는** 프로브·벤치·자가시험. 파일당 `main()` 1개 | 라이브러리 코드 |
@@ -93,6 +93,8 @@
 - `02_shaders/*.comp`: 라이브러리가 쓰는 본 셰이더 → `yvo_shaders`
 - `02_shaders/diag/*.comp`: 진단 전용 → `yvo_shaders_diag`. `01_src/tools/**`만 링크한다.
 - 모든 `.comp`는 자기 폴더의 `CMakeLists.txt`(`02_shaders/`, `02_shaders/diag/`)에 등록돼 있어야 한다. 셰이더 머리 주석이 `ref/`의 원문 헤더를 가리킨다.
+- 같은 소스를 매크로만 바꿔 한 번 더 빌드할 때는 새 `.comp`를 복사하지 않고 `yvo_add_shaders()` 항목을 `<src>.comp@<out_name>@<DEF1>[,<DEF2>...]`로 쓴다
+  (예: `overlay_boxes.comp@overlay_boxes_buf@YVO_OVERLAY_BUFFER` → `overlay_boxes_buf.spv`). 문법 검증은 `cmake/YvoShaders.cmake`.
 
 ### 2.4 CMake
 
@@ -171,7 +173,8 @@ md5로 바이트 동일을 확인 → `duplicate_png.md` 대조표에 기록 →
 HailoRT는 **실행한 디렉터리(CWD)**에 `hailort.log`를 쓴다.
 - 07_results에 기록하는 측정·검증 실행: 그 실행 폴더(`raw/<설정>_run<N>/`), 세션 부산물은 `raw/_session/`,
   검증 실행은 `verification/hailort_<무엇>.log`. git으로 추적한다(0바이트 로그는 추적하지 않아도 된다).
-- 그 밖의 디버깅 실행: `11_logs/<YYYY-MM-DD>_<무엇>.log`로 옮긴다(git 밖).
+- 그 밖의 디버깅 실행: `11_logs/<YYYY-MM-DD>_<무엇>.log`로 옮긴다(git 밖). 한 작업의 실행 로그가 여러 개면
+  `11_logs/<YYYY-MM-DD>_<무엇>/` 디렉터리를 CWD로 삼아 그 안에 `hailort.log`와 stdout 로그를 함께 둬도 된다.
 - 저장소 루트의 `hailort.log`는 잔재다.
 
 ## 4. 폴더별 담당

@@ -37,6 +37,8 @@ ctest --test-dir build --output-on-failure
   합격 기준은 **max 오차 0**(근사가 아니라 비트 단위 일치)이다.
 - `test_detections` — CPU / GPU ptr / GPU dmabuf / GPU dmabuf NHCW 경로의 검출을 비교한다.
   NPU를 독점하므로 `RUN_SERIAL`이고 느리다(약 19초). 합격 기준은 **매칭 비율 1.0000**이다.
+- 전체 개수는 **78**이다(2026-09-22). `test_overlay`의 `KmsScanout.*`는 `/dev/dri/card1`을 열지만 **DRM master를
+  가져가지 않는다** — 다른 프로세스(labwc)가 master일 때만 돌고, 아무도 master가 아니면 skip한다.
 
 ## 3. Vulkan 검증 레이어 — errors 0
 
@@ -48,6 +50,20 @@ VK_LOADER_LAYERS_ENABLE='*validation' build/bin/yvo_pipeline \
 - 합격: 출력 끝 줄의 `vk validation errors 0`.
 - 셰이더·배리어·동기화·dma-buf import를 건드렸으면 반드시 돈다.
 - `yvo_preproc_bench`도 같은 방식으로 돌릴 수 있다(NPU를 쓰지 않아 더 빠르다).
+
+### 3-1. 표시 경로를 건드렸을 때
+
+`01_src/display/`를 바꿨으면 해당 백엔드로 실제 표시를 한 번 돌린다(`--batch 2 --slots 4 --postproc gpu --display on`).
+**항상 `timeout -s KILL 90`으로 감싼다.**
+- 먼저 `XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 wlr-randr`에 **HDMI-A-1**이 있는지 본다.
+  `Headless output`만 있으면 labwc가 HDMI를 잃은 것이다. 이 상태에서 스왑체인 경로(`wayland`)는 `vkQueuePresentKHR`에서
+  무기한 멈추고 SIGTERM도 안 먹는다. `/sys/kernel/debug/dri/1/clients`의 master 열을 보고 복구한 뒤 돌린다.
+- `wayland-planes`/`kms`: 요약의 `scanout zero_copy 1, color_ok 1, hvs_underrun delta 0`이 합격 기준이다.
+  debugfs 줄(`video=plane[83] NV12/SAND128 … boxes=plane[107] AB24`)을 보고에 넣는다.
+- `kms`는 DRM master가 필요하다. `loginctl activate <tty 세션 id>`로 데스크톱을 비활성화하고(모니터가 바뀌므로 사용자에게 먼저 알린다)
+  실행한 뒤 `loginctl activate <데스크톱 세션 id>`로 돌아간다. **실행 중에는 VT를 바꾸지 않는다.**
+  요약의 `kms: flips = presented, flip_timeouts 0, master_lost no`를 확인한다.
+  종료 복원이 `restore failed (EINVAL) -> planes-off ok`로 나오는 것은 지금 알려진 동작이다.
 
 ## 4. ASan/UBSan — 에러·누수 0
 

@@ -11,13 +11,16 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행�
 |---|---|
 | 코드 | `01_src/` — 라이브러리 `{core,ref,toolkit,testkit,decode,hailo,vulkan,display,isp,pipeline}/`, 빌드되는 도구 `tools/<도메인>/`. `02_shaders/` (진단용은 `diag/`) |
 | 자산 | `03_models/` (HEF), `04_data/{videos,raw_tensors}/` |
-| 검증·측정 | `05_tests/` (GoogleTest 7종), `06_tools/{bench,python,probes}/`, `07_results/<실험>/` |
+| 검증·측정 | `05_tests/` (GoogleTest 실행 파일 6개 + live 1, ctest 78), `06_tools/{bench,python,probes}/`, `07_results/<실험>/` |
 | 문서 | `08_learn/` (자습 교재), `09_diagrams/` (yEd `.graphml`), `10_paper/` (논문 초고) |
 | 로그 | `11_logs/` 07_results에 기록하지 않는 실행의 런타임 로그(git 밖) |
 
 - `01_src/ref/`는 **CPU 기준 구현**(셰이더 수식의 원문·판정 규칙), `toolkit/`은 도구 전용 헬퍼(라이브러리 include 금지),
   `testkit/`은 테스트·프로브 공용 하네스다. include 계층은 `STRUCTURE.md` §2.2 — hailo↔vulkan은 서로 include·링크하지 않는다.
-- `01_src/display/`는 Wayland(xdg-shell) 창 + 스왑체인 표시 경로. 회귀 격리를 위해 `yvo_vulkan`과 별도 라이브러리(`yvo_display`)다.
+- `01_src/display/`는 표시 경로다. Vulkan 합성(`DisplayPipeline`: display_convert + 스왑체인)과 HVS 평면 스캔아웃
+  (`PlaneDisplay`: `--display-backend wayland-planes`는 Wayland linux-dmabuf, `kms`는 KMS atomic)이 `DisplaySink` 인터페이스 뒤에 있다.
+  회귀 격리를 위해 `yvo_vulkan`과 별도 라이브러리(`yvo_display`)다. kms 실표시는 DRM master가 필요하다 — lightdm을 멈추지 말고
+  `loginctl activate <tty 세션>`으로 데스크톱을 비활성화한 뒤 실행하고, 실행 중에는 VT를 바꾸지 않는다(`08_learn/07_video_display.md` §7.12).
 - `01_src/isp/`(`yvo_isp`)는 PiSP BE 전처리 대체 경로. **구현돼 있으나 파이프라인에 연결돼 있지 않다**(검출 −2.33%로 보류).
 - 실행파일은 모두 `build/bin/`에 나온다. 도구의 기본 자산 경로는 `yvo_assets` 매크로(절대 경로)라 CWD와 무관하고,
   기본 출력은 `build/out/<도구>/`다 — `07_results`에 쓸 때는 `--out-dir`을 명시한다.
@@ -54,7 +57,7 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행�
   - **필수**: `HailoRT`(→ `HailoRT::libhailort`), `Vulkan`(→ `Vulkan::Vulkan`),
     `PkgConfig` → `libavformat`·`libavcodec`·`libavutil`·`libdrm` (`01_src/decode/CMakeLists.txt`)
   - **선택**: `OpenCV`(**REQUIRED 아님** — 없으면 경고만 내고 OpenCV를 쓰는 타깃이 빠진다),
-    `wayland-client`+`wayland-protocols`(없으면 표시 경로가 조용히 빠진다), `libpisp`(없으면 `yvo_isp` 전체가 빠진다)
+    `wayland-client`+`wayland-protocols`(없으면 표시 경로가 kms 백엔드까지 조용히 빠진다. staging `color-representation` XML은 있으면 쓴다), `libpisp`(없으면 `yvo_isp` 전체가 빠진다)
   - **`YVO_BUILD_TESTS`일 때**: `GTest`(→ `GTest::gtest_main`)
   - `pybind11`·`nlohmann_json`은 **쓰지 않는다.** `find_package` 호출이 없다.
     nlohmann_json은 conda prefix에만 있어 다른 시스템 헤더를 가릴 위험이 있어 의도적으로 뺐다
@@ -89,7 +92,7 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행�
 | 경로 | 담당 | 비고 |
 |---|---|---|
 | `01_src/hailo/`, `01_src/tools/hailo/`, `03_models/`, `04_data/raw_tensors/` | `hailo-expert` | 픽스처는 `yvo_hailo_raw_probe` 산출물 |
-| `01_src/vulkan/`, `01_src/display/`, `01_src/testkit/`, `01_src/tools/{vulkan,display}/`, `02_shaders/` | `vulkan-expert` | |
+| `01_src/vulkan/`, `01_src/display/`, `01_src/testkit/`, `01_src/tools/{vulkan,display}/`, `02_shaders/` | `vulkan-expert` | `display/kms_scanout.*`(libdrm atomic)을 크게 바꾸면 `cpp-expert` 검토 |
 | `01_src/core/`, `01_src/decode/`, `01_src/isp/`, `01_src/tools/{isp,decode}/`, `CMakeLists.txt`, `cmake/` | `cpp-expert` | `core/`의 dma-heap·dma-buf 글루를 바꾸면 양쪽 전문가 검토 |
 | `01_src/ref/` | 그 원문을 쓰는 셰이더·경로의 전문가 | **바꾸면 `verify` ctest 필수**(비트 일치 테스트의 기준이다) |
 | `01_src/toolkit/` | `cpp-expert` | 라이브러리가 include하면 안 된다 |

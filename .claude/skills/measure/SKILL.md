@@ -24,7 +24,7 @@ description: >
 |---|---|---|
 | `pipeline_bench.sh` | 전체 파이프라인. `{mode} × {layout} × {batch/slots} × RUNS` | `07_results/pipeline_ffmpeg_vulkan_hailo/` |
 | `op_point_bench.sh` | 운용점 스윕(batch·slots·gpu_depth·postproc·display) | `07_results/op_point/` |
-| `display_bench.sh` | 표시 통합 e2e (RESULT_CSV + RESULT_CSV2 병합) | `07_results/display_e2e/` |
+| `display_bench.sh` | 표시 통합 e2e (RESULT_CSV + RESULT_CSV2 병합, 59열 — 48·53열 옛 CSV 와 섞지 않는다. `kms` 백엔드는 첫 커밋이 블로킹 모드셋이라 그 직후 프레임을 집계에서 뺀다) | `07_results/display_e2e/` |
 | `decode_bench.sh` | 디코드 경로 비교 | `07_results/decode_benchmark/` |
 | `backpressure_bench.sh` | 백프레셔 전후 비교 | `07_results/raw_runner_backpressure/` |
 | `isp_bench.sh` | ISP 전처리 단독(NPU 미사용) | `07_results/isp_resize/` |
