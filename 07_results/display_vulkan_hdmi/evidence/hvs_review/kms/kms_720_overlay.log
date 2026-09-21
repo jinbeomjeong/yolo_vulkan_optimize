@@ -1,0 +1,37 @@
+[kms] /dev/dri/card1 atomic=yes master=yes
+[kms] connector 35 crtc 94 (idx 2) mode 1920x1080 1920x1080@60
+[kms] video plane 83 (Primary) COLOR_ENCODING yes COLOR_RANGE yes | overlay plane 107 (Overlay)
+[dets] 900 frames, 3369 detections
+[kms] overlay dumb buffers 3 x 1280x720 AB24
+[hevc @ 0x555602f82900] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[video] 1920x1080 mod=0x0700000000000004 Y off=0 pitch=1088 size=2097152 | UV off=0 pitch=544 size=1048576 (nb objects 2)
+[fb] new NV12 fb 686 handles 4/5 pitches 1088/544 offsets 0/0 mod 0x0700000000000004
+[kms] first NV12 SAND128 FB: OK fb 686
+[kms] TEST_ONLY atomic (video Primary + overlay on, dst 1280x720): OK
+[fb] new NV12 fb 682 handles 6/7 pitches 1088/544 offsets 0/0 mod 0x0700000000000004
+[state f75] active_planes=2 nv12_planes=1 rgb_planes=1 -> NV12 on HW plane (HVS scanout)
+  plane[83]: plane-2 crtc=crtc-2 alloc= hvs_kms_probe fmt=NV12 little-endian (0x3231564e) mod=0x700000000000004 size=1920x1080 crtc-pos=1280x720+320+180 src-pos=1920.000000x1080.000000+0.000000+0.000000 zpos=0 enc=ITU-R BT.709 YCbCr range=YCbCr limited range
+  plane[107]: plane-4 crtc=crtc-2 alloc= hvs_kms_probe fmt=AB24 little-endian (0x34324241) mod=0x0 size=1280x720 crtc-pos=1280x720+320+180 src-pos=1280.000000x720.000000+0.000000+0.000000 zpos=1 enc=ITU-R BT.709 YCbCr range=YCbCr limited range
+  hvs_underrun: 0
+[state f150] active_planes=2 nv12_planes=1 rgb_planes=1 -> NV12 on HW plane (HVS scanout)
+  plane[83]: plane-2 crtc=crtc-2 alloc= hvs_kms_probe fmt=NV12 little-endian (0x3231564e) mod=0x700000000000004 size=1920x1080 crtc-pos=1280x720+320+180 src-pos=1920.000000x1080.000000+0.000000+0.000000 zpos=0 enc=ITU-R BT.709 YCbCr range=YCbCr limited range
+  plane[107]: plane-4 crtc=crtc-2 alloc= hvs_kms_probe fmt=AB24 little-endian (0x34324241) mod=0x0 size=1280x720 crtc-pos=1280x720+320+180 src-pos=1280.000000x720.000000+0.000000+0.000000 zpos=1 enc=ITU-R BT.709 YCbCr range=YCbCr limited range
+  hvs_underrun: 0
+[state f225] active_planes=2 nv12_planes=1 rgb_planes=1 -> NV12 on HW plane (HVS scanout)
+  plane[83]: plane-2 crtc=crtc-2 alloc= hvs_kms_probe fmt=NV12 little-endian (0x3231564e) mod=0x700000000000004 size=1920x1080 crtc-pos=1280x720+320+180 src-pos=1920.000000x1080.000000+0.000000+0.000000 zpos=0 enc=ITU-R BT.709 YCbCr range=YCbCr limited range
+  plane[107]: plane-4 crtc=crtc-2 alloc= hvs_kms_probe fmt=AB24 little-endian (0x34324241) mod=0x0 size=1280x720 crtc-pos=1280x720+320+180 src-pos=1280.000000x720.000000+0.000000+0.000000 zpos=1 enc=ITU-R BT.709 YCbCr range=YCbCr limited range
+  hvs_underrun: 0
+
+== hvs_kms_probe [kms_720_overlay] overlay=on dst=1280x720 video plane 83 overlay plane 107 ==
+frames committed 300 (measured 270 frames, 9.033 s, 29.89 FPS), commit failures 0
+video FBs 18 (cache by dmabuf inode)
+flip interval ms   mean 33.333 median 33.333 p90 33.334 p99 33.335 min 33.332 max 33.335 (n=270)
+flip seq gap       mean 2.000 median 2.000 p90 2.000 p99 2.000 min 2.000 max 2.000 (n=270) (2 = 30fps on 60Hz; late(>2) 0)
+commit->flip ms    mean 17.244 median 17.250 p90 17.269 p99 17.274 min 17.007 max 17.275 (n=270)
+atomic commit call mean 0.028 median 0.026 p90 0.032 p99 0.059 min 0.023 max 0.093 (n=270)
+overlay draw ms    mean 0.043 median 0.041 p90 0.064 p99 0.100 min 0.019 max 0.142 (n=270)
+held frames max 2 (decoder limit ~13)
+V3D (system-wide) bin=0.00%(0.000ms/f,0jobs) cache_clean=0.00%(0.000ms/f,0jobs) cpu=0.00%(0.000ms/f,0jobs) csd=0.00%(0.000ms/f,0jobs) render=0.00%(0.000ms/f,0jobs) tfu=0.00%(0.000ms/f,0jobs) 
+V3D whole-run delta: bin=0.00%(0.000ms/f,0jobs) cache_clean=0.00%(0.000ms/f,0jobs) cpu=0.00%(0.000ms/f,0jobs) csd=0.00%(0.000ms/f,0jobs) render=0.00%(0.000ms/f,0jobs) tfu=0.00%(0.000ms/f,0jobs) 
+CPU probe ms/frame 0.362
+RESULT_KMS,kms_720_overlay,on,1280x720,270,29.89,0,33.333,33.335,17.250,0.041,2,0.000,0.000,0.362

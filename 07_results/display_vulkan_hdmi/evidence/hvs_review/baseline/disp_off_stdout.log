@@ -1,0 +1,26 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[cfg] video=04_data/videos/video_h265.mp4 1920x1080 mode=dmabuf layout=nhcw batch=2 slots=4 gpu_depth=3 postproc=gpu/export nms=gpu device=V3D 7.1.10.2
+[hevc @ 0x555563ac8230] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[progress] 300 frames, 35.3 FPS, hailo 64.4 C
+[progress] 600 frames, 35.2 FPS, hailo 67.2 C
+[progress] 900 frames, 35.1 FPS, hailo 69.7 C
+== yvo_pipeline (dmabuf, nhcw, batch 2, slots 4, gpu_depth 3, postproc gpu/export) ==
+frames          900 (decoded 900, errors 0)
+wall            25.729 s, 34.98 FPS
+cpu             1.244 ms/frame (process user+sys 1119.2 ms, 4% of one core)
+decode call ms  mean 0.133  median 0.101  p90 0.136  max 12.658
+gpu shader ms   mean 2.139  median 2.133  p90 2.190  max 5.802
+npu latency ms  mean 107.778  median 107.971  p90 108.662  max 146.231
+e2e latency ms  mean 142.410  median 155.804  p90 169.266  max 211.412  (decode 반환 → NPU 완료 콜백)
+slot wait ms    mean 28.278  p90 55.634  (메인 스레드가 빈 슬롯을 기다린 시간)
+gpu post ms     mean 0.671  median 0.629  p90 0.716  max 7.482  (yolo_decode.comp pass 1)
+gpu nms ms      mean 0.054  median 0.053  p90 0.060  max 0.144  (yolo_nms.comp, n=900)
+cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+nms             backend gpu  fallback frames 0  mismatch frames 0
+candidates      mean 16.81  max 45  overflow frames 0
+slot hold ms    mean 3.687  median 3.537  p90 4.464  max 46.256  (NPU 완료 콜백 → 슬롯 반납)
+held frames max 3 (디코더 한계 약 13), slot timeout 0
+detections      3369 total, 3.74 / frame
+hailo chip temp 60.1 -> 69.6 C
+soc temp        63.7 -> 64.2 C
+vk validation   errors 0, warnings 1

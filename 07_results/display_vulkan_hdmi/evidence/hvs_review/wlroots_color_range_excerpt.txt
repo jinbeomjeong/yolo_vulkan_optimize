@@ -1,0 +1,93 @@
+# wlroots master backend/drm/atomic.c + include/backend/drm/properties.h (2026-09-22 취득)
+# 설치본: libwlroots-0.20 0.20.2-1+rpt3 (RPi 패치판). 업스트림 0.20.2 태그의 atomic.c 에는 COLOR_ENCODING/RANGE 코드가 없다 → rpt 패치로 백포트된 것으로 보임(추정)
+static bool convert_color_encoding(enum wlr_color_encoding encoding, uint32_t *out) {
+	switch (encoding) {
+	case WLR_COLOR_ENCODING_NONE:
+	case WLR_COLOR_ENCODING_BT601:
+		*out = WLR_DRM_COLOR_YCBCR_BT601;
+		break;
+	case WLR_COLOR_ENCODING_BT709:
+		*out = WLR_DRM_COLOR_YCBCR_BT709;
+		break;
+	case WLR_COLOR_ENCODING_BT2020:
+		*out = WLR_DRM_COLOR_YCBCR_BT2020;
+		break;
+	default:
+		wlr_log(WLR_DEBUG, "Unsupported color encoding %d", encoding);
+		return false;
+	}
+	return true;
+}
+
+static uint32_t convert_color_range(enum wlr_color_range range) {
+	switch (range) {
+	case WLR_COLOR_RANGE_NONE:
+	case WLR_COLOR_RANGE_LIMITED:
+		return WLR_DRM_COLOR_YCBCR_LIMITED_RANGE;
+	case WLR_COLOR_RANGE_FULL:
+		return WLR_DRM_COLOR_YCBCR_FULL_RANGE;
+	}
+	abort(); // unreachable
+}
+			!create_hdr_output_metadata_blob(drm, state->base->image_description, &hdr_output_metadata)) {
+		return false;
+	}
+
+	if ((state->base->committed & WLR_OUTPUT_STATE_COLOR_REPRESENTATION)) {
+		if (crtc->primary->props.color_encoding == 0) {
+			wlr_log(WLR_DEBUG, "Plane %"PRIu32" is missing the COLOR_ENCODING property",
+				crtc->primary->id);
+			return false;
+		}
+		if (crtc->primary->props.color_range == 0) {
+			wlr_log(WLR_DEBUG, "Plane %"PRIu32" is missing the COLOR_RANGE property",
+				crtc->primary->id);
+			return false;
+		}
+	}
+
+	uint32_t color_encoding;
+	if (!convert_color_encoding(state->base->color_encoding, &color_encoding)) {
+		return false;
+	}
+	uint32_t color_range = convert_color_range(state->base->color_range);
+
+	state->mode_id = mode_id;
+	state->gamma_lut = gamma_lut;
+	state->fb_damage_clips = fb_damage_clips;
+	state->primary_in_fence_fd = in_fence_fd;
+	state->primary_color_encoding = color_encoding;
+	state->primary_color_range = color_range;
+	state->vrr_enabled = vrr_enabled;
+	state->colorspace = colorspace;
+	bool ok = true;
+
+	ok = ok && set_plane_props(req, conn->backend, plane, state->primary_fb, crtc->id,
+		&state->primary_viewport.dst_box, &state->primary_viewport.src_box);
+	if (plane->props.color_encoding != 0) {
+		ok = ok && atomic_add(req, plane->id,
+			plane->props.color_encoding, state->primary_color_encoding);
+	}
+	if (plane->props.color_range != 0) {
+		ok = ok && atomic_add(req, plane->id,
+			plane->props.color_range, state->primary_color_range);
+	}
+	if (plane->props.fb_damage_clips != 0) {
+		ok = ok && atomic_add(req, plane->id,
+			plane->props.fb_damage_clips, state->fb_damage_clips);
+
+// Equivalent to wlr_drm_color_encoding defined in the kernel (but not exported)
+enum wlr_drm_color_encoding {
+	WLR_DRM_COLOR_YCBCR_BT601,
+	WLR_DRM_COLOR_YCBCR_BT709,
+	WLR_DRM_COLOR_YCBCR_BT2020,
+};
+
+// Equivalent to wlr_drm_color_range defined in the kernel (but not exported)
+enum wlr_drm_color_range {
+	WLR_DRM_COLOR_YCBCR_FULL_RANGE,
+	WLR_DRM_COLOR_YCBCR_LIMITED_RANGE,
+};
+
+# 커널 쪽 (include/drm/drm_color_mgmt.h): enum drm_color_range { DRM_COLOR_YCBCR_LIMITED_RANGE, DRM_COLOR_YCBCR_FULL_RANGE, ... }
+# 실측 enum 값 (hvs_caps.txt): COLOR_RANGE {0=YCbCr limited range, 1=YCbCr full range}

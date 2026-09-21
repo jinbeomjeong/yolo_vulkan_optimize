@@ -1,0 +1,6 @@
+bin jobs 31 runtime_ms 3.2 per_frame_ms 0.011
+render jobs 31 runtime_ms 46.6 per_frame_ms 0.155
+tfu jobs 0 runtime_ms 0.0 per_frame_ms 0.000
+csd jobs 2100 runtime_ms 2068.3 per_frame_ms 6.894
+cache_clean jobs 2100 runtime_ms 70.1 per_frame_ms 0.234
+cpu jobs 5400 runtime_ms 17.7 per_frame_ms 0.059

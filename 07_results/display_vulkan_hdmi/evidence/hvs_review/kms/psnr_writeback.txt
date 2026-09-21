@@ -1,0 +1,5 @@
+roi 0,0 1920x1080  pixels 2073600
+PSNR 49.53 dB  (MSE 0.724)  max|d| 25
+  R: PSNR 50.18 dB  mean(test-ref) +0.571  mean ref 34.94 test 35.51  std ref 27.61 test 27.71
+  G: PSNR 50.28 dB  mean(test-ref) -0.607  mean ref 42.72 test 42.11  std ref 24.71 test 24.81
+  B: PSNR 48.41 dB  mean(test-ref) +0.841  mean ref 61.58 test 62.42  std ref 35.85 test 35.96

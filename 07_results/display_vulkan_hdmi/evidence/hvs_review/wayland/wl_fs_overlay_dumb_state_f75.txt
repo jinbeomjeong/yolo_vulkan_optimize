@@ -1,0 +1,727 @@
+plane[48]: plane-0
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[67]: plane-1
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[83]: plane-2
+	crtc=crtc-2
+	fb=694
+		allocated by = labwc
+		refcount=3
+		format=NV12 little-endian (0x3231564e)
+		modifier=0x700000000000004
+		size=1920x1080
+		layers:
+			size[0]=1920x1080
+			pitch[0]=1088
+			offset[0]=0
+			obj[0]:
+				name=0
+				refcount=2
+				start=000411b0
+				size=2097152
+				imported=yes
+				dma_addr=0x0000000a7aa00000
+				vaddr=0000000000000000
+			size[1]=960x540
+			pitch[1]=544
+			offset[1]=0
+			obj[1]:
+				name=0
+				refcount=2
+				start=00041230
+				size=1048576
+				imported=yes
+				dma_addr=0x0000000a7a900000
+				vaddr=0000000000000000
+	crtc-pos=1920x1080+0+0
+	src-pos=1920.000000x1080.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[95]: plane-3
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[107]: plane-4
+	crtc=crtc-2
+	fb=691
+		allocated by = labwc
+		refcount=3
+		format=AB24 little-endian (0x34324241)
+		modifier=0x0
+		size=1920x1080
+		layers:
+			size[0]=1920x1080
+			pitch[0]=7680
+			offset[0]=0
+			obj[0]:
+				name=0
+				refcount=4
+				start=000406fa
+				size=8306688
+				imported=no
+				dma_addr=0x0000000a7d000000
+				vaddr=00000000e5aae8be
+	crtc-pos=1920x1080+0+0
+	src-pos=1920.000000x1080.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=1
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[118]: plane-5
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=2
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[129]: plane-6
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=3
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[140]: plane-7
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=4
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[151]: plane-8
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=5
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[162]: plane-9
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=6
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[173]: plane-10
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=7
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[184]: plane-11
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=8
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[195]: plane-12
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=9
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[206]: plane-13
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=a
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[217]: plane-14
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=b
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[228]: plane-15
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=c
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[239]: plane-16
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=d
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[250]: plane-17
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=e
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[261]: plane-18
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=f
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[272]: plane-19
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=10
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[283]: plane-20
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=1
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[294]: plane-21
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=2
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[305]: plane-22
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=3
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[316]: plane-23
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=4
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[327]: plane-24
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=5
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[338]: plane-25
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=6
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[349]: plane-26
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=7
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[360]: plane-27
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=8
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[371]: plane-28
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=9
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[382]: plane-29
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=a
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[393]: plane-30
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=b
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[404]: plane-31
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=c
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[415]: plane-32
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=d
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[426]: plane-33
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=e
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[437]: plane-34
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=f
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[448]: plane-35
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=10
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[459]: plane-36
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=11
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[470]: plane-37
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=12
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[481]: plane-38
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=13
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[492]: plane-39
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=14
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[503]: plane-40
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=15
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[514]: plane-41
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=16
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[525]: plane-42
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=17
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[536]: plane-43
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=18
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[547]: plane-44
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=19
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[558]: plane-45
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=1a
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[569]: plane-46
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=1b
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[580]: plane-47
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=1c
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[591]: plane-48
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=1d
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[602]: plane-49
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=1e
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[613]: plane-50
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=1f
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[624]: plane-51
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=20
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[635]: plane-52
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=11
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[646]: plane-53
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=11
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[657]: plane-54
+	crtc=crtc-2
+	fb=681
+		allocated by = labwc
+		refcount=3
+		format=AR24 little-endian (0x34325241)
+		modifier=0x0
+		size=64x64
+		layers:
+			size[0]=64x64
+			pitch[0]=256
+			offset[0]=0
+			obj[0]:
+				name=0
+				refcount=3
+				start=000402fb
+				size=32768
+				imported=no
+				dma_addr=0x0000000a7eff0000
+				vaddr=00000000a5226cff
+	crtc-pos=64x64+1887+1
+	src-pos=64.000000x64.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=2
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+plane[668]: plane-55
+	crtc=(null)
+	fb=0
+	crtc-pos=0x0+0+0
+	src-pos=0.000000x0.000000+0.000000+0.000000
+	rotation=1
+	normalized-zpos=11
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	color_mgmt_changed=0
+crtc[59]: mop
+	enable=0
+	active=0
+	self_refresh_active=0
+	planes_changed=0
+	mode_changed=0
+	active_changed=0
+	connectors_changed=0
+	color_mgmt_changed=0
+	plane_mask=0
+	connector_mask=0
+	encoder_mask=0
+	mode: "": 0 0 0 0 0 0 0 0 0 0 0x0 0x0
+	background_color=ffff000000000000
+crtc[78]: moplet
+	enable=0
+	active=0
+	self_refresh_active=0
+	planes_changed=0
+	mode_changed=0
+	active_changed=0
+	connectors_changed=0
+	color_mgmt_changed=0
+	plane_mask=0
+	connector_mask=0
+	encoder_mask=0
+	mode: "": 0 0 0 0 0 0 0 0 0 0 0x0 0x0
+	background_color=ffff000000000000
+crtc[94]: crtc-2
+	enable=1
+	active=1
+	self_refresh_active=0
+	planes_changed=1
+	mode_changed=0
+	active_changed=0
+	connectors_changed=0
+	color_mgmt_changed=0
+	plane_mask=40000000000014
+	connector_mask=1
+	encoder_mask=1
+	mode: "1920x1080": 60 148500 1920 2008 2052 2200 1080 1084 1089 1125 0x48 0x9
+	background_color=ffff000000000000
+crtc[106]: crtc-3
+	enable=0
+	active=0
+	self_refresh_active=0
+	planes_changed=0
+	mode_changed=0
+	active_changed=0
+	connectors_changed=0
+	color_mgmt_changed=0
+	plane_mask=0
+	connector_mask=0
+	encoder_mask=0
+	mode: "": 0 0 0 0 0 0 0 0 0 0 0x0 0x0
+	background_color=ffff000000000000
+connector[35]: HDMI-A-1
+	crtc=crtc-2
+	self_refresh_aware=0
+	interlace_allowed=1
+	ycbcr_420_allowed=0
+	max_requested_bpc=8
+	colorspace=Default
+	broadcast_rgb=Automatic
+	is_limited_range=n
+	output_bpc=8
+	output_format=RGB
+	tmds_char_rate=148500000
+connector[44]: HDMI-A-2
+	crtc=(null)
+	self_refresh_aware=0
+	interlace_allowed=1
+	ycbcr_420_allowed=0
+	max_requested_bpc=8
+	colorspace=Default
+	broadcast_rgb=Automatic
+	is_limited_range=n
+	output_bpc=0
+	output_format=RGB
+	tmds_char_rate=0
+connector[61]: Writeback-1
+	crtc=(null)
+	self_refresh_aware=0
+	interlace_allowed=0
+	ycbcr_420_allowed=0
+	max_requested_bpc=0
+	colorspace=Default
+connector[80]: Writeback-2
+	crtc=(null)
+	self_refresh_aware=0
+	interlace_allowed=0
+	ycbcr_420_allowed=0
+	max_requested_bpc=0
+	colorspace=Default
+HVS State
+	Core Clock Rate: 137600000
+	Channel 0
+		in use=1
+		load=137600000
+	Channel 1
+		in use=0
+		load=0
+	Channel 2
+		in use=0
+		load=0

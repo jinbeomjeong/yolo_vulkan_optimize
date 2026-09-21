@@ -1,0 +1,47 @@
+[dets] docs/hvs_review/evidence/baseline/disp_off_dets/detections.jsonl: 900 frames, 3369 detections
+[globals] wl_fixes v1; wl_shm v2; wl_drm v2; zwp_linux_dmabuf_v1 v4; wp_color_representation_manager_v1 v1; ext_workspace_manager_v1 v1; zwlr_gamma_control_manager_v1 v1; zxdg_output_manager_v1 v3; zwlr_output_manager_v1 v4; wl_compositor v6; wl_subcompositor v1; wl_data_device_manager v3; zwp_primary_selection_device_manager_v1 v1; zwp_input_method_manager_v2 v1; zwp_text_input_manager_v3 v1; wl_seat v9; zwlr_virtual_pointer_manager_v1 v2; zwp_virtual_keyboard_manager_v1 v1; zwp_pointer_gestures_v1 v3; wp_cursor_shape_manager_v1 v1; xdg_wm_base v6; xdg_activation_v1 v1; xdg_toplevel_icon_manager_v1 v1; xdg_wm_dialog_v1 v1; org_kde_kwin_server_decoration_manager v1; zxdg_decoration_manager_v1 v1; wp_presentation v2; zwlr_export_dmabuf_manager_v1 v1; zwlr_screencopy_manager_v1 v3; ext_image_copy_capture_manager_v1 v1; ext_output_image_capture_source_manager_v1 v1; ext_foreign_toplevel_image_capture_source_manager_v1 v1; zwlr_data_control_manager_v1 v2; ext_data_control_manager_v1 v1; wp_security_context_manager_v1 v1; wp_viewporter v1; wp_single_pixel_buffer_manager_v1 v1; wp_fractional_scale_manager_v1 v1; ext_idle_notifier_v1 v2; zwp_idle_inhibit_manager_v1 v1; zwp_relative_pointer_manager_v1 v1; zwp_pointer_constraints_v1 v1; zwlr_foreign_toplevel_manager_v1 v3; ext_foreign_toplevel_list_v1 v1; wp_alpha_modifier_v1 v1; ext_session_lock_manager_v1 v1; wp_drm_lease_device_v1 v1; zwlr_output_power_manager_v1 v1; wp_tearing_control_manager_v1 v1; zwp_tablet_manager_v2 v1; wp_color_representation_manager_v1 v1; zwlr_layer_shell_v1 v4; zxdg_exporter_v1 v1; zxdg_importer_v1 v1; zxdg_exporter_v2 v1; zxdg_importer_v2 v1; wl_output v4;
+[globals] dmabuf v4 presentation yes viewporter yes color_representation x2 subcompositor yes
+[color-repr] managers advertised 2, selected one supporting BT.709
+[color-repr] supported coefficients/ranges: [mgr0]coef=1,range=1 [mgr1]coef=1,range=1 [mgr1]coef=4,range=2 [mgr1]coef=4,range=1 [mgr1]coef=2,range=2 [mgr1]coef=2,range=1 [mgr1]coef=6,range=2 [mgr1]coef=6,range=1
+[color-repr] BT.709 limited, chroma type_0 설정
+[xdg] configured 0x0 (fullscreen=0)
+[viewport] source 1920x1080 -> destination 1280x720
+[overlay] backend dma-heap(/dev/dma_heap/linux,cma, cached) AB24 LINEAR x3, 1280x720
+[hevc @ 0x55567df82060] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[video] 1920x1080 coded_h=1088 mod=0x0700000000000004 Y fd=23 off=0 pitch(colh)=1088 size=2097152 | UV fd=24 off=0 pitch(colh)=544 size=1048576
+[state f75] active_planes=2 nv12_planes=0 rgb_planes=2 -> no NV12 plane (compositor GL composition)
+  plane[83]: plane-2 crtc=crtc-2 alloc= labwc fmt=XR24 little-endian (0x34325258) mod=0x0 size=1920x1080 crtc-pos=1920x1080+0+0 src-pos=1920.000000x1080.000000+0.000000+0.000000 zpos=0 enc=ITU-R BT.601 YCbCr range=YCbCr full range
+  plane[657]: plane-54 crtc=crtc-2 alloc= labwc fmt=AR24 little-endian (0x34325241) mod=0x0 size=64x64 crtc-pos=64x64+1887+1 src-pos=64.000000x64.000000+0.000000+0.000000 zpos=1 enc=ITU-R BT.709 YCbCr range=YCbCr limited range
+  hvs_underrun: 0
+[state f150] active_planes=2 nv12_planes=0 rgb_planes=2 -> no NV12 plane (compositor GL composition)
+  plane[83]: plane-2 crtc=crtc-2 alloc= labwc fmt=XR24 little-endian (0x34325258) mod=0x0 size=1920x1080 crtc-pos=1920x1080+0+0 src-pos=1920.000000x1080.000000+0.000000+0.000000 zpos=0 enc=ITU-R BT.601 YCbCr range=YCbCr full range
+  plane[657]: plane-54 crtc=crtc-2 alloc= labwc fmt=AR24 little-endian (0x34325241) mod=0x0 size=64x64 crtc-pos=64x64+1887+1 src-pos=64.000000x64.000000+0.000000+0.000000 zpos=1 enc=ITU-R BT.709 YCbCr range=YCbCr limited range
+  hvs_underrun: 0
+[state f225] active_planes=2 nv12_planes=0 rgb_planes=2 -> no NV12 plane (compositor GL composition)
+  plane[83]: plane-2 crtc=crtc-2 alloc= labwc fmt=XR24 little-endian (0x34325258) mod=0x0 size=1920x1080 crtc-pos=1920x1080+0+0 src-pos=1920.000000x1080.000000+0.000000+0.000000 zpos=0 enc=ITU-R BT.601 YCbCr range=YCbCr full range
+  plane[657]: plane-54 crtc=crtc-2 alloc= labwc fmt=AR24 little-endian (0x34325241) mod=0x0 size=64x64 crtc-pos=64x64+1887+1 src-pos=64.000000x64.000000+0.000000+0.000000 zpos=1 enc=ITU-R BT.709 YCbCr range=YCbCr limited range
+  hvs_underrun: 0
+
+== hvs_wl_probe [wl_win720_overlay] overlay=on window=1280x720 color_repr=on ==
+frames committed 300 (measured window 270 frames, 9.017 s, 29.94 FPS)
+wl_buffers video 18 (cache by dmabuf inode), create_failed 0
+feedback presented 299, discarded 0, missing 1, ZERO_COPY 0/299
+present interval ms mean 33.334 median 33.334 p90 50.000 p99 50.002 min 16.005 max 50.002 (n=269)
+present seq gap     mean 2.000 median 2.000 p90 3.000 p99 3.000 min 1.000 max 3.000 (n=269)  (2 = 30fps on 60Hz; late(>2) 67)
+commit->present ms  mean 32.546 median 32.759 p90 33.350 p99 33.479 min 19.110 max 33.492 (n=299)
+held frames max 2 (decoder limit ~13)
+frame callbacks 600, idle commits 300
+overlay backend dma-heap(/dev/dma_heap/linux,cma, cached) AB24 LINEAR x3, skips 0
+overlay draw ms     mean 0.092 median 0.084 p90 0.149 p99 0.237 min 0.026 max 0.246 (n=269)
+overlay draw+sync ms mean 0.275 median 0.268 p90 0.334 p99 0.452 min 0.190 max 0.496 (n=269)
+V3D (system-wide, measured window) bin=1.12%(0.373ms/f,1422jobs) cache_clean=0.00%(0.000ms/f,0jobs) cpu=0.00%(0.000ms/f,0jobs) csd=0.00%(0.000ms/f,0jobs) render=18.36%(6.132ms/f,1422jobs) tfu=6.67%(2.228ms/f,473jobs) 
+V3D render ms/frame 6.132, csd ms/frame 0.000
+CPU probe ms/frame 0.895, labwc ms/frame 1.593 (pid 1080)
+dmabuf surface feedback:
+  main_device 226:1
+  tranche_target_device 226:1
+  tranche flags=0x0(render) n=187 NV12xSAND128=1 NV12xLINEAR=1 AB24xLINEAR=1 AR24xLINEAR=1
+  main_device 226:1
+  tranche_target_device 226:1
+  tranche flags=0x0(render) n=187 NV12xSAND128=1 NV12xLINEAR=1 AB24xLINEAR=1 AR24xLINEAR=1
+RESULT_WL,wl_win720_overlay,on,win,on,270,29.94,0,299,0,67,33.334,50.002,32.759,0.084,2,6.132,0.000,0.895,1.593,0.268
