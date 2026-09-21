@@ -134,8 +134,12 @@ public:
     // 남은 표시 작업을 전부 끝낸다(블로킹). 종료 때 한 번.
     void drain();
 
-    // Wayland 이벤트 처리 + 창 크기 변경 예약. false = 창이 닫혔다(오프스크린이면 항상 true).
+    // Wayland 이벤트 처리 + 창 크기 변경 예약. false = 창이 닫혔거나 종료 키가 눌렸다(오프스크린이면 항상 true).
+    // 둘은 quit_requested() 로 구분한다.
     bool poll_window();
+
+    // 표시 창에 포커스가 있을 때 종료 키(Esc, q, Ctrl+C)가 눌렸다 — 호출자는 SIGINT 와 같은 중단으로 취급한다.
+    bool quit_requested() const;
 
     // 이 경로가 지금 붙들고 있는 디코더 프레임 수 (retained + DisplayConvert 인플라이트).
     int frames_held() const;

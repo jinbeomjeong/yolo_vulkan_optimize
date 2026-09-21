@@ -37,6 +37,8 @@
 //         위의 **종료 순서를 그대로** 탄다 → 통계 요약이 정상 종료와 같은 형식으로 나온다.
 //         요약 머리에 [interrupted] 를 덧붙이고 RESULT_CSV/RESULT_CSV2 의 ok 는 0,
 //         종료 코드는 128+signo(SIGINT 130 / SIGTERM 143). 두 번째 시그널은 _exit(130).
+//         --display on 이면 표시 창에서 Esc/q/Ctrl+C 로도 중단한다(전체 화면 창이 포커스를 가져가 터미널
+//         SIGINT 가 안 닿는 경우) — 메인 루프가 같은 플래그를 세우므로 SIGINT 와 같은 종료다(요약 문구만 다르다).
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -110,6 +112,9 @@ void on_stop_signal(int sig) {
 }
 
 bool stop_requested() { return g_stop.load(std::memory_order_relaxed); }
+
+// 표시 창 종료 키(Esc/q/Ctrl+C)로 세운 중단인가. 메인 스레드만 쓰고 읽는다(시그널 핸들러는 건드리지 않는다).
+bool g_stop_by_key = false;
 
 // SA_RESTART 를 켠다: 블로킹 시스템 콜이 EINTR 로 깨지면 안 된다(디코더의 av_read_frame).
 // 설치 실패는 치명적이지 않다 — 경고만 내고 계속한다(시그널이 기본 동작으로 떨어질 뿐이다).
@@ -190,6 +195,7 @@ void usage(const char* a0) {
                  "  --present-mode {fifo,mailbox,immediate}  기본 fifo\n"
                  "  --display-blit                           STORAGE 가 가능해도 blit 폴백을 강제한다\n"
                  "  --overlay-line-width N | --overlay-text-scale N   기본 2 / 2\n"
+                 "  표시 창에서 Esc/q/Ctrl+C 로도 중단한다 (터미널 Ctrl+C 와 같은 [interrupted] 종료, 코드 130)\n"
                  "  ⚠ 측정은 반드시 --display-fullscreen 으로 한다. 창 모드는 균일 스케일 경로로 넘어가\n"
                  "    에러도 경고도 없이 표시 변환이 2.6배(4.25 → 10.9 ms) 느려진다\n"
 #endif
@@ -669,7 +675,16 @@ int run(const Args& a) {
         while (!stop_requested() && (a.frames <= 0 || n < a.frames)) {
 #ifdef YVO_HAVE_DISPLAY
             if (display) {
-                if (!display->poll_window()) break;   // 창이 닫혔다
+                if (!display->poll_window()) {
+                    // 종료 키면 SIGINT 와 같은 중단 경로를 탄다([interrupted]·ok=0·종료 코드 130).
+                    // 창 닫기(xdg_toplevel.close)는 기존대로 중단이 아닌 정상 종료다.
+                    if (display->quit_requested() && !stop_requested()) {
+                        g_stop_by_key = true;
+                        g_stop_signal.store(SIGINT, std::memory_order_relaxed);
+                        g_stop.store(true, std::memory_order_relaxed);
+                    }
+                    break;
+                }
                 // --display-pace source: 소스 프레임 레이트를 따라간다. **블로킹 sleep 을 쓰지 않는다** —
                 // 그동안 NPU 완료·GPU 후처리·표시 완료를 계속 거둬야 지연이 왜곡되지 않는다.
                 if (auto dl = display->pace_deadline(n)) {
@@ -848,8 +863,11 @@ int run(const Args& a) {
     const std::string postproc_desc =
         a.postproc == Postproc::Gpu ? std::string("gpu/") + a.postproc_alloc : std::string("host");
     if (interrupted)
-        std::printf("[interrupted] %s 수신 — %ld 프레임에서 중단 (아래 통계는 부분 실행 값이다, ok=0)\n",
-                    stop_signal == SIGTERM ? "SIGTERM" : "SIGINT", n);
+        std::printf("[interrupted] %s — %ld 프레임에서 중단 (아래 통계는 부분 실행 값이다, ok=0)\n",
+                    g_stop_by_key                ? "표시 창 키 입력(Esc/q/Ctrl+C)"
+                    : stop_signal == SIGTERM ? "SIGTERM 수신"
+                                             : "SIGINT 수신",
+                    n);
     std::printf("== yvo_pipeline (%s, %s, batch %d, slots %d, gpu_depth %d, postproc %s) ==\n",
                 dmabuf ? "dmabuf" : "ptr", layout_name(a.layout), a.batch, a.slots, a.gpu_depth,
                 postproc_desc.c_str());

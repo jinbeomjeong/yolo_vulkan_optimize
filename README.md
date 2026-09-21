@@ -112,6 +112,9 @@ build/bin/yvo_pipeline \
 
 **`Ctrl+C` 를 누르면 정상 종료한다.** `SIGINT`/`SIGTERM` 을 받으면 진행 중인 프레임을 정리하고
 **통계 요약을 출력한 뒤** 끝난다. 다른 터미널에서는 `pkill -INT yvo_pipeline`.
+`--display on`이면 **표시 창에서 `Esc`·`q`·`Ctrl+C`**를 눌러도 같은 경로로 끝난다
+(전체 화면 창이 키보드 포커스를 가져가 터미널의 `Ctrl+C`가 닿지 않기 때문이다).
+`timeout -s INT`는 프로세스 그룹에도 신호를 보내 두 번째 시그널(즉시 `_exit`)이 되므로 요약이 나오지 않는다.
 
 ```
 [interrupted] SIGINT 수신 — 136 프레임에서 중단 (아래 통계는 부분 실행 값이다, ok=0)

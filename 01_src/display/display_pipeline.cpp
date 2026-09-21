@@ -215,8 +215,10 @@ bool DisplayPipeline::poll_window() {
     const bool ok = win_->poll();
     int nw = 0, nh = 0;
     if (win_->take_pending_size(&nw, &nh)) backend_->request_recreate(nw, nh);
-    return ok && !win_->should_close();
+    return ok && !win_->should_close() && !win_->quit_requested();
 }
+
+bool DisplayPipeline::quit_requested() const { return win_ && win_->quit_requested(); }
 
 void DisplayPipeline::recreate_if_needed() {
     if (!backend_->needs_recreate()) return;

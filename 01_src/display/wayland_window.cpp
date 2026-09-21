@@ -6,7 +6,9 @@
 #include <cstdlib>
 #include <cstring>
 
+#include <linux/input-event-codes.h>
 #include <poll.h>
+#include <unistd.h>
 
 #include <wayland-client.h>
 
@@ -24,6 +26,9 @@ namespace {
 constexpr std::uint32_t kCompositorVersion = 4;
 constexpr std::uint32_t kWmBaseVersion = 1;
 constexpr std::uint32_t kSubcompositorVersion = 1;
+//   wl_seat       5 : wl_seat.release(v5)·wl_keyboard.release(v3)까지. v7+ 는 keymap mmap 규약만 바뀌고(우리는 매핑하지
+//                     않는다) v8+ 는 axis 계열(포인터)이라 필요 없다. 광고 버전이 낮으면 그에 맞춘다.
+constexpr std::uint32_t kSeatVersion = 5;
 
 template <typename T>
 T* bind_global(wl_registry* r, std::uint32_t name, const wl_interface* iface, std::uint32_t advertised,
@@ -44,6 +49,17 @@ void WaylandWindow::on_registry_global(void* data, wl_registry* r, std::uint32_t
             bind_global<wl_compositor>(r, name, &wl_compositor_interface, version, kCompositorVersion);
     } else if (std::strcmp(iface, xdg_wm_base_interface.name) == 0) {
         self->wm_base_ = bind_global<xdg_wm_base>(r, name, &xdg_wm_base_interface, version, kWmBaseVersion);
+    } else if (std::strcmp(iface, wl_seat_interface.name) == 0 && self->seat_ == nullptr) {
+        // 종료 키 전용(헤더 "키보드"). seat 이 여럿이면 첫 번째만 쓴다.
+        static const wl_seat_listener seat_listener = [] {
+            wl_seat_listener l{};
+            l.capabilities = &WaylandWindow::on_seat_capabilities;
+            l.name = &WaylandWindow::on_seat_name;
+            return l;
+        }();
+        self->seat_version_ = std::min(version, kSeatVersion);
+        self->seat_ = bind_global<wl_seat>(r, name, &wl_seat_interface, version, kSeatVersion);
+        wl_seat_add_listener(self->seat_, &seat_listener, self);
     } else if (std::strcmp(iface, wl_subcompositor_interface.name) == 0) {
         // 안 (III) 의 전제. 지금은 bind 만 한다.
         self->subcompositor_ =
@@ -84,9 +100,98 @@ void WaylandWindow::on_toplevel_close(void* data, xdg_toplevel* /*t*/) {
     static_cast<WaylandWindow*>(data)->should_close_ = true;
 }
 
+// ── wl_seat / wl_keyboard (종료 키 전용) ──────────────────────────────────────────────────────────
+void WaylandWindow::on_seat_capabilities(void* data, wl_seat* s, std::uint32_t caps) {
+    static const wl_keyboard_listener keyboard_listener = [] {
+        wl_keyboard_listener l{};
+        l.keymap = &WaylandWindow::on_keyboard_keymap;
+        l.enter = &WaylandWindow::on_keyboard_enter;
+        l.leave = &WaylandWindow::on_keyboard_leave;
+        l.key = &WaylandWindow::on_keyboard_key;
+        l.modifiers = &WaylandWindow::on_keyboard_modifiers;
+        l.repeat_info = &WaylandWindow::on_keyboard_repeat_info;
+        return l;
+    }();
+    auto* self = static_cast<WaylandWindow*>(data);
+    const bool has_kb = (caps & WL_SEAT_CAPABILITY_KEYBOARD) != 0;
+    if (has_kb && self->keyboard_ == nullptr) {
+        self->keyboard_ = wl_seat_get_keyboard(s);
+        wl_keyboard_add_listener(self->keyboard_, &keyboard_listener, self);
+    } else if (!has_kb && self->keyboard_ != nullptr) {
+        self->release_keyboard();  // 키보드가 뽑혔다 — 다시 꽂히면 다음 capabilities 로 새로 얻는다
+    }
+    if (self->verbose_) std::printf("[wayland] seat caps=0x%x keyboard=%d\n", caps, self->keyboard_ != nullptr);
+}
+
+void WaylandWindow::on_seat_name(void* /*data*/, wl_seat* /*s*/, const char* /*name*/) {}
+
+void WaylandWindow::on_keyboard_keymap(void* /*data*/, wl_keyboard* /*k*/, std::uint32_t /*format*/, std::int32_t fd,
+                                       std::uint32_t /*size*/) {
+    // keymap 은 해석하지 않는다(xkbcommon 없음). **fd 는 반드시 닫는다** — 컴포지터가 seat/keymap 이 바뀔 때마다
+    // 새 fd 를 보내므로 닫지 않으면 샌다.
+    if (fd >= 0) ::close(fd);
+}
+
+void WaylandWindow::on_keyboard_enter(void* data, wl_keyboard* /*k*/, std::uint32_t /*serial*/, wl_surface* /*s*/,
+                                      wl_array* keys) {
+    // 포커스를 얻는 순간 이미 눌려 있는 키 목록이 온다. Ctrl 상태만 맞춰 둔다(종료 판정은 새 눌림으로만 한다).
+    auto* self = static_cast<WaylandWindow*>(data);
+    self->ctrl_left_ = self->ctrl_right_ = false;
+    if (keys == nullptr) return;
+    const auto* p = static_cast<const std::uint32_t*>(keys->data);
+    for (std::size_t i = 0; i < keys->size / sizeof(std::uint32_t); ++i) {
+        if (p[i] == KEY_LEFTCTRL) self->ctrl_left_ = true;
+        if (p[i] == KEY_RIGHTCTRL) self->ctrl_right_ = true;
+    }
+}
+
+void WaylandWindow::on_keyboard_leave(void* data, wl_keyboard* /*k*/, std::uint32_t /*serial*/, wl_surface* /*s*/) {
+    // 포커스를 잃으면 뗌 이벤트가 오지 않는다 → Ctrl 이 눌린 채로 남지 않게 초기화한다.
+    auto* self = static_cast<WaylandWindow*>(data);
+    self->ctrl_left_ = self->ctrl_right_ = false;
+}
+
+void WaylandWindow::on_keyboard_key(void* data, wl_keyboard* /*k*/, std::uint32_t /*serial*/, std::uint32_t /*time*/,
+                                    std::uint32_t key, std::uint32_t state) {
+    // key 는 evdev 원시 코드다(xkb keycode 는 여기에 +8). 레이아웃과 무관한 물리 키로 판정한다.
+    auto* self = static_cast<WaylandWindow*>(data);
+    const bool pressed = state == WL_KEYBOARD_KEY_STATE_PRESSED;
+    if (key == KEY_LEFTCTRL) self->ctrl_left_ = pressed;
+    else if (key == KEY_RIGHTCTRL) self->ctrl_right_ = pressed;
+    if (!pressed) return;
+    const bool ctrl = self->ctrl_left_ || self->ctrl_right_;
+    if (key == KEY_ESC || key == KEY_Q || (ctrl && key == KEY_C)) {
+        if (self->verbose_ && !self->quit_requested_) std::printf("[wayland] 종료 키 (evdev %u)\n", key);
+        self->quit_requested_ = true;
+    }
+}
+
+void WaylandWindow::on_keyboard_modifiers(void* /*data*/, wl_keyboard* /*k*/, std::uint32_t /*serial*/,
+                                          std::uint32_t /*depressed*/, std::uint32_t /*latched*/,
+                                          std::uint32_t /*locked*/, std::uint32_t /*group*/) {
+    // 수정자 비트의 의미는 keymap 에 달려 있어 xkbcommon 없이는 해석할 수 없다 → Ctrl 은 key 이벤트로 추적한다.
+}
+
+void WaylandWindow::on_keyboard_repeat_info(void* /*data*/, wl_keyboard* /*k*/, std::int32_t /*rate*/,
+                                            std::int32_t /*delay*/) {}
+
+void WaylandWindow::release_keyboard() {
+    if (keyboard_ == nullptr) return;
+    // keyboard 는 seat 의 버전을 물려받는다. release(v3+)는 서버 쪽 자원까지 정리한다.
+    if (seat_version_ >= WL_KEYBOARD_RELEASE_SINCE_VERSION)
+        wl_keyboard_release(keyboard_);
+    else
+        wl_keyboard_destroy(keyboard_);
+    keyboard_ = nullptr;
+    ctrl_left_ = ctrl_right_ = false;
+}
+
 bool WaylandWindow::open(const WaylandWindowOptions& opt) {
-    // 프로토콜 버전이 올라가 이벤트가 추가돼도 컴파일이 깨지지 않게, 지정 초기화 대신 값 초기화 + 멤버 대입을
-    // 쓴다(채우지 않은 멤버는 nullptr = "이 이벤트는 무시"). 정적 지역이므로 객체 수명보다 오래 산다.
+    // 프로토콜 버전이 올라가 멤버가 추가돼도 컴파일이 깨지지 않게, 지정 초기화 대신 값 초기화 + 멤버 대입을 쓴다.
+    // ⚠ 채우지 않은 멤버(nullptr)는 "무시"가 **아니다** — libwayland(1.24 확인)는 그 opcode 의 이벤트가 오면
+    //   "listener function for opcode %u of %s is NULL" 로 abort 한다. 아래 리스너는 bind 한 버전(xdg_wm_base v1:
+    //   ping / xdg_surface: configure / xdg_toplevel v1: configure·close)의 이벤트를 전부 채운 것이다.
+    //   bind 버전을 올리면 새 이벤트 멤버도 반드시 채운다. 정적 지역이므로 객체 수명보다 오래 산다.
     static const wl_registry_listener registry_listener = [] {
         wl_registry_listener l{};
         l.global = &WaylandWindow::on_registry_global;
@@ -116,6 +221,7 @@ bool WaylandWindow::open(const WaylandWindowOptions& opt) {
     }
     verbose_ = opt.verbose;
     error_.clear();
+    quit_requested_ = false;
     width_ = std::max(1, opt.width);
     height_ = std::max(1, opt.height);
 
@@ -204,6 +310,16 @@ void WaylandWindow::close() {
     if (wm_base_ != nullptr) {
         xdg_wm_base_destroy(wm_base_);
         wm_base_ = nullptr;
+    }
+    // keyboard 는 seat 에서 얻었으므로 seat 보다 먼저 해제한다.
+    release_keyboard();
+    if (seat_ != nullptr) {
+        if (seat_version_ >= WL_SEAT_RELEASE_SINCE_VERSION)
+            wl_seat_release(seat_);
+        else
+            wl_seat_destroy(seat_);
+        seat_ = nullptr;
+        seat_version_ = 0;
     }
     if (subcompositor_ != nullptr) {
         wl_subcompositor_destroy(subcompositor_);

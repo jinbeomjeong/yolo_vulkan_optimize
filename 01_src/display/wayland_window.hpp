@@ -7,10 +7,16 @@
 //   (여기서 처음 VkSurfaceKHR 를 만든다)** 이다. 이 클래스는 wl_display*/wl_surface* 를 void* 로만 내보낸다.
 //
 // 붙이는 것: wl_compositor, xdg_wm_base(+ping/pong), xdg_surface(+ack_configure), xdg_toplevel
-//            (title/app_id/fullscreen/configure/close), 그리고 선택적으로 wl_subcompositor
-//            (아래 "선택 전역" 참고 — bind 만 한다).
-// 붙이지 않는 것: wl_shm, wl_buffer(스왑체인이 만든다), wl_callback(FIFO 가 스로틀한다),
-//                 wl_seat/키보드(xkbcommon 의존성 회피 — 종료는 xdg_toplevel.close 와 SIGINT 로 충분), EGL.
+//            (title/app_id/fullscreen/configure/close), wl_seat + wl_keyboard(종료 키만, 아래 "키보드"),
+//            그리고 선택적으로 wl_subcompositor (아래 "선택 전역" 참고 — bind 만 한다).
+// 붙이지 않는 것: wl_shm, wl_buffer(스왑체인이 만든다), wl_callback(FIFO 가 스로틀한다), 포인터·터치, EGL.
+//
+// ── 키보드 (종료 키 전용) ──────────────────────────────────────────────────────────────────────────
+//  왜 붙이는가: --display-fullscreen 창이 키보드 포커스를 가져가면 Pi 키보드의 Ctrl+C 가 터미널(SIGINT)이
+//  아니라 이 창으로 온다. 키보드를 붙이지 않으면 그 키가 버려져 실행을 멈출 수 없다.
+//  xkbcommon 은 이 시스템에 없고 의존을 늘리지 않는다 → keymap 은 해석하지 않고(fd 는 즉시 close) evdev
+//  원시 keycode(<linux/input-event-codes.h>)로 판정한다. 레이아웃을 무시한 **물리 키** 기준이다.
+//  종료 키: Esc, q, Ctrl(좌/우)+C — 눌림 시 quit_requested() 가 true 가 된다. 처리는 poll() 안에서 일어난다.
 //
 // ── 선택 전역 (실측: labwc 가 광고한다. bind + 접근자만) ─────────────────────────────────────────────
 //  wp_viewporter·wp_presentation 은 bind 하지 않는다(쓰는 곳이 없다). 표시 시각은 VK_KHR_present_wait 로
@@ -33,6 +39,8 @@ struct wl_registry;
 struct wl_compositor;
 struct wl_subcompositor;
 struct wl_surface;
+struct wl_seat;
+struct wl_keyboard;
 struct xdg_wm_base;
 struct xdg_surface;
 struct xdg_toplevel;
@@ -70,6 +78,10 @@ public:
     // xdg_toplevel.close 를 받았거나 연결이 끊어졌다.
     bool should_close() const { return should_close_; }
 
+    // 창에 포커스가 있을 때 종료 키(Esc, q, Ctrl+C)가 눌렸다. should_close() 와 구분한다 —
+    // 상위는 이것을 "사용자 중단"(SIGINT 와 같은 종료)으로, 창 닫기는 정상 종료로 취급한다.
+    bool quit_requested() const { return quit_requested_; }
+
     // xdg_toplevel.configure 로 새 크기가 왔으면 true 를 돌려주고 **그 사실을 소비한다**(스왑체인 재생성 트리거).
     bool take_pending_size(int* w, int* h);
 
@@ -97,6 +109,18 @@ private:
     static void on_xdg_surface_configure(void* data, xdg_surface* s, std::uint32_t serial);
     static void on_toplevel_configure(void* data, xdg_toplevel* t, std::int32_t w, std::int32_t h, wl_array* states);
     static void on_toplevel_close(void* data, xdg_toplevel* t);
+    static void on_seat_capabilities(void* data, wl_seat* s, std::uint32_t caps);
+    static void on_seat_name(void* data, wl_seat* s, const char* name);
+    static void on_keyboard_keymap(void* data, wl_keyboard* k, std::uint32_t format, std::int32_t fd,
+                                   std::uint32_t size);
+    static void on_keyboard_enter(void* data, wl_keyboard* k, std::uint32_t serial, wl_surface* s, wl_array* keys);
+    static void on_keyboard_leave(void* data, wl_keyboard* k, std::uint32_t serial, wl_surface* s);
+    static void on_keyboard_key(void* data, wl_keyboard* k, std::uint32_t serial, std::uint32_t time,
+                                std::uint32_t key, std::uint32_t state);
+    static void on_keyboard_modifiers(void* data, wl_keyboard* k, std::uint32_t serial, std::uint32_t depressed,
+                                      std::uint32_t latched, std::uint32_t locked, std::uint32_t group);
+    static void on_keyboard_repeat_info(void* data, wl_keyboard* k, std::int32_t rate, std::int32_t delay);
+    void release_keyboard();
 
     wl_display* display_ = nullptr;
     wl_registry* registry_ = nullptr;
@@ -106,12 +130,17 @@ private:
     wl_surface* surface_ = nullptr;
     xdg_surface* xdg_surface_ = nullptr;
     xdg_toplevel* toplevel_ = nullptr;
+    wl_seat* seat_ = nullptr;               // 첫 번째로 광고된 seat 하나만 쓴다
+    wl_keyboard* keyboard_ = nullptr;
+    std::uint32_t seat_version_ = 0;        // bind 한 버전 (release 요청 가능 여부: keyboard v3+, seat v5+)
 
     int width_ = 0, height_ = 0;
     int pending_w_ = 0, pending_h_ = 0;
     bool size_pending_ = false;
     bool configured_ = false;
     bool should_close_ = false;
+    bool quit_requested_ = false;
+    bool ctrl_left_ = false, ctrl_right_ = false;  // 물리 Ctrl 눌림 상태 (leave 때 초기화)
     bool verbose_ = false;
     std::string error_;
 };
