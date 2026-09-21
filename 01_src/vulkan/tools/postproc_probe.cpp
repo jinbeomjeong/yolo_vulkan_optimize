@@ -66,7 +66,7 @@
 
 #include "heap_sum_spv.h"
 #include "toolkit/tool_util.hpp"
-#include "vulkan/postproc_fixture.hpp"
+#include "testkit/postproc_fixture.hpp"
 #include "toolkit/stats.hpp"
 
 #ifdef YVO_HAVE_HAILO
@@ -135,7 +135,7 @@ double percentile(std::vector<double> v, double q) {
 //
 // nlohmann_json 은 이 시스템에서 conda prefix 에만 있어 tool 하나를 위해 conda include 경로를
 // 끌어오게 된다(다른 시스템 헤더를 가릴 위험). 스키마가 고정돼 있으므로 필요한 만큼만 직접 읽는다.
-// 픽스처 읽기·비교는 vulkan/postproc_fixture.hpp 하나뿐이다(테스트와 공유).
+// 픽스처 읽기·비교는 testkit/postproc_fixture.hpp 하나뿐이다(테스트와 공유).
 
 // 셰이더가 도는 **유효 영역**(h < grid_h, c < features, w < grid_w)의 바이트 합. kChecksum 과 같은 범위다.
 std::uint32_t cpu_valid_sum(const std::uint8_t* p, int grid_h, int features, int grid_w, int w_padded) {

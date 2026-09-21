@@ -22,5 +22,5 @@ yvo_add_tool(yvo_preproc_bench tools/preproc_bench.cpp
 # (계획서 §5.2 링크 수준 격리 — test_preproc / yvo_preproc_bench 의 링크 그래프가 바뀌지 않는다).
 # yvo_shaders: --probe heapimport 가 쓰는 heap_sum.comp 임베드 헤더 (부록 B 1단계)
 yvo_add_tool(yvo_postproc_probe tools/postproc_probe.cpp
-  LIBS yvo_vulkan yvo_shaders yvo_toolkit
+  LIBS yvo_vulkan yvo_shaders yvo_toolkit yvo_testkit_postproc
   OPTIONAL yvo_hailo=YVO_HAVE_HAILO)

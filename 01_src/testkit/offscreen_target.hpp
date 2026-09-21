@@ -3,7 +3,7 @@
 // 컴퓨트 셰이더가 쓴 결과를 CPU 기준 구현과 **비트 단위로** 대조하는 정확도 검사에 쓴다.
 //
 // 쓰는 곳: display/tools/display_probe.cpp (P7 overlay · P8 convert),
-//          display/display_convert_check.hpp (→ 05_tests/test_display_convert.cpp),
+//          testkit/display_convert_check.hpp (→ 05_tests/test_display_convert.cpp),
 //          05_tests/test_overlay.cpp.
 //
 // 2026-09-21 이전에는 display_probe 의 OffscreenTarget 과 test_overlay 의 OverlayHarness 가

@@ -47,7 +47,7 @@
 #include <unistd.h>
 
 #include "display/display_convert.hpp"
-#include "display/offscreen_target.hpp"
+#include "testkit/offscreen_target.hpp"
 #include "display/overlay_renderer.hpp"
 #include "display/vk_swapchain.hpp"
 #include "display/wayland_window.hpp"
@@ -60,7 +60,7 @@
 #include "core/dmabuf_map.hpp"
 #include "ref/sand.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
-#include "display/display_convert_check.hpp"
+#include "testkit/display_convert_check.hpp"
 #endif
 #include "display_probe_spv.h"
 
@@ -766,7 +766,7 @@ int run_present(const Args& a) {
     return (c1 && c2 && c3 && c4) ? 0 : 1;
 }
 
-// 오프스크린 렌더 타깃·배리어·되읽기는 display/offscreen_target.hpp 하나뿐이다(test_overlay 와 공유).
+// 오프스크린 렌더 타깃·배리어·되읽기는 testkit/offscreen_target.hpp 하나뿐이다(test_overlay 와 공유).
 using yvo::display::barrier_image;
 using yvo::display::OffscreenTarget;
 
@@ -843,7 +843,7 @@ ConvertRun run_offscreen(yvo::vk::VulkanContext& ctx, const Args& a, int dst_w, 
 }
 
 // 픽셀 정확도: CPU 기준(sand.hpp de-SAND + cpu_letterbox.hpp 색 수식, scale=1)과 비교한다.
-// P8 정확도: 판정은 display/display_convert_check.hpp 하나뿐이다(test_display_convert 와 공유).
+// P8 정확도: 판정은 testkit/display_convert_check.hpp 하나뿐이다(test_display_convert 와 공유).
 using AccuracyResult = yvo::display::ConvertAccuracy;
 
 AccuracyResult run_accuracy(yvo::vk::VulkanContext& ctx, const Args& a, int frame_index) {

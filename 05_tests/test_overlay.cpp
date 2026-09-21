@@ -37,7 +37,7 @@
 
 #include "ref/overlay_reference.hpp"
 #include "display/overlay_renderer.hpp"
-#include "display/offscreen_target.hpp"
+#include "testkit/offscreen_target.hpp"
 #include "vulkan/vk_check.hpp"
 #include "vulkan/vulkan_context.hpp"
 
@@ -67,7 +67,7 @@ yvo::vk::VulkanContext& ctx() {
 // ── 오프스크린 렌더 하네스 ────────────────────────────────────────────────────────────────────
 // STORAGE|TRANSFER_SRC|TRANSFER_DST 이미지 + 리드백 버퍼. 배경을 vkCmdClearColorImage 로 정확히
 // 채운 뒤 오버레이 디스패치를 기록한다(스왑체인 경로와 같은 포맷·같은 GENERAL 레이아웃).
-// 이미지·되읽기 버퍼·배리어는 display/offscreen_target.hpp 의 OffscreenTarget 을 쓴다
+// 이미지·되읽기 버퍼·배리어는 testkit/offscreen_target.hpp 의 OffscreenTarget 을 쓴다
 // (2026-09-21 이전에는 이 하네스가 display_probe 의 OffscreenTarget 과 같은 코드를 따로 갖고 있었다).
 class OverlayHarness {
 public:

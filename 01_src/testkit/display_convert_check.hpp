@@ -23,7 +23,7 @@
 #include "core/frame_types.hpp"
 #include "ref/sand.hpp"
 #include "display/display_convert.hpp"
-#include "display/offscreen_target.hpp"
+#include "testkit/offscreen_target.hpp"
 #include "vulkan/vk_check.hpp"
 #include "vulkan/vulkan_context.hpp"
 

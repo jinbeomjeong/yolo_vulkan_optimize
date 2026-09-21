@@ -43,6 +43,7 @@
 ├── core/       헤더만. 공용 계약 타입·OS 글루 — 다른 모든 폴더가 여기에 의존 (include 루트는 여기서만 지정)
 ├── ref/        헤더만. CPU 기준 구현 — 수식의 단일 진실 원천 (셰이더는 이것의 번역본)
 ├── toolkit/    헤더만. 도구·앱 전용 헬퍼(CLI·이미지 저장·통계) — 라이브러리는 include 하지 않는다
+├── testkit/    헤더만. 테스트·프로브가 공유하는 검증 하네스(픽스처 파서, 오프스크린 타깃, 비트 일치 판정)
 ├── decode/     HW HEVC 디코더 (FFmpeg DRM_PRIME → DrmFrame)
 ├── hailo/      NPU (HailoRT)                    ┐ 이 둘은 서로
 ├── vulkan/     GPU (Vulkan 컴퓨트)              ┘ 링크하지 않는다
@@ -172,6 +173,7 @@ cmake -S . -B build -G Ninja && cmake --build build
 | `yvo_core` | 헤더만 (INTERFACE) | 공용 타입 + OS 글루. include 루트 `01_src/` 를 지정하는 유일한 타깃 |
 | `yvo_ref` | 헤더만 (INTERFACE) | CPU 기준 구현 |
 | `yvo_toolkit` | 헤더만 (INTERFACE) | 도구·앱 전용 헬퍼. 라이브러리는 링크하지 않는다 |
+| `yvo_testkit_postproc` / `yvo_testkit_display` | 헤더만 (INTERFACE) | 테스트·프로브 공용 검증 하네스 |
 | `yvo_warnings` | 경고 플래그만 | `-Wall -Wextra -Wpedantic` |
 | `yvo_shaders` | 컴파일된 셰이더 헤더 | 링크하면 include 경로가 붙는다 |
 | `yvo_hailo` | NPU | **`yvo_vulkan`에 의존하지 않는다** |

@@ -62,7 +62,7 @@ endif()
 # NPU 가 다른 작업에 잡혀 있을 때 셰이더 회귀를 못 잡는다.
 if(TARGET yvo_stages AND TARGET yvo_decoder)
   add_executable(test_postproc test_postproc.cpp)
-  target_link_libraries(test_postproc PRIVATE yvo_stages yvo_decoder GTest::gtest_main)
+  target_link_libraries(test_postproc PRIVATE yvo_stages yvo_decoder yvo_testkit_postproc GTest::gtest_main)
   yvo_target_defaults(test_postproc)
   target_compile_definitions(test_postproc PRIVATE
     YVO_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/04_data/raw_tensors"
@@ -87,7 +87,7 @@ endif()
 # OverlayVsOpenCV 는 참고용(느슨한 기하 기준)이고 OpenCV 가 있을 때만 빌드된다.
 if(TARGET yvo_display)
   add_executable(test_overlay test_overlay.cpp)
-  target_link_libraries(test_overlay PRIVATE yvo_display GTest::gtest_main)
+  target_link_libraries(test_overlay PRIVATE yvo_display yvo_testkit_display GTest::gtest_main)
   yvo_target_defaults(test_overlay)
   if(TARGET yvo_opencv)
     target_link_libraries(test_overlay PRIVATE yvo_opencv)
@@ -101,10 +101,10 @@ if(TARGET yvo_display)
 endif()
 
 # 표시 변환(display_convert.comp, 1:1) vs CPU 기준 구현 — 비트 일치 (GPU + HEVC HW 디코더, NPU 불필요)
-# BT.709 계수의 세 번째 사본에 게이트가 없던 구멍을 막는다(2026-09-21). 판정은 display/display_convert_check.hpp.
+# BT.709 계수의 세 번째 사본에 게이트가 없던 구멍을 막는다(2026-09-21). 판정은 testkit/display_convert_check.hpp.
 if(TARGET yvo_display AND TARGET yvo_decoder)
   add_executable(test_display_convert test_display_convert.cpp)
-  target_link_libraries(test_display_convert PRIVATE yvo_display yvo_decoder GTest::gtest_main)
+  target_link_libraries(test_display_convert PRIVATE yvo_display yvo_decoder yvo_testkit_display GTest::gtest_main)
   yvo_target_defaults(test_display_convert)
   target_compile_definitions(test_display_convert PRIVATE
     YVO_TEST_VIDEO="${PROJECT_SOURCE_DIR}/04_data/videos/video_h265.mp4")

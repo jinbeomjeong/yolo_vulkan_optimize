@@ -6,7 +6,7 @@
 //     ② 02_shaders/sand_letterbox.comp  (전처리)  — test_preproc 이 비트 일치를 강제한다
 //     ③ 02_shaders/display_convert.comp (표시)    — **ctest 가 없었다**(수동 프로브 P8 뿐)
 //   ③ 을 고쳐도 아무 테스트도 실패하지 않는 상태였다. 이 테스트가 그 구멍을 막는다.
-//   판정 로직은 display/display_convert_check.hpp 하나뿐이고 display_probe(P8)도 같은 함수를 쓴다.
+//   판정 로직은 testkit/display_convert_check.hpp 하나뿐이고 display_probe(P8)도 같은 함수를 쓴다.
 //
 // 필요한 것: V3D GPU + HEVC HW 디코더. NPU·디스플레이는 필요 없다(오프스크린).
 #include <cstdio>
@@ -17,7 +17,7 @@
 
 #include <gtest/gtest.h>
 
-#include "display/display_convert_check.hpp"
+#include "testkit/display_convert_check.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
 #include "vulkan/vulkan_context.hpp"
 
