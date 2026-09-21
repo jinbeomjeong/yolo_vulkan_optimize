@@ -3,25 +3,50 @@
 Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행하며, Vulkan(Pi 5 VideoCore VII GPU)을 활용해 전/후처리 등 파이프라인 가속화를 연구하는 프로젝트.
 
 ## 폴더 구조
-최상위 폴더 번호는 **네 대역**이다(2026-09-21 재배치). 번호 없는 것: `cmake/`, `.claude/`, `build/`, `build-asan/`.
-**상세한 폴더·파일 지도는 [`08_learn/09_code_map.md`](08_learn/09_code_map.md)가 정본이다.** 여기는 요약만 둔다.
+**배치 규칙의 정본은 [`STRUCTURE.md`](STRUCTURE.md)다**(기계용은 `06_tools/structure_rules.toml`). 여기는 요약만 둔다.
+파일 단위의 자세한 지도(학습용)는 [`08_learn/09_code_map.md`](08_learn/09_code_map.md).
+최상위 번호는 네 대역이다(2026-09-21). 번호 없는 것: `cmake/`, `.claude/`, `build*/`. 대역 안쪽은 2026-09-22에 재배치했다.
 
 | 대역 | 폴더 |
 |---|---|
-| 코드 | `01_src/{core,ref,toolkit,testkit,decode,hailo,vulkan,display,isp,pipeline,tools}/`, `02_shaders/` (GLSL, SPIR-V 산출물은 `build/`) |
+| 코드 | `01_src/` — 라이브러리 `{core,ref,toolkit,testkit,decode,hailo,vulkan,display,isp,pipeline}/`, 빌드되는 도구 `tools/<도메인>/`. `02_shaders/` (진단용은 `diag/`) |
 | 자산 | `03_models/` (HEF), `04_data/{videos,raw_tensors}/` |
 | 검증·측정 | `05_tests/` (GoogleTest 7종), `06_tools/{bench,python,probes}/`, `07_results/<실험>/` |
 | 문서 | `08_learn/` (자습 교재), `09_diagrams/` (yEd `.graphml`), `10_paper/` (논문 초고) |
-| 로그 | `11_logs/` 보관용 런타임 로그 |
+| 로그 | `11_logs/` 07_results에 기록하지 않는 실행의 런타임 로그(git 밖) |
 
+- `01_src/ref/`는 **CPU 기준 구현**(셰이더 수식의 원문·판정 규칙), `toolkit/`은 도구 전용 헬퍼(라이브러리 include 금지),
+  `testkit/`은 테스트·프로브 공용 하네스다. include 계층은 `STRUCTURE.md` §2.2 — hailo↔vulkan은 서로 include·링크하지 않는다.
 - `01_src/display/`는 Wayland(xdg-shell) 창 + 스왑체인 표시 경로. 회귀 격리를 위해 `yvo_vulkan`과 별도 라이브러리(`yvo_display`)다.
 - `01_src/isp/`(`yvo_isp`)는 PiSP BE 전처리 대체 경로. **구현돼 있으나 파이프라인에 연결돼 있지 않다**(검출 −2.33%로 보류).
-- `04_data/videos/` 입력 영상: `urban_street.mp4`(720p30 h264, 75분), `video_h264.mp4`·`video_h265.mp4`(1080p30, 약 1분).
+- 실행파일은 모두 `build/bin/`에 나온다. 도구의 기본 자산 경로는 `yvo_assets` 매크로(절대 경로)라 CWD와 무관하고,
+  기본 출력은 `build/out/<도구>/`다 — `07_results`에 쓸 때는 `--out-dir`을 명시한다.
+- `04_data/videos/`에 지금 있는 입력 영상은 `video_h265.mp4`(1080p30, 약 1분) 하나다.
+  `urban_street.mp4`·`video_h264.mp4`는 `decode_benchmark` 당시 입력이며 저장소에 없다.
   `04_data/raw_tensors/`는 `PostprocFixture.*` 테스트가 쓰는 NPU 원시 출력 픽스처(5프레임 × 6텐서).
 - `06_tools/`는 **빌드에 들어가지 않는 것**만 둔다. 언어가 아니라 그 기준으로 나눈다 — [`06_tools/README.md`](06_tools/README.md).
-- `07_results/<실험>/` 측정 원시 출력과 `summary.md`. **수치의 정본이다.** 색인은 [`07_results/README.md`](07_results/README.md).
+- `07_results/<실험>/` 측정 원시 출력과 `summary.md`. **수치의 정본이다.** 색인(= 실험 등록부)은 [`07_results/README.md`](07_results/README.md).
+  결과 파일의 내용은 고치지 않는다. 위치를 바꿀 때는 `relocate.py` + `STRUCTURE.md` §6 매핑표.
 - 모델·영상·빌드·perf 덤프는 `.gitignore`에 들어 있다. 단 `07_results/**/hailort*.log`는 신뢰성 판정 근거라 추적한다
   (0바이트 로그는 정보가 없어 예외 — 추적하지 않아도 된다).
+
+## 새 파일 배치 규칙
+- 새 파일은 [`STRUCTURE.md`](STRUCTURE.md)의 위치 규칙을 따른다. **Write 훅 `placement_guard`**가 새 파일 경로를
+  규칙표로 판정해 어긋나면 막고 올바른 위치를 알려 준다(기존 파일 수정, 저장소 밖, `build*/`·`11_logs/`는 보지 않는다).
+- 훅은 Bash로 만든 파일(벤치 출력, `cp`, `git mv`)을 보지 못한다. 파일을 만들거나 옮기는 작업을 끝낼 때
+  `python3 06_tools/python/check_structure.py`와 `python3 06_tools/python/check_links.py`를 돌려 둘 다 0건인지 확인한다.
+- 요점: 루트에 새 파일을 만들지 않는다 · 빌드되는 도구는 `01_src/tools/<도메인>/` · 셰이더는 `02_shaders/` ·
+  측정 결과는 `07_results/<실험>/`(실행 로그는 `raw/<설정>_run<N>/`, 회차는 `runs/<회차>/`) · 새 실험 폴더는 색인 행과 함께.
+- 규칙이 틀렸다고 판단되면 우회하지 말고 사용자에게 확인한 뒤 `STRUCTURE.md`와 `06_tools/structure_rules.toml`을
+  **같은 커밋에서** 고친다(검사기 D1이 둘의 불일치를 잡는다). 서브에이전트는 "규칙표 갱신 필요"라고 보고만 한다.
+
+## 구조 변경 절차 (폴더 이동·이름 변경·대규모 재배치)
+1. 바꾸기 전: `integrity-auditor`로 기준선(`check_structure`·`check_links` 0건)을 잡는다.
+2. 규칙표를 먼저 고친다 — `STRUCTURE.md`(§6 경로 이력 포함)와 `structure_rules.toml`. 메인 에이전트가 사용자 확인 후 한다.
+3. 이동은 `06_tools/python/relocate.py --map STRUCTURE.md --section <절> --apply-moves`로 하고,
+   **이동 커밋(R100만)과 참조 갱신 커밋(`--apply-refs` + 수동 목록)을 나눈다.**
+4. 바꾼 뒤: `check_structure.py`, `check_links.py`, `check_links.py --stale STRUCTURE.md`, 코드가 바뀌었으면 `verify` 스킬 1~2단계.
+5. `integrity-auditor`로 사후 점검한다.
 
 ## 개발 환경
 - C++: g++ 14.2, CMake 3.31 + Ninja. 빌드는 `cmake -S . -B build -G Ninja && cmake --build build`, 산출물은 `build/`.
@@ -46,13 +71,39 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행�
   `hailo_platform` 4.24.0 설치 완료(`~/Downloads/hailort-4.24.0-cp313-cp313-linux_aarch64.whl`, 시스템 `libhailort.so.4.24.0`에 링크).
   Python에서 InferModel을 쓸 때는 VDevice 스케줄러를 `ROUND_ROBIN`으로 켜야 한다(기본값 NONE이면 `HAILO_STREAM_NOT_ACTIVATED`).
 - 설치 금지: apt `python3-hailort`, `hailo-all`. Python 바인딩이 4.23이라 런타임 4.24.0과 맞지 않는다.
-- `hailort.log`는 HailoRT 런타임이 실행한 디렉터리에 쓰는 로그다. 에러를 분석할 때 참고하고, 보관할 로그는 `11_logs/`에 날짜를 붙여 옮긴다.
+- `hailort.log`는 HailoRT 런타임이 **실행한 디렉터리(CWD)**에 쓰는 로그다. 에러를 분석할 때 참고한다. 보관 위치는 하나로 정한다
+  (`STRUCTURE.md` §3.5): **07_results에 기록하는 측정·검증 실행**은 그 실행 폴더(`raw/<설정>_run<N>/`, 세션 부산물은
+  `raw/_session/`, 검증은 `verification/hailort_<무엇>.log`)에 두고 git으로 추적한다. **그 밖의 디버깅 실행**은
+  `11_logs/<YYYY-MM-DD>_<무엇>.log`로 옮긴다. 저장소 루트의 `hailort.log`는 잔재다.
 - MCP 서버 (프로젝트 `.mcp.json`):
   - `gstreamer` (`/home/pi/workspace/gstreamer-mcp`) → 도구 `mcp__gstreamer__*`.
     **단 앱 본체는 GStreamer를 쓰지 않는다** — `decode_bench.sh`의 디코드 비교에서만 외부 프로세스로 호출한다.
   - `vulkan-docs` (`/home/pi/workspace/mcp-Vulkan`) → 도구 `mcp__vulkan-docs__*`.
     VUID 원문·구조체는 로컬 레지스트리 `/usr/share/vulkan/registry/{validusage.json,vk.xml}`가 더 정확하고,
     MCP는 서술적 설명에 쓴다.
+
+## 폴더 → 담당 (라우팅 정본)
+작업 대상 파일의 위치로 먼저 담당을 고르고, 아래 "서브에이전트 라우팅"의 기술 영역 규칙으로 보정한다.
+한 작업이 여러 행에 걸치면 **가장 많이 바뀌는 쪽** 담당에 맡기고 나머지는 검토를 붙인다.
+
+| 경로 | 담당 | 비고 |
+|---|---|---|
+| `01_src/hailo/`, `01_src/tools/hailo/`, `03_models/`, `04_data/raw_tensors/` | `hailo-expert` | 픽스처는 `yvo_hailo_raw_probe` 산출물 |
+| `01_src/vulkan/`, `01_src/display/`, `01_src/testkit/`, `01_src/tools/{vulkan,display}/`, `02_shaders/` | `vulkan-expert` | |
+| `01_src/core/`, `01_src/decode/`, `01_src/isp/`, `01_src/tools/{isp,decode}/`, `CMakeLists.txt`, `cmake/` | `cpp-expert` | `core/`의 dma-heap·dma-buf 글루를 바꾸면 양쪽 전문가 검토 |
+| `01_src/ref/` | 그 원문을 쓰는 셰이더·경로의 전문가 | **바꾸면 `verify` ctest 필수**(비트 일치 테스트의 기준이다) |
+| `01_src/toolkit/` | `cpp-expert` | 라이브러리가 include하면 안 된다 |
+| `01_src/pipeline/` | 바뀌는 단계의 전문가 | 디코더 연결은 `cpp-expert`, `gpu_postproc_stage`는 `vulkan-expert`, `infer_stage`는 `hailo-expert` |
+| `05_tests/` | 테스트 대상 도메인의 전문가 + `verify` 스킬 | |
+| `06_tools/bench/` | 실행은 `measure` 스킬, 수정은 측정 대상 도메인의 전문가 | 추가·삭제 시 `npu_guard`가 자동으로 찾는지 확인(검사기 C10) |
+| `06_tools/python/` | `python-expert` | |
+| `06_tools/probes/` | 소속 도메인의 전문가 | 빌드하지 않는다 |
+| `07_results/` | 쓰기는 `measure`(측정)·`verify`(`verification/`) 스킬, 이동은 `relocate.py`, 정합 점검은 `integrity-auditor` | 결과 파일 내용은 고치지 않는다 |
+| `08_learn/`, `README.md` | 메인 에이전트 | 기계적 수정(경로·줄번호·개수)은 `integrity-auditor` |
+| `09_diagrams/` | `graphml-expert`(포맷) | 수치 변경은 도메인 전문가 |
+| `10_paper/`, `.claude/`, `CLAUDE.md`, `STRUCTURE.md`, `06_tools/structure_rules.toml` | 메인 에이전트(사용자 확인) | `.claude/agents`·훅 변경은 **다음 세션부터** 반영된다 |
+| `11_logs/` | 누구나 | git 밖 |
+| `build*/` | 쓰지 않는다 | 산출물 |
 
 ## 서브에이전트 라우팅 (프로젝트 우선)
 전역 지침보다 이 규칙이 우선한다.
@@ -80,3 +131,4 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행�
   - 기능 구현·버그 수정·성능 측정은 이 에이전트에 보내지 않는다. "정리해줘"처럼 삭제까지 원하는 요청도
     먼저 이 에이전트로 후보를 찾고, 삭제는 사용자 확인 후 담당 에이전트가 한다.
 - 위임 프롬프트에 대상 파일, 목표, 제약, 검증 방법(셰이더 컴파일·검증 레이어·측정 조건)을 포함한다.
+  **새 파일을 만드는 작업이면 둘 위치를 `STRUCTURE.md` 기준으로 프롬프트에 적고**, 끝에 `check_structure.py` 결과를 보고하게 한다.

@@ -10,6 +10,9 @@
 
 ## 9.1 폴더 규약
 
+> **배치 규칙의 정본은 [`STRUCTURE.md`](../STRUCTURE.md)다.** 이 장은 "어디에 무엇이 있는지" 읽는 법을 설명하는 교재이고,
+> 새 파일을 어디에 둘지·무엇이 허용되는지는 STRUCTURE.md 와 검사기 `06_tools/python/check_structure.py` 가 정한다.
+
 최상위 폴더 이름 앞의 번호는 **네 대역**으로 묶인다.
 `build/`, `build-asan/`, `cmake/`, `.claude/` 처럼 번호가 없는 것도 있다.
 
@@ -18,19 +21,21 @@
 | **코드** | [`01_src/`](../01_src/) | C++ 소스 전부. 하위 폴더는 §9.2 |
 | | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 — 본 파이프라인 4개 + `diag/` 진단 전용 2개 (`.comp`) |
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
-| | `04_data/` | 입력 영상 3개와 테스트용 원시 텐서 픽스처 (git에 없음) |
+| | `04_data/` | 입력 영상(지금은 `video_h265.mp4` 하나)과 테스트용 원시 텐서 픽스처 (git에 없음) |
 | **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 테스트 7종 |
-| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 7개), `python/`(3개), `probes/`(일회성 소스) |
+| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 7개), `python/`(5개), `probes/`(일회성 소스) |
 | | [`07_results/`](../07_results/) | 실험별 측정 원시 출력과 `summary.md` |
 | **문서** | [`08_learn/`](00_README.md) | 지금 읽고 있는 이 자습 교재 12장 |
 | | [`09_diagrams/`](../09_diagrams/) | yEd로 여는 파이프라인 다이어그램 2장 |
 | | [`10_paper/`](../10_paper/) | 논문 초고 `paper_ko.md` |
-| **로그** | `11_logs/` | 보관용 런타임 로그 |
+| **로그** | `11_logs/` | 07_results에 기록하지 않는 디버깅 실행의 런타임 로그 (git에 없음) |
 
 > 2026-09-21에 폴더를 재배치했다. 이전에는 `08_python`·`09_scripts`가 나뉘어 있었고
 > (파이썬 파일 2개가 서로 다른 폴더에 흩어져 있었다), `06_bench/`가 `.gitkeep` 하나뿐인
 > 빈 폴더인데도 CMake의 `find_package(benchmark REQUIRED)`가 configure 하드 의존이었다.
 > 문서 3폴더(`11_paper`·`12_docs`·`13_learn`)는 번호가 시간 순으로 붙어 있었다.
+> 2026-09-22에는 대역 안쪽을 재배치했다(`common/` → `core/`·`ref/`·`toolkit/`, 도구를 `01_src/tools/`로, `07_results` 회차를 `runs/`로).
+> 옛 경로 → 새 경로 대조표는 [`STRUCTURE.md`](../STRUCTURE.md) §6.
 
 모델·영상·로그는 `.gitignore`에 들어 있어서 저장소에 없다.
 
@@ -268,7 +273,7 @@ C++ 테스트의 판정 규칙([`01_src/ref/detection_match.hpp`](../01_src/ref/
 
 | 폴더 | 내용 |
 |---|---|
-| [`06_tools/python/`](../06_tools/python/) | `compare_detections.py`(검출 비교), `gen_glyph_font_8x16.py`(폰트 헤더 생성 — 빌드에 관여하지 않는 재현 기록) |
+| [`06_tools/python/`](../06_tools/python/) | `compare_detections.py`(검출 비교), `gen_glyph_font_8x16.py`(폰트 헤더 생성 — 빌드에 관여하지 않는 재현 기록), `check_links.py`(문서 링크·`file:line`·`--stale` 옛 경로), `check_structure.py`(폴더 배치 규칙), `relocate.py`(매핑표 기반 이동) |
 | [`06_tools/probes/`](../06_tools/probes/) | 일회성 프로브 소스. 빌드 대상이 아니며, 어떤 실험에서 쓴 것인지는 해당 `summary.md`에 적혀 있다 |
 
 ---

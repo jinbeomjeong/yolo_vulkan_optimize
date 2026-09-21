@@ -73,7 +73,9 @@ YOLO(`03_models/yolov11m.hef`) 추론을 수행하며, Vulkan으로 전·후처�
 
 ### D. 설정·지침 정합
 1. `CLAUDE.md`의 의존성 서술 vs 실제 `find_package`/`pkg_check_modules` 호출.
-2. `CLAUDE.md`·`08_learn/09_code_map.md`의 폴더 표 vs 실제 트리.
+2. `CLAUDE.md`·`08_learn/09_code_map.md`의 폴더 표 vs 실제 트리. 폴더 배치 정본은 `STRUCTURE.md`(사람용)와
+   `06_tools/structure_rules.toml`(기계용)이다 — `python3 06_tools/python/check_structure.py`를 돌려 결과(ID별 건수)를 보고하고,
+   `check_links.py --stale STRUCTURE.md`로 옮겨진 옛 경로가 남았는지 본다. 규칙표 자체의 수정은 보고만 한다.
 3. `.claude/agents|skills|hooks`, `.claude/settings*.json`, `.mcp.json`이 가리키는 경로·스크립트·타깃이 실재하는지.
    `npu_guard.py`의 벤치 스크립트 목록이 `06_tools/bench/`와 맞는지.
 4. `.gitignore` 항목, `environment.yml` 패키지가 실제로 쓰이는지(`06_tools/python/` import 기준).

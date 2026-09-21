@@ -66,6 +66,7 @@ hailortcli parse-hef <hef>         # 입출력 사양, 컨텍스트 수
 1. **관례 파악**: 기존 HailoRT 래퍼, 빌드 시스템, 입출력 버퍼 관리 방식을 먼저 확인하고 재사용한다.
 2. **사양 확인**: 코드를 쓰기 전에 `parse-hef`로 입출력 이름, shape, 포맷을 확인한다. 하드코딩보다 API 조회를 우선한다.
 3. **최소 변경**: 요청 범위만 수정한다.
+   새 파일은 [`STRUCTURE.md`](../../STRUCTURE.md)의 위치 규칙을 따른다(`01_src` 폴더·include 계층, 도구는 `01_src/tools/<도메인>/`, 결과는 `07_results/<실험>/` 레이아웃). Write 훅이 어긋난 새 파일을 막으면 우회하지 말고 안내된 위치를 쓰거나 "규칙표 갱신 필요"라고 보고한다.
 4. **검증**: 빌드, 실행, 결과 비교, 성능 측정 순서로 확인한다.
 5. **보고**: 아래 보고 형식을 따른다.
 
@@ -101,7 +102,7 @@ hailortcli parse-hef <hef>         # 입출력 사양, 컨텍스트 수
 ## 시스템 변경 안전 규칙
 - `/boot/firmware/config.txt` 수정(PCIe Gen3 등), 펌웨어 업데이트, 드라이버나 패키지 설치·재설치, `sudo`가 필요한 작업, 재부팅은 **직접 하지 않는다.** 필요한 변경과 기대 효과, 되돌리는 방법을 정리해 보고한다.
 - `HAILO_DEVICE_IN_USE`나 `HAILO_OUT_OF_PHYSICAL_DEVICES`가 나면 다른 프로세스가 장치를 점유하고 있는지 확인한다(`lsof /dev/hailo0` 등). 남의 프로세스를 임의로 종료하지 말고 보고한다.
-- `hailort.log`(실행한 디렉터리에 생김, 보관본은 `11_logs/`)는 에러 원인 분석에 활용한다.
+- `hailort.log`(실행한 디렉터리에 생김)는 에러 원인 분석에 활용한다. 보관 위치는 `STRUCTURE.md` §3.5: 07_results에 기록하는 실행은 그 실행 폴더(`raw/<설정>_run<N>/`, 세션 부산물 `raw/_session/`)에서 추적, 그 밖의 디버깅 로그는 `11_logs/<날짜>_<무엇>.log`.
 
 ## Vulkan 경계
 - 이 에이전트는 Hailo↔GPU 버퍼 공유 중 **HailoRT 쪽만** 맡는다: dma-heap 할당(`hailort_dma-heap.h`), `dma_mapped_buffer` 매핑, fd 기반 버퍼 바인딩.
@@ -109,14 +110,14 @@ hailortcli parse-hef <hef>         # 입출력 사양, 컨텍스트 수
 
 ## 빌드·검증
 - CMake(3.31)에서 `find_package(HailoRT REQUIRED)`와 `target_link_libraries(... HailoRT::libhailort)`를 쓴다. 빌드는 `cmake -S . -B build -G Ninja`로 `build/`에서 하고, 호스트 코드는 `-Wall -Wextra -mcpu=cortex-a76`로 빌드한다.
-- 결과 비교 테스트는 GoogleTest(`GTest::gtest_main`)로 작성하고 `ctest --test-dir build`로 실행한다. 출력 파싱, letterbox 역변환, 호스트 NMS 같은 CPU 구간의 마이크로 측정은 Google Benchmark(`benchmark::benchmark`)로 한다.
+- 결과 비교 테스트는 GoogleTest(`GTest::gtest_main`)로 작성하고 `ctest --test-dir build`로 실행한다. 출력 파싱, letterbox 역변환, 호스트 NMS 같은 CPU 구간의 마이크로 측정은 도구 안에서 `steady_clock` 반복 + 중앙값(`01_src/toolkit/stats.hpp`)으로 한다(Google Benchmark 의존은 2026-09-21 제거).
 - CPU 쪽 병목(복사, 파싱, 콜백 지연)은 `perf record -g` / `perf report`로 분석한다. `perf_event_paranoid=1`이라 커널·드라이버(hailo_pci ioctl, DMA) 구간도 볼 수 있다.
 - 메모리 오류는 ASan을 먼저 쓴다. `valgrind`는 HailoRT의 DMA/ioctl 경로에서 오탐이 날 수 있으니 결과를 신중히 해석한다.
 - 탐지 결과는 기준(`hailortcli run` 동작 확인 또는 기존 CPU 경로 결과)과 박스·점수·클래스를 비교해 검증한다.
 - `apt install`, `pip install`은 하지 않는다. 필요한 패키지가 있으면 무엇이 왜 필요한지 보고한다.
 
 ## 성능 측정
-- 워밍업 후 N회(기본 100회 이상) 반복해 중앙값과 p90을 보고한다. **처리량(FPS)과 프레임 지연(latency)을 구분해** 적는다.
+- 워밍업 후 N회(기본 100회 이상) 반복해 중앙값과 p90을 보고한다(이것은 **한 실행 안의 반복 표본**이다. 07_results에 기록하는 측정은 `measure` 스킬의 **설정당 독립 실행 3회 중앙값**을 따른다). **처리량(FPS)과 프레임 지연(latency)을 구분해** 적는다.
 - 항상 `hailortcli benchmark` 기준선과 함께 보고하고, 측정 조건(배치 크기, 큐 깊이, PCIe 세대, 입력 해상도)을 명시한다.
 - 발열이나 전원 문제로 성능이 흔들릴 수 있다. 의심되면 `vcgencmd measure_temp`, `vcgencmd get_throttled`, `hailortcli measure-power`를 확인한다.
 

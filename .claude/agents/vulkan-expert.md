@@ -118,6 +118,7 @@ for t in r.iter("type"):
 1. **스펙 확인**: 위 조회 의무 트리거에 해당하면 근거 소스 계층에서 맞는 소스를 골라 근거를 먼저 확보한 뒤 착수한다.
 2. **관례 파악**: 빌드 시스템, 기존 Vulkan 래퍼·헬퍼, 셰이더 디렉터리 구조, SPIR-V 빌드 방식을 먼저 확인하고 재사용한다.
 3. **최소 변경**: 요청 범위만 수정한다. 관련 없는 리팩터링은 하지 않는다.
+   새 파일은 [`STRUCTURE.md`](../../STRUCTURE.md)의 위치 규칙을 따른다(`01_src` 폴더·include 계층, 도구는 `01_src/tools/<도메인>/`, 결과는 `07_results/<실험>/` 레이아웃). Write 훅이 어긋난 새 파일을 막으면 우회하지 말고 안내된 위치를 쓰거나 "규칙표 갱신 필요"라고 보고한다.
 4. **검증**: 셰이더 컴파일, 검증 레이어를 켠 실행, CPU 기준 구현과의 결과 비교, 성능 측정 순서로 확인한다.
 5. **보고**: 아래 보고 형식을 따른다.
 
@@ -156,11 +157,11 @@ for t in r.iter("type"):
 - 빌드는 CMake 3.31 + Ninja(`cmake -S . -B build -G Ninja`)로, 소스와 분리된 `build/`에서 한다. `find_package(Vulkan REQUIRED)` → `Vulkan::Vulkan`를 쓴다. 셰이더는 `add_custom_command`로 `glslc -MD -MF <out>.d`를 호출하고 `DEPFILE`로 의존성을 연결한다. `sudo apt install`은 하지 않고, 필요한 도구가 있으면 무엇이 왜 필요한지 보고한다.
 - 호스트 C++ 코드는 `-Wall -Wextra`로 빌드하고 `-mcpu=cortex-a76`을 쓴다. 크래시는 ASan과 `gdb -batch -ex run -ex bt`로 원인을 확인한 뒤 수정한다. `valgrind`는 Mesa/V3DV 드라이버 내부에서 오탐이 많으니 ASan을 우선한다.
 - GPU 결과가 CPU 기준 구현과 같은지는 GoogleTest(`GTest::gtest_main`, `ctest --test-dir build`)로 허용 오차를 명시해 테스트한다.
-- CPU 기준선(OpenCV/NEON)은 Google Benchmark(`benchmark::benchmark`)로 잰다. GPU 구간은 timestamp query로 따로 잰다. 호스트 쪽 오버헤드(기록·submit·대기)는 `perf record -g`로 분석한다. `perf_event_paranoid=1`이라 커널 드라이버(v3d) 구간도 볼 수 있다.
+- CPU 기준선(OpenCV/NEON)은 도구 안에서 `steady_clock` 반복 + 중앙값(`01_src/toolkit/stats.hpp`)으로 잰다(Google Benchmark 의존은 2026-09-21 제거). GPU 구간은 timestamp query로 따로 잰다. 호스트 쪽 오버헤드(기록·submit·대기)는 `perf record -g`로 분석한다. `perf_event_paranoid=1`이라 커널 드라이버(v3d) 구간도 볼 수 있다.
 
 ## 성능 측정
 - 추측하지 말고 측정한다. GPU 구간은 timestamp query(`vkCmdWriteTimestamp`)로, end-to-end 구간은 `std::chrono::steady_clock`으로 잰다.
-- 워밍업을 몇 회 돌린 뒤 N회(기본 100회) 반복해 중앙값과 p90을 보고한다. 입력 해상도와 배치 크기를 명시한다.
+- 워밍업을 몇 회 돌린 뒤 N회(기본 100회) 반복해 중앙값과 p90을 보고한다(**한 실행 안의 반복 표본**. 07_results에 기록하는 측정은 `measure` 스킬의 설정당 독립 실행 3회 중앙값을 따른다). 입력 해상도와 배치 크기를 명시한다.
 - 항상 CPU 기준선(OpenCV 또는 NEON 구현)과 비교하고, 최적화 전후 수치를 함께 적는다.
 - 전체 파이프라인(capture → preprocess → Hailo → postprocess)에서 해당 단계가 병목인지도 함께 보고한다. GPU 오프로드가 오히려 느리면 그 결과도 그대로 보고한다.
 - 발열로 클럭이 내려가 측정이 흔들릴 수 있다. 의심되면 `vcgencmd measure_temp`와 `vcgencmd get_throttled`를 확인한다.

@@ -11,7 +11,7 @@ description: >
 # 측정 프로토콜
 
 성능 수치는 조건을 적지 않으면 쓸모가 없고, 과열 상태에서 재면 **틀린 값이 조용히 기록된다**.
-이 프로젝트에는 이미 그렇게 버려진 측정이 있다(`07_results/npu_benchmark/gen3/summary.md`의
+이 프로젝트에는 이미 그렇게 버려진 측정이 있다(`07_results/npu_benchmark/runs/gen3/summary.md`의
 "신뢰 불가" 표). 아래 순서를 지킨다.
 
 ## 0. 기존 스크립트를 먼저 본다
@@ -28,7 +28,7 @@ description: >
 | `decode_bench.sh` | 디코드 경로 비교 | `07_results/decode_benchmark/` |
 | `backpressure_bench.sh` | 백프레셔 전후 비교 | `07_results/raw_runner_backpressure/` |
 | `isp_bench.sh` | ISP 전처리 단독(NPU 미사용) | `07_results/isp_resize/` |
-| `isp_pipeline_bench.sh` | ISP 포함 전체 파이프라인 | `07_results/isp_resize/pipeline/` |
+| `isp_pipeline_bench.sh` | ISP 포함 전체 파이프라인 | `07_results/isp_resize/runs/pipeline/` |
 
 > ⚠ `pipeline_bench.sh` 의 `configs` 스키마(`id|mode|layout|batch|slots` 5필드)는 **바꾸지 마라.**
 > 다른 스크립트들이 대조군 기준으로 쓴다.
@@ -116,45 +116,30 @@ grep -E '\[warning\]' hailort.log | grep -cE '[Tt]emperature|[Tt]hrottl|[Oo]verh
 **`07_results/README.md` 의 실험 목록표가 정본이다.** 거기 한 행으로 오르는 것이 실험이고,
 그 아래 하위 폴더는 **같은 실험의 측정 회차·변종**이다(새 실험이 아니다).
 
-예: `npu_benchmark/{gen2,gen3}` 는 같은 벤치의 PCIe 세대별 회차,
-`op_point/latency_sweep/` 은 운용점 실험의 지연 스윕 회차,
-`isp_resize/{pipeline,pipeline_rerun}/` 은 ISP 실험의 파이프라인 단계 1·2차다.
+예: `npu_benchmark/runs/{gen2,gen3}` 는 같은 벤치의 PCIe 세대별 회차,
+`op_point/runs/latency_sweep/` 은 운용점 실험의 지연 스윕 회차,
+`isp_resize/runs/{pipeline,pipeline_rerun}/` 은 ISP 실험의 파이프라인 단계 1·2차다.
 **회차 폴더가 자기 `summary.md` 를 가질 수 있다** — 그렇다고 별도 실험으로 승격하지 않는다.
 새 실험으로 올릴지 헷갈리면 기준은 하나다: **README 표에 한 행으로 설명되는가.**
 
-### 레이아웃 — 두 변종
+### 레이아웃 — 정본은 `STRUCTURE.md` §3
 
-실험은 **스윕형**(설정을 바꿔 수치를 비교)과 **프로브형**(관문 통과 여부를 가름) 둘 중 하나다.
-지금까지 규약이 이 구분을 안 해서 프로브형 폴더가 전부 "이탈"로 보였다.
+폴더 레이아웃·경계·이동 원칙의 정본은 [`STRUCTURE.md`](../../../STRUCTURE.md) §3 이다(기계 검사: `python3 06_tools/python/check_structure.py`).
+측정할 때 필요한 요점만:
 
-```
-07_results/<실험>/
-  summary.md             필수 — 짧은 요약 (양쪽 공통)
-  env_bench.txt          필수 — §1 의 환경 스냅샷 (양쪽 공통)
-  REPORT.md              선택 — 상세 구현·실험 보고
-  notes/                 선택 — summary/REPORT 가 아닌 기술 문서
-  raw/<설정>_run<N>/     stdout.log, hailort.log
-
-  ── 스윕형 ────────────────  ── 프로브형 ────────────────
-  results_raw.csv  필수      evidence/       필수
-  results.csv      필수      verification/   선택
-  verification/    선택      samples/        선택
-  samples/         선택
-```
-
-**`evidence/` 와 `verification/` 의 경계** (2026-09-21 에 처음 정의했다):
-
-| 폴더 | 무엇을 담나 |
-|---|---|
-| `evidence/` | **관문이 통과했음을 보이는 1회성 증거.** 프로브 stdout, API 시도 결과, 조합 스윕 표 |
-| `verification/` | **verify 스킬 6단계의 로그.** 검증 레이어, ASan/UBSan, perf, ctest |
-
-ASan 로그가 `evidence/` 에 있으면 `verification/` 으로 옮긴다.
-
-**과거 실험의 예외는 그대로 둔다(소급 적용하지 않는다).**
-`display_vulkan_hdmi`·`gpu_postprocess`·`npu_benchmark` 는 `env_bench.txt` 가 없고 환경 정보가
-`summary.md` 머리에 산문으로 적혀 있다. 없는 파일을 지금 만들면 그 시점의 실제 스냅샷이 아니라
-**재구성한 값**이 되므로 날조다. 이 규약은 **새로 측정하는 실험부터** 적용한다.
+- 공통 필수: `summary.md`, `env_bench.txt`(§1 의 환경 스냅샷). **스윕형**은 `results.csv`·`results_raw.csv`·`raw/` 도 필수,
+  **프로브형**은 `evidence/` 가 필수. 유형은 `07_results/README.md` 색인 표의 "유형" 열에 적는다.
+- 실행 1회 = `raw/<설정>_run<N>/` 폴더 하나(`stdout.log` 전문 또는 `run.log` 발췌 + `hailort.log`).
+  벤치의 온도 프로브가 남기는 `hailort.log` 는 `raw/_session/` 에 생긴다. `raw/` 바로 아래에 파일을 두지 않는다.
+- 같은 실험의 회차·변종은 `runs/<회차>/`(깊이 1). 1회 덤프(PNG, `detections.jsonl`)는 `samples/`.
+- **`evidence/` 와 `verification/` 은 목적으로 나눈다.** 결론의 근거(관문 통과·원인 특정·정확도 판정)는 `evidence/`,
+  변경이 아무것도 깨지 않았다는 게이트 로그(verify 스킬 단계)는 `verification/`. 도구가 perf 든 hailortcli 든 상관없다.
+- **보관된 실험 폴더는 덮어쓰지 않는다.** 벤치 스크립트는 `OUT_DIR` 이 이미 있고 비어 있지 않으면 멈춘다(`guard_out_dir`).
+  같은 폴더에 이어 쓰거나(`APPEND=1`) 다시 재야 하면 **`FORCE=1`** 을 명시한다. C++ 도구의 기본 출력은 `build/out/<도구>/` 이고,
+  `07_results` 에 쓸 때는 `--out-dir` 을 준다.
+- 결과 파일의 **내용**은 고치지 않는다. 없는 파일을 나중에 만들지 않는다(재구성은 날조) — 그래서
+  `display_vulkan_hdmi`·`gpu_postprocess`·`npu_benchmark` 의 `env_bench.txt` 누락은 규칙표 예외로 둔다.
+  위치만 바꾸는 이동은 `relocate.py` 와 `STRUCTURE.md` §6 매핑표로 한다.
 
 **중복 산출물을 지울 때의 순서** — `07_results/` 안의 PNG 중 상당수는 바이트가 같은데,
 **그 동일성 자체가 결론**인 경우가 있다(host 경로 == GPU 경로, A안 == C안,
@@ -191,8 +176,8 @@ csv.writer(f, lineterminator="\n")
 
 | 항목 | 값 | 측정 조건 | 출처 |
 |---|---|---|---|
-| NPU 상한 (`hailortcli benchmark`) | batch 8에서 **51.7 FPS** | 2026-09-20, PCIe **Gen3** x1 | `07_results/npu_benchmark/gen3/` |
-| 같은 항목, 한 세대 아래 | batch 8에서 **26.1 FPS** | 2026-09-20, PCIe **Gen2** x1 | `07_results/npu_benchmark/gen2/` |
+| NPU 상한 (`hailortcli benchmark`) | batch 8에서 **51.7 FPS** | 2026-09-20, PCIe **Gen3** x1 | `07_results/npu_benchmark/runs/gen3/` |
+| 같은 항목, 한 세대 아래 | batch 8에서 **26.1 FPS** | 2026-09-20, PCIe **Gen2** x1 | `07_results/npu_benchmark/runs/gen2/` |
 | HW HEVC 디코드만 (libavcodec DRM_PRIME) | **398.5 FPS**, CPU 0.23~0.28 ms/frame | 1080p30 | `07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md` §4.1 (**`decode_benchmark/` 아님**) |
 | GPU 전처리 셰이더 (1080p → 640×640) | 2.13 ms (연속 스트림) | V3D 7.1, local 32×8 | `07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md` |
 | 전체 파이프라인 (dmabuf, NHCW, b8/s16) | 51.6 FPS, CPU 약 3.5 ms/frame | 2026-09-20, PCIe **Gen3** x1 | 같은 폴더 `results.csv` |

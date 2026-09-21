@@ -182,7 +182,8 @@ HailoRT는 **실행한 디렉터리(CWD)**에 `hailort.log`를 쓴다.
 |---|---|
 | `01_src/{hailo,tools/hailo}`, `03_models`, `04_data/raw_tensors` | hailo-expert |
 | `01_src/{vulkan,display,testkit,tools/vulkan,tools/display}`, `02_shaders` | vulkan-expert |
-| `01_src/{core,ref,toolkit,decode,isp,tools/isp,tools/decode}`, `CMakeLists.txt`, `cmake/` | cpp-expert |
+| `01_src/{core,toolkit,decode,isp,tools/isp,tools/decode}`, `CMakeLists.txt`, `cmake/` | cpp-expert |
+| `01_src/ref` | 그 원문을 쓰는 셰이더·경로의 전문가 (바꾸면 verify ctest 필수) |
 | `01_src/pipeline` | 바뀌는 단계의 전문가 |
 | `05_tests` | 테스트 대상 도메인의 전문가 + verify 스킬 |
 | `06_tools/bench` | 실행은 measure 스킬, 수정은 측정 대상 도메인의 전문가 |

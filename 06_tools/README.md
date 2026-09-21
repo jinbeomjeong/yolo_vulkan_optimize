@@ -17,11 +17,14 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 | `decode_bench.sh` | 디코드 경로 비교 | `07_results/decode_benchmark/` |
 | `backpressure_bench.sh` | 백프레셔 결함 전후 비교 | `07_results/raw_runner_backpressure/` |
 | `isp_bench.sh` | ISP 전처리 단독 | `07_results/isp_resize/` |
-| `isp_pipeline_bench.sh` | ISP 포함 전체 파이프라인 | `07_results/isp_resize/pipeline/` |
+| `isp_pipeline_bench.sh` | ISP 포함 전체 파이프라인 | `07_results/isp_resize/runs/pipeline/` |
 
 공통 환경변수: `RUNS`(기본 3), `FRAMES`, `ONLY`(설정 id grep), `APPEND=1`, `BIN`, `OUT_DIR`,
 `COOL_C`/`HOT_C`/`COOL_MAX_S`, `BUILD_DIR`(기본 `build`)·`BIN_DIR`(기본 `$BUILD_DIR/bin`)·`PY_HAILO`
 (셋 다 [`lib/common.sh`](bench/lib/common.sh) 한 곳에서 정의), `CHECK_ONLY=1`(바이너리 존재만 확인하고 락·냉각 전에 종료). 측정 규약은 [`.claude/skills/measure`](../.claude/skills/measure/SKILL.md).
+
+`OUT_DIR` 이 이미 있고 비어 있지 않으면 **`FORCE=1` 없이는 에러로 멈춘다**(`guard_out_dir`, 보관 결과 보호 — 기본 `OUT_DIR` 은 모두 보관본이 있으니 새 측정은 새 `OUT_DIR` 을 주거나 `APPEND=1` 이라도 `FORCE=1` 을 함께 준다).
+출력 레이아웃은 [`STRUCTURE.md`](../STRUCTURE.md) §3: 실행 1회 = `raw/<설정>_run<N>/`(`stdout.log` 전문 | `run.log` 발췌 | `hailort.log`), 온도 프로브의 세션 `hailort.log` 는 `raw/_session/`, 1회 덤프는 `samples/`, 회차는 `runs/<회차>/`.
 
 > ⚠ `pipeline_bench.sh` 의 `configs` 형식(`id|mode|layout|batch|slots` 5필드)은 **바꾸지 마라.**
 > 다른 스크립트들이 이걸 대조군 기준으로 쓴다.
@@ -37,7 +40,9 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 
 | 파일 | 하는 일 | 실행 환경 |
 |---|---|---|
-| `check_links.py` | 저장소 모든 `.md` 의 마크다운 링크와 `파일:행` 범위가 실재하는지 검사. 깨진 링크가 있으면 종료 코드 1 | 시스템 python3 |
+| `check_links.py` | 저장소 모든 `.md` 의 마크다운 링크와 `파일:행` 범위가 실재하는지 검사. 깨진 링크가 있으면 종료 코드 1. `--stale STRUCTURE.md` 는 옮겨진 옛 경로가 남았는지 본다 | 시스템 python3 |
+| `check_structure.py` | 폴더 배치 규칙 검사(최상위·코드 계층·include DAG·07_results 레이아웃). 규칙표는 [`structure_rules.toml`](structure_rules.toml), 정본 문서는 [`STRUCTURE.md`](../STRUCTURE.md). 위반이 있으면 종료 코드 1. Write 훅 `placement_guard` 가 이 파일의 `classify_new_path()` 를 쓴다 | 시스템 python3 |
+| `relocate.py` | `STRUCTURE.md` §6 매핑표로 `git mv`(`--apply-moves`)와 참조 재작성(`--apply-refs`)을 한다. 먼저 `--dry-run` | 시스템 python3 |
 | `compare_detections.py` | 두 `detections.jsonl` 비교(IoU 매칭·좌표 오차). 판정 규칙이 [`01_src/ref/detection_match.hpp`](../01_src/ref/detection_match.hpp) 와 **의도적으로 동일**하다 | conda `hailo-yolo` |
 | `gen_glyph_font_8x16.py` | `01_src/ref/glyph_font_8x16.hpp` 생성. **빌드에 관여하지 않는다** — 산출물은 커밋된 헤더이고 이 파일은 그 상수를 어떻게 얻었는지의 재현 기록이다 | 시스템 python3 |
 
