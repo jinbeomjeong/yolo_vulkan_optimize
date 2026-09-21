@@ -29,9 +29,9 @@ yvo_add_tool(yvo_preproc_bench vulkan/preproc_bench.cpp
 #   --probe live|stale    : NPU 독점. HailoRT 가 있을 때만 켜진다.
 # yvo_hailo 라이브러리에 링크해도 **yvo_vulkan 자체의 의존성은 늘지 않는다**
 # (계획서 §5.2 링크 수준 격리 — test_preproc / yvo_preproc_bench 의 링크 그래프가 바뀌지 않는다).
-# yvo_shaders: --probe heapimport 가 쓰는 heap_sum.comp 임베드 헤더 (부록 B 1단계)
+# yvo_shaders_diag: --probe heapimport 가 쓰는 heap_sum.comp 임베드 헤더 (부록 B 1단계)
 yvo_add_tool(yvo_postproc_probe vulkan/postproc_probe.cpp
-  LIBS yvo_vulkan yvo_shaders yvo_toolkit yvo_testkit_postproc
+  LIBS yvo_vulkan yvo_shaders_diag yvo_toolkit yvo_testkit_postproc
   OPTIONAL yvo_hailo=YVO_HAVE_HAILO)
 
 # ── display ────────────────────────────────────────────────────────────────────
@@ -40,7 +40,7 @@ yvo_add_tool(yvo_postproc_probe vulkan/postproc_probe.cpp
 # (소스의 #ifdef 는 문서의 file:line 을 지키려고 남겨 두었다).
 yvo_add_tool(yvo_display_probe display/display_probe.cpp
   REQUIRES yvo_display
-  LIBS yvo_display yvo_shaders yvo_decoder yvo_toolkit yvo_testkit_display
+  LIBS yvo_display yvo_shaders_diag yvo_decoder yvo_toolkit yvo_testkit_display
   DEFINES YVO_HAVE_DECODER=1)
 
 # DisplayPipeline 단독 프로브 (마일스톤 7). yvo_pipeline 을 건드리지 않고 표시 경로만 재현한다:

@@ -20,7 +20,7 @@
 | dma-heap | `/dev/dma_heap/vidbuf_cached` (**`system` 으로의 심볼릭 링크**, 실측) |
 | 할당 크기 | `align_up(hw_frame_size, 16384)`, `fd_flags = O_RDWR｜O_CLOEXEC` |
 | import 경로 | **기존 `01_src/vulkan/dmabuf_import.cpp` 의 `DmaBufImportCache::get(fd, dmabuf_size)` 를 그대로 호출.** 새 import 코드를 쓰지 않았다 |
-| 왕복 셰이더 | `02_shaders/heap_sum.comp`(신규). CPU 가 `mmap(heap_fd)` 로 쓴 패턴(`word[i] = i × 2654435761`)의 바이트 합을 GPU 가 재계산 |
+| 왕복 셰이더 | `02_shaders/diag/heap_sum.comp`(신규). CPU 가 `mmap(heap_fd)` 로 쓴 패턴(`word[i] = i × 2654435761`)의 바이트 합을 GPU 가 재계산 |
 | 증거 | `evidence/p0_heapimport.txt`, ASan 실행 `verification/asan_p0_heapimport.txt`, 환경 `env_bench.txt` |
 
 **주의**: hw_frame_size 6개는 `04_data/raw_tensors/fixtures.json` 에서 읽는다. 상수를 박지 않았다.

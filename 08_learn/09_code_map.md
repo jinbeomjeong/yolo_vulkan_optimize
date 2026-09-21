@@ -16,7 +16,7 @@
 | 대역 | 폴더 | 무엇이 있나 |
 |---|---|---|
 | **코드** | [`01_src/`](../01_src/) | C++ 소스 전부. 하위 폴더는 §9.2 |
-| | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 6개 (`.comp`) |
+| | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 — 본 파이프라인 4개 + `diag/` 진단 전용 2개 (`.comp`) |
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
 | | `04_data/` | 입력 영상 3개와 테스트용 원시 텐서 픽스처 (git에 없음) |
 | **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 테스트 7종 |
@@ -132,9 +132,10 @@ GPU 셰이더는 전부 CPU 기준 구현의 **번역본**이고, 원문은 `01_
 
 ---
 
-## 9.4 셰이더 6개
+## 9.4 셰이더 — 본 4개 + 진단 2개
 
-전부 `02_shaders/` 에 있고 확장자는 `.comp`(컴퓨트 셰이더)다.
+전부 `02_shaders/` 에 있고 확장자는 `.comp`(컴퓨트 셰이더)다. 진단 전용 2개는 `02_shaders/diag/` 에 따로 두고
+(`yvo_shaders_diag`), 도구만 링크한다. 본 4개는 `yvo_shaders` 다.
 
 | 셰이더 | 하는 일 | 파이프라인에서 |
 |---|---|---|
@@ -142,8 +143,8 @@ GPU 셰이더는 전부 CPU 기준 구현의 **번역본**이고, 원문은 `01_
 | [`yolo_decode.comp`](../02_shaders/yolo_decode.comp) | 원시 텐서 → 후보 박스 압축 | ④ 후처리 |
 | [`display_convert.comp`](../02_shaders/display_convert.comp) | SAND128 NV12 → 화면용 RGBA | ⑥ 표시 변환 |
 | [`overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) | 박스·라벨·HUD 그리기 | ⑦ 오버레이 |
-| `display_probe.comp` | 고정 테스트 패턴 | 진단 전용 |
-| `heap_sum.comp` | 바이트 합 리덕션 | 진단 전용 |
+| [`diag/display_probe.comp`](../02_shaders/diag/display_probe.comp) | 고정 테스트 패턴 | 진단 전용 |
+| [`diag/heap_sum.comp`](../02_shaders/diag/heap_sum.comp) | 바이트 합 리덕션 | 진단 전용 |
 
 앞의 4개가 실제 파이프라인에서 돌고, 뒤의 2개는 **"이 경로가 정말 동작하는가"를 가르는 관문**용이다.
 
@@ -176,7 +177,8 @@ cmake -S . -B build -G Ninja && cmake --build build
 | `yvo_toolkit` | 헤더만 (INTERFACE) | 도구·앱 전용 헬퍼. 라이브러리는 링크하지 않는다 |
 | `yvo_testkit_postproc` / `yvo_testkit_display` | 헤더만 (INTERFACE) | 테스트·프로브 공용 검증 하네스 |
 | `yvo_warnings` | 경고 플래그만 | `-Wall -Wextra -Wpedantic` |
-| `yvo_shaders` | 컴파일된 셰이더 헤더 | 링크하면 include 경로가 붙는다 |
+| `yvo_shaders` | 컴파일된 셰이더 헤더 (본 4개) | 링크하면 include 경로가 붙는다 |
+| `yvo_shaders_diag` | 진단 셰이더 헤더 (`diag/` 2개) | 도구만 링크한다 |
 | `yvo_hailo` | NPU | **`yvo_vulkan`에 의존하지 않는다** |
 | `yvo_vulkan` | GPU | |
 | `yvo_display` | 화면 표시 | Wayland 없으면 조용히 빠진다 |
