@@ -1,13 +1,4 @@
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(YVO_FFMPEG REQUIRED IMPORTED_TARGET libavformat libavcodec libavutil)
-pkg_check_modules(YVO_LIBDRM REQUIRED IMPORTED_TARGET libdrm)
-
-# HW HEVC 디코더(DRM_PRIME → DrmFrame)
-add_library(yvo_decoder STATIC ffmpeg_drm_decoder.cpp)
-target_include_directories(yvo_decoder PUBLIC ${PROJECT_SOURCE_DIR}/01_src)
-target_link_libraries(yvo_decoder
-  PUBLIC yvo_common PkgConfig::YVO_FFMPEG PkgConfig::YVO_LIBDRM)
-yvo_target_defaults(yvo_decoder)   # 2026-09-22: -mcpu 가 처음 붙는다(전에는 경고만)
+# yvo_decoder 는 01_src/decode/ 로 옮겼다(2026-09-22).
 
 # 확인 도구: descriptor 덤프, de-SAND 비교, 디코드 성능
 yvo_add_tool(yvo_drm_dump tools/drm_dump.cpp

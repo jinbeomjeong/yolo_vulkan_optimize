@@ -432,7 +432,7 @@ ISP가 SAND128 직접 수용 ──▶ 23% 빠름, 그러나 검출 −2.33%
 
 ### 2. CSI 카메라 입력
 
-디코더가 [`ffmpeg_drm_decoder.cpp:166`](../01_src/pipeline/ffmpeg_drm_decoder.cpp)
+디코더가 [`ffmpeg_drm_decoder.cpp:166`](../01_src/decode/ffmpeg_drm_decoder.cpp)
 에서 **HEVC 파일만** 받는다. 카메라로 가면 사슬 7의 ISP 재검토 조건도 함께 열린다.
 
 ### 3. 워크그룹 최적값의 이유

@@ -19,7 +19,7 @@
 
 #include "common/coco_labels.hpp"
 #include "display/display_pipeline.hpp"
-#include "pipeline/ffmpeg_drm_decoder.hpp"
+#include "decode/ffmpeg_drm_decoder.hpp"
 #include "vulkan/vulkan_context.hpp"
 #include "common/stats.hpp"
 

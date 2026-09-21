@@ -27,7 +27,7 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행�
 - C++: g++ 14.2, CMake 3.31 + Ninja. 빌드는 `cmake -S . -B build -G Ninja && cmake --build build`, 산출물은 `build/`.
 - CMake 의존 (실제 `find_package`·`pkg_check_modules` 호출 기준. 추가하기 전에 `CMakeLists.txt`를 확인할 것):
   - **필수**: `HailoRT`(→ `HailoRT::libhailort`), `Vulkan`(→ `Vulkan::Vulkan`),
-    `PkgConfig` → `libavformat`·`libavcodec`·`libavutil`·`libdrm` (`01_src/pipeline/CMakeLists.txt`)
+    `PkgConfig` → `libavformat`·`libavcodec`·`libavutil`·`libdrm` (`01_src/decode/CMakeLists.txt`)
   - **선택**: `OpenCV`(**REQUIRED 아님** — 없으면 경고만 내고 OpenCV를 쓰는 타깃이 빠진다),
     `wayland-client`+`wayland-protocols`(없으면 표시 경로가 조용히 빠진다), `libpisp`(없으면 `yvo_isp` 전체가 빠진다)
   - **`YVO_BUILD_TESTS`일 때**: `GTest`(→ `GTest::gtest_main`)

@@ -27,7 +27,7 @@ extern "C" {
 }
 
 #include "common/sand.hpp"
-#include "pipeline/ffmpeg_drm_decoder.hpp"
+#include "decode/ffmpeg_drm_decoder.hpp"
 #include "common/tool_util.hpp"
 
 namespace {

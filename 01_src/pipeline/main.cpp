@@ -71,7 +71,7 @@
 #include "common/coco_labels.hpp"
 #include "common/cpu_letterbox.hpp"
 #include "hailo/hailo_runner.hpp"
-#include "pipeline/ffmpeg_drm_decoder.hpp"
+#include "decode/ffmpeg_drm_decoder.hpp"
 #include "pipeline/gpu_postproc_stage.hpp"
 #include "pipeline/infer_stage.hpp"
 #include "vulkan/sand_letterbox.hpp"

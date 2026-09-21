@@ -23,7 +23,7 @@
 #endif
 
 #include "isp/isp_resizer.hpp"
-#include "pipeline/ffmpeg_drm_decoder.hpp"
+#include "decode/ffmpeg_drm_decoder.hpp"
 
 namespace {
 

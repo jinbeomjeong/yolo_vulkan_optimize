@@ -45,7 +45,7 @@
 #include "common/dma_heap_alloc.hpp"
 #include "isp/isp_resizer.hpp"
 #include "isp/nhcw_repack.hpp"
-#include "pipeline/ffmpeg_drm_decoder.hpp"
+#include "decode/ffmpeg_drm_decoder.hpp"
 #include "common/stats.hpp"
 #include "common/tool_util.hpp"
 

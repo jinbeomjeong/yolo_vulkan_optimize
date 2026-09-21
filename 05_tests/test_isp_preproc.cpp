@@ -37,7 +37,7 @@
 #include "common/sand.hpp"
 #include "isp/isp_resizer.hpp"
 #include "isp/nhcw_repack.hpp"
-#include "pipeline/ffmpeg_drm_decoder.hpp"
+#include "decode/ffmpeg_drm_decoder.hpp"
 #include "vulkan/sand_letterbox.hpp"
 #include "vulkan/vulkan_context.hpp"
 

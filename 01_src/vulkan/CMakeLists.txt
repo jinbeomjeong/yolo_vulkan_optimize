@@ -11,12 +11,10 @@ target_link_libraries(yvo_vulkan
   PRIVATE yvo_shaders)
 yvo_target_defaults(yvo_vulkan)
 
-# 성능·검증 도구: 전체 디코드 + GPU 전처리 (디코더가 있을 때만)
-if(EXISTS ${PROJECT_SOURCE_DIR}/01_src/pipeline/CMakeLists.txt)  # yvo_decoder는 01_src/pipeline에서 정의
-  yvo_add_tool(yvo_preproc_bench tools/preproc_bench.cpp
-    LIBS yvo_vulkan yvo_decoder
-    OPTIONAL yvo_opencv=YVO_HAVE_OPENCV)
-endif()
+# 성능·검증 도구: 전체 디코드 + GPU 전처리
+yvo_add_tool(yvo_preproc_bench tools/preproc_bench.cpp
+  LIBS yvo_vulkan yvo_decoder
+  OPTIONAL yvo_opencv=YVO_HAVE_OPENCV)
 
 # 후처리 프로브 (계획서 §6.2 P3).
 #   --probe fixture|sweep : NPU 불필요 (04_data/raw_tensors 픽스처)

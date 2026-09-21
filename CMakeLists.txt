@@ -60,12 +60,7 @@ include(${PROJECT_SOURCE_DIR}/cmake/YvoShaders.cmake)
 
 # 하위 디렉터리. 필수 폴더라 조건 없이 추가한다 — 폴더가 없으면 configure 가 멈춘다
 # (예전 yvo_add_subdirectory_if_exists 는 없는 폴더를 조용히 건너뛰었다).
-add_subdirectory(01_src/common)
-add_subdirectory(01_src/hailo)
-add_subdirectory(01_src/vulkan)
-add_subdirectory(01_src/display)
-add_subdirectory(01_src/isp)
-add_subdirectory(01_src/pipeline)
+add_subdirectory(01_src)
 add_subdirectory(02_shaders)
 
 if(YVO_BUILD_TESTS)

@@ -1,7 +1,7 @@
 # GoogleTest: GPU/NPU 경로를 CPU 기준 구현과 비교
 include(GoogleTest)
 
-if(TARGET yvo_vulkan AND EXISTS ${PROJECT_SOURCE_DIR}/01_src/pipeline/CMakeLists.txt)
+if(TARGET yvo_vulkan)
   add_executable(test_preproc test_preproc.cpp)
   target_link_libraries(test_preproc PRIVATE yvo_vulkan yvo_decoder GTest::gtest_main)
   yvo_target_defaults(test_preproc)

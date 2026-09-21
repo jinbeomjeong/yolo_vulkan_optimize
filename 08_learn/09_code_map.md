@@ -15,7 +15,7 @@
 
 | 대역 | 폴더 | 무엇이 있나 |
 |---|---|---|
-| **코드** | [`01_src/`](../01_src/) | C++ 소스 전부. 아래 6개 하위 폴더 |
+| **코드** | [`01_src/`](../01_src/) | C++ 소스 전부. 하위 폴더는 §9.2 |
 | | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 6개 (`.comp`) |
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
 | | `04_data/` | 입력 영상 3개와 테스트용 원시 텐서 픽스처 (git에 없음) |
@@ -36,11 +36,12 @@
 
 ---
 
-## 9.2 `01_src/` 여섯 폴더의 역할
+## 9.2 `01_src/` 하위 폴더의 역할
 
 ```
 01_src/
 ├── common/     헤더만 있음. CPU 기준 구현과 공용 타입 — 다른 모든 폴더가 여기에 의존
+├── decode/     HW HEVC 디코더 (FFmpeg DRM_PRIME → DrmFrame)
 ├── hailo/      NPU (HailoRT)                    ┐ 이 둘은 서로
 ├── vulkan/     GPU (Vulkan 컴퓨트)              ┘ 링크하지 않는다
 ├── display/    화면 표시 (Wayland + 스왑체인)   — vulkan과 별도 라이브러리
@@ -117,7 +118,7 @@ GPU 셰이더는 전부 CPU 기준 구현의 **번역본**이고, 원문은 `01_
 
 | 관심사 | 읽을 파일 |
 |---|---|
-| 디코드 | [`pipeline/ffmpeg_drm_decoder.cpp`](../01_src/pipeline/ffmpeg_drm_decoder.cpp) |
+| 디코드 | [`decode/ffmpeg_drm_decoder.cpp`](../01_src/decode/ffmpeg_drm_decoder.cpp) |
 | GPU 전처리 | [`vulkan/sand_letterbox.cpp`](../01_src/vulkan/sand_letterbox.cpp) |
 | dma-buf 주고받기 | [`vulkan/dmabuf_import.cpp`](../01_src/vulkan/dmabuf_import.cpp), [`dmabuf_export.cpp`](../01_src/vulkan/dmabuf_export.cpp) |
 | NPU (기준 경로) | [`hailo/hailo_runner.cpp`](../01_src/hailo/hailo_runner.cpp) |

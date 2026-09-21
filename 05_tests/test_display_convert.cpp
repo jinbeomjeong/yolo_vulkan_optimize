@@ -18,7 +18,7 @@
 #include <gtest/gtest.h>
 
 #include "display/display_convert_check.hpp"
-#include "pipeline/ffmpeg_drm_decoder.hpp"
+#include "decode/ffmpeg_drm_decoder.hpp"
 #include "vulkan/vulkan_context.hpp"
 
 #ifndef YVO_TEST_VIDEO

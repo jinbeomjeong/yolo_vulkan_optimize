@@ -49,7 +49,7 @@
 #include "common/cpu_yolov8_decode.hpp"
 #include "common/frame_types.hpp"
 #include "hailo/hailo_runner.hpp"
-#include "pipeline/ffmpeg_drm_decoder.hpp"
+#include "decode/ffmpeg_drm_decoder.hpp"
 #include "pipeline/gpu_postproc_stage.hpp"
 #include "pipeline/infer_stage.hpp"
 #include "vulkan/sand_letterbox.hpp"

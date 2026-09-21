@@ -276,7 +276,7 @@ grim -o HDMI-A-1 shot.png
 
 - **연속 운용 발열** — 측정이 전부 26초짜리다. 몇 시간 도는 운용에서 `b2/s4` 의 30 fps 여유(+16%)가
   클럭 강등을 버티는지 미검증
-- **카메라(CSI) 입력** — 디코더가 HEVC 파일만 받는다(`01_src/pipeline/ffmpeg_drm_decoder.cpp:166`).
+- **카메라(CSI) 입력** — 디코더가 HEVC 파일만 받는다(`01_src/decode/ffmpeg_drm_decoder.cpp:166`).
   카메라로 가면 ISP 전처리 경로 재검토 조건도 함께 열린다
 - **다중 스트림은 불가능하다** — 1080p30 두 개 = 60 FPS 인데 NPU 상한이 51.7 이다.
   확보한 CPU 여유는 이 한계를 풀지 못한다

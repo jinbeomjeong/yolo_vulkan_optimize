@@ -88,17 +88,13 @@ target_link_libraries(yvo_display
 yvo_target_defaults(yvo_display)
 
 # 프로브: 계획서 §6.3 (P4 surface / P5 present / P6 context-regression / P8 convert).
-# P8 은 디코더 SAND dma-buf 를 입력으로 쓰므로 yvo_decoder 가 있을 때만 그 서브커맨드가 켜진다.
+# P8 은 디코더 SAND dma-buf 를 입력으로 쓴다. yvo_decoder 는 항상 있으므로 YVO_HAVE_DECODER 도 항상 1 이다
+# (소스의 #ifdef 는 문서의 file:line 을 지키려고 남겨 두었다).
 yvo_add_tool(yvo_display_probe tools/display_probe.cpp
-  LIBS yvo_display yvo_shaders)
-if(EXISTS ${PROJECT_SOURCE_DIR}/01_src/pipeline/CMakeLists.txt)   # yvo_decoder 는 01_src/pipeline 에서 정의
-  target_link_libraries(yvo_display_probe PRIVATE yvo_decoder)
-  target_compile_definitions(yvo_display_probe PRIVATE YVO_HAVE_DECODER=1)
-endif()
+  LIBS yvo_display yvo_shaders yvo_decoder
+  DEFINES YVO_HAVE_DECODER=1)
 
 # DisplayPipeline 단독 프로브 (마일스톤 7). yvo_pipeline 을 건드리지 않고 표시 경로만 재현한다:
 # display_probe 의 run_convert_display() 수치를 DisplayPipeline 경유로 다시 내는 것이 목적이다.
-if(EXISTS ${PROJECT_SOURCE_DIR}/01_src/pipeline/CMakeLists.txt)
-  yvo_add_tool(yvo_display_pipeline_probe tools/display_pipeline_probe.cpp
-    LIBS yvo_display yvo_decoder)
-endif()
+yvo_add_tool(yvo_display_pipeline_probe tools/display_pipeline_probe.cpp
+  LIBS yvo_display yvo_decoder)

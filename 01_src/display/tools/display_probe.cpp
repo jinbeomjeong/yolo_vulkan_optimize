@@ -59,7 +59,7 @@
 #include "common/cpu_letterbox.hpp"
 #include "common/dmabuf_map.hpp"
 #include "common/sand.hpp"
-#include "pipeline/ffmpeg_drm_decoder.hpp"
+#include "decode/ffmpeg_drm_decoder.hpp"
 #include "display/display_convert_check.hpp"
 #endif
 #include "display_probe_spv.h"

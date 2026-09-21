@@ -26,7 +26,7 @@
 #include "common/cpu_letterbox.hpp"
 #include "common/dmabuf_map.hpp"
 #include "common/sand.hpp"
-#include "pipeline/ffmpeg_drm_decoder.hpp"
+#include "decode/ffmpeg_drm_decoder.hpp"
 #include "vulkan/sand_letterbox.hpp"
 #include "vulkan/vulkan_context.hpp"
 #include "common/stats.hpp"

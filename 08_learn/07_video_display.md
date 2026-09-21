@@ -82,7 +82,7 @@ BCM2712(Pi 5 / CM5)에는 **HEVC(H.265) 디코더 회로만** 들어 있다. **H
 HW 디코더는 1080p를 **약 11배속**으로 푼다. CPU는 거의 놀고 있다.
 
 그래서 이 프로젝트는 **입력을 HEVC로 못 박았다.**
-[`ffmpeg_drm_decoder.cpp`](../01_src/pipeline/ffmpeg_drm_decoder.cpp) 는 아예 코드로 거부한다:
+[`ffmpeg_drm_decoder.cpp`](../01_src/decode/ffmpeg_drm_decoder.cpp) 는 아예 코드로 거부한다:
 
 ```cpp
 if (st->codecpar->codec_id != AV_CODEC_ID_HEVC) return fail("video stream is not HEVC");
@@ -460,7 +460,7 @@ CPU 한 스레드로 전부 복사**하고 있었다. `DMABuf` caps를 강제해
 [06_zerocopy_dmabuf.md](06_zerocopy_dmabuf.md) §6.7의 교훈과 정확히 같은 모양이다.
 
 **해법**: GStreamer를 통하지 않고 **앱 안에 libavcodec DRM_PRIME 디코더를 직접 넣었다**
-([`ffmpeg_drm_decoder.cpp`](../01_src/pipeline/ffmpeg_drm_decoder.cpp)).
+([`ffmpeg_drm_decoder.cpp`](../01_src/decode/ffmpeg_drm_decoder.cpp)).
 디코더가 주는 dma-buf fd를 **그대로 Vulkan으로 import** 하고, SAND 주소 계산을 셰이더가 한다.
 CPU는 그 메모리를 한 바이트도 읽지 않는다.
 

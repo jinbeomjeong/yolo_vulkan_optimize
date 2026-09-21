@@ -156,7 +156,7 @@ python3 06_tools/python/check_links.py
 | 항목 | 왜 아직인가 |
 |---|---|
 | **연속 운용 발열 안정 FPS** ★ 가장 큰 구멍 | 측정이 전부 900프레임 ≈ 26초짜리다. 칩이 90 °C대로 가면 클럭이 400→250 MHz 로 떨어지고 `b2/s4` 의 여유(+16%)가 사라질 수 있다 |
-| **카메라(CSI) 입력 경로** | 디코더가 `01_src/pipeline/ffmpeg_drm_decoder.cpp:166` 에서 **HEVC 파일만** 받는다. 카메라로 가면 ISP 경로 재검토 조건도 함께 열린다 |
+| **카메라(CSI) 입력 경로** | 디코더가 `01_src/decode/ffmpeg_drm_decoder.cpp:166` 에서 **HEVC 파일만** 받는다. 카메라로 가면 ISP 경로 재검토 조건도 함께 열린다 |
 | `--display-sync latest` 정식 측정 | 150프레임 확인 실행만 했다(glass median 28.2 ms) |
 | dma-heap B.2 / 3자 일관성 | 별도 트랙. `--postproc-alloc heap` 은 옵션만 있고 **기본값은 `export`** 다 |
 | 완전 GPU NMS | 하이브리드(GPU 디코드 + CPU 억제)가 3~11 µs 라 서두를 이유가 없다는 판정 |
