@@ -644,8 +644,6 @@ std::uint8_t* YoloPostproc::raw_host_ptr(int slot, int tensor) const {
     return slots_.at(static_cast<std::size_t>(slot)).t[tensor].host;
 }
 
-VkBuffer YoloPostproc::det_buffer(int slot) const { return slots_.at(static_cast<std::size_t>(slot)).det; }
-
 void YoloPostproc::destroy() {
     VkDevice dev = ctx_.device();
     if (dev == VK_NULL_HANDLE) return;

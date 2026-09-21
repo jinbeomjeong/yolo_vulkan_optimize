@@ -35,3 +35,21 @@ md5sum 07_results/pipeline_ffmpeg_vulkan_hailo/samples/frame00000.png
 | `a31486f5f9d5be3d891211757987ae72` | `07_results/isp_resize/detections/isp_A_nhwc_b8/frame01200.png` | `07_results/isp_resize/detections/isp_C_nhcw_b8/frame01200.png` |
 | `cc6e0b943471aa941b954644ad4aa0a1` | `07_results/isp_resize/detections/isp_A_nhwc_b8/frame01500.png` | `07_results/isp_resize/detections/isp_C_nhcw_b8/frame01500.png` |
 | `ce33cad429361a2d6bd6aca5ab8ea794` | `07_results/isp_resize/detections/isp_A_nhwc_b8/frame01800.png` | `07_results/isp_resize/detections/isp_C_nhcw_b8/frame01800.png` |
+
+## detections.jsonl 대조표
+
+2026-09-21 에 바이트 일치 `detections.jsonl` 4개(3.0 MB)도 같은 방식으로 정본만 남겼다.
+정본 1부는 반드시 남아 있으므로 수치의 1차 근거는 잃지 않는다.
+
+| md5 | 남긴 파일 | 지운 파일 (내용 동일) |
+|---|---|---|
+| `867a9d9636c614cddd60cf1fe769d0a4` | `07_results/pipeline_ffmpeg_vulkan_hailo/samples/detections.jsonl` | `07_results/gpu_postproc_e2e/dump_host/detections.jsonl`<br>`07_results/isp_resize/detections/gpu_nhcw_b8/detections.jsonl` |
+| `73f264788404a66638c01ef1dd48520e` | `07_results/isp_resize/detections/isp_A_nhwc_b8/detections.jsonl` | `07_results/isp_resize/detections/isp_A_filter_lanczos3/detections.jsonl`<br>`07_results/isp_resize/detections/isp_C_nhcw_b8/detections.jsonl` |
+
+`dump_gpu/detections.jsonl` 은 크기는 같지만 박스 순서가 달라 바이트 일치가 아니므로 남겼다.
+
+## 기타 파일 대조표
+
+| md5 | 남긴 파일 | 지운 파일 (내용 동일) |
+|---|---|---|
+| `ca32bf6060eb9f1aff87827b8a7777b5` | `07_results/dmaheap_unify/verification/asan_p0_heapimport.txt` | `07_results/dmaheap_unify/verification/asan_stdout_p0.log` |

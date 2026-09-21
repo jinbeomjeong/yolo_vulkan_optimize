@@ -343,7 +343,6 @@ public:
     long map_failed() const { return map_failed_; }
     hailo_status map_status() const { return map_status_; }
     double map_ms() const { return map_ms_; }
-    bool uses_dmabuf() const { return cfg_.out_pool != nullptr && !slots_.empty() && slots_[0]->out[0].fd >= 0; }
 
     // 입력(H2D) dma-buf 통계
     bool uses_in_dmabuf() const { return !slots_.empty() && slots_[0]->in_ref.fd >= 0; }

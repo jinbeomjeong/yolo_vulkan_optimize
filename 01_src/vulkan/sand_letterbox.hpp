@@ -88,7 +88,6 @@ public:
     std::uint8_t* host_ptr(int slot) const { return slots_.at(static_cast<std::size_t>(slot)).mapped; }
     // 2단계용: 출력 메모리를 dma-buf fd로 export (config.export_dmabuf 필요). 새 fd를 반환하며 호출자가 close.
     int export_dmabuf_fd(int slot) const;
-    VkDeviceMemory output_memory(int slot) const { return slots_.at(static_cast<std::size_t>(slot)).out_mem; }
 
     // 마지막 wait된 slot의 셰이더 구간 GPU 시간(ms). 측정 불가면 < 0.
     double last_gpu_ms() const { return last_gpu_ms_; }

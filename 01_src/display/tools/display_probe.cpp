@@ -61,13 +61,11 @@
 #include "common/sand.hpp"
 #include "pipeline/ffmpeg_drm_decoder.hpp"
 #include "display/display_convert_check.hpp"
-#include "display_probe_spv.h"
-#else
-#include "display_probe_spv.h"
 #endif
+#include "display_probe_spv.h"
 
-// 오버레이(다음 단계)가 쓸 공용 헤더. 헤더 안의 static_assert 가 렌더링 규약(행/비트 순서)과 색 공식을
-// **컴파일 시** 검증하므로, OverlayRenderer 가 붙기 전까지 이 프로브를 유일한 컴파일 지점으로 둔다.
+// 오버레이(OverlayRenderer·overlay_reference.hpp)가 쓰는 공용 헤더. 아래 static_assert 가 렌더링 규약
+// (행/비트 순서)과 색 공식을 **컴파일 시** 한 번 더 고정한다.
 #include "common/coco_labels.hpp"
 #include "common/glyph_font_8x16.hpp"
 #include "common/stats.hpp"
@@ -337,8 +335,7 @@ int run_context_regression(const Args& a) {
     std::printf("-- wayland window --\n");
     std::printf("size          : %dx%d%s\n", win.width(), win.height(), a.fullscreen ? " (fullscreen)" : "");
     std::printf("configured    : %s\n", win.configured() ? "yes" : "no");
-    std::printf("globals       : viewporter=%d presentation=%d subcompositor=%d\n", win.has_viewporter(),
-                win.has_presentation(), win.has_subcompositor());
+    std::printf("globals       : subcompositor=%d\n", win.has_subcompositor());
     std::printf("native        : wl_display=%p wl_surface=%p\n", win.native_display(), win.native_surface());
     std::printf("\n");
 

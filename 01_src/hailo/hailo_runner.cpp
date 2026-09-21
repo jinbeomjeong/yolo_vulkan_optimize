@@ -269,10 +269,4 @@ void HailoRunner::map_dmabuf(int fd, std::size_t size) {
     mapped_dmabufs_.emplace_back(fd, size);
 }
 
-void HailoRunner::unmap_dmabuf(int fd, std::size_t size) {
-    check(vdevice_->dma_unmap_dmabuf(fd, size, HAILO_DMA_BUFFER_DIRECTION_H2D), "VDevice::dma_unmap_dmabuf");
-    std::lock_guard<std::mutex> lk(map_mtx_);
-    std::erase_if(mapped_dmabufs_, [&](const auto& p) { return p.first == fd && p.second == size; });
-}
-
 } // namespace yvo

@@ -100,7 +100,6 @@ public:
 
     // 2단계용: dma-buf를 H2D로 미리 매핑(프레임마다 매핑 비용 제거). 소멸자에서 자동 해제.
     void map_dmabuf(int fd, std::size_t size);
-    void unmap_dmabuf(int fd, std::size_t size);
 
     // 모델 정보
     std::size_t input_frame_size() const { return input_frame_size_; }

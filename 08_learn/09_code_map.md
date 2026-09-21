@@ -20,7 +20,7 @@
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
 | | `04_data/` | 입력 영상 3개와 테스트용 원시 텐서 픽스처 (git에 없음) |
 | **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 테스트 7종 |
-| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 7개), `python/`(2개), `probes/`(일회성 소스) |
+| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 7개), `python/`(3개), `probes/`(일회성 소스) |
 | | [`07_results/`](../07_results/) | 실험별 측정 원시 출력과 `summary.md` |
 | **문서** | [`08_learn/`](00_README.md) | 지금 읽고 있는 이 자습 교재 12장 |
 | | [`09_diagrams/`](../09_diagrams/) | yEd로 여는 파이프라인 다이어그램 2장 |
@@ -96,7 +96,7 @@ GPU 전처리를 테스트하는 `test_preproc`을 빌드할 때 Wayland 라이�
 
 > ⚠ **여기 적힌 함정이 실제 함정이다.** 예를 들어 "디코더는 약 13프레임 이상 붙잡으면
 > 에러 없이 조용히 멈춘다"는 문장 때문에 `slots + gpu_depth <= 10` 검사가
-> [`main.cpp:224`](../01_src/pipeline/main.cpp) 에 들어 있다.
+> [`main.cpp:276`](../01_src/pipeline/main.cpp) 에 들어 있다.
 
 ### 3단계 — 수식의 원문을 본다 (2시간)
 

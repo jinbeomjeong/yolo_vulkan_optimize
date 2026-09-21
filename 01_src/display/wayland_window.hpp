@@ -7,20 +7,14 @@
 //   (여기서 처음 VkSurfaceKHR 를 만든다)** 이다. 이 클래스는 wl_display*/wl_surface* 를 void* 로만 내보낸다.
 //
 // 붙이는 것: wl_compositor, xdg_wm_base(+ping/pong), xdg_surface(+ack_configure), xdg_toplevel
-//            (title/app_id/fullscreen/configure/close), 그리고 선택적으로 wp_viewporter,
-//            wp_presentation, wl_subcompositor (아래 "선택 전역" 참고 — 이번 단계에서는 bind 만 한다).
+//            (title/app_id/fullscreen/configure/close), 그리고 선택적으로 wl_subcompositor
+//            (아래 "선택 전역" 참고 — bind 만 한다).
 // 붙이지 않는 것: wl_shm, wl_buffer(스왑체인이 만든다), wl_callback(FIFO 가 스로틀한다),
 //                 wl_seat/키보드(xkbcommon 의존성 회피 — 종료는 xdg_toplevel.close 와 SIGINT 로 충분), EGL.
 //
-// ── 선택 전역 (실측: labwc 가 광고한다. 이번 단계는 bind + 접근자만, 동작은 다음 단계) ────────────────
-//  · wp_viewporter (version 1)
-//      스왑체인 surface caps 의 supportedPresentScaling 이 None 이다 → **컴포지터가 스케일해 주지 않는다.**
-//      wp_viewport_set_source / set_destination 은 확대를 **Pi 5 HVS 하드웨어가 하게** 만드는 유일한 수단이다.
-//      계획서 P8 이 1920x1080 풀해상도 변환을 7 ms 넘게 재면 "1280x720 으로 렌더 + HVS 로 1080p 확대" 폴백에
-//      쓴다. 이때도 박스 좌표계는 원본 1920x1080 기준을 유지하므로 사용자 요구는 지켜진다.
-//  · wp_presentation (version 2)
-//      실제로 화면에 나간 시각을 받는다. VK_KHR_present_wait 와 **목적이 겹치는 수단이므로 둘 중 하나만 쓴다** —
-//      다음 단계에서 present_wait 를 먼저 시도하고(VulkanContext::has_present_wait()), 안 되면 이쪽으로 폴백한다.
+// ── 선택 전역 (실측: labwc 가 광고한다. bind + 접근자만) ─────────────────────────────────────────────
+//  wp_viewporter·wp_presentation 은 bind 하지 않는다(쓰는 곳이 없다). 표시 시각은 VK_KHR_present_wait 로
+//  잰다(vk_swapchain.hpp "지연 계측").
 //  · wl_subcompositor (version 1, core 프로토콜이라 wayland-scanner 스텁이 필요 없다)
 //      계획서 §5.3 안 (III)(디코더 SAND dma-buf 를 surface 에 직접 붙이고 박스를 subsurface 로 올리는 안)의
 //      전제다. 지금은 쓰지 않는다 — 안 (I)(present 시점 변환 + 스왑체인 STORAGE 직접 쓰기)이 1순위다.
@@ -42,9 +36,6 @@ struct wl_surface;
 struct xdg_wm_base;
 struct xdg_surface;
 struct xdg_toplevel;
-struct wp_viewporter;
-struct wp_viewport;
-struct wp_presentation;
 
 namespace yvo::display {
 
@@ -90,14 +81,8 @@ public:
     void* native_display() const { return static_cast<void*>(display_); }
     void* native_surface() const { return static_cast<void*>(surface_); }
 
-    // ── 선택 전역 (자리만 만들어 둔다. 동작은 다음 단계) ──
-    bool has_viewporter() const { return viewporter_ != nullptr; }
-    bool has_presentation() const { return presentation_ != nullptr; }
+    // ── 선택 전역 (자리만 만들어 둔다) ──
     bool has_subcompositor() const { return subcompositor_ != nullptr; }
-    // 창 surface 용 wp_viewport 를 만든다(없으면 nullptr). 소유권은 호출자에게 넘어간다
-    // (wp_viewport_destroy 로 파괴해야 한다). 지금은 아무도 부르지 않는다.
-    wp_viewport* create_viewport();
-    wp_presentation* presentation() const { return presentation_; }
 
     void set_fullscreen(bool on);
     // xdg_toplevel.configure 를 유발하기 위한 빈 commit. 스왑체인이 붙기 전 초기화용이다.
@@ -121,8 +106,6 @@ private:
     wl_surface* surface_ = nullptr;
     xdg_surface* xdg_surface_ = nullptr;
     xdg_toplevel* toplevel_ = nullptr;
-    wp_viewporter* viewporter_ = nullptr;
-    wp_presentation* presentation_ = nullptr;
 
     int width_ = 0, height_ = 0;
     int pending_w_ = 0, pending_h_ = 0;

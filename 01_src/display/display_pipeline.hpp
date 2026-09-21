@@ -155,8 +155,6 @@ public:
     VkExtent2D extent() const { return backend_->extent(); }
     std::uint64_t overlay_overflows() const { return overlay_overflow_; }
 
-    double last_convert_ms() const { return last_convert_ms_; }
-    double last_overlay_ms() const { return last_overlay_ms_; }
     const std::vector<double>& convert_ms() const { return convert_ms_; }
     const std::vector<double>& convert_total_ms() const { return convert_total_ms_; }
     const std::vector<double>& overlay_ms() const { return overlay_ms_; }
@@ -216,11 +214,9 @@ private:
     Clock::time_point pace_t0_{};
     bool pace_started_ = false;
 
-    double last_convert_ms_ = -1.0, last_overlay_ms_ = -1.0;
     std::vector<double> convert_ms_, convert_total_ms_, overlay_ms_, interval_ms_, glass_ms_;
 };
 
-const char* backend_kind_name(DisplayBackendKind k);
 const char* sync_name(DisplaySync s);
 const char* pace_name(DisplayPace p);
 bool parse_backend_kind(const std::string& s, DisplayBackendKind* out);

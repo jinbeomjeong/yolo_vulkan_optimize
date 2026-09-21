@@ -59,8 +59,8 @@ SVG/PNG/PDF 내보내기는 yEd GUI 에서 사람이 한다(File ▸ Export). yE
 | decode call 0.107 ms · NPU median 69.7 / mean 73.9 ms · present 간격 16.955 ms · cpu nms 2.667 µs | [`07_results/display_e2e/raw/disp_source_run1/stdout.log`](../07_results/display_e2e/raw/disp_source_run1/stdout.log) |
 | 운용점 `b2/s4 --postproc gpu` 와 최종 실행 커맨드 | [`07_results/op_point/summary.md`](../07_results/op_point/summary.md) §8 |
 | 스레드·슬롯 규약, 종료 순서 | `01_src/pipeline/main.cpp:1-34` |
-| `slots + gpu_depth <= 10` 강제 | `01_src/pipeline/main.cpp:224` |
-| `--postproc gpu` ⇒ `--mode dmabuf --layout nhcw` 강제 | `01_src/pipeline/main.cpp:397-410` |
+| `slots + gpu_depth <= 10` 강제 | `01_src/pipeline/main.cpp:276` |
+| `--postproc gpu` ⇒ `--mode dmabuf --layout nhcw` 강제 | `01_src/pipeline/main.cpp:413-418` |
 | 스레드 규율(VkQueue 1개 → Vulkan 은 메인 스레드만) | `01_src/pipeline/infer_stage.hpp:9-17` |
 | HailoRT 콜백 람다 / NMS 호출 | `01_src/pipeline/gpu_postproc_stage.cpp:136` / `:182` |
 | `DrmFrame` · `PreprocOutput` · `Detection` 계약 | `01_src/common/frame_types.hpp` |

@@ -89,8 +89,8 @@ CPU 억제: 2.2~2.7 µs/frame. 후보 수 mean 16.81 / max 45 (상한 4096, over
 ## 파일
 - `results_raw.csv` 실행별, `results.csv` 설정별 중앙값
 - `raw/<id>_run<N>/{stdout.log,hailort.log}`
-- `dump_host/`, `dump_gpu/` 전체 1816프레임 detections.jsonl
+- `dump_gpu/` 전체 1816프레임 detections.jsonl. `dump_host/` 것은 `../pipeline_ffmpeg_vulkan_hailo/samples/detections.jsonl` 과 **바이트 일치**라 지웠다(md5 는 `../duplicate_png.md`)
   (양쪽 `frame00000.png` 은 서로 **바이트 일치**였다 — 그 자체가 이 실험의 결론이다. 정본 한 장은 `../pipeline_ffmpeg_vulkan_hailo/samples/frame00000.png`)
-> 2026-09-21 중복 정리: 바이트 일치 PNG 를 정본만 남기고 지웠다. 어느 파일이 어디로 합쳐졌는지는 [`../duplicate_png.md`](../duplicate_png.md) 의 md5 대조표에 있다. **수치의 1차 근거인 `detections.jsonl`·CSV 는 그대로 있다.**
+> 2026-09-21 중복 정리: 바이트 일치 PNG 를 정본만 남기고 지웠다. 어느 파일이 어디로 합쳐졌는지는 [`../duplicate_png.md`](../duplicate_png.md) 의 md5 대조표에 있다. 바이트 일치 `detections.jsonl` 사본도 같은 표에 기록하고 지웠다(정본 1부는 남아 있다).
 
 - `verification/` 검증 레이어·ASan·perf 로그, 정확도 CSV

@@ -276,25 +276,6 @@ std::uint32_t OverlayRenderer::overflow(int slot) const {
     return reinterpret_cast<const OverlayDetBufHeader*>(s.host)->overflow;
 }
 
-int OverlayRenderer::set_frame_raw(int slot, const DetGpu* src, std::size_t n, std::string_view hud) {
-    OverlayDetBufHeader* h = header(slot);
-    const std::size_t cap = static_cast<std::size_t>(cfg_.max_dets);
-    const std::size_t m = std::min(n, cap);
-    // 디스패치 규약: dispatch.x = max(count, 1) — 워크그룹 0 이 HUD 를 추가로 그린다
-    h->dispatch[0] = static_cast<std::uint32_t>(std::max<std::size_t>(m, 1));
-    h->dispatch[1] = 1;
-    h->dispatch[2] = 1;
-    h->count = static_cast<std::uint32_t>(m);
-    h->overflow = n > cap ? 1u : 0u;
-    const std::size_t hn = std::min(hud.size(), kHudMaxBytes);
-    h->text_bytes = static_cast<std::uint32_t>(hn);
-    std::memset(h->text, 0, sizeof(h->text));
-    if (hn) std::memcpy(h->text, hud.data(), hn);
-    if (m) std::memcpy(dets(slot), src, m * sizeof(DetGpu));
-    slots_[static_cast<std::size_t>(slot)].recorded = false;
-    return static_cast<int>(m);
-}
-
 int OverlayRenderer::set_frame(int slot, const std::vector<Detection>& in, std::string_view hud) {
     const std::size_t cap = static_cast<std::size_t>(cfg_.max_dets);
     const std::size_t m = std::min(in.size(), cap);

@@ -65,7 +65,6 @@ endif()
 if(TARGET yvo_stages AND TARGET yvo_decoder)
   add_executable(test_postproc test_postproc.cpp)
   target_link_libraries(test_postproc PRIVATE yvo_stages yvo_decoder GTest::gtest_main yvo_warnings)
-  target_include_directories(test_postproc PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_compile_options(test_postproc PRIVATE -mcpu=cortex-a76)
   target_compile_definitions(test_postproc PRIVATE
     YVO_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/04_data/raw_tensors"

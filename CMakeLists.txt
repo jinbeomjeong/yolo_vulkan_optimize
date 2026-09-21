@@ -6,6 +6,7 @@ project(yolo_vulkan_optimize LANGUAGES CXX)
 #   verify 스킬은 단계마다 전체 빌드를 2번(--clean-first + 별도 build-asan/) 요구하는데, 그때
 #   실제로 바뀐 파일은 1~3개뿐이다. ccache 가 나머지를 0초로 만든다(실측 4.1초 -> 0.0초).
 #   빌드 디렉터리를 분리해도(build-display/ 등) 캐시를 공유하므로 병렬 작업 비용이 2배가 되지 않는다.
+#   C 런처도 건다(wayland-scanner 가 만드는 C 스텁). -DYVO_USE_CCACHE=OFF 로 끌 수 있다.
 option(YVO_USE_CCACHE "ccache 가 있으면 컴파일러 런처로 쓴다" ON)
 if(YVO_USE_CCACHE)
   find_program(YVO_CCACHE ccache)
@@ -13,6 +14,8 @@ if(YVO_USE_CCACHE)
     set(CMAKE_CXX_COMPILER_LAUNCHER ${YVO_CCACHE})
     set(CMAKE_C_COMPILER_LAUNCHER ${YVO_CCACHE})
     message(STATUS "ccache 사용: ${YVO_CCACHE}")
+  else()
+    message(STATUS "ccache 없음 — 캐시 없이 빌드한다")
   endif()
 endif()
 
@@ -28,22 +31,8 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release RelWithDebInfo MinSizeRel)
 endif()
 
-# 컴파일러 캐시 (ccache): 클린 빌드와 build-asan 별도 트리의 재컴파일 비용을 줄인다.
-#   이 저장소는 클린 빌드가 단일코어 환산 약 385초다(파일 하나가 16~43초).
-#   -DYVO_USE_CCACHE=OFF 로 끌 수 있다.
-option(YVO_USE_CCACHE "ccache가 있으면 컴파일러 런처로 쓴다" ON)
-if(YVO_USE_CCACHE AND NOT CMAKE_CXX_COMPILER_LAUNCHER)
-  find_program(YVO_CCACHE_PROGRAM ccache)
-  if(YVO_CCACHE_PROGRAM)
-    set(CMAKE_CXX_COMPILER_LAUNCHER "${YVO_CCACHE_PROGRAM}" CACHE STRING "컴파일러 런처")
-    message(STATUS "ccache 사용: ${YVO_CCACHE_PROGRAM}")
-  else()
-    message(STATUS "ccache 없음 — 캐시 없이 빌드한다")
-  endif()
-endif()
-
 option(YVO_BUILD_TESTS "GoogleTest 기반 테스트 빌드" ON)
-# Google Benchmark 옵션은 제거했다(2026-09-21). 06_bench/ 가 .gitkeep 하나뿐인 빈 폴더인데
+# Google Benchmark 옵션은 제거했다(2026-09-21). 06_tools/bench/(당시 06_bench/) 가 .gitkeep 하나뿐인 빈 폴더인데
 # find_package(benchmark REQUIRED) 가 configure 하드 의존이었다 — 소비자가 0개인 의존이다.
 # 마이크로 벤치가 실제로 필요해지면 05_tests/bench/ 하위로 되살린다.
 

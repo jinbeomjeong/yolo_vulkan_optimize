@@ -20,7 +20,8 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행�
   `04_data/raw_tensors/`는 `PostprocFixture.*` 테스트가 쓰는 NPU 원시 출력 픽스처(5프레임 × 6텐서).
 - `06_tools/`는 **빌드에 들어가지 않는 것**만 둔다. 언어가 아니라 그 기준으로 나눈다 — [`06_tools/README.md`](06_tools/README.md).
 - `07_results/<실험>/` 측정 원시 출력과 `summary.md`. **수치의 정본이다.** 색인은 [`07_results/README.md`](07_results/README.md).
-- 모델·영상·빌드·perf 덤프는 `.gitignore`에 들어 있다. 단 `07_results/**/hailort*.log`는 신뢰성 판정 근거라 추적한다.
+- 모델·영상·빌드·perf 덤프는 `.gitignore`에 들어 있다. 단 `07_results/**/hailort*.log`는 신뢰성 판정 근거라 추적한다
+  (0바이트 로그는 정보가 없어 예외 — 추적하지 않아도 된다).
 
 ## 개발 환경
 - C++: g++ 14.2, CMake 3.31 + Ninja. 빌드는 `cmake -S . -B build -G Ninja && cmake --build build`, 산출물은 `build/`.
@@ -71,4 +72,11 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행�
   → `graphml-expert`(전역). 관리 규약은 `09_diagrams/README.md`에 있다.
   단 다이어그램에 적힌 **수치를 고치는 일**은 측정 문서를 근거로 하는 작업이라 해당 영역 전문 에이전트에 맡긴다.
   "파이프라인 그래프", "노드", "추론 그래프"처럼 **단어만 겹치는** 작업은 `graphml-expert`로 보내지 않는다.
+- 문서·코드 무결성 점검(문서의 링크·`file:line`·심볼·개수·수치가 코드와 `07_results` 정본에 맞는지, 죽은 코드,
+  미인용·중복 결과 파일, `CLAUDE.md`·`.claude` 설정 서술의 정합) → `integrity-auditor`(프로젝트, sonnet).
+  폴더 재배치·대규모 리팩터·코드 삭제 뒤, 측정 결과를 문서에 반영한 뒤, 큰 변경을 커밋하기 전에 **먼저** 부른다.
+  - 이 에이전트는 **기계적 문서 수정**(줄번호·개수·옮겨진 경로)만 직접 한다. 보고된 코드 문제는 위 규칙대로
+    `vulkan-expert`/`hailo-expert`/`cpp-expert`/`python-expert`에, 빌드·테스트 확인은 `verify` 스킬로 넘긴다.
+  - 기능 구현·버그 수정·성능 측정은 이 에이전트에 보내지 않는다. "정리해줘"처럼 삭제까지 원하는 요청도
+    먼저 이 에이전트로 후보를 찾고, 삭제는 사용자 확인 후 담당 에이전트가 한다.
 - 위임 프롬프트에 대상 파일, 목표, 제약, 검증 방법(셰이더 컴파일·검증 레이어·측정 조건)을 포함한다.

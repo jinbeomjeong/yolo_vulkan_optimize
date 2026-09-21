@@ -31,9 +31,7 @@ file(TO_CMAKE_PATH "${YVO_WL_PROTO_DIR}" YVO_WL_PROTO_DIR)
 # wayland-scanner 로 클라이언트 스텁 생성 (yvo_add_shaders() 가 glslc 를 add_custom_command 로 돌리는 것과 같은 패턴).
 # 프로토콜을 추가할 때는 아래 목록에 "<이름>=<xml 상대경로>" 한 줄만 더한다.
 set(yvo_wl_protocols
-  "xdg-shell=stable/xdg-shell/xdg-shell.xml"           # 창 (필수)
-  "viewporter=stable/viewporter/viewporter.xml"        # HVS 하드웨어 확대 (다음 단계)
-  "presentation-time=stable/presentation-time/presentation-time.xml")  # 표시 시각 (present_wait 폴백)
+  "xdg-shell=stable/xdg-shell/xdg-shell.xml")         # 창 (필수)
 
 set(yvo_wl_gen_dir ${CMAKE_CURRENT_BINARY_DIR}/generated)
 file(MAKE_DIRECTORY ${yvo_wl_gen_dir})

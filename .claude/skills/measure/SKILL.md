@@ -163,7 +163,7 @@ batch 4 == batch 8, NHWC == NHCW). 그래서 지우되 근거는 남긴다:
 1. `md5sum` 으로 **바이트 일치를 확인**한다. 하나라도 다르면 건드리지 않는다
 2. md5·남긴 파일·지운 파일을 [`07_results/duplicate_png.md`](../../../07_results/duplicate_png.md) 에 기록한다
 3. **문서에 인용된 파일은 지우지 않는다**(`python3 06_tools/python/check_links.py` 로 확인)
-4. 수치의 1차 근거(`detections.jsonl`, CSV)는 **절대 지우지 않는다.** 이미지는 그것의 시각화다
+4. 수치의 1차 근거(`detections.jsonl`, CSV)는 **정본 1부를 반드시 남긴다.** 바이트 일치 사본만 1~3 순서로 지울 수 있다
 
 **CSV는 LF 줄바꿈으로 쓴다.** 파이썬 `csv.writer`는 기본이 CRLF다. 반드시 지정할 것:
 

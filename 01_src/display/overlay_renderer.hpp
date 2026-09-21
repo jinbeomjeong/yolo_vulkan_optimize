@@ -118,8 +118,6 @@ public:
     // dets 가 max_dets 를 넘으면 앞에서부터 max_dets 개만 쓰고 overflow 를 1 로 세운다.
     // hud 는 128 B 로 잘린다. 반환값 = 실제로 기록한 검출 수.
     int set_frame(int slot, const std::vector<Detection>& dets, std::string_view hud = {});
-    // DetGpu 를 이미 갖고 있는 경로(나중의 GPU NMS 대체 테스트용). dets 는 max_dets 로 잘린다.
-    int set_frame_raw(int slot, const DetGpu* dets, std::size_t n, std::string_view hud = {});
 
     // 같은 커맨드 버퍼에 이어 기록한다. affine 은 make_overlay_affine(src, dst) 결과다.
     void record(int slot, VkCommandBuffer cb, VkImageView dst_view, VkExtent2D dst_extent,

@@ -117,8 +117,6 @@ public:
     const char* name() const override { return "heap"; }
     std::size_t count() const override { return pool_.count(); }
 
-    const std::string& heap_path() const { return pool_.heap(); }
-
 private:
     static yvo::DmaHeapConfig make_cfg(const std::string& heap, std::size_t device_headroom) {
         yvo::DmaHeapConfig c;
@@ -166,17 +164,6 @@ public:
     std::size_t count() const override { return exp_->count(); }
 
     const yvo::vk::VulkanContext& ctx() const { return *ctx_; }
-    // 첫 버퍼의 3종 크기(보고용). count()==0 이면 전부 0.
-    void size_triplet(std::size_t& requested, std::size_t& alloc, std::size_t& dmabuf) const {
-        if (exp_->count() == 0) {
-            requested = alloc = dmabuf = 0;
-            return;
-        }
-        const auto& e = exp_->at(0);
-        requested = e.requested_size;
-        alloc = static_cast<std::size_t>(e.alloc_size);
-        dmabuf = e.dmabuf_size;
-    }
 
 private:
     std::unique_ptr<yvo::vk::VulkanContext> ctx_;

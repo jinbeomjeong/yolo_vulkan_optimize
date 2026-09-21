@@ -11,8 +11,6 @@
 #include <wayland-client.h>
 
 // wayland-scanner 로 생성한 스텁 (01_src/display/CMakeLists.txt 의 yvo_wayland_protocols 타깃)
-#include "presentation-time-client-protocol.h"
-#include "viewporter-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
 
 namespace yvo::display {
@@ -26,8 +24,6 @@ namespace {
 constexpr std::uint32_t kCompositorVersion = 4;
 constexpr std::uint32_t kWmBaseVersion = 1;
 constexpr std::uint32_t kSubcompositorVersion = 1;
-constexpr std::uint32_t kViewporterVersion = 1;
-constexpr std::uint32_t kPresentationVersion = 1;
 
 template <typename T>
 T* bind_global(wl_registry* r, std::uint32_t name, const wl_interface* iface, std::uint32_t advertised,
@@ -52,14 +48,6 @@ void WaylandWindow::on_registry_global(void* data, wl_registry* r, std::uint32_t
         // 안 (III) 의 전제. 지금은 bind 만 한다.
         self->subcompositor_ =
             bind_global<wl_subcompositor>(r, name, &wl_subcompositor_interface, version, kSubcompositorVersion);
-    } else if (std::strcmp(iface, wp_viewporter_interface.name) == 0) {
-        // supportedPresentScaling == None 이라 HVS 확대를 쓰려면 이것뿐이다. 동작은 다음 단계.
-        self->viewporter_ =
-            bind_global<wp_viewporter>(r, name, &wp_viewporter_interface, version, kViewporterVersion);
-    } else if (std::strcmp(iface, wp_presentation_interface.name) == 0) {
-        // present_wait 가 없을 때의 지연 계측 폴백. 동작은 다음 단계.
-        self->presentation_ =
-            bind_global<wp_presentation>(r, name, &wp_presentation_interface, version, kPresentationVersion);
     }
 }
 
@@ -194,8 +182,8 @@ bool WaylandWindow::open(const WaylandWindowOptions& opt) {
     // 첫 configure 로 받은 크기는 "변경"이 아니다 — 스왑체인이 width()/height() 로 만들면 된다.
     size_pending_ = false;
     if (verbose_)
-        std::printf("[wayland] open %dx%d%s (viewporter=%d presentation=%d subcompositor=%d)\n", width_, height_,
-                    opt.fullscreen ? " fullscreen" : "", has_viewporter(), has_presentation(), has_subcompositor());
+        std::printf("[wayland] open %dx%d%s (subcompositor=%d)\n", width_, height_,
+                    opt.fullscreen ? " fullscreen" : "", has_subcompositor());
     return true;
 }
 
@@ -212,14 +200,6 @@ void WaylandWindow::close() {
     if (surface_ != nullptr) {
         wl_surface_destroy(surface_);
         surface_ = nullptr;
-    }
-    if (presentation_ != nullptr) {
-        wp_presentation_destroy(presentation_);
-        presentation_ = nullptr;
-    }
-    if (viewporter_ != nullptr) {
-        wp_viewporter_destroy(viewporter_);
-        viewporter_ = nullptr;
     }
     if (wm_base_ != nullptr) {
         xdg_wm_base_destroy(wm_base_);
@@ -282,11 +262,6 @@ bool WaylandWindow::take_pending_size(int* w, int* h) {
     if (h != nullptr) *h = pending_h_;
     size_pending_ = false;
     return true;
-}
-
-wp_viewport* WaylandWindow::create_viewport() {
-    if (viewporter_ == nullptr || surface_ == nullptr) return nullptr;
-    return wp_viewporter_get_viewport(viewporter_, surface_);
 }
 
 void WaylandWindow::set_fullscreen(bool on) {

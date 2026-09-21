@@ -240,9 +240,6 @@ public:
     std::size_t raw_size(int tensor) const;                    // 텐서 크기 = hw_frame_size
     std::uint8_t* raw_host_ptr(int slot, int tensor) const;    // 영구 매핑(16384 정렬)
 
-    VkBuffer det_buffer(int slot) const;      // 오버레이가 dispatch-indirect 로 읽을 버퍼
-    VkDeviceSize det_buffer_size() const { return det_size_; }
-
     double last_pass1_ms() const { return last_pass1_ms_; }   // 3 디스패치 구간
     double last_total_ms() const { return last_total_ms_; }   // 커맨드 버퍼 전체(배리어 포함)
 

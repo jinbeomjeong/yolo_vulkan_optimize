@@ -58,13 +58,6 @@ private:
 
 } // namespace
 
-const char* backend_kind_name(DisplayBackendKind k) {
-    switch (k) {
-    case DisplayBackendKind::Wayland: return "wayland";
-    case DisplayBackendKind::Offscreen: return "offscreen";
-    default: return "auto";
-    }
-}
 const char* sync_name(DisplaySync s) { return s == DisplaySync::Latest ? "latest" : "matched"; }
 const char* pace_name(DisplayPace p) {
     switch (p) {
@@ -311,17 +304,11 @@ bool DisplayPipeline::show(int slot, const std::vector<Detection>& dets, std::st
 
 void DisplayPipeline::collect(const Pending& p) {
     conv_->finish(p.disp);
-    if (conv_->last_shader_ms() >= 0) {
-        last_convert_ms_ = conv_->last_shader_ms();
-        convert_ms_.push_back(last_convert_ms_);
-    }
+    if (conv_->last_shader_ms() >= 0) convert_ms_.push_back(conv_->last_shader_ms());
     if (conv_->last_total_ms() >= 0) convert_total_ms_.push_back(conv_->last_total_ms());
     if (ov_) {
         ov_->collect(p.disp);
-        if (ov_->last_shader_ms() >= 0) {
-            last_overlay_ms_ = ov_->last_shader_ms();
-            overlay_ms_.push_back(last_overlay_ms_);
-        }
+        if (ov_->last_shader_ms() >= 0) overlay_ms_.push_back(ov_->last_shader_ms());
     }
     if (p.pipe >= 0 && done_cb_) done_cb_(p.pipe);
 }
