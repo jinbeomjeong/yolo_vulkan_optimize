@@ -1,17 +1,17 @@
 #pragma once
-// display_convert.comp(1:1 경로)를 CPU 기준 구현과 **비트 단위로** 대조한다.
+// Compares display_convert.comp (1:1 path) **bit for bit** against the CPU reference implementation.
 //
-// 쓰는 곳: 05_tests/test_display_convert.cpp (ctest 게이트), tools/display/display_probe.cpp (P8).
+// Used by: 05_tests/test_display_convert.cpp (ctest gate), tools/display/display_probe.cpp (P8).
 //
-// 왜 필요한가 (2026-09-21):
-//   BT.709 limited → RGB 계수가 세 벌 있다 — ref/cpu_letterbox.hpp(CPU 기준),
-//   sand_letterbox.comp(전처리), display_convert.comp(표시). 앞의 두 벌은 test_preproc 이
-//   비트 일치를 강제하는데 **표시 쪽 세 번째 벌은 ctest 가 없고 수동 프로브뿐**이었다.
-//   "CPU 기준 구현 + 비트 일치 테스트"가 이 프로젝트의 핵심 검증 장치인데 여기만 빠져 있었다.
-//   판정 로직을 여기 하나에 두고 프로브와 테스트가 같이 쓴다(판정이 두 벌로 갈라지지 않게).
+// Why this is needed (2026-09-21):
+//   There are three copies of the BT.709 limited → RGB coefficients — ref/cpu_letterbox.hpp (CPU reference),
+//   sand_letterbox.comp (preprocessing), display_convert.comp (display). test_preproc enforces bit-exactness
+//   for the first two, but **the third, display-side copy had no ctest, only a manual probe**.
+//   "CPU reference implementation + bit-exact test" is this project's core verification mechanism, and only this spot was missing it.
+//   The judgment logic lives only here and is shared by the probe and the test (so the judgment does not split into two copies).
 //
-// CPU 기준: dma-buf mmap → de-SAND → cpu_letterbox_nv12_bt709(scale = 1, 패딩 없음).
-// 합격 조건: RGB 최대 오차 0 이고 alpha 가 전부 255.
+// CPU reference: dma-buf mmap → de-SAND → cpu_letterbox_nv12_bt709(scale = 1, no padding).
+// Pass condition: max RGB error is 0 and alpha is 255 everywhere.
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
@@ -35,12 +35,12 @@ struct ConvertAccuracy {
     long long diff_px = 0;
     long long total_px = 0;
     int alpha_bad = 0;
-    int first_x = -1, first_y = -1;       // 처음 어긋난 픽셀
+    int first_x = -1, first_y = -1;       // first mismatching pixel
     int gpu_rgb[3]{}, cpu_rgb[3]{};
 };
 
-// f 한 장을 display_convert 1:1 경로로 변환해 CPU 기준과 대조한다.
-// lx, ly: 워크그룹 크기(0 이면 DisplayConvertConfig 기본값).
+// Converts one frame f through the display_convert 1:1 path and compares it against the CPU reference.
+// lx, ly: workgroup size (0 means the DisplayConvertConfig default).
 inline ConvertAccuracy check_display_convert_1to1(yvo::vk::VulkanContext& ctx, const yvo::DrmFrame& f,
                                                   std::uint32_t lx = 0, std::uint32_t ly = 0) {
     ConvertAccuracy r;
@@ -50,7 +50,7 @@ inline ConvertAccuracy check_display_convert_1to1(yvo::vk::VulkanContext& ctx, c
     cc.num_slots = 1;
     if (lx) cc.local_size_x = lx;
     if (ly) cc.local_size_y = ly;
-    cc.uniform_scale = false;  // 1:1 경로를 검증한다
+    cc.uniform_scale = false;  // verify the 1:1 path
     cc.max_dst_w = std::max(w, 1920);
     DisplayConvert conv(ctx, cc);
     OffscreenTarget t(ctx, static_cast<std::uint32_t>(w), static_cast<std::uint32_t>(h), true);
@@ -70,7 +70,7 @@ inline ConvertAccuracy check_display_convert_1to1(yvo::vk::VulkanContext& ctx, c
         if (!my.data() || !muv.data() ||
             !yvo::desand_nv12(my.data(), f.size, muv.data(), f.uv_size, yvo::make_sand_layout(f), y.data(),
                               static_cast<std::size_t>(w), uv.data(), static_cast<std::size_t>(w)))
-            throw std::runtime_error("display_convert check: de-SAND 실패");
+            throw std::runtime_error("display_convert check: de-SAND failed");
     }
     yvo::LetterboxParams lb;
     lb.dst_w = w;

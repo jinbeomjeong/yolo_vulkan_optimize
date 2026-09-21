@@ -16,7 +16,7 @@
 
 #include <linux/media.h>
 
-// libpisp 공개 헤더. 이 타입들은 절대 isp_resizer.hpp로 새어 나가지 않는다(PIMPL).
+// libpisp public headers. These types never leak into isp_resizer.hpp (PIMPL).
 #include "backend/backend.hpp"
 #include "common/logging.hpp"
 #include "common/utils.hpp"
@@ -28,10 +28,10 @@ namespace yvo::isp {
 
 namespace {
 
-constexpr int kSandCol = 128; // SAND128: 열 하나의 폭(픽셀 = 바이트, 8bpp)
+constexpr int kSandCol = 128; // SAND128: width of one column (pixels = bytes, 8bpp)
 
-// libpisp의 boost::log 기본 싱크는 debug까지 전부 stderr로 쏟아낸다.
-// logging_init()이 LIBPISP_LOG_LEVEL(기본 fatal)로 필터를 건다. 프로세스당 한 번만.
+// libpisp's default boost::log sink dumps everything down to debug to stderr.
+// logging_init() applies a filter at LIBPISP_LOG_LEVEL (default fatal). Once per process.
 void init_libpisp_logging() {
     static std::once_flag once;
     std::call_once(once, [] { libpisp::logging_init(); });
@@ -56,9 +56,9 @@ std::string node_name(unsigned int branch) { return "pispbe-output" + std::to_st
 // ---------------------------------------------------------------------------
 
 struct IspResizer::Impl {
-    // 입력 dma-buf 캐시. libpisp::helpers::Buffer는 fd 소유권을 가져가고 소멸 시 close하므로
-    // 디코더 fd를 그대로 넘길 수 없다. dup한 fd로 Buffer를 만들고 디코더 fd 번호로 캐시한다.
-    // (디코더 풀의 fd는 고정이지만 디코더를 다시 열면 번호가 재사용될 수 있어 fstat으로 확인한다.)
+    // Input dma-buf cache. libpisp::helpers::Buffer takes ownership of the fd and closes it on destruction,
+    // so the decoder fd cannot be passed as-is. Build the Buffer from a dup'ed fd and cache it by the decoder fd number.
+    // (Decoder pool fds are fixed, but reopening the decoder can reuse numbers, so verify with fstat.)
     struct InputEntry {
         libpisp::helpers::Buffer buffer;
         dev_t y_dev = 0, uv_dev = 0;
@@ -72,8 +72,8 @@ struct IspResizer::Impl {
 
     IspResizerConfig cfg;
     LetterboxParams lb;
-    int content_w = 0, content_h = 0; // 축소 결과(패딩 제외) 크기
-    int out_w = 0, out_h = 0;         // 출력 버퍼 크기
+    int content_w = 0, content_h = 0; // size of the downscaled result (excluding padding)
+    int out_w = 0, out_h = 0;         // output buffer size
     std::size_t out_bytes = 0;
     std::string variant_name;
     unsigned int hw_revision = 0;
@@ -103,7 +103,7 @@ const libpisp::helpers::Buffer& IspResizer::Impl::input_buffer(const DrmFrame& f
             ++in_hits;
             return e.buffer;
         }
-        in_cache.erase(it); // fd 번호 재사용: 옛 항목 버림
+        in_cache.erase(it); // fd number reused: drop the stale entry
     }
 
     const int y_dup = ::dup(f.fd);
@@ -114,7 +114,7 @@ const libpisp::helpers::Buffer& IspResizer::Impl::input_buffer(const DrmFrame& f
         throw std::runtime_error(std::string("IspResizer: dup(uv_fd) failed: ") + std::strerror(errno));
     }
     InputEntry e;
-    // Buffer는 여기서 fd 소유권을 가져간다(소멸자가 close).
+    // Buffer takes ownership of the fd here (the destructor closes it).
     e.buffer = libpisp::helpers::Buffer(std::array<int, 3> { y_dup, uv_dup, -1 },
                                         std::array<std::size_t, 3> { f.size, f.uv_size, 0 });
     e.y_dev = ys.st_dev;
@@ -160,7 +160,7 @@ IspResizer::IspResizer(const IspResizerConfig& cfg) : impl_(std::make_unique<Imp
         m.lb.pad_x = 0;
         m.lb.pad_y = 0;
     }
-    // libpisp은 offset_x/offset_y의 범위를 검사하지 않는다. 넘치면 조용히 버퍼 밖을 쓴다.
+    // libpisp does not range-check offset_x/offset_y. On overflow it silently writes outside the buffer.
     if (m.lb.pad_x + m.content_w > m.out_w || m.lb.pad_y + m.content_h > m.out_h)
         throw std::invalid_argument("IspResizer: letterbox window " + std::to_string(m.content_w) + "x" +
                                     std::to_string(m.content_h) + " at (" + std::to_string(m.lb.pad_x) + "," +
@@ -168,7 +168,7 @@ IspResizer::IspResizer(const IspResizerConfig& cfg) : impl_(std::make_unique<Imp
                                     std::to_string(m.out_h));
     m.out_bytes = static_cast<std::size_t>(m.out_w) * 3u * static_cast<std::size_t>(m.out_h);
 
-    // --- variant 선택: media 노드의 hw revision과 libpisp variant의 BackEndVersion을 맞춘다 ---
+    // --- variant selection: match the media node's hw revision to the libpisp variant's BackEndVersion ---
     libpisp::helpers::MediaDevice media;
     const media_device_info info = media.DeviceInfo(m.cfg.media_device);
     m.hw_revision = info.hw_revision;
@@ -188,7 +188,7 @@ IspResizer::IspResizer(const IspResizerConfig& cfg) : impl_(std::make_unique<Imp
         throw std::runtime_error("IspResizer: reduction exceeds GetMaxDownscale() = " +
                                  std::to_string(m.be->GetMaxDownscale()));
 
-    // --- 입력 포맷: SAND128 NV12. wallpaper roll 포맷에서 stride는 열 하나의 바이트 수다. ---
+    // --- input format: SAND128 NV12. In the wallpaper roll format, stride is the byte count of one column. ---
     pisp_image_format_config in{};
     in.width = static_cast<std::uint16_t>(m.cfg.src_w);
     in.height = static_cast<std::uint16_t>(m.cfg.coded_height);
@@ -197,20 +197,20 @@ IspResizer::IspResizer(const IspResizerConfig& cfg) : impl_(std::make_unique<Imp
     in.stride2 = kSandCol * m.cfg.uv_sand_col_height;
     m.be->SetInputFormat(in);
 
-    // --- 전역 enable: Bayer 경로 전체 off, RGB는 input/ccm/output만. ---
-    // DOWNSCALE/RESAMPLE 비트는 SetSmartResize가 Prepare에서 채운다. CSC는 RGB→YCbCr이라 쓰지 않는다.
+    // --- global enable: whole Bayer path off, RGB uses only input/ccm/output. ---
+    // The DOWNSCALE/RESAMPLE bits are filled by SetSmartResize in Prepare. CSC is RGB→YCbCr, so it is not used.
     pisp_be_global_config global{};
     global.bayer_enables = 0;
     global.rgb_enables = PISP_BE_RGB_ENABLE_INPUT | PISP_BE_RGB_ENABLE_CCM |
                          static_cast<std::uint32_t>(PISP_BE_RGB_ENABLE_OUTPUT(m.cfg.branch));
     m.be->SetGlobal(global);
 
-    // --- YUV→RGB: RGB 블록 순서상 ycbcr_inverse는 sharpen 뒤라 입력단에 못 쓴다. 맨 앞 ccm에 역행렬을 싣는다. ---
+    // --- YUV→RGB: in the RGB block order ycbcr_inverse comes after sharpen, so it cannot be used at the input. Load the inverse matrix into the leading ccm. ---
     pisp_be_ccm_config ccm{};
     m.be->InitialiseYcbcrInverse(ccm, m.cfg.colour_space);
     m.be->SetCcm(ccm);
 
-    // --- crop: coded_height(1088) 중 유효한 src_h(1080)행만 쓴다 ---
+    // --- crop: use only the valid src_h (1080) rows out of coded_height (1088) ---
     pisp_be_crop_config crop{};
     crop.offset_x = 0;
     crop.offset_y = 0;
@@ -218,7 +218,7 @@ IspResizer::IspResizer(const IspResizerConfig& cfg) : impl_(std::make_unique<Imp
     crop.height = static_cast<std::uint16_t>(m.cfg.src_h);
     m.be->SetCrop(m.cfg.branch, crop);
 
-    // --- 축소: downscale + resample 조합은 SmartResize에 맡긴다 ---
+    // --- downscale: leave the downscale + resample combination to SmartResize ---
     m.be->SetSmartResize(m.cfg.branch, { static_cast<std::uint16_t>(m.content_w),
                                          static_cast<std::uint16_t>(m.content_h) });
     if (!m.cfg.resample_filter.empty()) {
@@ -230,7 +230,7 @@ IspResizer::IspResizer(const IspResizerConfig& cfg) : impl_(std::make_unique<Imp
         m.be->SetResample(m.cfg.branch, resample, extra);
     }
 
-    // --- 출력: packed RGB888. letterbox는 offset_x/offset_y로 만든다. ---
+    // --- output: packed RGB888. letterbox is built with offset_x/offset_y. ---
     pisp_be_output_format_config of{};
     of.image.width = static_cast<std::uint16_t>(m.content_w);
     of.image.height = static_cast<std::uint16_t>(m.content_h);
@@ -244,16 +244,16 @@ IspResizer::IspResizer(const IspResizerConfig& cfg) : impl_(std::make_unique<Imp
 
     m.be->Prepare(&m.tiles);
 
-    // Prepare()는 output_format[i].image를 리샘플 결과 크기(content_w x content_h)로 덮어쓴다.
-    // 하드웨어는 타일 주소로만 쓰므로 height는 V4L2 포맷의 sizeimage 계산에만 쓰인다.
-    // letterbox 버퍼(out_h행) 전체를 노드 포맷에도 알려야 sizeimage가 실제 버퍼 크기와 맞는다.
+    // Prepare() overwrites output_format[i].image with the resample result size (content_w x content_h).
+    // The hardware writes only by tile address, so height is used only for the V4L2 format's sizeimage calculation.
+    // The whole letterbox buffer (out_h rows) must also be told to the node format so sizeimage matches the real buffer size.
     if (m.tiles.config.output_format[m.cfg.branch].image.stride != m.out_w * 3)
         throw std::runtime_error("IspResizer: Prepare() changed the output stride to " +
                                  std::to_string(m.tiles.config.output_format[m.cfg.branch].image.stride));
     m.tiles.config.output_format[m.cfg.branch].image.height = static_cast<std::uint16_t>(m.out_h);
     m.tiles.config.output_format[m.cfg.branch].image.width = static_cast<std::uint16_t>(m.out_w);
 
-    // 타일 쓰기 주소가 실제로 버퍼 안에 있는지 호스트에서 직접 확인한다.
+    // Verify on the host that tile write addresses actually fall inside the buffer.
     for (std::uint32_t t = 0; t < m.tiles.num_tiles; ++t) {
         const pisp_tile& tile = m.tiles.tiles[t];
         const std::size_t x = static_cast<std::size_t>(tile.output_offset_x[m.cfg.branch]) +
@@ -283,7 +283,7 @@ IspResizer::IspResizer(const IspResizerConfig& cfg) : impl_(std::make_unique<Imp
             throw std::runtime_error("IspResizer: output buffer " + std::to_string(s) + " is " +
                                      std::to_string(b.Size()[0]) + " B, need " + std::to_string(m.out_bytes));
         m.out_bufs.push_back(it->second[static_cast<std::size_t>(s)]);
-        // 할당 직후 한 번만 패딩 값으로 채운다. 이후 ISP는 content 영역만 건드린다.
+        // Fill with the padding value only once right after allocation. Afterwards the ISP touches only the content area.
         libpisp::helpers::Buffer::Sync sync(m.out_bufs.back(), libpisp::helpers::Buffer::Sync::Access::Write);
         std::uint8_t* p = sync.Get()[0];
         if (p == nullptr) throw std::runtime_error("IspResizer: failed to mmap output buffer");
@@ -312,7 +312,7 @@ PreprocOutput IspResizer::process(const DrmFrame& frame, int slot) {
                                  std::to_string(frame.uv_sand_col_height) + " do not match the configured " +
                                  std::to_string(m.cfg.sand_col_height) + "/" +
                                  std::to_string(m.cfg.uv_sand_col_height));
-    // pisp_image_format_config에는 plane 시작 오프셋 필드가 없다. 0이 아니면 표현할 방법이 없다.
+    // pisp_image_format_config has no plane start offset field. A nonzero offset cannot be expressed.
     if (frame.y_offset != 0 || frame.uv_offset != 0)
         throw std::runtime_error("IspResizer::process: non-zero plane offsets (y " + std::to_string(frame.y_offset) +
                                  ", uv " + std::to_string(frame.uv_offset) + ") cannot be expressed to the ISP");
@@ -334,7 +334,7 @@ PreprocOutput IspResizer::process(const DrmFrame& frame, int slot) {
     out.host_ptr = m.out_ptrs[static_cast<std::size_t>(slot)];
     out.dmabuf_fd = m.out_bufs[static_cast<std::size_t>(slot)].get().Fd()[0];
     out.size = m.out_bytes;
-    out.layout = TensorLayout::Nhwc; // ISP는 packed RGB만 낸다
+    out.layout = TensorLayout::Nhwc; // the ISP only produces packed RGB
     out.lb = m.lb;
     out.pts = frame.pts;
     out.slot = slot;
@@ -390,7 +390,7 @@ std::string IspResizer::describe() const {
        << (static_cast<std::size_t>(m.cfg.src_w / kSandCol) * kSandCol *
            static_cast<std::size_t>(m.cfg.uv_sand_col_height))
        << "\n";
-    // crop은 pisp_be_config의 레지스터 필드가 아니라 BeConfigExtra에 있어 되읽을 수 없다. 설정값을 적는다.
+    // crop is not a pisp_be_config register field but lives in BeConfigExtra, so it cannot be read back. Print the configured value.
     os << "crop[" << m.cfg.branch << "]            : (0,0) " << m.cfg.src_w << "x" << m.cfg.src_h << "\n";
     os << "downscale          : scale_factor (" << ds.scale_factor_h << "," << ds.scale_factor_v << ") recip ("
        << ds.scale_recip_h << "," << ds.scale_recip_v << ")\n";

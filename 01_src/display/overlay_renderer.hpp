@@ -1,40 +1,40 @@
-// OverlayRenderer: 검출 박스·라벨·HUD 를 표시용 RGBA storage image 에 그리는 컴퓨트 패스
-//                  (02_shaders/overlay_boxes.comp). 계획서 §5.4.
+// OverlayRenderer: compute pass that draws detection boxes, labels, and HUD into the display RGBA storage image
+//                  (02_shaders/overlay_boxes.comp). Plan §5.4.
 //
-// ── 이 클래스가 하지 않는 것 ──────────────────────────────────────────────────────────────────
-// **커맨드 버퍼를 만들지 않고 제출하지 않는다.** `DisplayConvert` 가 만든 **같은 커맨드 버퍼에 이어
-// 기록**한다(표시 트랙 2단계 보고의 권고). 따라서 present 당 submit 은 여전히 1회다.
-//   DisplayConvert::begin(slot) → [스왑체인 acquire 전환] → DisplayConvert::record(...)
-//     → OverlayRenderer::record(slot, cb, ...)        ← 여기
-//     → [스왑체인 present 전환] → DisplayConvert::end_and_submit(...) → finish(slot)
-//     → OverlayRenderer::collect(slot)                 ← 펜스 완료 후 timestamp 읽기
-// 슬롯 번호는 `DisplayConvert` 와 같은 것(= `SwapchainFrame::sync_index`)을 쓴다.
+// ── What this class does not do ──────────────────────────────────────────────────────────────────
+// **It does not create or submit command buffers.** It **continues recording into the same command buffer**
+// created by `DisplayConvert` (recommendation of the display track stage 2 report). So there is still 1 submit per present.
+//   DisplayConvert::begin(slot) → [swapchain acquire transition] → DisplayConvert::record(...)
+//     → OverlayRenderer::record(slot, cb, ...)        ← here
+//     → [swapchain present transition] → DisplayConvert::end_and_submit(...) → finish(slot)
+//     → OverlayRenderer::collect(slot)                 ← read timestamp after the fence completes
+// It uses the same slot number as `DisplayConvert` (= `SwapchainFrame::sync_index`).
 //
-// ── 검출 업로드: staging 도 transfer 큐도 없다 ────────────────────────────────────────────────
-// 검출 80개 x 32 B + 헤더 152 B ≈ 2.7 KB 이고 CPU→GPU **쓰기**는 5 µs 다(계획서 §5.4 —
-// REPORT.md §4.3 이 경고한 10배 페널티는 CPU 가 **읽는** 방향이다). 슬롯별 DetBuf 를
-// `HOST_VISIBLE|HOST_COHERENT|DEVICE_LOCAL` 로 잡아 **영구 매핑**하고 CPU 가 직접 쓴 뒤
-// `HOST_WRITE → SHADER_READ | INDIRECT_COMMAND_READ` 배리어 하나만 넣는다.
+// ── Detection upload: no staging and no transfer queue ────────────────────────────────────────────────
+// 80 detections x 32 B + 152 B header ≈ 2.7 KB, and a CPU→GPU **write** takes 5 µs (plan §5.4 —
+// the 10x penalty warned about in REPORT.md §4.3 is in the direction of the CPU **reading**). The per-slot DetBuf is
+// allocated as `HOST_VISIBLE|HOST_COHERENT|DEVICE_LOCAL` and **persistently mapped**; the CPU writes it directly and
+// only a single `HOST_WRITE → SHADER_READ | INDIRECT_COMMAND_READ` barrier is inserted.
 //
-// ── 두 디스패치 사이 배리어 (필요한가? → 필요하다) ────────────────────────────────────────────
-// `display_convert.comp` 와 `overlay_boxes.comp` 는 **같은 이미지의 같은 픽셀에 쓴다**(WAW).
-// 같은 커맨드 버퍼의 연속한 두 디스패치는 배리어가 없으면 겹쳐 실행될 수 있으므로
-// 오버레이가 변환보다 먼저 그려질 수 있다 → `SHADER_STORAGE_WRITE → SHADER_STORAGE_WRITE`
-// 이미지 메모리 배리어(레이아웃은 GENERAL 유지)를 넣는다. 오버레이는 이미지를 **읽지 않으므로**
-// dstAccessMask 에 READ 는 넣지 않는다(알파 블렌딩을 하지 않는다 — R7 이 알파를 항상 255 로 쓴다).
-// 이 배리어는 `record(..., barrier_prior_compute_write = true)` 가 기록한다. 오버레이를 단독으로
-// (앞선 컴퓨트 쓰기 없이) 돌리는 테스트·프로브는 false 를 준다.
+// ── Barrier between the two dispatches (is it needed? → yes) ────────────────────────────────────────────
+// `display_convert.comp` and `overlay_boxes.comp` **write the same pixels of the same image** (WAW).
+// Two consecutive dispatches in the same command buffer may overlap without a barrier, so
+// the overlay could be drawn before the conversion → insert a `SHADER_STORAGE_WRITE → SHADER_STORAGE_WRITE`
+// image memory barrier (layout stays GENERAL). The overlay **does not read** the image, so
+// READ is not put in dstAccessMask (no alpha blending — R7 always writes alpha as 255).
+// This barrier is recorded by `record(..., barrier_prior_compute_write = true)`. Tests and probes that run the overlay alone
+// (without a preceding compute write) pass false.
 //
-// ── 디스크립터·디스패치 ───────────────────────────────────────────────────────────────────────
-// set 0 = {0: 스왑체인 storage image(rgba8), 1: 슬롯별 DetBuf, 2: 글리프+이름 SSBO}
-//   → V3D 한도(storage buffers 8, storage images 4, descriptorIndexing=false) 안에 넉넉하다.
-// **검출 하나당 워크그룹 하나**이고 `vkCmdDispatchIndirect(cb, det_buf, 0)` 가 DetBuf 맨 앞의
-// uvec3 를 읽는다. CPU 가 채웠을 때도, 나중에 GPU NMS 셰이더가 채웠을 때도 똑같이 동작한다.
+// ── Descriptors and dispatch ───────────────────────────────────────────────────────────────────────
+// set 0 = {0: swapchain storage image(rgba8), 1: per-slot DetBuf, 2: glyph+name SSBO}
+//   → comfortably within V3D limits (storage buffers 8, storage images 4, descriptorIndexing=false).
+// **One workgroup per detection**, and `vkCmdDispatchIndirect(cb, det_buf, 0)` reads the uvec3 at the front
+// of the DetBuf. It works the same whether the CPU filled it or, later, a GPU NMS shader filled it.
 //
-// ── 경계 규약 ─────────────────────────────────────────────────────────────────────────────────
-// `overlay_reference.hpp` 상단 R0~R8 이 유일한 기준이다. 셰이더와 CPU 기준 구현이 같은 규약을 따르고
-// `05_tests/test_overlay.cpp` 가 **max 오차 0** 으로 판정한다. 알려진 허용 한계:
-// **겹치는 박스의 교차 픽셀 색은 순서 의존적이다**(워크그룹 실행 순서가 정의되지 않음).
+// ── Boundary conventions ─────────────────────────────────────────────────────────────────────────────────
+// R0~R8 at the top of `overlay_reference.hpp` are the sole reference. The shader and the CPU reference implementation follow the same conventions and
+// `05_tests/test_overlay.cpp` judges with **max error 0**. Known tolerated limitation:
+// **the color of intersecting pixels of overlapping boxes is order-dependent** (workgroup execution order is undefined).
 #pragma once
 
 #include <cstddef>
@@ -53,29 +53,29 @@ class VulkanContext;
 
 namespace yvo::display {
 
-// 출력 대상. Image = rgba8 storage image(overlay_boxes.spv, 합성 경로). Buffer = packed RGBA8 storage
-// buffer(overlay_boxes_buf.spv, HVS 오버레이 평면용 dma-buf — V3D 가 LINEAR RGBA8 storage image 를 지원하지
-// 않아서다. overlay_plane.hpp 참고). 한 OverlayRenderer 는 한 가지 대상만 쓴다(파이프라인·레이아웃이 다르다).
+// Output target. Image = rgba8 storage image (overlay_boxes.spv, composited path). Buffer = packed RGBA8 storage
+// buffer (overlay_boxes_buf.spv, dma-buf for the HVS overlay plane — because V3D does not support LINEAR RGBA8 storage images;
+// see overlay_plane.hpp). One OverlayRenderer uses only one kind of target (pipeline and layout differ).
 enum class OverlayTarget { Image, Buffer };
 
 struct OverlayConfig {
     OverlayTarget target = OverlayTarget::Image;
-    int num_slots = 3;            // 인플라이트 수 (= 스왑체인 이미지 개수, DisplayConvert 와 같게)
-    int max_dets = 80;            // DetBuf 의 dets[] 상한 (계획서 §5.4)
-    // 워크그룹 크기(spec constant). 검출 하나당 워크그룹 하나이므로 x 만 쓴다.
-    // 실측 근거 (yvo_display_probe --probe overlay --overlay-local N, 1920x1080 오프스크린 연속 200프레임,
-    //   검출 80개 + 라벨(text_scale 2), median ms — 최종 셰이더 기준):
-    //   16: 7.27 | 32: 3.96 | 64: 2.09 | **128: 1.03 ← 채택** | 256: 1.03
-    // "invocation 이 클수록 좋다"는 sand_letterbox 의 규율이 여기서도 128 까지는 그대로 통한다.
-    // 256 은 더 나아지지 않는다(검출당 작업량이 작아 워크그룹이 다 차지 않는다).
+    int num_slots = 3;            // in-flight count (= swapchain image count, same as DisplayConvert)
+    int max_dets = 80;            // upper bound of DetBuf dets[] (plan §5.4)
+    // Workgroup size (spec constant). One workgroup per detection, so only x is used.
+    // Measured basis (yvo_display_probe --probe overlay --overlay-local N, 1920x1080 offscreen, 200 consecutive frames,
+    //   80 detections + labels (text_scale 2), median ms — final shader):
+    //   16: 7.27 | 32: 3.96 | 64: 2.09 | **128: 1.03 ← adopted** | 256: 1.03
+    // The sand_letterbox rule "the more invocations the better" still holds here up to 128.
+    // 256 does not improve further (work per detection is small so the workgroup is not filled).
     std::uint32_t local_size_x = 128;
     bool draw_text = true;        // spec constant kDrawText
-    int text_scale = 2;           // spec constant kTextScale. 1080p 기본 2 (8x16 → 16x32)
-    int line_width = 2;           // push constant. 1080p 기본 2
+    int text_scale = 2;           // spec constant kTextScale. 1080p default 2 (8x16 → 16x32)
+    int line_width = 2;           // push constant. 1080p default 2
     bool timestamps = true;
 };
 
-// 셰이더 push constant (std430, overlay_boxes.comp 의 Params 와 같은 순서·크기)
+// Shader push constant (std430, same order and size as Params in overlay_boxes.comp)
 struct OverlayPush {
     float sx, sy, tx, ty;
     std::int32_t dst_w, dst_h;
@@ -84,19 +84,19 @@ struct OverlayPush {
 };
 static_assert(sizeof(OverlayPush) == 32, "push constant layout must match shader");
 
-// 버퍼 변형(YVO_OVERLAY_BUFFER)의 push constant: OverlayPush 뒤에 두 필드가 붙는다.
+// push constant of the buffer variant (YVO_OVERLAY_BUFFER): two fields are appended after OverlayPush.
 struct OverlayPushBuf {
     OverlayPush base;
-    std::int32_t dst_pitch;       // 행 간격 (픽셀 = uint32 워드 단위)
-    std::uint32_t erase;          // 1 = 같은 픽셀 집합에 (0,0,0,0) 을 쓴다
+    std::int32_t dst_pitch;       // row stride (in pixels = uint32 words)
+    std::uint32_t erase;          // 1 = write (0,0,0,0) over the same pixel set
 };
 static_assert(sizeof(OverlayPushBuf) == 40, "buffer-variant push constant layout must match shader");
 static_assert(offsetof(OverlayPushBuf, dst_pitch) == 32, "dst_pitch offset must match shader");
 
-// DetBuf 헤더 (std430). 셰이더의 DetBuf 앞부분과 바이트 단위로 같아야 한다.
+// DetBuf header (std430). Must match the front of the shader's DetBuf byte for byte.
 //   dispatch 0..11 / count 12 / overflow 16 / text_bytes 20 / text[32] 24..151 / dets[] 152..
 struct OverlayDetBufHeader {
-    std::uint32_t dispatch[3];    // VkDispatchIndirectCommand 호환 (offset 0)
+    std::uint32_t dispatch[3];    // VkDispatchIndirectCommand compatible (offset 0)
     std::uint32_t count;
     std::uint32_t overflow;
     std::uint32_t text_bytes;
@@ -108,7 +108,7 @@ static_assert(offsetof(OverlayDetBufHeader, overflow) == 16, "overflow offset mu
 static_assert(offsetof(OverlayDetBufHeader, text_bytes) == 20, "text_bytes offset must match shader");
 static_assert(offsetof(OverlayDetBufHeader, text) == 24, "text offset must match shader");
 
-// 32 B. 후처리 트랙(계획서 §4.3)의 Rec 과 같은 레이아웃이다.
+// 32 B. Same layout as Rec in the postproc track (plan §4.3).
 struct DetGpu {
     float x1, y1, x2, y2;
     float score;
@@ -116,7 +116,7 @@ struct DetGpu {
     std::uint32_t anchor_key;
     std::uint32_t keep;
 };
-static_assert(sizeof(DetGpu) == 32, "DetGpu must be 32 B (postproc 트랙과 공유하는 계약)");
+static_assert(sizeof(DetGpu) == 32, "DetGpu must be 32 B (contract shared with the postproc track)");
 static_assert(offsetof(DetGpu, score) == 16, "DetGpu.score offset must match shader");
 static_assert(offsetof(DetGpu, class_id) == 20, "DetGpu.class_id offset must match shader");
 static_assert(offsetof(DetGpu, anchor_key) == 24, "DetGpu.anchor_key offset must match shader");
@@ -129,34 +129,34 @@ public:
     OverlayRenderer(const OverlayRenderer&) = delete;
     OverlayRenderer& operator=(const OverlayRenderer&) = delete;
 
-    // 슬롯의 DetBuf 를 호스트에서 직접 채운다(staging 없음). record() 보다 먼저 부른다.
-    // dets 가 max_dets 를 넘으면 앞에서부터 max_dets 개만 쓰고 overflow 를 1 로 세운다.
-    // hud 는 128 B 로 잘린다. 반환값 = 실제로 기록한 검출 수.
+    // Fills the slot's DetBuf directly from the host (no staging). Call before record().
+    // If dets exceeds max_dets, only the first max_dets are written and overflow is set to 1.
+    // hud is truncated to 128 B. Return value = number of detections actually recorded.
     int set_frame(int slot, const std::vector<Detection>& dets, std::string_view hud = {});
 
-    // 같은 커맨드 버퍼에 이어 기록한다. affine 은 make_overlay_affine(src, dst) 결과다.
-    // (target == Image 전용)
+    // Continues recording into the same command buffer. affine is the result of make_overlay_affine(src, dst).
+    // (target == Image only)
     void record(int slot, VkCommandBuffer cb, VkImageView dst_view, VkExtent2D dst_extent,
                 const OverlayAffine& affine, bool barrier_prior_compute_write = true);
 
-    // (target == Buffer 전용) packed RGBA8 버퍼에 그린다. pitch_px = 바이트 pitch / 4.
-    // dst_offset 은 minStorageBufferOffsetAlignment 배수여야 한다. erase = true 면 이 슬롯의 **현재 DetBuf 내용**이
-    // 그릴 픽셀 집합에 (0,0,0,0) 을 쓴다 — 같은 입력·같은 affine 이면 픽셀 집합이 결정적이라 정확히 지워진다.
-    // barrier_prior_compute_write 는 record() 와 같다(앞선 컴퓨트 쓰기와의 WAW 를 끊는 전역 배리어).
+    // (target == Buffer only) Draws into a packed RGBA8 buffer. pitch_px = byte pitch / 4.
+    // dst_offset must be a multiple of minStorageBufferOffsetAlignment. If erase = true, writes (0,0,0,0) over the pixel set that
+    // this slot's **current DetBuf content** would draw — with the same input and same affine the pixel set is deterministic, so it is cleared exactly.
+    // barrier_prior_compute_write is the same as record() (a global barrier that breaks WAW with a preceding compute write).
     void record_buffer(int slot, VkCommandBuffer cb, VkBuffer dst, VkDeviceSize dst_offset, VkDeviceSize dst_range,
                        VkExtent2D dst_extent, std::uint32_t pitch_px, const OverlayAffine& affine,
                        bool barrier_prior_compute_write, bool erase = false);
 
-    // 제출 펜스가 끝난 뒤 호출 — timestamp 를 읽는다(대기하지 않는다).
+    // Call after the submit fence completes — reads the timestamp (does not wait).
     void collect(int slot);
-    // 마지막 collect() 의 오버레이 디스패치 GPU 시간(ms). 측정 불가면 < 0.
+    // GPU time (ms) of the overlay dispatch of the last collect(). < 0 if not measurable.
     double last_shader_ms() const { return last_shader_ms_; }
 
-    std::uint32_t overflow(int slot) const;     // 이 슬롯에서 검출이 상한을 넘었는가
+    std::uint32_t overflow(int slot) const;     // whether detections exceeded the limit in this slot
     int num_slots() const { return static_cast<int>(slots_.size()); }
     int max_dets() const { return cfg_.max_dets; }
     const OverlayConfig& config() const { return cfg_; }
-    // CPU 기준 구현에 넘길 스타일 (GPU spec constant/push constant 와 같은 값)
+    // Style to pass to the CPU reference implementation (same values as GPU spec constant/push constant)
     OverlayStyle style() const;
 
 private:
@@ -164,12 +164,12 @@ private:
         VkDescriptorSet set = VK_NULL_HANDLE;
         VkBuffer buf = VK_NULL_HANDLE;
         VkDeviceMemory mem = VK_NULL_HANDLE;
-        std::uint8_t* host = nullptr;   // 영구 매핑
+        std::uint8_t* host = nullptr;   // persistent mapping
         bool recorded = false;
     };
 
     void create_pipeline();
-    // record/record_buffer 공통: DetBuf 배리어(+선택적 WAW 배리어) → 바인드 → push → timestamp → dispatch
+    // common to record/record_buffer: DetBuf barrier (+ optional WAW barrier) → bind → push → timestamp → dispatch
     void record_dispatch(int slot, VkCommandBuffer cb, const void* push, std::uint32_t push_size,
                          bool barrier_prior_compute_write);
     void create_font_buffer();

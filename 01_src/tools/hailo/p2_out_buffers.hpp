@@ -1,21 +1,21 @@
-// P2(계획서 §6.2) 원시 출력 버퍼 풀 3종: malloc / dma-heap / Vulkan export dma-buf
+// P2 (plan §6.2) three raw output buffer pools: malloc / dma-heap / Vulkan export dma-buf
 //
-// yvo_hailo_raw_probe --alloc {malloc,heap,vulkan} 이 쓰는 헤더다. 프로브 전용이므로 yvo_hailo
-// 라이브러리에 넣지 않는다 — 넣으면 yvo_hailo 가 yvo_vulkan 에 의존하게 되어 계획서 §5.2의
-// **링크 수준 격리**가 깨진다(test_preproc / yvo_preproc_bench 의 링크 그래프가 바뀐다).
+// Header used by yvo_hailo_raw_probe --alloc {malloc,heap,vulkan}. It is probe-only, so it is not put into the yvo_hailo
+// library — doing so would make yvo_hailo depend on yvo_vulkan and break plan §5.2's
+// **link-level isolation** (the link graph of test_preproc / yvo_preproc_bench would change).
 //
-// ── 세 방식의 차이 ────────────────────────────────────────────────────────────────────────────
-//   malloc : std::aligned_alloc(16384). fd 가 없으므로 read_async(void*, size) 경로. 기준값이다.
-//   heap   : /dev/dma_heap/system (DMA_HEAP_IOCTL_ALLOC). **캐시된** CPU 매핑이라 CPU 읽기가 싸다.
-//            대가로 PCIe DMA 쓰기 ↔ CPU 캐시 일관성을 DMA_BUF_IOCTL_SYNC 로 직접 관리해야 한다.
-//   vulkan : VulkanContext + DmaBufExporter. V3D 메모리라 셰이더가 직접 읽을 수 있다(계획서 §4.2 채택안).
-//            V3D 메모리 타입이 DEVICE_LOCAL|HOST_VISIBLE|HOST_COHERENT 하나뿐이라 HOST_CACHED 가 없다
-//            → **CPU 읽기가 비싸다**(§2). 그래서 sync ioctl 은 필요 없지만 1.22 MB 전체 CPU 읽기는 느리다.
+// ── Differences among the three ───────────────────────────────────────────────────────────────
+//   malloc : std::aligned_alloc(16384). No fd, so the read_async(void*, size) path. This is the baseline.
+//   heap   : /dev/dma_heap/system (DMA_HEAP_IOCTL_ALLOC). **Cached** CPU mapping, so CPU reads are cheap.
+//            In exchange, PCIe DMA write ↔ CPU cache coherency must be managed manually with DMA_BUF_IOCTL_SYNC.
+//   vulkan : VulkanContext + DmaBufExporter. V3D memory, so shaders can read it directly (plan §4.2 adopted option).
+//            V3D has only one memory type, DEVICE_LOCAL|HOST_VISIBLE|HOST_COHERENT, with no HOST_CACHED
+//            → **CPU reads are expensive** (§2). So no sync ioctl is needed, but a full 1.22 MB CPU read is slow.
 //
-// ── 크기 계약 ─────────────────────────────────────────────────────────────────────────────────
-// HailoRT read_async 는 16384 B 정렬을 요구한다(부록 A.4). 그래서 heap·vulkan 모두
-// align_up(hw_frame_size, 16384) 를 요청한다 → **dma-buf 실제 크기 > hw_frame_size** 가 되고,
-// dma_map_dmabuf / read_async 에 어느 크기를 넘길지가 불명확해진다. 그 4조합을 프로브가 판정한다.
+// ── Size contract ─────────────────────────────────────────────────────────────────────────────
+// HailoRT read_async requires 16384 B alignment (appendix A.4). So both heap and vulkan
+// request align_up(hw_frame_size, 16384) → **actual dma-buf size > hw_frame_size**, and
+// it becomes unclear which size to pass to dma_map_dmabuf / read_async. The probe judges those 4 combinations.
 #pragma once
 
 #include <cerrno>
@@ -35,21 +35,21 @@
 
 namespace yvo::p2 {
 
-using yvo::kHailoAsyncAlign;  // 정의는 core/hailo_align.hpp 하나뿐이다
+using yvo::kHailoAsyncAlign;  // Defined only in core/hailo_align.hpp
 
 inline std::size_t align_up(std::size_t v, std::size_t a) { return a <= 1 ? v : (v + a - 1) / a * a; }
 
-// 버퍼 하나를 가리키는 값 타입. 수명은 풀이 쥔다.
+// Value type pointing to one buffer. The pool holds its lifetime.
 struct OutBufRef {
-    std::uint8_t* ptr = nullptr;    // CPU 읽기 가능한 시작 주소 (16384 정렬)
-    int fd = -1;                    // dma-buf fd. malloc 모드는 -1
-    std::size_t dmabuf_size = 0;    // lseek 로 실측한 dma-buf 크기. fd < 0 이면 0
-    bool needs_sync = false;        // true 면 CPU 읽기 전후로 DMA_BUF_IOCTL_SYNC 가 필요하다(heap)
+    std::uint8_t* ptr = nullptr;    // CPU-readable start address (16384-aligned)
+    int fd = -1;                    // dma-buf fd. -1 in malloc mode
+    std::size_t dmabuf_size = 0;    // dma-buf size measured with lseek. 0 if fd < 0
+    bool needs_sync = false;        // If true, DMA_BUF_IOCTL_SYNC is needed before/after CPU reads (heap)
 };
 
-// CPU 읽기 구간을 여는/닫는다. heap 에서만 실제 ioctl 이 나간다.
-// 실제 동작은 core/dma_heap_alloc.hpp 의 dma_sync_* 에 위임한다(부록 B.11 일원화).
-// **strict=true** 다 — 기존 구현은 반환값을 버렸다(부록 B.10 R5).
+// Opens/closes a CPU read section. The ioctl is actually issued only for heap.
+// The actual work is delegated to dma_sync_* in core/dma_heap_alloc.hpp (appendix B.11 unification).
+// **strict=true** — the previous implementation discarded the return value (appendix B.10 R5).
 inline void sync_cpu_read_begin(const OutBufRef& b) {
     if (!b.needs_sync || b.fd < 0) return;
     yvo::dma_sync_begin(b.fd, yvo::DmaSyncDir::Read, /*strict=*/true);
@@ -62,10 +62,10 @@ inline void sync_cpu_read_end(const OutBufRef& b) {
 class OutBufPool {
 public:
     virtual ~OutBufPool() = default;
-    // hw_frame_size 바이트를 담을 버퍼를 하나 더 할당해 돌려준다. 실패하면 예외.
+    // Allocates one more buffer able to hold hw_frame_size bytes and returns it. Throws on failure.
     virtual OutBufRef acquire(std::size_t hw_frame_size) = 0;
     virtual const char* name() const = 0;
-    // 지금까지 할당한 버퍼 수
+    // Number of buffers allocated so far
     virtual std::size_t count() const = 0;
 };
 
@@ -89,16 +89,16 @@ private:
     std::vector<std::shared_ptr<std::uint8_t>> bufs_;
 };
 
-// ── /dev/dma_heap (= vidbuf_cached → system 심볼릭 링크) ─────────────────────────────────────
-// 장치 노드는 video 그룹 권한이고 사용자 pi 는 video 그룹이다(실측).
+// ── /dev/dma_heap (= vidbuf_cached → system symlink) ─────────────────────────────────────────
+// The device node has video-group permissions and user pi is in the video group (measured).
 //
-// **`yvo::DmaHeapPool`(core/dma_heap_alloc.hpp) 위의 얇은 어댑터다**(부록 B.11 일원화).
-// 직접 구현했던 것과 달라진 점 셋:
-//   · `memset` 이 **WRITE sync 로 감싸진다** — 부록 B.6(c) 의 결함이 여기서 자동으로 고쳐진다
-//   · 16384 정렬이 안 맞아도 **throw 하지 않는다** — 예약 후 MAP_FIXED 재매핑으로 맞춘다
-//   · `DMA_HEAP_IOCTL_ALLOC` / `DMA_BUF_IOCTL_SYNC` 반환값을 전부 검사한다(B.10 R5)
-// `device_headroom` 은 0 이다 — 이 풀의 버퍼는 HailoRT 로만 가고 Vulkan 에 import 하지 않는다.
-// (import 하는 경로는 헤드룸을 질의해 넣어야 한다 — 부록 B.12, vulkan/vk_storage_headroom.hpp)
+// **A thin adapter over `yvo::DmaHeapPool` (core/dma_heap_alloc.hpp)** (appendix B.11 unification).
+// Three differences from the former hand-written implementation:
+//   · `memset` is **wrapped in a WRITE sync** — the defect in appendix B.6(c) is fixed automatically here
+//   · A 16384 misalignment **does not throw** — it is fixed by reserving and remapping with MAP_FIXED
+//   · All return values of `DMA_HEAP_IOCTL_ALLOC` / `DMA_BUF_IOCTL_SYNC` are checked (B.10 R5)
+// `device_headroom` is 0 — buffers from this pool go only to HailoRT and are not imported into Vulkan.
+// (Paths that import must query the headroom and add it — appendix B.12, vulkan/vk_storage_headroom.hpp)
 class HeapOutPool final : public OutBufPool {
 public:
     explicit HeapOutPool(const std::string& heap = "/dev/dma_heap/system", std::size_t device_headroom = 0)
@@ -109,7 +109,7 @@ public:
         const yvo::DmaHeapBuf& b = pool_.at(i);
         OutBufRef r;
         r.ptr = b.ptr;
-        r.fd = b.fd;              // 소유권은 DmaHeapPool 에 있다. HailoRT 에는 이 fd 를 그대로 넘긴다.
+        r.fd = b.fd;              // Ownership stays with DmaHeapPool. This fd is passed to HailoRT as is.
         r.dmabuf_size = b.dmabuf_size;
         r.needs_sync = true;
         return r;
@@ -132,8 +132,8 @@ private:
     yvo::DmaHeapPool pool_;
 };
 
-// ── Vulkan export dma-buf (계획서 §4.2 채택안) ────────────────────────────────────────────────
-// VulkanContext 는 present=off 로 만든다(표시와 무관하고, off 면 확장 목록이 오늘과 같다 — §5.2).
+// ── Vulkan export dma-buf (plan §4.2 adopted option) ──────────────────────────────────────────
+// VulkanContext is created with present=off (unrelated to display; with off the extension list is the same as today — §5.2).
 class VulkanOutPool final : public OutBufPool {
 public:
     VulkanOutPool(bool verbose = false) {
@@ -142,7 +142,7 @@ public:
         co.enable_present = false;
         ctx_ = std::make_unique<yvo::vk::VulkanContext>(co);
         yvo::vk::DmaBufExporterConfig ec;
-        ec.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;   // 다음 단계에서 yolo_decode.comp 가 읽는다
+        ec.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;   // Read by yolo_decode.comp in the next stage
         ec.align = kHailoAsyncAlign;
         ec.map = true;
         ec.verbose = verbose;
@@ -155,7 +155,7 @@ public:
         std::memset(e.aligned_host_ptr(), 0, hw_frame_size);
         OutBufRef r;
         r.ptr = e.aligned_host_ptr();
-        r.fd = e.fd;             // 소유권은 DmaBufExporter 에 있다. HailoRT 에는 이 fd 를 그대로 넘긴다.
+        r.fd = e.fd;             // Ownership stays with DmaBufExporter. This fd is passed to HailoRT as is.
         r.dmabuf_size = e.dmabuf_size;
         r.needs_sync = false;    // HOST_COHERENT
         return r;

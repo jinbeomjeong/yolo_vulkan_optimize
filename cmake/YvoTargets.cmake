@@ -1,20 +1,20 @@
-# 공용 타깃 설정: 경고·CPU 플래그·OpenCV·도구 등록 헬퍼.
-# 루트 CMakeLists.txt 가 find_package(OpenCV) **뒤에** include 한다(yvo_opencv 가 OpenCV_FOUND 를 본다).
+# Shared target settings: warnings, CPU flags, OpenCV, tool registration helper.
+# The root CMakeLists.txt includes this **after** find_package(OpenCV) (yvo_opencv checks OpenCV_FOUND).
 #
-# 왜 한 곳에 모았나 (2026-09-22):
-#   -mcpu=cortex-a76 이 target_compile_options 로 20번 반복돼 있었고, yvo_decoder·yvo_drm_dump 에는 빠져 있었다.
-#   OpenCV 링크·include·YVO_HAVE_OPENCV 3줄 블록도 타깃마다 복제돼 있었다.
+# Why consolidate in one place (2026-09-22):
+#   -mcpu=cortex-a76 was repeated 20 times via target_compile_options, and was missing from yvo_decoder and yvo_drm_dump.
+#   The 3-line OpenCV link/include/YVO_HAVE_OPENCV block was also duplicated per target.
 
-# ── 경고 ─────────────────────────────────────────────────────────────────────
-# 각 타깃에서 target_link_libraries(... PRIVATE yvo_warnings)로 쓴다(yvo_target_defaults 가 붙여 준다).
+# ── Warnings ─────────────────────────────────────────────────────────────────────
+# Each target uses it via target_link_libraries(... PRIVATE yvo_warnings) (yvo_target_defaults attaches it).
 add_library(yvo_warnings INTERFACE)
 target_compile_options(yvo_warnings INTERFACE -Wall -Wextra -Wpedantic)
 
-# ── CPU 플래그 ───────────────────────────────────────────────────────────────
-# Pi 5 = Cortex-A76. 다른 보드에서 빌드할 때는 -DYVO_CPU_FLAGS=-mcpu=native 처럼 바꾼다.
-set(YVO_CPU_FLAGS "-mcpu=cortex-a76" CACHE STRING "C++ 타깃에 붙는 CPU 튜닝 플래그 (세미콜론/공백 구분)")
+# ── CPU flags ───────────────────────────────────────────────────────────────
+# Pi 5 = Cortex-A76. When building on another board, change it like -DYVO_CPU_FLAGS=-mcpu=native.
+set(YVO_CPU_FLAGS "-mcpu=cortex-a76" CACHE STRING "CPU tuning flags added to C++ targets (semicolon/space separated)")
 
-# yvo_target_defaults(<target>): 경고(yvo_warnings) + YVO_CPU_FLAGS 를 PRIVATE 로 붙인다.
+# yvo_target_defaults(<target>): attaches warnings (yvo_warnings) + YVO_CPU_FLAGS as PRIVATE.
 function(yvo_target_defaults tgt)
   separate_arguments(_yvo_cpu_flags UNIX_COMMAND "${YVO_CPU_FLAGS}")
   target_link_libraries(${tgt} PRIVATE yvo_warnings)
@@ -22,26 +22,26 @@ function(yvo_target_defaults tgt)
 endfunction()
 
 # ── OpenCV ───────────────────────────────────────────────────────────────────
-# OpenCV 가 있을 때만 정의된다 → 쓰는 쪽은 if(TARGET yvo_opencv) 로 분기한다.
-# YVO_HAVE_OPENCV 는 여기서 정의하지 않는다: OpenCV 를 선택적으로 쓰는 타깃만 그 매크로를 받는다
-# (필수로 쓰는 타깃에 붙이면 tool_image.hpp 의 #ifdef 경로가 바뀌어 코드가 달라진다).
+# Defined only when OpenCV is present → consumers branch with if(TARGET yvo_opencv).
+# YVO_HAVE_OPENCV is not defined here: only targets that use OpenCV optionally receive that macro
+# (attaching it to targets that require OpenCV would change the #ifdef path in tool_image.hpp and thus the code).
 if(OpenCV_FOUND)
   add_library(yvo_opencv INTERFACE)
   target_link_libraries(yvo_opencv INTERFACE ${OpenCV_LIBS})
   target_include_directories(yvo_opencv INTERFACE ${OpenCV_INCLUDE_DIRS})
 endif()
 
-# ── 자산 경로 ─────────────────────────────────────────────────────────────────
-# 도구·앱·테스트의 기본 입력·출력 경로를 **절대 경로 컴파일 정의**로 준다(2026-09-22).
-# 전에는 04_data/videos/video_h265.mp4 같은 CWD 기준 문자열 리터럴이 14곳에 있어서 저장소 루트에서 실행해야만 동작했다.
-#   YVO_REPO_ROOT      저장소 루트(= PROJECT_SOURCE_DIR). 도구 기본 출력은 YVO_REPO_ROOT "/build/out/<도구>"
-#   YVO_DEFAULT_HEF    기본 모델
-#   YVO_DEFAULT_VIDEO  기본 입력 영상
-#   YVO_FIXTURE_DIR    GPU 후처리 픽스처(원시 텐서) 폴더
-# **라이브러리는 링크하지 않는다** — 라이브러리는 자산 경로를 모르고 호출자가 넘긴다(예: HailoRunnerConfig::hef_path).
-set(YVO_DEFAULT_HEF "${PROJECT_SOURCE_DIR}/03_models/yolov11m.hef" CACHE FILEPATH "도구·앱·테스트의 기본 HEF")
-set(YVO_DEFAULT_VIDEO "${PROJECT_SOURCE_DIR}/04_data/videos/video_h265.mp4" CACHE FILEPATH "도구·앱·테스트의 기본 입력 영상")
-set(YVO_FIXTURE_DIR "${PROJECT_SOURCE_DIR}/04_data/raw_tensors" CACHE PATH "GPU 후처리 픽스처(원시 텐서) 폴더")
+# ── Asset paths ─────────────────────────────────────────────────────────────────
+# Gives tools/apps/tests their default input/output paths as **absolute-path compile definitions** (2026-09-22).
+# Previously CWD-relative string literals like 04_data/videos/video_h265.mp4 existed in 14 places, so they only worked when run from the repo root.
+#   YVO_REPO_ROOT      repository root (= PROJECT_SOURCE_DIR). Default tool output is YVO_REPO_ROOT "/build/out/<tool>"
+#   YVO_DEFAULT_HEF    default model
+#   YVO_DEFAULT_VIDEO  default input video
+#   YVO_FIXTURE_DIR    GPU postprocessing fixture (raw tensor) folder
+# **Libraries do not link it** — libraries do not know asset paths; the caller passes them (e.g. HailoRunnerConfig::hef_path).
+set(YVO_DEFAULT_HEF "${PROJECT_SOURCE_DIR}/03_models/yolov11m.hef" CACHE FILEPATH "Default HEF for tools/apps/tests")
+set(YVO_DEFAULT_VIDEO "${PROJECT_SOURCE_DIR}/04_data/videos/video_h265.mp4" CACHE FILEPATH "Default input video for tools/apps/tests")
+set(YVO_FIXTURE_DIR "${PROJECT_SOURCE_DIR}/04_data/raw_tensors" CACHE PATH "GPU postprocessing fixture (raw tensor) folder")
 add_library(yvo_assets INTERFACE)
 target_compile_definitions(yvo_assets INTERFACE
   YVO_REPO_ROOT="${PROJECT_SOURCE_DIR}"
@@ -49,19 +49,19 @@ target_compile_definitions(yvo_assets INTERFACE
   YVO_DEFAULT_VIDEO="${YVO_DEFAULT_VIDEO}"
   YVO_FIXTURE_DIR="${YVO_FIXTURE_DIR}")
 
-# ── 도구 등록 ─────────────────────────────────────────────────────────────────
+# ── Tool registration ─────────────────────────────────────────────────────────────────
 # yvo_add_tool(<name> <src>
-#   [REQUIRES <target>...]        이 중 하나라도 없으면 도구를 만들지 않는다(STATUS 메시지만)
-#   [LIBS <lib>...]               PRIVATE 링크(순서 유지)
-#   [DEFINES <def>...]            PRIVATE 컴파일 정의
-#   [OPTIONAL <target>=<MACRO>...] 타깃이 있으면 링크하고 <MACRO>=1 을 정의한다(LIBS 뒤에 링크)
+#   [REQUIRES <target>...]        if any of these is missing, the tool is not built (STATUS message only)
+#   [LIBS <lib>...]               PRIVATE link (order preserved)
+#   [DEFINES <def>...]            PRIVATE compile definitions
+#   [OPTIONAL <target>=<MACRO>...] if the target exists, link it and define <MACRO>=1 (linked after LIBS)
 # )
-# 모든 도구에 yvo_target_defaults 와 yvo_assets 가 붙는다.
+# Every tool gets yvo_target_defaults and yvo_assets.
 function(yvo_add_tool name src)
   cmake_parse_arguments(PARSE_ARGV 2 T "" "" "REQUIRES;LIBS;DEFINES;OPTIONAL")
   foreach(req IN LISTS T_REQUIRES)
     if(NOT TARGET ${req})
-      message(STATUS "${name}: ${req} 없음 — 건너뛴다")
+      message(STATUS "${name}: ${req} not found — skipping")
       return()
     endif()
   endforeach()

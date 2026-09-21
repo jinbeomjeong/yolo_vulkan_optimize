@@ -29,10 +29,10 @@ void rgb_packed_to_nhcw_scalar(const std::uint8_t* src, int w, int h, std::uint8
     yvo::rgb_packed_to_nhcw(src, w, h, dst);
 }
 
-// vld3q_u8이 16픽셀치 RGBRGB...를 R/G/B 레지스터 3개로 디인터리브한다. 행마다 R·G·B가
-// 연속 구간이므로 그대로 vst1q_u8 3번이면 끝이다. 640 = 40 × 16이라 1080p→640 경로에는 꼬리가 없다.
+// vld3q_u8 deinterleaves 16 pixels of RGBRGB... into 3 registers R/G/B. Since R, G, B are
+// contiguous runs per row, 3 vst1q_u8 stores finish the job. 640 = 40 × 16, so the 1080p→640 path has no tail.
 void rgb_packed_to_nhcw_neon(const std::uint8_t* src, int w, int h, std::uint8_t* dst) {
-    const int vec = w & ~15; // 16의 배수까지
+    const int vec = w & ~15; // up to a multiple of 16
     for (int y = 0; y < h; ++y) {
         const std::uint8_t* row = src + static_cast<std::size_t>(y) * w * 3;
         std::uint8_t* r = dst + static_cast<std::size_t>(y) * 3 * w;
@@ -45,7 +45,7 @@ void rgb_packed_to_nhcw_neon(const std::uint8_t* src, int w, int h, std::uint8_t
             vst1q_u8(g + x, v.val[1]);
             vst1q_u8(b + x, v.val[2]);
         }
-        for (; x < w; ++x) { // 꼬리 (w가 16의 배수가 아닐 때만)
+        for (; x < w; ++x) { // tail (only when w is not a multiple of 16)
             r[x] = row[x * 3 + 0];
             g[x] = row[x * 3 + 1];
             b[x] = row[x * 3 + 2];

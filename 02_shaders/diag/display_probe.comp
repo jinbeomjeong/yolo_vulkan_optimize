@@ -1,15 +1,15 @@
 #version 450
-// P5(--probe present) 전용 테스트 패턴. **컴퓨트가 스왑체인 storage image 에 직접 쓴다.**
+// Test pattern dedicated to P5 (--probe present). **The compute shader writes directly to the swapchain storage image.**
 //
-// 목적은 성능이 아니라 "정말 화면에 나왔는가"를 grim -o HDMI-A-1 로 **사람 눈 없이** 판정하는 것이다.
-// 따라서 좌표와 기대 RGB 가 고정이어야 하고, 프로브가 그 값을 stdout 에 그대로 출력한다.
+// The goal is not performance but judging "did it really reach the screen" with grim -o HDMI-A-1 **without human eyes**.
+// Therefore coordinates and expected RGB must be fixed, and the probe prints those values verbatim to stdout.
 //
-// 패턴 (모두 R8G8B8A8_UNORM 값. 셰이더가 byte/255.0 으로 쓰므로 왕복이 정확하다):
-//   · 배경           : (32, 32, 32)
-//   · 중앙 블록      : (255, 0, 128)  — 가로 400 x 세로 300, 화면 중앙
-//   · 네 꼭지점 마커 : 64x64, 좌상 (255,0,0) / 우상 (0,255,0) / 좌하 (0,0,255) / 우하 (255,255,255)
-//   · 움직이는 막대  : (255, 255, 0), y ∈ [3h/4, 3h/4+24), x 는 프레임마다 이동 — **살아 있음의 증거**
-//                      (위 검사 영역들과 겹치지 않는 띠에만 그린다)
+// Pattern (all R8G8B8A8_UNORM values. The shader writes byte/255.0, so the round trip is exact):
+//   · background     : (32, 32, 32)
+//   · center block   : (255, 0, 128)  — 400 wide x 300 tall, screen center
+//   · 4 corner marks : 64x64, top-left (255,0,0) / top-right (0,255,0) / bottom-left (0,0,255) / bottom-right (255,255,255)
+//   · moving bar     : (255, 255, 0), y ∈ [3h/4, 3h/4+24), x moves every frame — **evidence of liveness**
+//                      (drawn only in a band that does not overlap the check regions above)
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 layout(rgba8, set = 0, binding = 0) uniform writeonly image2D dst_image;
 

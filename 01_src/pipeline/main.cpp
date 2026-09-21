@@ -1,52 +1,52 @@
-// yvo_pipeline: HEVC HW 디코드(DRM_PRIME) → Vulkan SAND128 letterbox → HailoRT yolov11m 추론
+// yvo_pipeline: HEVC HW decode (DRM_PRIME) → Vulkan SAND128 letterbox → HailoRT yolov11m inference
 //
-// 스레드 구조
-//   - 메인 스레드: 디코드 → 빈 슬롯 확보 → GPU submit → (펜스 완료된 슬롯) wait → HailoRT submit.
-//   - HailoRT 콜백 스레드: 결과를 완료 큐에 넣고 슬롯을 free 목록에 반납(mutex + condvar).
-//   - 결과 기록(JSON Lines, PNG, 통계)은 메인 스레드가 pts 순서로 한다.
-// 슬롯 규약 (GPU·NPU·표시 공용 슬롯 번호, 0..slots-1) — **반납 조건이 둘이다**
-//   free → [GPU submit] → gpu 대기열 → [SandLetterbox::wait: 펜스 완료, AVFrame keepalive 해제]
-//        → [HailoRunner::submit] → [HailoRT 완료 콜백 = compute_done]
-//        → [표시 완료 = display_done: DisplayPipeline 은 submit 펜스, PlaneDisplay 는 스캔아웃 release]  → 둘 다 서면 free
-//   --display off 면 display 조건이 아예 없다(SlotExchange(need_display=false)) → 오늘과 완전히 같다.
-//   ⚠ display_done 을 세우는 주체는 **메인 스레드 자신**이다. 그래서 빈 슬롯을 기다릴 때 블로킹하면
-//     교착한다 — 아래 슬롯 확보 루프는 acquire_poll + pump 로만 돌린다(acquire_wait 를 쓰지 않는다).
-//   GPU에 동시에 걸린 프레임은 --gpu-depth(기본 3) 이하. 디코더는 약 13프레임 이상 들고 있으면
-//   **에러 없이 조용히 멈춘다** → 시작 시 slots+gpu_depth <= 10 을 검사하고, 런타임에 실제 보유 수
-//   (held_frames_max)를 계측해 CSV 로 낸다. 이것이 유일한 감지 수단이다.
-// 모드
-//   ptr    : HailoRT set_buffer(MemoryView(V3D 출력 매핑 포인터))
-//   dmabuf : 초기화 때 슬롯별 출력 메모리를 dma-buf fd로 export → HailoRunner::map_dmabuf 사전 매핑
-//            → PreprocOutput.dmabuf_fd로 set_dma_buffer
-// 표시 (--display, YVO_HAVE_DISPLAY 로 조건부 컴파일)
-//   off  : 오늘까지의 경로. DisplayPipeline 을 만들지도 않는다(기본값).
-//   on   : 디코더 SAND dma-buf → display_convert.comp → overlay_boxes.comp → 스왑체인 present.
-//          --display-backend wayland-planes 면 V3D 변환 없이 디코더 NV12 SAND dma-buf 를 HVS 영상 평면에,
-//          GPU 로 그린 박스(AB24 dma-buf)를 그 위 평면에 올린다(PlaneDisplay + WaylandPlaneScanout).
-//          --display-backend kms 면 같은 두 평면을 컴포지터 없이 KMS atomic 으로 직접 커밋한다
-//          (PlaneDisplay + KmsScanout, card1 DRM master 필요 — 없으면 종료 코드 2).
-//          matched = 그 프레임의 검출과 함께 표시(flush_results 에서 show),
-//          latest  = 전처리가 끝나는 대로 표시하고 검출은 가장 최근 것을 얹는다(finish_gpu 에서 show).
-// 후처리 (--postproc)
-//   host : HEF 내장 NMS 출력 1개 → HailoRT가 호스트 CPU에서 파싱 (기준 경로, 기본값)
-//   gpu  : 원시 출력 6스트림(dma-buf) → yolo_decode.comp pass 1 → 억제(--nms).
-//          --nms gpu(기본): 같은 커맨드 버퍼의 efficient_nms.comp. 보호대·용량 초과 프레임만 CPU fallback.
-//          --nms cpu: CPU greedy 억제(cpu_nms_greedy_by_class). --nms verify: 둘 다 돌려 비트 비교.
-//          NPU 완료분을 GPU로 미는 일도 **메인 스레드**가 한다(InferStage::pump/drain_one) —
-//          VkQueue가 하나뿐이라 vkQueueSubmit을 다른 스레드에서 하면 안 되기 때문이다.
-// 종료 순서: InferStage::drain → flush_results → 표시 drain → SandLetterbox::clear_import_cache
-//            (표시 drain = DisplayPipeline::drain 또는 PlaneDisplay::drain: 남은 pending 커밋 → scanout shutdown
-//             (화면에서 내림, kms 는 KMS 상태 복원/planes-off) → 남은 release 강제 → 영상 버퍼 캐시 비움)
-//            → 디코더 close → 단계 해제(러너가 dma-buf unmap) → 표시 해제(스왑체인·surface / 전송층·박스 링)
+// Thread structure
+//   - Main thread: decode → acquire free slot → GPU submit → (fence-completed slot) wait → HailoRT submit.
+//   - HailoRT callback thread: pushes the result into the completion queue and returns the slot to the free list (mutex + condvar).
+//   - Result recording (JSON Lines, PNG, stats) is done by the main thread in pts order.
+// Slot contract (slot numbers shared by GPU, NPU and display, 0..slots-1) — **there are two return conditions**
+//   free → [GPU submit] → gpu queue → [SandLetterbox::wait: fence complete, AVFrame keepalive released]
+//        → [HailoRunner::submit] → [HailoRT completion callback = compute_done]
+//        → [display complete = display_done: submit fence for DisplayPipeline, scanout release for PlaneDisplay]  → free once both are set
+//   With --display off there is no display condition at all (SlotExchange(need_display=false)) → exactly the same as before.
+//   ⚠ The one who sets display_done is **the main thread itself**. So blocking while waiting for a free slot
+//     deadlocks — the slot acquisition loop below runs only on acquire_poll + pump (it does not use acquire_wait).
+//   Frames simultaneously in flight on the GPU are at most --gpu-depth (default 3). If the decoder has about 13+ frames held, it
+//   **stalls silently without an error** → at startup we check slots+gpu_depth <= 10, and at runtime the actual held count
+//   (held_frames_max) is measured and emitted to the CSV. This is the only means of detection.
+// Modes
+//   ptr    : HailoRT set_buffer(MemoryView(V3D output mapped pointer))
+//   dmabuf : at init, export per-slot output memory as dma-buf fds → pre-map with HailoRunner::map_dmabuf
+//            → set_dma_buffer with PreprocOutput.dmabuf_fd
+// Display (--display, conditionally compiled with YVO_HAVE_DISPLAY)
+//   off  : the path up to today. Does not even create a DisplayPipeline (default).
+//   on   : decoder SAND dma-buf → display_convert.comp → overlay_boxes.comp → swapchain present.
+//          With --display-backend wayland-planes, the decoder NV12 SAND dma-buf goes onto the HVS video plane without V3D conversion,
+//          and the GPU-drawn boxes (AB24 dma-buf) go onto the plane above it (PlaneDisplay + WaylandPlaneScanout).
+//          With --display-backend kms, the same two planes are committed directly via KMS atomic without a compositor
+//          (PlaneDisplay + KmsScanout, needs card1 DRM master — exit code 2 if unavailable).
+//          matched = shown together with that frame's detections (show in flush_results),
+//          latest  = shown as soon as preprocessing finishes, with the most recent detections overlaid (show in finish_gpu).
+// Post-processing (--postproc)
+//   host : single HEF-embedded NMS output → parsed by HailoRT on the host CPU (baseline path, default)
+//   gpu  : 6 raw output streams (dma-buf) → yolo_decode.comp pass 1 → suppression (--nms).
+//          --nms gpu (default): efficient_nms.comp in the same command buffer. Only guard/over-capacity frames fall back to CPU.
+//          --nms cpu: CPU greedy suppression (cpu_nms_greedy_by_class). --nms verify: runs both and compares bit-exactly.
+//          Pushing NPU completions to the GPU is also done by the **main thread** (InferStage::pump/drain_one) —
+//          because there is only one VkQueue, vkQueueSubmit must not be called from another thread.
+// Shutdown order: InferStage::drain → flush_results → display drain → SandLetterbox::clear_import_cache
+//            (display drain = DisplayPipeline::drain or PlaneDisplay::drain: remaining pending commits → scanout shutdown
+//             (taken off screen; for kms, KMS state restore/planes-off) → force remaining releases → clear video buffer cache)
+//            → decoder close → stage release (runner does dma-buf unmap) → display release (swapchain/surface / transport/box ring)
 //            → export fd close → VulkanContext → WaylandWindow
-//            (창은 컨텍스트보다 늦게 죽어야 하므로 컨텍스트보다 먼저 선언한다)
-// 시그널: SIGINT/SIGTERM 은 sigaction(SA_RESTART) 로 받아 **atomic 플래그만** 세운다.
-//         메인 루프·표시 페이싱 루프·슬롯 확보 루프가 매 바퀴 이 플래그를 보고 빠져나와
-//         위의 **종료 순서를 그대로** 탄다 → 통계 요약이 정상 종료와 같은 형식으로 나온다.
-//         요약 머리에 [interrupted] 를 덧붙이고 RESULT_CSV/RESULT_CSV2 의 ok 는 0,
-//         종료 코드는 128+signo(SIGINT 130 / SIGTERM 143). 두 번째 시그널은 _exit(130).
-//         --display on 이면 표시 창에서 Esc/q/Ctrl+C 로도 중단한다(전체 화면 창이 포커스를 가져가 터미널
-//         SIGINT 가 안 닿는 경우) — 메인 루프가 같은 플래그를 세우므로 SIGINT 와 같은 종료다(요약 문구만 다르다).
+//            (the window must die later than the context, so it is declared before the context)
+// Signals: SIGINT/SIGTERM are received via sigaction(SA_RESTART) and **only set an atomic flag**.
+//         The main loop, display pacing loop and slot acquisition loop check this flag every iteration, break out and
+//         follow the **shutdown order above as is** → the stats summary comes out in the same format as a normal exit.
+//         [interrupted] is prepended to the summary header, ok in RESULT_CSV/RESULT_CSV2 is 0,
+//         and the exit code is 128+signo (SIGINT 130 / SIGTERM 143). A second signal calls _exit(130).
+//         With --display on, Esc/q/Ctrl+C in the display window also stops it (for when a fullscreen window takes focus and terminal
+//         SIGINT does not arrive) — the main loop sets the same flag, so it is the same exit as SIGINT (only the summary text differs).
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -107,29 +107,29 @@ using yvo::tool::soc_temperature;
 
 using Clock = std::chrono::steady_clock;
 
-// ── SIGINT/SIGTERM 정상 종료 ────────────────────────────────────────────────────────────
-// 핸들러가 하는 일은 atomic 플래그를 세우는 것이 **전부**다(async-signal-safe: printf·malloc 금지).
-// 실제 종료는 메인 스레드가 플래그를 보고 기존 종료 경로를 그대로 타면서 한다.
+// ── SIGINT/SIGTERM graceful shutdown ────────────────────────────────────────────────────────────
+// The **only** thing the handler does is set an atomic flag (async-signal-safe: no printf or malloc).
+// The actual shutdown is done by the main thread, which sees the flag and follows the existing shutdown path as is.
 std::atomic<bool> g_stop{false};
 std::atomic<int> g_stop_signal{0};
 static_assert(std::atomic<bool>::is_always_lock_free,
-              "종료 플래그는 lock-free 여야 한다(시그널 핸들러 안에서 쓴다)");
+              "the stop flag must be lock-free (it is used inside a signal handler)");
 static_assert(std::atomic<int>::is_always_lock_free,
-              "시그널 번호 저장도 lock-free 여야 한다(시그널 핸들러 안에서 쓴다)");
+              "the signal number storage must also be lock-free (it is used inside a signal handler)");
 
 void on_stop_signal(int sig) {
-    // exchange 가 true 를 돌려주면 두 번째 시그널이다 → 드레인을 기다리지 않고 즉시 끊는다.
+    // If exchange returns true it is the second signal → cut off immediately without waiting for the drain.
     if (g_stop.exchange(true, std::memory_order_relaxed)) _exit(130);
     g_stop_signal.store(sig, std::memory_order_relaxed);
 }
 
 bool stop_requested() { return g_stop.load(std::memory_order_relaxed); }
 
-// 표시 창 종료 키(Esc/q/Ctrl+C)로 세운 중단인가. 메인 스레드만 쓰고 읽는다(시그널 핸들러는 건드리지 않는다).
+// Was the stop requested by a display window exit key (Esc/q/Ctrl+C)? Written and read only by the main thread (the signal handler does not touch it).
 bool g_stop_by_key = false;
 
-// SA_RESTART 를 켠다: 블로킹 시스템 콜이 EINTR 로 깨지면 안 된다(디코더의 av_read_frame).
-// 설치 실패는 치명적이지 않다 — 경고만 내고 계속한다(시그널이 기본 동작으로 떨어질 뿐이다).
+// Enable SA_RESTART: blocking system calls must not be broken by EINTR (the decoder's av_read_frame).
+// Installation failure is not fatal — just warn and continue (the signal merely falls back to its default action).
 bool install_stop_handlers() {
     struct sigaction sa;
     std::memset(&sa, 0, sizeof(sa));
@@ -139,7 +139,7 @@ bool install_stop_handlers() {
     bool ok = true;
     for (const int sig : {SIGINT, SIGTERM}) {
         if (sigaction(sig, &sa, nullptr) != 0) {
-            std::fprintf(stderr, "[warn] sigaction(%d) 실패: %s — 이 시그널은 기본 동작으로 떨어진다\n", sig,
+            std::fprintf(stderr, "[warn] sigaction(%d) failed: %s — this signal falls back to its default action\n", sig,
                          std::strerror(errno));
             ok = false;
         }
@@ -147,44 +147,44 @@ bool install_stop_handlers() {
     return ok;
 }
 
-// COCO 라벨·클래스 색은 core/coco_labels.hpp 에 하나로 모았다(GPU 오버레이와 공유한다).
+// COCO labels and class colors are gathered in one place, core/coco_labels.hpp (shared with the GPU overlay).
 using yvo::class_name;
 
 enum class Mode { Ptr, Dmabuf };
 
-// 후처리를 누가 하는가.
-//   Host: HEF 내장 NMS 출력 1개 → HailoRT 가 호스트 CPU 에서 파싱 (오늘의 기준 경로)
-//   Gpu : 원시 출력 6스트림 → GPU pass 1(yolo_decode.comp) + CPU greedy 억제
+// Who does the post-processing.
+//   Host: single HEF-embedded NMS output → parsed by HailoRT on the host CPU (today's baseline path)
+//   Gpu : 6 raw output streams → GPU pass 1 (yolo_decode.comp) + CPU greedy suppression
 enum class Postproc { Host, Gpu };
 
 struct Args {
     std::string video = YVO_DEFAULT_VIDEO;
     std::string hef = YVO_DEFAULT_HEF;
-    long frames = 0;  // 0 = 전체
+    long frames = 0;  // 0 = all
     Mode mode = Mode::Ptr;
-    // 전처리 출력·NPU 입력 텐서 레이아웃. Nhcw면 HailoRT의 CPU 입력 변환이 사라진다(dmabuf 모드 전용).
+    // Preprocessing output / NPU input tensor layout. With Nhcw, HailoRT's CPU input conversion disappears (dmabuf mode only).
     yvo::TensorLayout layout = yvo::TensorLayout::Nhwc;
     int batch = 8;
-    int slots = 0;      // 0 = batch*2 (최소 4)
-    int gpu_depth = 3;  // GPU에 동시에 걸어 둘 프레임 수
+    int slots = 0;      // 0 = batch*2 (minimum 4)
+    int gpu_depth = 3;  // number of frames kept in flight on the GPU at once
     float score = -1.0f;
     Postproc postproc = Postproc::Host;
-    // GPU 후처리의 원시 출력 버퍼 할당 방식. 기본 export(= Vulkan 이 할당·export).
-    // heap(dma-heap import)은 3자 일관성(PCIe DMA ↔ CPU 캐시 ↔ V3D)이 아직 미검증이다.
+    // Allocation method for the GPU post-processing raw output buffers. Default export (= Vulkan allocates and exports).
+    // heap (dma-heap import) has not yet been verified for three-way coherence (PCIe DMA ↔ CPU cache ↔ V3D).
     std::string postproc_alloc = "export";
-    // --postproc gpu 의 억제 위치. 기본 gpu(efficient_nms.comp).
+    // Where --postproc gpu does suppression. Default gpu (efficient_nms.comp).
     yvo::pipeline::NmsBackend nms = yvo::pipeline::NmsBackend::Gpu;
     bool nms_explicit = false;
     std::string dump_dir;
     int dump_every = 100;
     bool quiet = false;
-    std::string csv_label;  // 지정하면 마지막에 CSV 한 줄(RESULT_CSV,...) 출력
+    std::string csv_label;  // if set, print one CSV line (RESULT_CSV,...) at the end
 
-    // ── 표시 (기본값은 전부 "끔": 인자 없이 돌리면 오늘까지와 같은 경로다) ──
+    // ── Display (all defaults are "off": running without arguments takes the same path as before) ──
     bool display = false;
 #ifdef YVO_HAVE_DISPLAY
     yvo::display::DisplayPipelineConfig disp;
-    bool pace_explicit = false;   // --display-pace 를 사용자가 직접 줬는가
+    bool pace_explicit = false;   // did the user pass --display-pace explicitly
 #endif
 };
 
@@ -194,38 +194,38 @@ void usage(const char* a0) {
                  "          [--batch N] [--slots N] [--postproc host|gpu] [--postproc-alloc export|heap]\n"
                  "          [--nms gpu|cpu|verify] [--gpu-depth N] [--score T] [--dump-dir DIR] [--dump-every K]\n"
                  "          [--quiet] [--csv-label L]\n"
-                 "  --layout     전처리 출력·NPU 입력 텐서 레이아웃 (기본 nhwc)\n"
-                 "               nhcw는 HailoRT의 CPU 입력 변환(약 14 ms/frame)을 없앤다. --mode dmabuf 전용\n"
-                 "  --slots      GPU·NPU 공용 슬롯 수 (기본 max(4, batch*2))\n"
-                 "  --gpu-depth  GPU에 동시에 걸린 프레임 수 상한 (기본 3, 2~4 권장: 디코더 버퍼 한도)\n"
-                 "  --postproc   후처리 위치 (기본 host). gpu는 원시 출력 6스트림 + yolo_decode.comp + efficient_nms.comp 억제\n"
-                 "               (경계 프레임만 CPU fallback, --nms 참조)\n"
-                 "               --mode dmabuf --layout nhcw 전용\n"
-                 "  --postproc-alloc  gpu 후처리의 원시 출력 버퍼 할당 (기본 export)\n"
-                 "  --nms        gpu 후처리의 억제 위치 (기본 gpu = efficient_nms.comp, 보호대 프레임만 CPU fallback)\n"
-                 "               cpu = cpu_nms_greedy_by_class, verify = 둘 다 돌려 비트 비교(출력은 CPU 쪽)\n"
-                 "               --postproc gpu 전용\n"
-                 "  --dump-dir   detections.jsonl(프레임당 한 줄) + K 프레임마다 박스 PNG(letterbox 입력 위)\n"
+                 "  --layout     preprocessing output / NPU input tensor layout (default nhwc)\n"
+                 "               nhcw removes HailoRT's CPU input conversion (about 14 ms/frame). --mode dmabuf only\n"
+                 "  --slots      number of slots shared by GPU and NPU (default max(4, batch*2))\n"
+                 "  --gpu-depth  max frames in flight on the GPU at once (default 3, 2~4 recommended: decoder buffer limit)\n"
+                 "  --postproc   post-processing location (default host). gpu = 6 raw output streams + yolo_decode.comp + efficient_nms.comp suppression\n"
+                 "               (only edge-case frames fall back to CPU, see --nms)\n"
+                 "               --mode dmabuf --layout nhcw only\n"
+                 "  --postproc-alloc  raw output buffer allocation for gpu post-processing (default export)\n"
+                 "  --nms        suppression location for gpu post-processing (default gpu = efficient_nms.comp, only guard frames fall back to CPU)\n"
+                 "               cpu = cpu_nms_greedy_by_class, verify = run both and compare bit-exactly (output is the CPU side)\n"
+                 "               --postproc gpu only\n"
+                 "  --dump-dir   detections.jsonl (one line per frame) + box PNG every K frames (on the letterbox input)\n"
 #ifdef YVO_HAVE_DISPLAY
-                 "  --display {off,on}                       HDMI 실시간 표시 (기본 off)\n"
-                 "  --display-backend {auto,wayland,offscreen,wayland-planes,kms}  기본 auto. wayland 는 strict(조용한 폴백 금지)\n"
-                 "               wayland-planes = HVS 두 평면 스캔아웃(영상 NV12 SAND 평면 + 박스 AB24 평면, V3D 변환 없음).\n"
-                 "               전체화면을 강제하고 Vulkan present 를 쓰지 않는다. strict(실패하면 종료)\n"
-                 "               kms = 같은 두 평면을 컴포지터 없이 KMS atomic 으로 직접 커밋한다. card1 DRM master 필요\n"
-                 "               (데스크톱이 활성 VT 에 있으면 master 를 못 얻어 종료 코드 2). 창이 없으니 종료는 Ctrl+C/SIGTERM\n"
-                 "  --display-connector NAME                 kms 가 쓸 커넥터 (기본: 연결된 첫 HDMI-A. 예: HDMI-A-2)\n"
-                 "  --display-color-range {auto,full,limited}   평면 스캔아웃의 COLOR_RANGE (기본 auto)\n"
-                 "               wayland-planes auto = full 요청: labwc 0.20.1 이 뒤집어 limited 로 싣는다\n"
-                 "               kms auto = limited 를 그대로 싣는다 (실제 평면 값은 둘 다 debugfs 로 판정)\n"
-                 "  --display-sync {matched,latest}          기본 matched (그 프레임의 검출과 함께 표시)\n"
-                 "  --display-pace {source,asap}             표시 on 이면 기본 source. asap 는 페이싱 없음\n"
+                 "  --display {off,on}                       real-time HDMI display (default off)\n"
+                 "  --display-backend {auto,wayland,offscreen,wayland-planes,kms}  default auto. wayland is strict (no silent fallback)\n"
+                 "               wayland-planes = HVS two-plane scanout (video NV12 SAND plane + box AB24 plane, no V3D conversion).\n"
+                 "               forces fullscreen and does not use Vulkan present. strict (exits on failure)\n"
+                 "               kms = commits the same two planes directly via KMS atomic without a compositor. needs card1 DRM master\n"
+                 "               (if the desktop is on the active VT, master cannot be acquired: exit code 2). no window, so stop with Ctrl+C/SIGTERM\n"
+                 "  --display-connector NAME                 connector for kms (default: first connected HDMI-A. e.g. HDMI-A-2)\n"
+                 "  --display-color-range {auto,full,limited}   COLOR_RANGE for plane scanout (default auto)\n"
+                 "               wayland-planes auto = request full: labwc 0.20.1 inverts it and programs limited\n"
+                 "               kms auto = programs limited as is (the actual plane value is judged via debugfs in both cases)\n"
+                 "  --display-sync {matched,latest}          default matched (shown together with that frame's detections)\n"
+                 "  --display-pace {source,asap}             default source when display is on. asap = no pacing\n"
                  "  --display-fullscreen | --display-size WxH | --display-every K\n"
-                 "  --present-mode {fifo,mailbox,immediate}  기본 fifo\n"
-                 "  --display-blit                           STORAGE 가 가능해도 blit 폴백을 강제한다\n"
-                 "  --overlay-line-width N | --overlay-text-scale N   기본 2 / 2\n"
-                 "  표시 창에서 Esc/q/Ctrl+C 로도 중단한다 (터미널 Ctrl+C 와 같은 [interrupted] 종료, 코드 130)\n"
-                 "  ⚠ 측정은 반드시 --display-fullscreen 으로 한다. 창 모드는 균일 스케일 경로로 넘어가\n"
-                 "    에러도 경고도 없이 표시 변환이 2.6배(4.25 → 10.9 ms) 느려진다\n"
+                 "  --present-mode {fifo,mailbox,immediate}  default fifo\n"
+                 "  --display-blit                           force the blit fallback even if STORAGE is available\n"
+                 "  --overlay-line-width N | --overlay-text-scale N   default 2 / 2\n"
+                 "  Esc/q/Ctrl+C in the display window also stops it (same [interrupted] exit as terminal Ctrl+C, code 130)\n"
+                 "  ⚠ Always measure with --display-fullscreen. Windowed mode falls onto the uniform-scale path and\n"
+                 "    display conversion becomes 2.6x slower (4.25 → 10.9 ms) with no error or warning\n"
 #endif
                  ,
                  a0);
@@ -312,27 +312,27 @@ bool parse(int argc, char** argv, Args& a) {
     a.gpu_depth = std::min(a.gpu_depth, a.slots);
 #ifdef YVO_HAVE_DISPLAY
     if (a.disp.every < 1 || a.disp.overlay_line_width < 1 || a.disp.overlay_text_scale < 1) return false;
-    // 페이싱 기본값: 표시 on 이면 source(소스 30 fps 를 따라간다), off 면 없음.
+    // Pacing default: source when display is on (follows the 30 fps source), none when off.
     if (!a.pace_explicit)
         a.disp.pace = a.display ? yvo::display::DisplayPace::Source : yvo::display::DisplayPace::None;
     a.disp.num_slots = a.slots;
-    // 평면 스캔아웃(PlaneDisplay): wayland-planes 와 kms. 프레임 보유 규칙이 같다(PlaneDisplay 상한이 같다).
+    // Plane scanout (PlaneDisplay): wayland-planes and kms. Same frame-holding rules (same PlaneDisplay limit).
     const bool planes = a.disp.backend == yvo::display::DisplayBackendKind::WaylandPlanes ||
                         a.disp.backend == yvo::display::DisplayBackendKind::Kms;
     if (!a.disp.connector.empty() && a.disp.backend != yvo::display::DisplayBackendKind::Kms)
-        std::fprintf(stderr, "경고: --display-connector 는 --display-backend kms 에서만 쓰인다 (지금은 무시한다)\n");
-    if (planes) a.disp.fullscreen = true;   // 창 모드는 labwc 가 GL 로 합성한다 → 이 백엔드의 의미가 없다 (kms 는 항상 전체)
-    // ⚠ 디코더 13프레임 제약: 동시에 약 13프레임을 넘게 잡으면 디코더가 **에러 없이 멈춘다.**
-    //   Vulkan 합성 경로: matched 는 slots + gpu_depth 를, latest 는 gpu_depth + image_count 를 잡는다.
-    //   여유를 두고 10 에서 막는다.
-    //   wayland-planes / kms (PlaneDisplay): 프레임을 **컴포지터가 wl_buffer.release 할 때까지**(kms 는 다음 flip 까지) 쥔다.
-    //     matched — display_done 을 release 에서 세우므로 표시가 쥔 프레임은 전부 자기 슬롯을 점유한다
-    //               (retained → pending → committed 동안 슬롯이 안 돌아온다). gpu_depth 도 슬롯 안이다.
-    //               → 최대 slots + 1 (슬롯을 기다리는, 방금 디코드한 프레임 하나).
-    //     latest  — 슬롯은 show 직후 반납되고 표시가 슬롯 밖에서 pending 2 + committed(미해제) 3 을 더 쥔다
-    //               (PlaneDisplay::kExtraHeldBeyondSlots = 화면 1 + 다음 flip 대기 1 + release 지연 1 + pending 2).
-    //               → 최대 slots + 1 + 5.
-    //     같은 여유(10)로 막는다. 실제 최대치는 held_frames_max 로 계측된다.
+        std::fprintf(stderr, "warning: --display-connector is used only with --display-backend kms (ignored for now)\n");
+    if (planes) a.disp.fullscreen = true;   // in windowed mode labwc composites with GL → this backend becomes pointless (kms is always fullscreen)
+    // ⚠ Decoder 13-frame constraint: holding more than about 13 frames at once makes the decoder **stall without an error.**
+    //   Vulkan composition path: matched holds slots + gpu_depth, latest holds gpu_depth + image_count.
+    //   We block at 10 to leave a margin.
+    //   wayland-planes / kms (PlaneDisplay): frames are held **until the compositor does wl_buffer.release** (for kms, until the next flip).
+    //     matched — display_done is set on release, so every frame held by the display occupies its own slot
+    //               (the slot does not come back during retained → pending → committed). gpu_depth is also within the slots.
+    //               → at most slots + 1 (one just-decoded frame waiting for a slot).
+    //     latest  — the slot is returned right after show, and the display holds pending 2 + committed (unreleased) 3 more outside the slots
+    //               (PlaneDisplay::kExtraHeldBeyondSlots = on screen 1 + waiting for next flip 1 + release delay 1 + pending 2).
+    //               → at most slots + 1 + 5.
+    //     Blocked with the same margin (10). The actual maximum is measured as held_frames_max.
     if (a.display && planes) {
         const int hold = a.slots + 1 +
                          (a.disp.sync == yvo::display::DisplaySync::Latest
@@ -340,17 +340,17 @@ bool parse(int argc, char** argv, Args& a) {
                               : 0);
         if (hold > 10) {
             std::fprintf(stderr,
-                         "--display-backend %s 에서 디코더 프레임 보유가 %d 로 10 을 넘는다 "
-                         "(slots %d + 디코드 대기 1%s).\n디코더는 동시에 약 13프레임 넘게 잡히면 에러 없이 멈춘다. "
-                         "--slots 를 줄여라.\n",
+                         "--display-backend %s: decoder frames held would be %d, exceeding 10 "
+                         "(slots %d + 1 awaiting decode%s).\nThe decoder stalls without an error when more than about 13 frames are held at once. "
+                         "Reduce --slots.\n",
                          a.disp.backend == yvo::display::DisplayBackendKind::Kms ? "kms" : "wayland-planes", hold,
-                         a.slots, a.disp.sync == yvo::display::DisplaySync::Latest ? " + 표시 보유 5" : "");
+                         a.slots, a.disp.sync == yvo::display::DisplaySync::Latest ? " + 5 held by display" : "");
             return false;
         }
     } else if (a.display && a.slots + a.gpu_depth > 10) {
         std::fprintf(stderr,
-                     "--display on 에서는 slots + gpu_depth <= 10 이어야 한다 (지금 %d + %d = %d).\n"
-                     "디코더는 동시에 약 13프레임 넘게 잡히면 에러 없이 멈춘다. --slots 또는 --gpu-depth 를 줄여라.\n",
+                     "--display on requires slots + gpu_depth <= 10 (now %d + %d = %d).\n"
+                     "The decoder stalls without an error when more than about 13 frames are held at once. Reduce --slots or --gpu-depth.\n",
                      a.slots, a.gpu_depth, a.slots + a.gpu_depth);
         return false;
     }
@@ -358,14 +358,14 @@ bool parse(int argc, char** argv, Args& a) {
     return true;
 }
 
-// 스레드 안전 슬롯 풀 + 완료 큐 (HailoRT 콜백 ↔ 메인 스레드)
+// Thread-safe slot pool + completion queue (HailoRT callback ↔ main thread)
 struct Completion {
     yvo::InferResult result;
     Clock::time_point t_done;
 };
 
-// 슬롯 반납 조건이 둘이다(계산 완료 + 표시 완료). need_display == false 면 표시 조건이 없어
-// **오늘까지와 완전히 같은 동작**이 된다(--display off 회귀 경로).
+// There are two slot return conditions (compute done + display done). With need_display == false there is no display condition,
+// giving **exactly the same behavior as before** (--display off regression path).
 class SlotExchange {
 public:
     SlotExchange(int n, bool need_display)
@@ -373,7 +373,7 @@ public:
           out_(static_cast<std::size_t>(n), false) {
         for (int i = 0; i < n; ++i) free_.push_back(i);
     }
-    // HailoRT 콜백 스레드(host) 또는 메인 스레드(gpu 후처리)
+    // HailoRT callback thread (host) or main thread (gpu post-processing)
     void complete(yvo::InferResult&& r) {
         Completion c{std::move(r), Clock::now()};
         {
@@ -384,7 +384,7 @@ public:
         }
         cv_.notify_all();
     }
-    // 메인 스레드 전용. 표시가 끝났거나(표시 완료 콜백) 표시를 건너뛰었다.
+    // Main thread only. Display has finished (display completion callback) or display was skipped.
     void display_done(int slot) {
         {
             std::lock_guard<std::mutex> lk(m_);
@@ -396,7 +396,7 @@ public:
         std::lock_guard<std::mutex> lk(m_);
         return pop_locked();
     }
-    // slice 동안만 기다린다(블로킹 금지 — display_done 을 세울 주체가 호출자 자신이다).
+    // Waits only for slice (no blocking — the one who sets display_done is the caller itself).
     std::optional<int> acquire_poll(std::chrono::milliseconds slice) {
         std::unique_lock<std::mutex> lk(m_);
         if (free_.empty()) cv_.wait_for(lk, slice, [&] { return !free_.empty(); });
@@ -410,7 +410,7 @@ public:
     }
 
 private:
-    // m_ 를 잡은 상태로 부른다. 나가 있지 않은 슬롯의 신호는 무시한다(중복 호출을 무해하게 만든다).
+    // Called with m_ held. Signals for slots that are not out are ignored (makes duplicate calls harmless).
     void mark(int slot, int which) {
         const auto i = static_cast<std::size_t>(slot);
         if (i >= out_.size() || !out_[i]) return;
@@ -434,8 +434,8 @@ private:
     std::mutex m_;
     std::condition_variable cv_;
     bool need_display_;
-    std::vector<std::array<bool, 2>> ready_;   // [0] = 계산 완료, [1] = 표시 완료
-    std::vector<bool> out_;                    // 슬롯이 나가 있는가 (중복 신호 방어)
+    std::vector<std::array<bool, 2>> ready_;   // [0] = compute done, [1] = display done
+    std::vector<bool> out_;                    // whether the slot is out (guards against duplicate signals)
     std::deque<int> free_;
     std::deque<Completion> done_;
 };
@@ -446,12 +446,12 @@ void draw_and_save(const std::string& path, const std::vector<std::uint8_t>& rgb
     cv::Mat bgr;
     cv::cvtColor(m, bgr, cv::COLOR_RGB2BGR);
     for (const auto& d : dets) {
-        // 원본 좌표 → letterbox 좌표
+        // source coordinates → letterbox coordinates
         const int x1 = static_cast<int>(std::lround(d.x1 * lb.scale + static_cast<float>(lb.pad_x)));
         const int y1 = static_cast<int>(std::lround(d.y1 * lb.scale + static_cast<float>(lb.pad_y)));
         const int x2 = static_cast<int>(std::lround(d.x2 * lb.scale + static_cast<float>(lb.pad_x)));
         const int y2 = static_cast<int>(std::lround(d.y2 * lb.scale + static_cast<float>(lb.pad_y)));
-        // class_color()는 RGB를 돌려주므로 OpenCV(BGR)로 뒤집는다. 색 정의는 coco_labels.hpp 하나뿐이다.
+        // class_color() returns RGB, so flip it for OpenCV (BGR). Colors are defined only in coco_labels.hpp.
         const auto rgb_col = yvo::class_color(d.class_id);
         const cv::Scalar color(rgb_col[2], rgb_col[1], rgb_col[0]);
         cv::rectangle(bgr, cv::Point(x1, y1), cv::Point(x2, y2), color, 1);
@@ -459,7 +459,7 @@ void draw_and_save(const std::string& path, const std::vector<std::uint8_t>& rgb
         std::snprintf(label, sizeof(label), "%s %.2f", class_name(d.class_id), static_cast<double>(d.score));
         cv::putText(bgr, label, cv::Point(x1, std::max(10, y1 - 3)), cv::FONT_HERSHEY_SIMPLEX, 0.35, color, 1);
     }
-    if (!cv::imwrite(path, bgr)) std::fprintf(stderr, "[warn] PNG 저장 실패: %s\n", path.c_str());
+    if (!cv::imwrite(path, bgr)) std::fprintf(stderr, "[warn] failed to save PNG: %s\n", path.c_str());
 }
 
 struct FdCloser {
@@ -482,43 +482,43 @@ const char* nms_name(yvo::pipeline::NmsBackend b) {
 
 int run(const Args& a) {
     const bool dmabuf = a.mode == Mode::Dmabuf;
-    // NHCW에서는 HailoRT가 입력 버퍼를 직접 DMA 매핑하는데, V3D GEM mmap 포인터는 매핑에 실패한다.
-    // 첫 submit에서 러너가 던지게 두지 말고 시작 시점에 거른다.
+    // With NHCW, HailoRT DMA-maps the input buffer directly, but DMA mapping fails for V3D GEM mmap pointers.
+    // Reject it at startup rather than letting the runner throw on the first submit.
     if (!dmabuf && a.layout == yvo::TensorLayout::Nhcw) {
         std::fprintf(stderr,
-                     "--mode ptr --layout nhcw 조합은 쓸 수 없다: NHCW에서는 HailoRT가 입력 버퍼를 직접 DMA 매핑하는데\n"
-                     "V3D GEM mmap 포인터는 DMA 매핑에 실패한다. --mode dmabuf --layout nhcw를 쓸 것.\n");
+                     "--mode ptr --layout nhcw cannot be used: with NHCW, HailoRT DMA-maps the input buffer directly, but\n"
+                     "DMA mapping fails for V3D GEM mmap pointers. Use --mode dmabuf --layout nhcw.\n");
         return 2;
     }
-    // GPU 후처리는 입력도 dma-buf(NHCW)여야 한다: HailoRawRunner 는 호스트 포인터 경로가 없고,
-    // 원시 출력 6스트림은 NHCW 입력 전제로 검증했다.
+    // GPU post-processing needs a dma-buf (NHCW) input too: HailoRawRunner has no host-pointer path,
+    // and the 6 raw output streams were verified assuming NHCW input.
     if (a.postproc == Postproc::Gpu && (!dmabuf || a.layout != yvo::TensorLayout::Nhcw)) {
         std::fprintf(stderr,
-                     "--postproc gpu는 --mode dmabuf --layout nhcw 전용이다: HailoRawRunner는 입력·출력을\n"
-                     "dma-buf로만 받고(호스트 포인터 경로 없음), 원시 출력 6스트림 경로는 NHCW 입력으로만 검증됐다.\n");
+                     "--postproc gpu is only for --mode dmabuf --layout nhcw: HailoRawRunner accepts input and output\n"
+                     "only as dma-buf (no host-pointer path), and the 6-raw-output-stream path was verified only with NHCW input.\n");
         return 2;
     }
     if (a.nms_explicit && a.postproc != Postproc::Gpu) {
-        std::fprintf(stderr, "--nms 는 --postproc gpu 전용이다 (host 경로의 NMS 는 HailoRT 가 HEF 설정대로 한다).\n");
+        std::fprintf(stderr, "--nms is only for --postproc gpu (on the host path HailoRT does NMS per the HEF settings).\n");
         return 2;
     }
     const double soc_t0 = soc_temperature();
 
-    // export fd는 러너(매핑 해제)보다 늦게 닫아야 하므로 먼저 선언한다(역순 소멸).
+    // Export fds must be closed later than the runner (unmap), so they are declared first (reverse destruction).
     FdCloser export_fds;
 
-    // ── 초기화 순서: WaylandWindow → VulkanContext → SandLetterbox → InferStage → DisplayPipeline → 디코더 ──
-    // ⚠ 창이 컨텍스트보다 먼저다: vkGetPhysicalDeviceWaylandPresentationSupportKHR 가 wl_display* 를
-    //   요구하기 때문이다(vulkan_context.hpp 의 닭-달걀 설명). 그리고 창은 컨텍스트보다 **늦게** 소멸해야
-    //   하므로 여기서 선언한다(역순 소멸).
+    // ── Init order: WaylandWindow → VulkanContext → SandLetterbox → InferStage → DisplayPipeline → decoder ──
+    // ⚠ The window comes before the context: vkGetPhysicalDeviceWaylandPresentationSupportKHR requires a
+    //   wl_display* (see the chicken-and-egg note in vulkan_context.hpp). And the window must be destroyed **later**
+    //   than the context, so it is declared here (reverse destruction).
     yvo::vk::VulkanContextOptions copt;
 #ifdef YVO_HAVE_DISPLAY
     yvo::display::WaylandWindow win;
     bool have_win = false;
     const bool kms = a.display && a.disp.backend == yvo::display::DisplayBackendKind::Kms;
     const bool planes = a.display && (a.disp.backend == yvo::display::DisplayBackendKind::WaylandPlanes || kms);
-    // kms: 창도 Vulkan present 도 없다(copt 기본값 = present 끔). master 를 못 얻으면 NPU·GPU 를 열기 전에
-    // 종료 코드 2 로 끝낸다 — 그래서 장치 열기·master 획득을 **가장 먼저** 한다. 화면은 첫 커밋 때 바뀐다.
+    // kms: no window and no Vulkan present (copt default = present off). If master cannot be acquired, exit with
+    // code 2 before opening the NPU/GPU — so device open and master acquisition are done **first**. The screen changes on the first commit.
     std::unique_ptr<yvo::display::KmsScanout> kms_scanout;
     if (kms) {
         yvo::display::KmsScanoutOptions ko;
@@ -535,8 +535,8 @@ int run(const Args& a) {
             return 1;
         }
     } else if (planes) {
-        // wayland-planes: 전체화면 창 + linux-dmabuf/presentation/viewporter/color-representation 전역.
-        // Vulkan present 는 쓰지 않는다(copt 는 기본값 = present 끔) — 영상은 디코더 dma-buf, 박스는 OverlayPlane dma-buf.
+        // wayland-planes: fullscreen window + linux-dmabuf/presentation/viewporter/color-representation globals.
+        // Vulkan present is not used (copt default = present off) — video is the decoder dma-buf, boxes are the OverlayPlane dma-buf.
         yvo::display::WaylandWindowOptions wo;
         wo.width = a.disp.width;
         wo.height = a.disp.height;
@@ -547,18 +547,18 @@ int run(const Args& a) {
         wo.verbose = a.disp.verbose;
         have_win = win.open(wo);
         if (!have_win) {
-            std::fprintf(stderr, "--display-backend wayland-planes: 창을 열지 못했다 — %s\n", win.error().c_str());
+            std::fprintf(stderr, "--display-backend wayland-planes: could not open window — %s\n", win.error().c_str());
             return 1;
         }
     } else if (a.display) {
         have_win = yvo::display::DisplayPipeline::open_window(win, a.disp);
         if (!have_win && a.disp.backend == yvo::display::DisplayBackendKind::Wayland) {
-            std::fprintf(stderr, "--display-backend wayland: 창을 열지 못했다 — %s\n", win.error().c_str());
+            std::fprintf(stderr, "--display-backend wayland: could not open window — %s\n", win.error().c_str());
             return 1;
         }
         copt.enable_present = have_win;
         copt.wayland_display = have_win ? win.native_display() : nullptr;
-        // strict: 조용한 폴백 금지. auto 면 present 를 못 켜도 오프스크린으로 계속한다.
+        // strict: no silent fallback. With auto, continue offscreen even if present cannot be enabled.
         copt.require_present = have_win && a.disp.backend == yvo::display::DisplayBackendKind::Wayland;
     }
 #endif
@@ -586,14 +586,14 @@ int run(const Args& a) {
     } else {
         yvo::HailoRunnerConfig hcfg;
         hcfg.hef_path = a.hef;
-        hcfg.input_layout = a.layout;  // allow_host_ptr_nhcw는 그대로 false: V3D 포인터 제출은 러너가 막는다
+        hcfg.input_layout = a.layout;  // allow_host_ptr_nhcw stays false: the runner blocks V3D pointer submission
         hcfg.batch_size = static_cast<std::uint16_t>(a.batch);
         hcfg.num_slots = a.slots;
         hcfg.score_threshold = a.score;
         stage = std::make_unique<yvo::pipeline::HostNmsStage>(hcfg);
     }
     if (stage->input_frame_size() != pre.output_size()) {
-        std::fprintf(stderr, "입력 크기 불일치: NPU %zu, GPU %zu\n", stage->input_frame_size(), pre.output_size());
+        std::fprintf(stderr, "input size mismatch: NPU %zu, GPU %zu\n", stage->input_frame_size(), pre.output_size());
         return 1;
     }
 
@@ -607,10 +607,10 @@ int run(const Args& a) {
         }
     }
 
-    // 표시 경로. 디코더보다 **먼저** 만든다 — extra_hw_frames 가 image_count() 에 의존한다.
-    // 원본 크기는 디코더를 연 뒤 set_source_size() 로 알려 준다.
+    // Display path. Created **before** the decoder — extra_hw_frames depends on image_count().
+    // The source size is passed with set_source_size() after the decoder is opened.
 #ifdef YVO_HAVE_DISPLAY
-    // 파이프라인은 DisplaySink 인터페이스만 쥔다(구현: DisplayPipeline = V3D 합성 + 스왑체인).
+    // The pipeline holds only the DisplaySink interface (implementation: DisplayPipeline = V3D composition + swapchain).
     std::unique_ptr<yvo::display::DisplaySink> display;
     if (kms) {
         display = std::make_unique<yvo::display::PlaneDisplay>(ctx, std::move(kms_scanout), a.disp);
@@ -630,15 +630,15 @@ int run(const Args& a) {
     dopt.extra_hw_frames = std::max(2 * yvo::kNumSlots, a.gpu_depth + 4);
 #ifdef YVO_HAVE_DISPLAY
     if (display && planes) {
-        // wayland-planes / kms: parse() 의 보유 계산(matched slots+1, latest slots+1+5)에 여유 4.
+        // wayland-planes / kms: margin of 4 on top of parse()'s holding count (matched slots+1, latest slots+1+5).
         const int hold = a.slots + 1 +
                          (a.disp.sync == yvo::display::DisplaySync::Latest
                               ? yvo::display::PlaneDisplay::kExtraHeldBeyondSlots
                               : 0);
         dopt.extra_hw_frames = std::max(8, hold + 4);
     } else if (display) {
-        // 표시가 프레임을 더 오래 잡는다. matched 는 슬롯마다 한 장(= slots), latest 는 스왑체인
-        // 이미지마다 한 장(= image_count)을 GPU 가 다 읽을 때까지 붙든다. 여기에 gpu_depth 와 여유 4.
+        // The display holds frames longer. matched holds one per slot (= slots), latest holds one per swapchain
+        // image (= image_count) until the GPU has read it all. Plus gpu_depth and a margin of 4.
         const int need = a.disp.sync == yvo::display::DisplaySync::Matched
                              ? a.slots + a.gpu_depth + 4
                              : a.gpu_depth + static_cast<int>(display->image_count()) + 4;
@@ -695,29 +695,29 @@ int run(const Args& a) {
 #endif
     SlotExchange ex(a.slots, need_display_ack);
 #ifdef YVO_HAVE_DISPLAY
-    // 표시 완료(= DisplayConvert 의 submit 펜스)가 슬롯 반납의 두 번째 조건이다. 메인 스레드에서 불린다.
+    // Display completion (= DisplayConvert's submit fence) is the second slot return condition. Called on the main thread.
     if (display) display->set_display_done_callback([&ex](int s) { ex.display_done(s); });
 #endif
-    std::deque<int> gpu_q;  // GPU에 걸린 슬롯 (submit 순서)
+    std::deque<int> gpu_q;  // slots in flight on the GPU (submit order)
     std::vector<double> decode_ms, gpu_ms, npu_ms, e2e_ms, wait_block_ms;
-    std::unordered_map<std::int64_t, Clock::time_point> t_decoded;  // pts → 디코드 반환 시각
-    std::map<std::int64_t, Completion> reorder;                      // pts 순서 기록용
-    std::unordered_map<std::int64_t, std::vector<std::uint8_t>> png_src;  // dump 대상 프레임의 letterbox 사본
+    std::unordered_map<std::int64_t, Clock::time_point> t_decoded;  // pts → decode return time
+    std::map<std::int64_t, Completion> reorder;                      // for recording in pts order
+    std::unordered_map<std::int64_t, std::vector<std::uint8_t>> png_src;  // letterbox copies of frames to dump
     std::unordered_map<std::int64_t, yvo::LetterboxParams> png_lb;
     std::int64_t next_pts = 0;
     long submitted_npu = 0, completed = 0, total_dets = 0, errors = 0;
 
-    // 디코더 13프레임 제약 계측: 우리가 실제로 붙들고 있는 AVFrame 수를 weak_ptr 로 센다.
-    // (SandLetterbox 의 keepalive 와 DisplayPipeline 의 retained 가 같은 shared_ptr 를 공유하므로
-    //  이중으로 세지 않는다. 이것이 "조용히 멈추는" 실패 모드의 유일한 감지 수단이다.)
+    // Decoder 13-frame constraint measurement: count the AVFrames we actually hold using weak_ptr.
+    // (SandLetterbox's keepalive and DisplayPipeline's retained share the same shared_ptr, so
+    //  nothing is counted twice. This is the only means of detecting the "silent stall" failure mode.)
     std::deque<std::weak_ptr<void>> live_frames;
     long held_frames_max = 0, slot_timeout_count = 0;
-    std::vector<yvo::Detection> latest_dets;   // --display-sync latest 가 얹을 가장 최근 검출
+    std::vector<yvo::Detection> latest_dets;   // most recent detections overlaid by --display-sync latest
     double fps_now = 0.0;
 
     auto on_result = [&ex](yvo::InferResult&& r) { ex.complete(std::move(r)); };
 
-    // 완료 결과를 pts 순서로 기록
+    // Record completed results in pts order
     auto flush_results = [&]() {
         for (auto& c : ex.take_done()) {
             const std::int64_t pts = c.result.pts;
@@ -757,13 +757,13 @@ int run(const Args& a) {
                 png_lb.erase(r.pts);
             }
 #ifdef YVO_HAVE_DISPLAY
-            // 표시는 기록이 전부 끝난 뒤에 한다(드레인 끝). matched 에서는 여기가 유일한 show 지점이다.
+            // Display happens after all recording is done (end of drain). In matched this is the only show point.
             if (display && a.disp.sync == yvo::display::DisplaySync::Latest) latest_dets = r.detections;
             if (display && a.disp.sync == yvo::display::DisplaySync::Matched) {
                 char hud[64];
                 std::snprintf(hud, sizeof(hud), "FPS %4.1f DET %d NPU %3.0fms", fps_now,
                               static_cast<int>(r.detections.size()), r.latency_ms);
-                // show() 가 false 면 그 프레임은 화면에 나가지 않는다 → 슬롯을 **즉시** 돌려줘야 한다.
+                // If show() returns false the frame does not reach the screen → the slot must be returned **immediately**.
                 if (!display->show(r.slot, r.detections, hud)) ex.display_done(r.slot);
             }
 #endif
@@ -772,14 +772,14 @@ int run(const Args& a) {
         }
     };
 
-    // GPU 대기열 맨 앞 슬롯을 끝내고 NPU에 넘긴다
+    // Finish the slot at the front of the GPU queue and hand it to the NPU
     auto finish_gpu = [&]() {
         const int slot = gpu_q.front();
         gpu_q.pop_front();
         yvo::PreprocOutput out = pre.wait(slot);
         if (pre.last_gpu_ms() >= 0) gpu_ms.push_back(pre.last_gpu_ms());
         if (jsonl && out.pts % a.dump_every == 0) {
-            // draw_and_save()는 packed RGB를 기대하므로 NHCW 출력은 되돌려서 보관한다.
+            // draw_and_save() expects packed RGB, so NHCW output is converted back before being stored.
             std::vector<std::uint8_t>& buf = png_src[out.pts];
             buf.resize(out.size);
             if (out.layout == yvo::TensorLayout::Nhcw)
@@ -792,8 +792,8 @@ int run(const Args& a) {
         stage->submit(out, on_result);
         ++submitted_npu;
 #ifdef YVO_HAVE_DISPLAY
-        // latest: 검출을 기다리지 않고 **전처리가 끝나는 대로** 화면에 낸다(가장 최근 검출을 얹는다).
-        // 표시가 슬롯 수명을 늘리지 않도록 display_done 을 여기서 바로 세운다.
+        // latest: without waiting for detections, put it on screen **as soon as preprocessing finishes** (overlaying the most recent detections).
+        // Set display_done right here so the display does not extend the slot lifetime.
         if (display && a.disp.sync == yvo::display::DisplaySync::Latest) {
             char hud[64];
             std::snprintf(hud, sizeof(hud), "FPS %4.1f DET %d", fps_now, static_cast<int>(latest_dets.size()));
@@ -801,8 +801,8 @@ int run(const Args& a) {
             ex.display_done(slot);
         }
 #endif
-        // submit()은 NPU 백프레셔에서 블록할 수 있다. 그동안 쌓인 완료분을 바로 거둬
-        // 슬롯을 돌려준다(gpu 경로에서 슬롯 보유 시간이 NPU 점유를 그대로 깎는다). host는 no-op.
+        // submit() can block on NPU backpressure. Immediately collect completions that piled up meanwhile
+        // and return their slots (on the gpu path slot hold time directly eats into NPU occupancy). No-op for host.
         stage->pump();
     };
 
@@ -815,8 +815,8 @@ int run(const Args& a) {
 #ifdef YVO_HAVE_DISPLAY
             if (display) {
                 if (!display->poll_window()) {
-                    // 종료 키면 SIGINT 와 같은 중단 경로를 탄다([interrupted]·ok=0·종료 코드 130).
-                    // 창 닫기(xdg_toplevel.close)는 기존대로 중단이 아닌 정상 종료다.
+                    // An exit key takes the same stop path as SIGINT ([interrupted], ok=0, exit code 130).
+                    // Closing the window (xdg_toplevel.close) remains a normal exit, not a stop, as before.
                     if (display->quit_requested() && !stop_requested()) {
                         g_stop_by_key = true;
                         g_stop_signal.store(SIGINT, std::memory_order_relaxed);
@@ -824,8 +824,8 @@ int run(const Args& a) {
                     }
                     break;
                 }
-                // --display-pace source: 소스 프레임 레이트를 따라간다. **블로킹 sleep 을 쓰지 않는다** —
-                // 그동안 NPU 완료·GPU 후처리·표시 완료를 계속 거둬야 지연이 왜곡되지 않는다.
+                // --display-pace source: follow the source frame rate. **Does not use a blocking sleep** —
+                // NPU completions, GPU post-processing and display completions must keep being collected meanwhile, or latency gets distorted.
                 if (auto dl = display->pace_deadline(n)) {
                     while (Clock::now() < *dl && !stop_requested()) {
                         stage->pump();
@@ -840,25 +840,25 @@ int run(const Args& a) {
             const auto d0 = Clock::now();
             auto f = dec.next();
             const auto d1 = Clock::now();
-            stage->pump();   // 디코드 대기 중에 도착한 완료분 (host는 no-op)
+            stage->pump();   // completions that arrived while waiting for decode (no-op for host)
             if (!f) break;
             decode_ms.push_back(std::chrono::duration<double, std::milli>(d1 - d0).count());
-            f->pts = n;  // 프레임 순번으로 통일
+            f->pts = n;  // unify to frame sequence number
             t_decoded[n] = d1;
 
-            // 빈 슬롯 확보. 없으면 GPU 대기열을 먼저 NPU로 넘기고, 그래도 없으면 콜백을 기다린다.
+            // Acquire a free slot. If none, first hand the GPU queue to the NPU; if still none, wait for callbacks.
             std::optional<int> slot = ex.try_acquire();
             const auto w0 = Clock::now();
-            // ⚠ **블로킹 대기를 쓰지 않는다.** 슬롯 반납의 두 번째 조건(display_done)을 세울 주체가
-            //   메인 스레드 자신이므로, 여기서 condvar 를 오래 잡으면 그대로 교착한다.
-            //   대신 한 바퀴에 세 가지를 전부 진행시킨다:
-            //     stage->pump()  NPU 완료 → GPU 후처리 → compute_done (host 는 no-op)
-            //     finish_gpu()   전처리 결과를 NPU 로 밀어 슬롯이 다음 단계로 넘어가게 한다
-            //     flush_results() **표시를 거는 곳이 여기다**(matched). 빠뜨리면 compute_done 만 서고
-            //                    display_done 이 영원히 오지 않아 5 초 만에 타임아웃한다(실제로 그랬다)
-            //     display->pump() 표시 펜스 회수 → display_done
-            //   --display off && --postproc host 면 두 pump 가 no-op 이고 flush_results 는 원래 매 프레임
-            //   부르던 것이라 오늘과 동치다.
+            // ⚠ **No blocking wait.** The one who sets the second slot return condition (display_done) is
+            //   the main thread itself, so holding the condvar here for long deadlocks outright.
+            //   Instead, each iteration advances all three:
+            //     stage->pump()  NPU completion → GPU post-processing → compute_done (no-op for host)
+            //     finish_gpu()   pushes preprocessing results to the NPU so slots move to the next stage
+            //     flush_results() **this is where display is issued** (matched). Omit it and only compute_done gets set,
+            //                    display_done never arrives and it times out after 5 s (this actually happened)
+            //     display->pump() reclaims display fences → display_done
+            //   With --display off && --postproc host, both pumps are no-ops and flush_results was originally called every
+            //   frame anyway, so it is equivalent to before.
             if (!slot) {
                 const auto deadline = Clock::now() + std::chrono::seconds(5);
                 while (!slot) {
@@ -869,30 +869,30 @@ int run(const Args& a) {
                     if (display) display->pump();
 #endif
                     slot = ex.acquire_poll(std::chrono::milliseconds(2));
-                    // 종료 신호. 한 바퀴가 2 ms 라 즉시 빠져나온다(5 초 타임아웃을 기다리지 않는다).
-                    // **예외를 쓰지 않는다** — 아래 catch 는 진짜 실패용이고, 사용자의 중단은 실패가 아니다.
+                    // Stop signal. One iteration is 2 ms so we break out immediately (no waiting for the 5 s timeout).
+                    // **No exception** — the catch below is for real failures, and a user stop is not a failure.
                     if (!slot && stop_requested()) break;
                     if (!slot && Clock::now() > deadline) {
                         ++slot_timeout_count;
-                        throw std::runtime_error("슬롯 대기 타임아웃(5 s): 계산·표시 완료가 오지 않음");
+                        throw std::runtime_error("slot wait timeout (5 s): compute/display completion did not arrive");
                     }
                 }
             }
-            // 슬롯 없이 빠져나왔다 = 종료 신호. 이미 디코드한 이 프레임은 제출하지 않고 버린다.
-            // n 도 올리지 않으므로 decoded/submitted/completed 카운트는 그대로 일치한다.
+            // Left without a slot = stop signal. This already-decoded frame is dropped without being submitted.
+            // n is not incremented either, so the decoded/submitted/completed counts still match.
             if (!slot) break;
             wait_block_ms.push_back(std::chrono::duration<double, std::milli>(Clock::now() - w0).count());
 
 #ifdef YVO_HAVE_DISPLAY
-            // ⚠ f.reset() **앞에서** 붙든다. 여기가 glass-to-glass 의 시작점이기도 하다.
+            // ⚠ Captured **before** f.reset(). This is also the starting point of glass-to-glass.
             if (display) display->retain(*slot, *f);
 #endif
             pre.submit(*f, *slot);
             gpu_q.push_back(*slot);
             live_frames.push_back(f->keepalive);
-            f.reset();  // keepalive는 SandLetterbox(와 표시 경로)가 들고 있다
+            f.reset();  // keepalive is held by SandLetterbox (and the display path)
 
-            // GPU 깊이 제한 + 이미 끝난 슬롯은 바로 NPU로
+            // GPU depth limit + slots already finished go straight to the NPU
             while (static_cast<int>(gpu_q.size()) > a.gpu_depth) finish_gpu();
             while (!gpu_q.empty() && pre.ready(gpu_q.front())) finish_gpu();
 
@@ -902,7 +902,7 @@ int run(const Args& a) {
             if (display) display->pump();
 #endif
             ++n;
-            // 실제로 붙들고 있는 디코더 프레임 수(약 13이 한계). 만료된 weak_ptr 을 걷어내고 최대치를 남긴다.
+            // Number of decoder frames actually held (limit about 13). Sweep expired weak_ptrs and keep the maximum.
             for (auto it = live_frames.begin(); it != live_frames.end();)
                 it = it->expired() ? live_frames.erase(it) : it + 1;
             held_frames_max = std::max(held_frames_max, static_cast<long>(live_frames.size()));
@@ -921,24 +921,24 @@ int run(const Args& a) {
     } catch (const std::exception& e) {
         std::fprintf(stderr, "[error] frame %ld: %s\n", n, e.what());
         fail = true;
-        while (!gpu_q.empty()) {  // 남은 GPU 작업은 NPU로 넘기지 않고 정리
+        while (!gpu_q.empty()) {  // clean up remaining GPU work without handing it to the NPU
             pre.wait(gpu_q.front());
             gpu_q.pop_front();
         }
     }
     stage->drain();
-    flush_results();   // matched 의 마지막 show 들이 여기서 나간다
+    flush_results();   // the last shows of matched go out here
 #ifdef YVO_HAVE_DISPLAY
-    if (display) display->drain();   // 표시 펜스를 전부 기다려 디코더 프레임·import pin 을 놓는다
+    if (display) display->drain();   // wait for all display fences and release decoder frames / import pins
 #endif
-    // 중단 여부는 드레인까지 끝난 뒤에 확정한다(드레인 도중에 받은 시그널도 중단으로 친다).
+    // Whether it was interrupted is decided only after the drain finishes (a signal received during the drain also counts as a stop).
     int stop_signal = 0;
     if (g_stop.load(std::memory_order_relaxed)) {
         stop_signal = g_stop_signal.load(std::memory_order_relaxed);
-        if (stop_signal == 0) stop_signal = SIGINT;  // 핸들러가 번호를 쓰기 직전이면 SIGINT 로 본다
+        if (stop_signal == 0) stop_signal = SIGINT;  // treat as SIGINT if the handler was just about to write the number
     }
     const bool interrupted = stop_signal != 0;
-    if (interrupted) fail = true;  // RESULT_CSV/RESULT_CSV2 의 ok 를 0 으로 (벤치 집계에 섞이면 안 된다)
+    if (interrupted) fail = true;  // ok in RESULT_CSV/RESULT_CSV2 becomes 0 (must not mix into bench aggregation)
 
     const auto t1 = Clock::now();
     const double c1 = cpu_ms();
@@ -948,7 +948,7 @@ int run(const Args& a) {
         fail = true;
     }
     const float hailo_t1 = stage->chip_temperature();
-    // GPU 후처리 통계는 stage 를 놓기 전에 떠 둔다.
+    // Snapshot GPU post-processing stats before releasing stage.
     Stats sp, sq, sc, sh, sgn;
     long cand_overflow = 0, nms_fb = 0, nms_fb_cap = 0, nms_fb_guard = 0, nms_mismatch = 0;
     if (gpu_stage) {
@@ -963,11 +963,11 @@ int run(const Args& a) {
         sh = stats(gpu_stage->hold_ms());
         cand_overflow = gpu_stage->overflow_frames();
     }
-    // 표시 통계도 display 를 놓기 전에 떠 둔다.
+    // Snapshot display stats too before releasing display.
     Stats sdc, sdo, sdi, sdg;
     unsigned long long presented = 0, disp_dropped = 0, recreates = 0, ov_overflow = 0;
     const char* disp_backend = "off";
-    // 평면 스캔아웃 판정 (wayland-planes / kms 만. 나머지는 "-")
+    // Plane scanout verdict (wayland-planes / kms only. Otherwise "-")
     std::string sc_zero_copy = "-", sc_color_ok = "-", sc_underrun = "-", sc_ov_skipped = "-", sc_cb_timeouts = "-",
                 sc_zc_feedback = "-";
     std::vector<std::string> sc_lines, sc_transport_lines;
@@ -1002,8 +1002,8 @@ int run(const Args& a) {
         }
     }
 #endif
-    // 종료 순서: drain(위) → import 캐시 비움 → 디코더 close → 러너 해제(dma-buf unmap)
-    //            → 표시 해제(스왑체인·창 / 평면 전송층·박스 링) → export fd close(FdCloser) → ctx → 창
+    // Shutdown order: drain (above) → clear import cache → decoder close → runner release (dma-buf unmap)
+    //            → display release (swapchain/window / plane transport/box ring) → export fd close (FdCloser) → ctx → window
     pre.clear_import_cache();
     dec.close();
     gpu_stage = nullptr;
@@ -1020,7 +1020,7 @@ int run(const Args& a) {
     const Stats sd = stats(decode_ms), sg = stats(gpu_ms), sn = stats(npu_ms), se = stats(e2e_ms),
                 sw = stats(wait_block_ms);
     if (static_cast<long>(completed) != n || static_cast<long>(completed) != submitted_npu) {
-        std::fprintf(stderr, "[error] 프레임 수 불일치: decoded=%ld npu_submitted=%ld completed=%ld\n", n, submitted_npu,
+        std::fprintf(stderr, "[error] frame count mismatch: decoded=%ld npu_submitted=%ld completed=%ld\n", n, submitted_npu,
                      completed);
         fail = true;
     }
@@ -1029,10 +1029,10 @@ int run(const Args& a) {
     const std::string postproc_desc =
         a.postproc == Postproc::Gpu ? std::string("gpu/") + a.postproc_alloc : std::string("host");
     if (interrupted)
-        std::printf("[interrupted] %s — %ld 프레임에서 중단 (아래 통계는 부분 실행 값이다, ok=0)\n",
-                    g_stop_by_key                ? "표시 창 키 입력(Esc/q/Ctrl+C)"
-                    : stop_signal == SIGTERM ? "SIGTERM 수신"
-                                             : "SIGINT 수신",
+        std::printf("[interrupted] %s — stopped at frame %ld (the stats below are partial-run values, ok=0)\n",
+                    g_stop_by_key                ? "display window key press (Esc/q/Ctrl+C)"
+                    : stop_signal == SIGTERM ? "SIGTERM received"
+                                             : "SIGINT received",
                     n);
     std::printf("== yvo_pipeline (%s, %s, batch %d, slots %d, gpu_depth %d, postproc %s) ==\n",
                 dmabuf ? "dmabuf" : "ptr", layout_name(a.layout), a.batch, a.slots, a.gpu_depth,
@@ -1044,9 +1044,9 @@ int run(const Args& a) {
     std::printf("decode call ms  mean %.3f  median %.3f  p90 %.3f  max %.3f\n", sd.mean, sd.median, sd.p90, sd.max);
     std::printf("gpu shader ms   mean %.3f  median %.3f  p90 %.3f  max %.3f\n", sg.mean, sg.median, sg.p90, sg.max);
     std::printf("npu latency ms  mean %.3f  median %.3f  p90 %.3f  max %.3f\n", sn.mean, sn.median, sn.p90, sn.max);
-    std::printf("e2e latency ms  mean %.3f  median %.3f  p90 %.3f  max %.3f  (decode 반환 → NPU 완료 콜백)\n", se.mean,
+    std::printf("e2e latency ms  mean %.3f  median %.3f  p90 %.3f  max %.3f  (decode return → NPU completion callback)\n", se.mean,
                 se.median, se.p90, se.max);
-    std::printf("slot wait ms    mean %.3f  p90 %.3f  (메인 스레드가 빈 슬롯을 기다린 시간)\n", sw.mean, sw.p90);
+    std::printf("slot wait ms    mean %.3f  p90 %.3f  (time the main thread waited for a free slot)\n", sw.mean, sw.p90);
     if (a.postproc == Postproc::Gpu) {
         std::printf("gpu post ms     mean %.3f  median %.3f  p90 %.3f  max %.3f  (yolo_decode.comp pass 1)\n", sp.mean,
                     sp.median, sp.p90, sp.max);
@@ -1059,19 +1059,19 @@ int run(const Args& a) {
             std::printf("nms fallback    %ld frames (capacity %ld, iou guard %ld)\n", nms_fb, nms_fb_cap, nms_fb_guard);
         }
         if (a.nms == yvo::pipeline::NmsBackend::Verify)
-            std::printf("nms verify mismatch %ld frames (GPU 결과가 CPU 기준과 비트 단위로 다른 프레임, fallback 제외)\n",
+            std::printf("nms verify mismatch %ld frames (frames where the GPU result differs bitwise from the CPU reference, excluding fallback)\n",
                         nms_mismatch);
         std::printf("candidates      mean %.2f  max %.0f  overflow frames %ld\n", sc.mean, sc.max, cand_overflow);
-        std::printf("slot hold ms    mean %.3f  median %.3f  p90 %.3f  max %.3f  (NPU 완료 콜백 → 슬롯 반납)\n",
+        std::printf("slot hold ms    mean %.3f  median %.3f  p90 %.3f  max %.3f  (NPU completion callback → slot return)\n",
                     sh.mean, sh.median, sh.p90, sh.max);
     }
     if (!sc_fatal.empty()) {
-        std::fprintf(stderr, "[error] 표시 전송층: %s\n", sc_fatal.c_str());
+        std::fprintf(stderr, "[error] display transport: %s\n", sc_fatal.c_str());
         fail = true;
     }
     if (a.display && sc_applicable) {
-        std::printf("disp convert ms -  (%s: YUV→RGB 변환은 HVS 가 스캔아웃 중에 한다, V3D 0)\n", disp_backend);
-        std::printf("disp overlay ms mean %.3f  median %.3f  p90 %.3f  (overlay_boxes_buf.spv + 지우기, 박스 평면)\n",
+        std::printf("disp convert ms -  (%s: YUV→RGB conversion is done by the HVS during scanout, V3D 0)\n", disp_backend);
+        std::printf("disp overlay ms mean %.3f  median %.3f  p90 %.3f  (overlay_boxes_buf.spv + clear, box plane)\n",
                     sdo.mean, sdo.median, sdo.p90);
     } else if (a.display) {
         std::printf("disp convert ms mean %.3f  median %.3f  p90 %.3f  (display_convert.comp)\n", sdc.mean,
@@ -1080,13 +1080,13 @@ int run(const Args& a) {
                     sdo.p90);
     }
     if (a.display) {
-        std::printf("present 간격 ms median %.3f  p90 %.3f  (n=%zu)\n", sdi.median, sdi.p90, sdi.n);
-        std::printf("glass-to-glass  mean %.2f  median %.2f  p90 %.2f  (n=%zu, 디코드 → 화면 도달)\n", sdg.mean,
+        std::printf("present interval ms median %.3f  p90 %.3f  (n=%zu)\n", sdi.median, sdi.p90, sdi.n);
+        std::printf("glass-to-glass  mean %.2f  median %.2f  p90 %.2f  (n=%zu, decode → reaches screen)\n", sdg.mean,
                     sdg.median, sdg.p90, sdg.n);
         std::printf("display         presented %llu, dropped %llu, recreates %llu, overlay overflow %llu\n",
                     presented, disp_dropped, recreates, ov_overflow);
         if (sc_applicable) {
-            std::printf("scanout         zero_copy %s, color_ok %s, hvs_underrun delta %s (debugfs 판정)\n",
+            std::printf("scanout         zero_copy %s, color_ok %s, hvs_underrun delta %s (debugfs verdict)\n",
                         sc_zero_copy.c_str(), sc_color_ok.c_str(), sc_underrun.c_str());
             for (const auto& l : sc_lines) std::printf("  debugfs %s\n", l.c_str());
             for (const auto& l : sc_transport_lines) std::printf("  %s\n", l.c_str());
@@ -1096,7 +1096,7 @@ int run(const Args& a) {
                         sc_feedback);
         }
     }
-    std::printf("held frames max %ld (디코더 한계 약 13), slot timeout %ld\n", held_frames_max, slot_timeout_count);
+    std::printf("held frames max %ld (decoder limit about 13), slot timeout %ld\n", held_frames_max, slot_timeout_count);
     std::printf("detections      %ld total, %.2f / frame\n", total_dets,
                 completed ? static_cast<double>(total_dets) / static_cast<double>(completed) : 0.0);
     std::printf("hailo chip temp %.1f -> %.1f C\n", static_cast<double>(hailo_t0), static_cast<double>(hailo_t1));
@@ -1113,16 +1113,16 @@ int run(const Args& a) {
             a.csv_label.c_str(), dmabuf ? "dmabuf" : "ptr", layout_name(a.layout), a.batch, a.slots, completed, wall_s,
             fps, cpu_per_frame, sd.mean, sg.mean, sg.p90, sn.mean, sn.p90, se.mean, se.p90, total_dets,
             static_cast<double>(hailo_t0), static_cast<double>(hailo_t1), soc_t0, soc_t1, fail ? 0 : 1);
-        // 신규 지표는 **별도 줄**이다. RESULT_CSV 의 22필드는 순서·개수를 바꾸지 않는다
-        // (06_tools/bench/pipeline_bench.sh:120 이 헤더를 grep -qx 로 비교한다).
+        // New metrics go on a **separate line**. The 22 fields of RESULT_CSV do not change order or count
+        // (06_tools/bench/pipeline_bench.sh:120 compares the header with grep -qx).
         // label,postproc,alloc,gpu_post_mean,gpu_post_p90,cpu_nms_us_mean,cand_mean,cand_max,cand_overflow,ok
-        // + 표시 지표는 **뒤로만** 덧붙인다(앞의 10필드는 순서·개수를 바꾸지 않는다):
+        // + display metrics are appended **only at the end** (the first 10 fields do not change order or count):
         //   display,sync,pace,disp_convert_mean,disp_convert_p90,disp_overlay_mean,present_interval_median,
         //   e2e_glass_mean,e2e_glass_p90,presented,display_dropped,recreates,held_frames_max,slot_timeout_count
-        // + GPU NMS 지표도 **뒤로만** 덧붙인다: nms,gpu_nms_mean,gpu_nms_p90,nms_fallback,nms_verify_mismatch
-        // + 평면 스캔아웃 지표도 **뒤로만** 덧붙인다(wayland-planes / kms 외에는 전부 "-"):
+        // + GPU NMS metrics are also appended **only at the end**: nms,gpu_nms_mean,gpu_nms_p90,nms_fallback,nms_verify_mismatch
+        // + plane scanout metrics are also appended **only at the end** (all "-" except for wayland-planes / kms):
         //   scanout_zero_copy,plane_color_ok,hvs_underrun_delta,overlay_skipped,frame_cb_timeouts,zero_copy_feedback
-        //   (scanout_zero_copy·plane_color_ok = 1/0/unverified — debugfs state 판정, hvs_underrun_delta 는 읽지 못하면 unverified)
+        //   (scanout_zero_copy/plane_color_ok = 1/0/unverified — judged from debugfs state; hvs_underrun_delta is unverified if it cannot be read)
         const char* sync_s = "-";
         const char* pace_s = "-";
 #ifdef YVO_HAVE_DISPLAY
@@ -1146,7 +1146,7 @@ int run(const Args& a) {
     }
     std::fflush(stdout);
     if (ctx.debug_messenger_active() && ctx.validation_errors() > 0) fail = true;
-    // 중단된 실행은 셸 관례대로 128+signo (SIGINT 130, SIGTERM 143).
+    // An interrupted run returns 128+signo per shell convention (SIGINT 130, SIGTERM 143).
     if (interrupted) return 128 + stop_signal;
     return fail ? 1 : 0;
 }
@@ -1159,7 +1159,7 @@ int main(int argc, char** argv) {
         usage(argv[0]);
         return 2;
     }
-    install_stop_handlers();  // 실패해도 계속한다(경고는 함수 안에서 낸다)
+    install_stop_handlers();  // continue even on failure (the warning is emitted inside the function)
     try {
         return run(a);
     } catch (const std::exception& e) {

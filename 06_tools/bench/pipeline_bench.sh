@@ -1,30 +1,30 @@
 #!/usr/bin/env bash
-# 통합 파이프라인(yvo_pipeline) 성능 측정
-#   {ptr, dmabuf} × NHWC + dmabuf × NHCW, 각각 {batch1/slots2, batch4/slots8, batch8/slots16} × RUNS회
-#   NHCW는 HailoRT의 CPU 입력 변환을 없애는 경로이고 dma-buf 입력에서만 동작한다.
+# Integrated pipeline (yvo_pipeline) performance measurement
+#   {ptr, dmabuf} × NHWC + dmabuf × NHCW, each {batch1/slots2, batch4/slots8, batch8/slots16} × RUNS times
+#   NHCW is the path that eliminates HailoRT's CPU input conversion and works only with dma-buf input.
 #
-# 사용법:
-#   bash 06_tools/bench/pipeline_bench.sh                    # 전체(1816프레임), 설정당 3회
-#   RUNS=1 FRAMES=300 bash 06_tools/bench/pipeline_bench.sh  # 짧게
-#   ONLY='dmabuf_b8' bash 06_tools/bench/pipeline_bench.sh   # 설정 id(grep -E 패턴) 일부만
-#   ONLY='nhcw' APPEND=1 bash ...                        # 기존 results_raw.csv에 이어붙이기(같은 냉각 규칙일 때만)
-#   COOL_C=65 COOL_MAX_S=120 HOT_C=75 bash ...          # 냉각 조건
-#   OUT_DIR=/path bash ...                               # 출력 디렉터리
-#   SAMPLES=0 bash ...                                   # 샘플 PNG·검출 JSONL 덤프 실행 생략
+# Usage:
+#   bash 06_tools/bench/pipeline_bench.sh                    # all (1816 frames), 3 runs per config
+#   RUNS=1 FRAMES=300 bash 06_tools/bench/pipeline_bench.sh  # short
+#   ONLY='dmabuf_b8' bash 06_tools/bench/pipeline_bench.sh   # subset by config id (grep -E pattern)
+#   ONLY='nhcw' APPEND=1 bash ...                        # append to existing results_raw.csv (only under the same cool-down rules)
+#   COOL_C=65 COOL_MAX_S=120 HOT_C=75 bash ...          # cool-down conditions
+#   OUT_DIR=/path bash ...                               # output directory
+#   SAMPLES=0 bash ...                                   # skip the sample PNG / detection JSONL dump run
 #
-# 실행 순서: 반복(run) 바깥 루프, 설정 안쪽 루프(열 상태 편향을 설정 간에 고르게 나눈다).
-# 냉각: 직전 실행의 hailort.log에 온도·스로틀 경고가 있거나, 실행 직전 Hailo 칩 온도가 HOT_C 초과면
-#       칩 온도가 COOL_C 이하가 될 때까지(최대 COOL_MAX_S초) 대기한다. 칩 온도는 hailo_platform(Python)으로 읽는다.
-# 출력:
-#   $OUT_DIR/raw/<id>_run<N>/{stdout.log,hailort.log}  실행별 로그 (hailort.log는 실행 디렉터리에 생긴다)
-#   $OUT_DIR/results_raw.csv   실행별 RESULT_CSV 행 + 대기 시간·경고 수
-#   $OUT_DIR/results.csv       설정별 중앙값
-#   $OUT_DIR/samples/          dmabuf batch8 1회 실행의 detections.jsonl + 박스 PNG (측정과 별도)
+# Run order: repetition (run) is the outer loop, config the inner loop (spreads thermal bias evenly across configs).
+# Cool-down: if the previous run's hailort.log has temperature/throttle warnings, or Hailo chip temp exceeds HOT_C right before a run,
+#       wait until chip temp is at or below COOL_C (at most COOL_MAX_S s). Chip temp is read via hailo_platform (Python).
+# Output:
+#   $OUT_DIR/raw/<id>_run<N>/{stdout.log,hailort.log}  per-run logs (hailort.log appears in the run directory)
+#   $OUT_DIR/results_raw.csv   per-run RESULT_CSV rows + wait time and warning count
+#   $OUT_DIR/results.csv       per-config medians
+#   $OUT_DIR/samples/          detections.jsonl + box PNGs from one dmabuf batch8 run (separate from measurement)
 set -euo pipefail
 
 PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-# 공통 함수(온도·PCIe·냉각·hailort 경고 판정·벤치 락)는 lib/common.sh 하나로 모았다.
-# 예전에는 이 함수들이 7개 스크립트에 복붙돼 있었고 실제로 갈라져 있었다(pcie_link 의 Gen5 분기 등).
+# Common functions (temperature, PCIe, cool-down, hailort warning verdict, bench lock) live in lib/common.sh.
+# They used to be copy-pasted into 7 scripts and had actually diverged (e.g. pcie_link's Gen5 branch).
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 BIN="${BIN:-$BIN_DIR/yvo_pipeline}"
 VIDEO="${VIDEO:-$PROJ/04_data/videos/video_h265.mp4}"
@@ -37,12 +37,12 @@ COOL_C="${COOL_C:-65}"
 COOL_MAX_S="${COOL_MAX_S:-120}"
 HOT_C="${HOT_C:-75}"
 SAMPLES="${SAMPLES:-1}"
-SAMPLE_LAYOUT="${SAMPLE_LAYOUT:-nhcw}"   # 샘플 덤프에 쓸 레이아웃
-APPEND="${APPEND:-0}"                  # 1이면 results_raw.csv를 지우지 않고 이어붙인다
+SAMPLE_LAYOUT="${SAMPLE_LAYOUT:-nhcw}"   # layout used for the sample dump
+APPEND="${APPEND:-0}"                  # if 1, append to results_raw.csv instead of clearing it
 
 require_bin "$BIN" yvo_pipeline
 check_only_exit
-guard_out_dir   # OUT_DIR 이 비어 있지 않으면 FORCE=1 없이는 멈춘다(보관 결과 보호)
+guard_out_dir   # stop if OUT_DIR is not empty unless FORCE=1 (archived-result protection)
 bench_lock_acquire
 mkdir -p "$OUT_DIR/raw"
 
@@ -73,7 +73,7 @@ configs=(
 RAW="$OUT_DIR/results_raw.csv"
 CSV_HEADER="label,mode,layout,batch,slots,frames,wall_s,fps,cpu_ms_per_frame,decode_ms_mean,gpu_ms_mean,gpu_ms_p90,npu_ms_mean,npu_ms_p90,e2e_ms_mean,e2e_ms_p90,detections,hailo_t0,hailo_t1,soc_t0,soc_t1,ok,run,cool_wait_s,hailort_warnings,hailort_errors"
 if [[ "$APPEND" == "1" && -f "$RAW" ]]; then
-  head -1 "$RAW" | grep -qx "$CSV_HEADER" || { echo "APPEND=1인데 기존 $RAW 헤더가 다르다" >&2; exit 1; }
+  head -1 "$RAW" | grep -qx "$CSV_HEADER" || { echo "APPEND=1 but the existing $RAW header differs" >&2; exit 1; }
 else
   echo "$CSV_HEADER" > "$RAW"
 fi
@@ -89,9 +89,9 @@ for ((r = 1; r <= RUNS; r++)); do
     COOL_WAITED=0
     t_now=$(hailo_temp)
     if (( prev_warn > 0 )); then
-      cool_down "hailort.log 경고 ${prev_warn}건"
+      cool_down "hailort.log warnings: ${prev_warn}"
     elif awk -v t="$t_now" -v h="$HOT_C" 'BEGIN{exit !(t!="nan" && t>h)}'; then
-      cool_down "칩 온도 ${t_now} C > ${HOT_C} C"
+      cool_down "chip temp ${t_now} C > ${HOT_C} C"
     fi
     run_dir="$OUT_DIR/raw/${id}_run${r}"
     rm -rf "$run_dir"; mkdir -p "$run_dir"
@@ -110,7 +110,7 @@ for ((r = 1; r <= RUNS; r++)); do
     prev_warn=$nwarn
     line=$(grep '^RESULT_CSV,' "$run_dir/stdout.log" | sed 's/^RESULT_CSV,//' || true)
     if [[ -z "$line" ]]; then
-      echo "  실패 rc=$rc (stdout.log 참조)"; tail -5 "$run_dir/stdout.log"
+      echo "  failed rc=$rc (see stdout.log)"; tail -5 "$run_dir/stdout.log"
       continue
     fi
     echo "$line,$r,$COOL_WAITED,$nwarn,$nerr" >> "$RAW"
@@ -118,7 +118,7 @@ for ((r = 1; r <= RUNS; r++)); do
   done
 done
 
-# 설정별 중앙값
+# Per-config medians
 /usr/bin/python3 - "$RAW" "$OUT_DIR/results.csv" <<'EOF'
 import csv, statistics, sys
 rows = list(csv.DictReader(open(sys.argv[1])))
@@ -146,10 +146,10 @@ print(open(sys.argv[2]).read())
 EOF
 
 if [[ "$SAMPLES" == "1" ]]; then
-  echo "[samples] dmabuf/$SAMPLE_LAYOUT batch8 --dump-dir (측정 제외)"
+  echo "[samples] dmabuf/$SAMPLE_LAYOUT batch8 --dump-dir (excluded from measurement)"
   rm -rf "$OUT_DIR/samples"; mkdir -p "$OUT_DIR/samples"
   (cd "$OUT_DIR/samples" && "$BIN" --video "$VIDEO" --hef "$HEF" --mode dmabuf --layout "$SAMPLE_LAYOUT" --batch 8 "${frames_arg[@]}" \
-      --dump-dir "$OUT_DIR/samples" --dump-every 300 > stdout.log 2>&1) || echo "  samples 실행 실패"
+      --dump-dir "$OUT_DIR/samples" --dump-every 300 > stdout.log 2>&1) || echo "  samples run failed"
 fi
 {
   echo "# after $(date -Is)"

@@ -9,7 +9,7 @@ namespace yvo::display {
 
 namespace {
 
-// DRM fourcc (drm_fourcc.h 를 끌어오지 않으려고 값만 둔다)
+// DRM fourcc (only the values are kept, to avoid pulling in drm_fourcc.h)
 constexpr std::uint32_t fourcc(char a, char b, char c, char d) {
     return static_cast<std::uint32_t>(static_cast<unsigned char>(a)) |
            (static_cast<std::uint32_t>(static_cast<unsigned char>(b)) << 8) |
@@ -18,7 +18,7 @@ constexpr std::uint32_t fourcc(char a, char b, char c, char d) {
 }
 constexpr std::uint32_t kNv12 = fourcc('N', 'V', '1', '2');
 constexpr std::uint32_t kAb24 = fourcc('A', 'B', '2', '4');
-// Broadcom modifier: vendor 0x07 (상위 8비트), 하위 8비트 = 종류(SAND128 = 4), 그 사이 48비트 = 열 높이 파라미터.
+// Broadcom modifier: vendor 0x07 (upper 8 bits), lower 8 bits = type (SAND128 = 4), the 48 bits in between = column height parameter.
 constexpr std::uint64_t kVendorBroadcom = 0x07;
 constexpr std::uint64_t kBroadcomSand128 = 4;
 
@@ -33,7 +33,7 @@ std::string value_after_eq(std::string_view t) {
     const auto p = t.find('=');
     if (p == std::string_view::npos) return {};
     std::string v(t.substr(p + 1));
-    // "allocated by = labwc" 처럼 '=' 앞뒤에 공백이 있는 줄이 있다
+    // some lines have spaces around '=', like "allocated by = labwc"
     while (!v.empty() && (v.front() == ' ' || v.front() == '\t')) v.erase(v.begin());
     while (!v.empty() && (v.back() == ' ' || v.back() == '\r')) v.pop_back();
     return v;
@@ -82,7 +82,7 @@ std::vector<DrmPlaneState> parse_drm_active_planes(std::string_view state) {
             if (colon != std::string_view::npos) cur.name = std::string(line.substr(colon + 2));
             continue;
         }
-        // 들여쓰기 없는 다른 객체 머리줄(crtc[..], connector[..], ...)이 오면 평면 블록이 끝난다
+        // an unindented header line of another object (crtc[..], connector[..], ...) ends the plane block
         if (!line.empty() && line.front() != '\t' && line.front() != ' ') {
             flush();
             continue;
@@ -98,7 +98,7 @@ std::vector<DrmPlaneState> parse_drm_active_planes(std::string_view state) {
             cur.modifier_str = value_after_eq(t);
             cur.modifier = std::strtoull(cur.modifier_str.c_str(), nullptr, 16);
         } else if (starts_with(t, "size=") && !have_fb_size) {
-            // 첫 "size=" 가 fb 크기다. 뒤의 obj 블록에도 "size=<바이트>" 가 있다.
+            // the first "size=" is the fb size. The later obj block also has "size=<bytes>".
             cur.size = value_after_eq(t);
             have_fb_size = true;
         } else if (starts_with(t, "crtc-pos=")) cur.crtc_pos = value_after_eq(t);
@@ -135,7 +135,7 @@ PlaneScanoutVerdict judge_plane_scanout(const std::vector<DrmPlaneState>& planes
         v.video_zpos = video->zpos;
         v.encoding_bt709 = video->encoding.find("BT.709") != std::string::npos;
         v.range_limited = video->range.find("limited") != std::string::npos;
-        // 영상 위 AB24 중 가장 낮은 것(= 영상 바로 위 박스 평면)
+        // the lowest AB24 above the video (= the box plane right above the video)
         const DrmPlaneState* ov = nullptr;
         for (const auto& p : planes)
             if (is_ab24_linear(p) && p.zpos > video->zpos && (ov == nullptr || p.zpos < ov->zpos)) ov = &p;
@@ -181,7 +181,7 @@ DrmStateSnapshot take_drm_state_snapshot(const std::string& dri_debug_dir) {
     DrmStateSnapshot snap;
     std::string st;
     if (!read_file(dri_debug_dir + "/state", &st) || st.empty()) {
-        snap.error = dri_debug_dir + "/state 를 읽지 못했다 (debugfs 권한: root:sudo 0750)";
+        snap.error = dri_debug_dir + "/state could not be read (debugfs permission: root:sudo 0750)";
         return snap;
     }
     snap.readable = true;

@@ -1,7 +1,7 @@
-// hvs_psnr: 두 PPM(P6, 8비트) 이미지의 PSNR·채널별 평균 부호 오차·최대 오차를 낸다.
-//   - 평균 부호 오차는 색 범위(limited/full) 오류나 행렬(601/709) 오류를 가려내는 데 쓴다
-//     (범위 오류면 어두운 곳이 뜨고 밝은 곳이 눌려 휘도 분산이 바뀐다 → --stats 의 표준편차 비교).
-// 사용: hvs_psnr ref.ppm test.ppm [--roi x y w h]
+// hvs_psnr: reports PSNR, per-channel mean signed error, and max error between two PPM (P6, 8-bit) images.
+//   - mean signed error is used to tell color range (limited/full) errors from matrix (601/709) errors
+//     (a range error lifts darks and crushes highlights, changing luma variance → compare std dev in --stats).
+// usage: hvs_psnr ref.ppm test.ppm [--roi x y w h]
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -40,7 +40,7 @@ bool read_ppm(const char* path, Img& img) {
         ok = ok && std::fscanf(f, "%d", &img.h) == 1;
         skip_ws_comments();
         ok = ok && std::fscanf(f, "%d", &maxv) == 1 && maxv == 255 && img.w > 0 && img.h > 0;
-        std::fgetc(f); // 헤더 뒤 공백 1바이트
+        std::fgetc(f); // 1 whitespace byte after the header
     }
     if (ok) {
         img.px.resize(static_cast<std::size_t>(img.w) * static_cast<std::size_t>(img.h) * 3);
@@ -59,11 +59,11 @@ int main(int argc, char** argv) {
     }
     Img a, b;
     if (!read_ppm(argv[1], a) || !read_ppm(argv[2], b)) {
-        std::fprintf(stderr, "PPM 읽기 실패\n");
+        std::fprintf(stderr, "PPM read failed\n");
         return 1;
     }
     if (a.w != b.w || a.h != b.h) {
-        std::fprintf(stderr, "크기 불일치 %dx%d vs %dx%d\n", a.w, a.h, b.w, b.h);
+        std::fprintf(stderr, "size mismatch %dx%d vs %dx%d\n", a.w, a.h, b.w, b.h);
         return 1;
     }
     int rx = 0, ry = 0, rw = a.w, rh = a.h;

@@ -1,16 +1,16 @@
 #pragma once
-// 오프스크린 렌더 타깃 — STORAGE 이미지 + (선택) 호스트 되읽기 버퍼 + 펜스.
-// 컴퓨트 셰이더가 쓴 결과를 CPU 기준 구현과 **비트 단위로** 대조하는 정확도 검사에 쓴다.
+// Offscreen render target — STORAGE image + (optional) host readback buffer + fence.
+// Used for accuracy checks that compare compute shader output **bit for bit** against the CPU reference implementation.
 //
-// 쓰는 곳: tools/display/display_probe.cpp (P7 overlay · P8 convert),
+// Used by: tools/display/display_probe.cpp (P7 overlay · P8 convert),
 //          testkit/display_convert_check.hpp (→ 05_tests/test_display_convert.cpp),
 //          05_tests/test_overlay.cpp.
 //
-// 2026-09-21 이전에는 display_probe 의 OffscreenTarget 과 test_overlay 의 OverlayHarness 가
-// 이미지·버퍼·배리어·되읽기 코드를 각자 갖고 있었다(동기화 장치 없음). 되읽기 블록
-// (GENERAL → TRANSFER_SRC 배리어, 이미지→버퍼 복사, 호스트 가시성 배리어)은 세 곳에 복사돼 있었다.
+// Before 2026-09-21, display_probe's OffscreenTarget and test_overlay's OverlayHarness
+// each had their own image/buffer/barrier/readback code (no synchronization mechanism). The readback block
+// (GENERAL → TRANSFER_SRC barrier, image→buffer copy, host visibility barrier) was copied in three places.
 //
-// 헤더 전용. VulkanContext 외에 표시 경로 심볼을 쓰지 않는다.
+// Header-only. Uses no display-path symbols other than VulkanContext.
 #include <cstdint>
 
 #include <vulkan/vulkan.h>
@@ -41,8 +41,8 @@ inline void barrier_image(VkCommandBuffer cb, VkImage img, VkImageLayout from, V
     vkCmdPipelineBarrier2(cb, &di);
 }
 
-// R8G8B8A8_UNORM, STORAGE|TRANSFER_SRC(+extra_usage) 이미지. readback=true 면 host 버퍼를 둔다.
-// extra_usage 로 TRANSFER_DST 를 덧붙이면 vkCmdClearColorImage 로 배경을 채울 수 있다.
+// R8G8B8A8_UNORM, STORAGE|TRANSFER_SRC(+extra_usage) image. If readback=true, a host buffer is kept.
+// Adding TRANSFER_DST via extra_usage lets vkCmdClearColorImage fill the background.
 struct OffscreenTarget {
     yvo::vk::VulkanContext& ctx;
     VkImage image = VK_NULL_HANDLE;
@@ -124,8 +124,8 @@ struct OffscreenTarget {
     OffscreenTarget(const OffscreenTarget&) = delete;
     OffscreenTarget& operator=(const OffscreenTarget&) = delete;
 
-    // 컴퓨트가 GENERAL 레이아웃으로 이미지에 쓴 뒤 호출한다. 제출·펜스 대기 후 host 에서 RGBA 를 읽을 수 있다.
-    //   GENERAL → TRANSFER_SRC 배리어 · 이미지→버퍼 복사 · 호스트 가시성 배리어.
+    // Call after compute has written to the image in GENERAL layout. After submit and fence wait, the host can read RGBA.
+    //   GENERAL → TRANSFER_SRC barrier · image→buffer copy · host visibility barrier.
     void record_readback(VkCommandBuffer cb) const {
         barrier_image(cb, image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                       VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,

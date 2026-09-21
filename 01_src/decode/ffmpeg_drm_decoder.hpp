@@ -1,4 +1,4 @@
-// libavcodec HW HEVC 디코더(V4L2 stateless, DRM_PRIME 출력) → DrmFrame
+// libavcodec HW HEVC decoder (V4L2 stateless, DRM_PRIME output) → DrmFrame
 #pragma once
 
 #include <cstdint>
@@ -19,11 +19,11 @@ namespace yvo {
 class FfmpegDrmDecoder {
 public:
     struct Options {
-        // 디코더 풀에 추가로 잡을 프레임 수. 사용자가 동시에 들고 있는 프레임(링 슬롯)만큼 필요하다.
-        // 실측(1080p HEVC): 풀 크기 = 6 + 스레드 수(프레임 스레딩) + extra, 안전하게 들고 있을 수 있는 프레임 ≈ extra + 4.
-        // 초과해서 들고 있으면 디코더가 빈 버퍼를 기다리며 멈춘다(에러 없이 행). -1이면 풀이 필요에 따라 늘어난다.
+        // Extra frames to allocate in the decoder pool. Needed for as many frames as the user holds at once (ring slots).
+        // Measured (1080p HEVC): pool size = 6 + thread count (frame threading) + extra; frames that can safely be held ≈ extra + 4.
+        // Holding more than that makes the decoder stall waiting for a free buffer (hangs without an error). -1 lets the pool grow as needed.
         int extra_hw_frames = 2 * kNumSlots;
-        int threads = 0; // 0 = 자동(코어 수), 1 = 프레임 스레딩 끔
+        int threads = 0; // 0 = auto (core count), 1 = frame threading off
     };
 
     FfmpegDrmDecoder() = default;
@@ -35,18 +35,18 @@ public:
     bool open(const std::string& path, const Options& opt);
     void close();
 
-    // 다음 프레임. EOF 또는 에러면 nullopt (에러 여부는 error()로 구분).
-    // 반환된 DrmFrame.keepalive가 살아 있는 동안 dma-buf 내용이 유지된다.
+    // Next frame. nullopt on EOF or error (distinguish with error()).
+    // The dma-buf contents stay valid while the returned DrmFrame.keepalive is alive.
     std::optional<DrmFrame> next();
 
     bool eof() const { return eof_; }
     const std::string& error() const { return error_; }
     int width() const;
     int height() const;
-    double frame_rate() const;      // 스트림 avg_frame_rate
-    std::int64_t nb_frames() const; // 컨테이너가 알려 준 프레임 수(모르면 0)
+    double frame_rate() const;      // stream avg_frame_rate
+    std::int64_t nb_frames() const; // frame count reported by the container (0 if unknown)
 
-    // keepalive에 담긴 AVFrame(DRM_PRIME)을 꺼낸다. 확인 도구용.
+    // Extract the AVFrame (DRM_PRIME) held in keepalive. For inspection tools.
     static AVFrame* av_frame(const DrmFrame& f) { return static_cast<AVFrame*>(f.keepalive.get()); }
 
 private:
@@ -58,18 +58,18 @@ private:
     AVBufferRef* hw_device_ = nullptr;
     AVPacket* pkt_ = nullptr;
     int stream_index_ = -1;
-    bool input_done_ = false; // 패킷 끝(flush 전송 완료)
+    bool input_done_ = false; // end of packets (flush sent)
     bool eof_ = false;
     std::int64_t frame_counter_ = 0;
     std::string error_;
 };
 
-// AVDRMFrameDescriptor → DrmFrame 필드(keepalive/pts 제외). Y/UV가 한 객체든 두 객체든 처리한다.
-// 지원하지 않는 레이아웃(SAND128 NV12가 아님, 크기 불일치)이면 false와 사유를 반환한다.
+// AVDRMFrameDescriptor → DrmFrame fields (except keepalive/pts). Handles Y/UV in one object or two.
+// For an unsupported layout (not SAND128 NV12, size mismatch) returns false with the reason.
 bool drm_descriptor_to_frame(const AVDRMFrameDescriptor& desc, int width, int height, int coded_height,
                              DrmFrame& out, std::string* why = nullptr);
 
-// descriptor 원값을 사람이 읽을 문자열로 (로그·확인 도구용)
+// Raw descriptor values as a human-readable string (for logs and inspection tools)
 std::string describe_drm_descriptor(const AVDRMFrameDescriptor& desc);
 
 } // namespace yvo

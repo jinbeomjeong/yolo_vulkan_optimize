@@ -1,12 +1,12 @@
-// yvo_isp_bench: HEVC HW 디코드(DRM_PRIME) → PiSP BE(ISP) 리사이즈 전처리 성능 측정
+// yvo_isp_bench: HEVC HW decode (DRM_PRIME) → PiSP BE (ISP) resize preprocessing performance measurement
 //
-// yvo_preproc_bench(GPU 경로)와 플래그 이름을 맞췄다. 두 경로를 같은 조건에서 비교하기 위한 도구다.
-// 출력: FPS, ISP 구간 wall-clock(median/p90/mean/min/max), CPU ms/frame(getrusage),
-//       NHCW 전치 비용(스칼라/NEON), dma-buf sync 비용, 출력 memcpy 비용, 샘플 PNG.
+// Flag names match yvo_preproc_bench (GPU path). A tool for comparing the two paths under the same conditions.
+// Output: FPS, ISP interval wall-clock (median/p90/mean/min/max), CPU ms/frame (getrusage),
+//       NHCW transpose cost (scalar/NEON), dma-buf sync cost, output memcpy cost, sample PNG.
 //
-// 시간 축 주의: ISP는 BackendDevice::Run()이 동기라 여기서 재는 건 전부 wall-clock이다.
-// GPU 셰이더의 2.1 ms는 Vulkan timestamp query가 준 디바이스 시간이므로 직접 비교하면 안 된다.
-// GPU 쪽 wall-clock은 yvo_preproc_bench --depth 1의 submit+wait 중앙값으로 따로 잰다.
+// Time-axis caution: the ISP's BackendDevice::Run() is synchronous, so everything measured here is wall-clock.
+// The GPU shader's 2.1 ms is device time from a Vulkan timestamp query, so do not compare them directly.
+// The GPU-side wall-clock is measured separately as the submit+wait median of yvo_preproc_bench --depth 1.
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -45,19 +45,19 @@ using yvo::tool::cpu_ms;
 struct Args {
     std::string video = YVO_DEFAULT_VIDEO;
     std::string media = "/dev/media0";
-    std::string filter;  // resample 필터 (비면 smart selection)
+    std::string filter;  // resample filter (empty = smart selection)
     std::string png_dir = YVO_REPO_ROOT "/build/out/yvo_isp_bench";
     std::string csv_label;
     int png_frame = 100;
-    int frames = 0;   // 0 = 전체
+    int frames = 0;   // 0 = all
     int slots = yvo::kNumSlots;
     int buffers = 12;
     unsigned int branch = 1;
     int repeat = 1;
-    int warmup = 60;  // 앞 N프레임은 통계에서 뺀다 (DVFS·캐시 워밍업)
+    int warmup = 60;  // first N frames are excluded from statistics (DVFS, cache warm-up)
     yvo::isp::RepackMode repack = yvo::isp::RepackMode::None;
-    bool no_isp = false;       // 디코드만 (같은 루프, 베이스라인)
-    bool cpu_baseline = false; // CPU 기준 경로(mmap → de-SAND → cpu_letterbox) 시간
+    bool no_isp = false;       // decode only (same loop, baseline)
+    bool cpu_baseline = false; // time of the CPU reference path (mmap → de-SAND → cpu_letterbox)
     bool no_png = false;
 };
 
@@ -99,7 +99,7 @@ bool parse(int argc, char** argv, Args& a) {
 }
 
 struct RunResult {
-    long frames = 0;        // 통계에 든 프레임 수 (워밍업 제외)
+    long frames = 0;        // frames counted in statistics (excluding warm-up)
     long total_frames = 0;
     double wall_s = 0, cpu_ms = 0;
     std::vector<double> isp_ms, repack_ms, sync_ms;
@@ -122,7 +122,7 @@ RunResult run_once(const Args& a, yvo::isp::IspResizer* isp, bool save_png) {
     std::vector<std::uint8_t> png_copy;
     long png_pts = -1;
 
-    // 워밍업 구간이 끝나는 시점에 시계와 rusage를 다시 잡는다(FPS·CPU는 측정 구간만 센다).
+    // Re-take the clock and rusage when the warm-up interval ends (FPS and CPU count only the measured interval).
     double c0 = cpu_ms();
     auto t0 = std::chrono::steady_clock::now();
     long n = 0;
@@ -144,7 +144,7 @@ RunResult run_once(const Args& a, yvo::isp::IspResizer* isp, bool save_png) {
                 const auto s0 = std::chrono::steady_clock::now();
                 std::chrono::steady_clock::time_point s3;
                 {
-                    // 캐시 매핑된 dma-heap 버퍼를 CPU가 읽으므로 DMA_BUF_IOCTL_SYNC로 감싼다.
+                    // The CPU reads a cache-mapped dma-heap buffer, so wrap it in DMA_BUF_IOCTL_SYNC.
                     const yvo::isp::IspResizer::OutputRead lock(*isp, slot);
                     const auto s1 = std::chrono::steady_clock::now();
                     yvo::isp::rgb_packed_to_nhcw(a.repack, lock.data(), out_w, out_h, nhcw.data());
@@ -156,7 +156,7 @@ RunResult run_once(const Args& a, yvo::isp::IspResizer* isp, bool save_png) {
                     repack_ms = std::chrono::duration<double, std::milli>(s2 - s1).count();
                     sync_ms = std::chrono::duration<double, std::milli>(s1 - s0).count(); // SYNC_START
                     s3 = std::chrono::steady_clock::now();
-                } // lock 소멸 = SYNC_END
+                } // lock destroyed = SYNC_END
                 sync_ms += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - s3).count();
                 if (measured && a.repack != yvo::isp::RepackMode::None) {
                     r.repack_ms.push_back(repack_ms);
@@ -168,7 +168,7 @@ RunResult run_once(const Args& a, yvo::isp::IspResizer* isp, bool save_png) {
     }
     const auto t1 = std::chrono::steady_clock::now();
     const double c1 = cpu_ms();
-    // 디코더를 닫기 전에 입력 캐시를 비운다(캐시가 디코더 dma-buf의 dup fd를 들고 있다).
+    // Clear the input cache before closing the decoder (the cache holds dup fds of decoder dma-bufs).
     if (isp) isp->clear_input_cache();
     if (!dec.error().empty()) {
         std::fprintf(stderr, "decode error after %ld frames: %s\n", n, dec.error().c_str());
@@ -186,7 +186,7 @@ RunResult run_once(const Args& a, yvo::isp::IspResizer* isp, bool save_png) {
     return r;
 }
 
-// CPU 기준 경로: 프레임마다 dma-buf mmap → desand_nv12 → cpu_letterbox_nv12_bt709 (단일 스레드, 스칼라)
+// CPU reference path: per frame dma-buf mmap → desand_nv12 → cpu_letterbox_nv12_bt709 (single thread, scalar)
 int run_cpu_baseline(const Args& a) {
     yvo::FfmpegDrmDecoder dec;
     if (!dec.open(a.video)) {
@@ -248,8 +248,8 @@ void print_result(const Args& a, const char* tag, const RunResult& r) {
                     rp.median, rp.p90, sy.median, i.n, r.ok ? 1 : 0);
 }
 
-// 보조 측정: ISP 출력(캐시 매핑 dma-heap)을 CPU가 읽는 비용. 과거 NHWC 경로의 CPU 14 ms는 전치 자체가
-// 아니라 V3D 메모리를 CPU가 읽는 비용이었다. 같은 일을 캐시 매핑 버퍼에서 하면 얼마인지 본다.
+// Auxiliary measurement: cost of the CPU reading ISP output (cache-mapped dma-heap). The 14 ms CPU of the old NHWC path was not the transpose
+// itself but the cost of the CPU reading V3D memory. This measures how much the same work costs on a cache-mapped buffer.
 void micro_host_read(const yvo::isp::IspResizer& isp) {
     const std::size_t n = isp.output_size();
     std::vector<std::uint8_t> dst(n), src_copy(n), nhcw(n);
@@ -300,7 +300,7 @@ int main(int argc, char** argv) {
             return 0;
         }
 
-        // 입력 기하는 영상에서 읽는다. 첫 프레임의 SAND 열 높이로 ISP 설정을 확정한다.
+        // Input geometry is read from the video. The ISP config is fixed from the first frame's SAND column height.
         yvo::isp::IspResizerConfig cfg;
         cfg.media_device = a.media;
         cfg.branch = a.branch;
@@ -323,7 +323,7 @@ int main(int argc, char** argv) {
             cfg.coded_height = first->coded_height;
             cfg.sand_col_height = static_cast<int>(first->sand_col_height);
             cfg.uv_sand_col_height = static_cast<int>(first->uv_sand_col_height);
-        } // 디코더를 닫기 전에 프레임 참조를 놓는다
+        } // release frame references before closing the decoder
         yvo::isp::IspResizer isp(cfg);
 
         std::printf("config: slots=%d buffers=%d repack=%s warmup=%d video=%s\n", a.slots, a.buffers,

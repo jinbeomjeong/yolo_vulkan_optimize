@@ -1,35 +1,35 @@
-// yvo_hailo_raw_probe: HailoRT **원시 출력 6스트림** 경로를 검증하는 프로브 (계획서 §6.2 P1 + P2).
+// yvo_hailo_raw_probe: probe that verifies the HailoRT **6 raw output streams** path (plan §6.2 P1 + P2).
 //
-// --probe p1 (기본): API 경로와 텐서 의미를 **호스트 malloc 버퍼만**으로 검증한다(GPU 미사용).
-// --probe p2      : 출력 6개를 **dma-buf 로 받는다.** 후처리 트랙의 go/no-go 관문이다.
-//   · --alloc malloc|heap|vulkan (쉼표로 여러 개). malloc 이 바이트 비교의 기준값이다.
-//   · size 4조합 전수 시도: dma_map_dmabuf 에 (hw_frame_size | dmabuf_size)
-//                        x read_async 에 (hw_frame_size | dmabuf_size)
-//   · 세 방식의 6 텐서 바이트 일치, cpu_read_1.22MB_ms, dma_map_dmabuf 96회 총 소요를 측정한다
-//   · 시작·종료 시점 fd 수를 세어 누수가 없음을 보인다
-// --probe f0      : **입력 dma-buf(H2D) + 출력 dma-buf(D2H) 동시 사용**의 관문이다.
-//   지금까지 검증된 조합은 (dma-buf 입력 + 호스트 NMS 출력) 과 (호스트 malloc 입력 + dma-buf 출력 6개)
-//   둘뿐이라, 통합 파이프라인이 쓸 (Vulkan export dma-buf 입력 + dma-buf 출력 6개) 는 미검증이었다.
-//   같은 프레임으로 --in-dmabuf 있음/없음을 돌려 출력 6텐서의 바이트 일치, 프레임당 콜백 7개,
-//   fd 누수, hailort.log warning 을 비교한다. infer_async 와 write_async 를 따로 판정한다.
+// --probe p1 (default): verifies the API path and tensor semantics with **host malloc buffers only** (no GPU).
+// --probe p2      : **receives the 6 outputs as dma-bufs.** This is the go/no-go gate for the post-processing track.
+//   · --alloc malloc|heap|vulkan (several, comma-separated). malloc is the baseline for byte comparison.
+//   · tries all 4 size combinations: dma_map_dmabuf with (hw_frame_size | dmabuf_size)
+//                        x read_async with (hw_frame_size | dmabuf_size)
+//   · measures 6-tensor byte match across the three modes, cpu_read_1.22MB_ms, and the total time of 96 dma_map_dmabuf calls
+//   · counts fds at start and end to show there is no leak
+// --probe f0      : the gate for **simultaneous use of input dma-buf (H2D) + output dma-buf (D2H)**.
+//   So far the only verified combinations were (dma-buf input + host NMS output) and (host malloc input + 6 dma-buf outputs),
+//   so (Vulkan export dma-buf input + 6 dma-buf outputs), which the integrated pipeline will use, was unverified.
+//   Runs the same frames with and without --in-dmabuf and compares the 6 output tensors byte-for-byte, 7 callbacks per frame,
+//   fd leaks, and hailort.log warnings. infer_async and write_async are judged separately.
 //
-// 하는 일:
-//  0) Hef 파싱만으로 출력 스트림 6개의 shape/hw_shape/hw_frame_size/format을 덤프한다.
-//  1) VDevice(ROUND_ROBIN) → create_configure_params(hef) → batch_size 설정 → configure(hef, params).
-//     is_scheduled(), infer_queue_size(), 스트림별 get_async_max_queue_size(),
-//     그리고 OutputStream::get_quant_infos()의 .size()와 값 전부를 덤프한다.
-//     get_quant_infos().size() > 1 이면(per-feature 양자화) 즉시 실패로 보고한다 — 설계가 바뀐다.
-//  2) --api {infer_async, read_async, both} 두 경로를 모두 구현해 시도한다.
-//     infer_async: 입력 1 + 출력 6을 한 요청으로 묶는다(FIFO 짝맞추기를 HailoRT가 한다).
-//     read_async : 7개 스트림 전부에 HAILO_STREAM_FLAGS_ASYNC를 configure 시점에 세팅하고,
-//                  write_async 1회 + read_async 6회를 한 mutex 안에서 발행해 FIFO 짝을 직접 보장한다.
-//  3) 실제 프레임을 처리해 6 텐서를 픽스처로 덤프하고(04_data/raw_tensors/), CPU 기준 구현
-//     (ref/cpu_yolov8_decode.hpp)의 검출을 **별도 패스로 얻은 HailoRT NMS 검출**과 match()로 비교한다.
-//     텐서 해석 미확정 변수 4개(argmax_only / DFL 채널 순서 / sigmoid / > vs >=)를 전수 시도한다.
-//  4) (B)안 폐기 증거: InferModel의 출력 개수와, 출력에 NHCW format order를 걸었을 때의 configure() 실패 상태.
+// What it does:
+//  0) Dumps shape/hw_shape/hw_frame_size/format of the 6 output streams from HEF parsing alone.
+//  1) VDevice(ROUND_ROBIN) → create_configure_params(hef) → set batch_size → configure(hef, params).
+//     Dumps is_scheduled(), infer_queue_size(), per-stream get_async_max_queue_size(),
+//     and the .size() and all values of OutputStream::get_quant_infos().
+//     If get_quant_infos().size() > 1 (per-feature quantization), it is reported as an immediate failure — the design would change.
+//  2) --api {infer_async, read_async, both}: both paths are implemented and tried.
+//     infer_async: bundles 1 input + 6 outputs into one request (HailoRT does the FIFO pairing).
+//     read_async : sets HAILO_STREAM_FLAGS_ASYNC on all 7 streams at configure time, and
+//                  issues 1 write_async + 6 read_async inside one mutex to guarantee FIFO pairing directly.
+//  3) Processes real frames, dumps the 6 tensors as fixtures (04_data/raw_tensors/), and compares the detections of the CPU reference
+//     implementation (ref/cpu_yolov8_decode.hpp) with **HailoRT NMS detections obtained in a separate pass** via match().
+//     Exhaustively tries the 4 unresolved tensor-interpretation variables (argmax_only / DFL channel order / sigmoid / > vs >=).
+//  4) Evidence for dropping option (B): InferModel's output count, and the configure() failure status when NHCW format order is set on the output.
 //
-// Hailo 장치가 1개라 러너를 동시에 둘 수 없다. 그래서 단계마다 객체를 완전히 파괴하고 다음 단계로 간다
-// (05_tests/test_detections.cpp의 run_nhcw_pass() 패턴).
+// There is only one Hailo device, so two runners cannot coexist. So each stage fully destroys its objects before moving on
+// (the run_nhcw_pass() pattern in 05_tests/test_detections.cpp).
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -56,7 +56,7 @@
 #include <hailo/hailort.hpp>
 
 #include "ref/cpu_letterbox.hpp"
-#include "core/dma_heap_alloc.hpp"   // dma_sync_* (입력 dma-buf 가 캐시된 힙일 때만 쓴다)
+#include "core/dma_heap_alloc.hpp"   // dma_sync_* (used only when the input dma-buf is a cached heap)
 #include "ref/cpu_yolov8_decode.hpp"
 #include "ref/detection_match.hpp"
 #include "core/frame_types.hpp"
@@ -78,16 +78,16 @@ using yvo::tool::read_nv12_frames;
 
 constexpr int kSrcW = 1920;
 constexpr int kSrcH = 1080;
-// HailoRT의 vdma_stream.cpp:379가 read_async()에 **16384 B 정렬**을 요구한다. 4096 B로 주면
-// "unaligned buffer ... causes performance degradation" 경고가 프레임×스트림마다 뜨고
-// 실측으로 FPS가 48.5 → 51.7로 3 FPS 차이가 났다(계획서 §7 검증 기록).
+// HailoRT's vdma_stream.cpp:379 requires **16384 B alignment** for read_async(). With 4096 B,
+// the "unaligned buffer ... causes performance degradation" warning appears for every frame×stream and
+// measured FPS differed by 3 FPS, 48.5 → 51.7 (plan §7 verification record).
 constexpr std::size_t kDmaAlign = yvo::kHailoAsyncAlign;  // core/hailo_align.hpp
 constexpr float kIouMatchThreshold = yvo::detmatch::kIouThreshold;  // ref/detection_match.hpp
-constexpr float kHefScoreThreshold = 0.2f;   // HEF의 YOLOV8 post-process 설정
+constexpr float kHefScoreThreshold = 0.2f;   // HEF's YOLOV8 post-process setting
 constexpr float kHefIouThreshold = 0.7f;
 constexpr int kHefMaxPerClass = 100;
 
-// ---------------------------------------------------------------- 공통 유틸
+// ---------------------------------------------------------------- common utilities
 
 std::string status_name(hailo_status s) {
     const char* msg = hailo_get_status_message(s);
@@ -135,7 +135,7 @@ const char* format_type_name(hailo_format_type_t t) {
     }
 }
 
-// 스트림 이름의 '/' 뒤 부분(예: "yolov11m/conv74_178" -> "conv74_178")
+// Part of the stream name after '/' (e.g. "yolov11m/conv74_178" -> "conv74_178")
 std::string short_name(const std::string& full) {
     const auto pos = full.rfind('/');
     return pos == std::string::npos ? full : full.substr(pos + 1);
@@ -148,7 +148,7 @@ std::string read_first_line(const std::string& path) {
     return "(read failed)";
 }
 
-// stdout과 파일에 동시에 쓴다. 증거 파일이 곧 보고서다.
+// Writes to stdout and a file at the same time. The evidence file is the report.
 class Tee {
 public:
     explicit Tee(const std::string& path) : f_(path) {}
@@ -164,9 +164,9 @@ private:
     std::ofstream f_;
 };
 
-// ---------------------------------------------------------------- 영상 → NHCW 입력
+// ---------------------------------------------------------------- video → NHCW input
 
-// hailo_selftest.cpp의 CPU letterbox NHCW 경로와 같다: cpu_letterbox_nv12_bt709 → rgb_packed_to_nhcw
+// Same as the CPU letterbox NHCW path in hailo_selftest.cpp: cpu_letterbox_nv12_bt709 → rgb_packed_to_nhcw
 std::vector<std::vector<std::uint8_t>> make_nhcw_inputs(const std::vector<Nv12Frame>& frames,
                                                         const yvo::LetterboxParams& lb, std::size_t frame_size) {
     std::vector<std::vector<std::uint8_t>> out(frames.size());
@@ -181,10 +181,10 @@ std::vector<std::vector<std::uint8_t>> make_nhcw_inputs(const std::vector<Nv12Fr
     return out;
 }
 
-// 매칭 기준은 ref/detection_match.hpp 하나뿐이다(2026-09-21 이전에는 여기에 사본이 있었다).
+// The matching criterion lives only in ref/detection_match.hpp (before 2026-09-21 there was a copy here).
 using yvo::detmatch::match;
 
-// ---------------------------------------------------------------- 원시 스트림 세션
+// ---------------------------------------------------------------- raw stream session
 
 enum class RawApi { InferAsync, ReadAsync };
 
@@ -198,12 +198,12 @@ struct StreamMeta {
     std::size_t queue_size = 0;
 };
 
-// 프레임 1장 분량의 원시 출력 6개
+// The 6 raw outputs of one frame
 struct RawFrame {
-    std::vector<std::vector<std::uint8_t>> t;   // 6개, 스트림 순서는 RawSession::outputs_
+    std::vector<std::vector<std::uint8_t>> t;   // 6 of them, stream order follows RawSession::outputs_
 };
 
-// dma_map_dmabuf / read_async 에 넘길 크기. P2가 4조합을 전수 시도한다(계획서 §4.2).
+// Size passed to dma_map_dmabuf / read_async. P2 tries all 4 combinations (plan §4.2).
 enum class SizeKind { Hw, Dmabuf };
 const char* size_kind_name(SizeKind k) { return k == SizeKind::Hw ? "hw_frame_size" : "dmabuf_size"; }
 
@@ -212,15 +212,15 @@ struct RawSessionConfig {
     std::uint16_t batch = 8;
     int want_slots = 16;
     RawApi api = RawApi::InferAsync;
-    // nullptr 이면 내부 malloc 풀을 쓴다(P1 동작). dma-buf 풀을 주면 출력을 fd 로 받는다.
+    // nullptr uses the internal malloc pool (P1 behavior). Given a dma-buf pool, outputs are received via fd.
     yvo::p2::OutBufPool* out_pool = nullptr;
-    SizeKind map_size = SizeKind::Hw;    // dma_map_dmabuf(fd, size, D2H) 의 size
+    SizeKind map_size = SizeKind::Hw;    // size of dma_map_dmabuf(fd, size, D2H)
     SizeKind read_size = SizeKind::Hw;   // read_async(fd, size, cb) / hailo_dma_buffer_t.size
-    // ── F0: 입력 H2D dma-buf ──
-    // nullptr 이면 입력은 호스트 malloc 이다(오늘 동작, 바이트 단위로 같아야 한다).
-    // 풀을 주면 슬롯별 입력 버퍼를 그 풀에서 받아 fd 로 H2D 전송한다.
+    // ── F0: input H2D dma-buf ──
+    // nullptr means the input is host malloc (today's behavior; must be byte-identical).
+    // Given a pool, per-slot input buffers are taken from it and sent H2D via fd.
     yvo::p2::OutBufPool* in_pool = nullptr;
-    SizeKind in_map_size = SizeKind::Dmabuf;   // dma_map_dmabuf(fd, size, H2D) 의 size
+    SizeKind in_map_size = SizeKind::Dmabuf;   // size of dma_map_dmabuf(fd, size, H2D)
     SizeKind in_write_size = SizeKind::Hw;     // write_async(fd, size, cb) / hailo_dma_buffer_t.size
 };
 
@@ -240,21 +240,21 @@ public:
         auto params_map = unwrap(vdevice_->create_configure_params(*hef_), "VDevice::create_configure_params");
         for (auto& kv : params_map) {
             kv.second.batch_size = batch;
-            // 7개 스트림 전부 ASYNC. read_async 경로의 전제이고, infer_async에도 무해하다.
+            // All 7 streams ASYNC. A precondition of the read_async path, and harmless for infer_async.
             for (auto& sp : kv.second.stream_params_by_name) {
                 sp.second.flags = HAILO_STREAM_FLAGS_ASYNC;
             }
         }
         auto ngs = unwrap(vdevice_->configure(*hef_, params_map), "VDevice::configure");
-        if (ngs.size() != 1) throw std::runtime_error("network group이 1개가 아니다");
+        if (ngs.size() != 1) throw std::runtime_error("network group count is not 1");
         ng_ = ngs[0];
 
         auto in_refs = ng_->get_input_streams();
         auto out_refs = ng_->get_output_streams();
-        if (in_refs.size() != 1) throw std::runtime_error("입력 스트림이 1개가 아니다");
+        if (in_refs.size() != 1) throw std::runtime_error("input stream count is not 1");
         input_ = &in_refs[0].get();
         for (auto& r : out_refs) outputs_.push_back(&r.get());
-        // 이름 순으로 고정해 스트림 순서를 실행 간에 결정적으로 만든다
+        // Fix the order by name so stream order is deterministic across runs
         std::sort(outputs_.begin(), outputs_.end(),
                   [](const hailort::OutputStream* a, const hailort::OutputStream* b) { return a->name() < b->name(); });
 
@@ -263,11 +263,11 @@ public:
 
         std::size_t min_queue = in_meta_.queue_size;
         for (const auto& m : out_meta_) min_queue = std::min(min_queue, m.queue_size);
-        // num_slots를 큐 크기 최솟값으로 클램프한다. 안 하면 HAILO_QUEUE_IS_FULL이 난다.
+        // Clamp num_slots to the minimum queue size. Otherwise HAILO_QUEUE_IS_FULL occurs.
         num_slots_ = std::max(1, std::min(want_slots, static_cast<int>(min_queue)));
         min_queue_ = min_queue;
 
-        // 입력: in_pool 이 nullptr 이면 호스트 malloc(P1/P2 동작), 풀을 주면 dma-buf fd(F0).
+        // Input: host malloc if in_pool is nullptr (P1/P2 behavior), dma-buf fd if a pool is given (F0).
         for (int s = 0; s < num_slots_; ++s) {
             auto slot = std::make_unique<Slot>();
             if (cfg_.in_pool) {
@@ -291,10 +291,10 @@ public:
             free_slots_.push_back(s);
         }
 
-        // dma-buf 풀이면 프로세스 수명 동안 한 번만 매핑한다(출력 슬롯 x 텐서 = 96회, 입력 슬롯당 1회).
-        // 소요 시간을 누적해 계획서 §6.2 P2-⑤(총 < 100 ms)를 판정한다.
-        // ⚠ 크기 계약(부록 A.13): dma_map_dmabuf 에는 dma-buf 실크기, 전송 API 에는 hw_frame_size.
-        //   방향도 다르다 — 입력은 H2D, 출력은 D2H.
+        // With a dma-buf pool, map only once for the process lifetime (output slots x tensors = 96 times, once per input slot).
+        // Accumulate the elapsed time to judge plan §6.2 P2-⑤ (total < 100 ms).
+        // ⚠ Size contract (appendix A.13): dma_map_dmabuf gets the actual dma-buf size, transfer APIs get hw_frame_size.
+        //   Directions differ too — input is H2D, output is D2H.
         if (cfg_.in_pool || cfg_.out_pool) {
             const auto t0 = std::chrono::steady_clock::now();
             for (auto& slot : slots_) {
@@ -329,7 +329,7 @@ public:
 
     ~RawSession() {
         try {
-            if (!drain(5000)) std::fprintf(stderr, "[warn] RawSession: drain 시한 초과 — 콜백이 오지 않았다\n");
+            if (!drain(5000)) std::fprintf(stderr, "[warn] RawSession: drain deadline exceeded — callbacks did not arrive\n");
         } catch (...) {
         }
         for (const auto& m : mapped_) vdevice_->dma_unmap_dmabuf(m.fd, m.size, m.dir);
@@ -338,18 +338,18 @@ public:
         vdevice_.reset();
     }
 
-    // dma_map_dmabuf 통계
+    // dma_map_dmabuf statistics
     long map_calls() const { return map_calls_; }
     long map_failed() const { return map_failed_; }
     hailo_status map_status() const { return map_status_; }
     double map_ms() const { return map_ms_; }
 
-    // 입력(H2D) dma-buf 통계
+    // Input (H2D) dma-buf statistics
     bool uses_in_dmabuf() const { return !slots_.empty() && slots_[0]->in_ref.fd >= 0; }
     long in_map_calls() const { return in_map_calls_; }
     long in_map_failed() const { return in_map_failed_; }
     hailo_status in_map_status() const { return in_map_status_; }
-    // 보고용: 입력 버퍼의 (hw_frame_size, dmabuf_size). dma-buf 가 아니면 두 번째가 0.
+    // For reporting: (hw_frame_size, dmabuf_size) of the input buffer. The second is 0 if not a dma-buf.
     std::pair<std::size_t, std::size_t> in_size_pair() const {
         return {in_meta_.frame_size, slots_.empty() ? 0 : slots_[0]->in_ref.dmabuf_size};
     }
@@ -379,13 +379,13 @@ public:
         return std::max(t->ts0_temperature, t->ts1_temperature);
     }
 
-    // 프레임 1장 제출. on_done(slot, status)은 HailoRT 콜백 스레드에서 호출되고,
-    // 반환 후 슬롯 버퍼는 자유롭게 재사용할 수 있다.
+    // Submit one frame. on_done(slot, status) is called on the HailoRT callback thread,
+    // and after it returns the slot buffers can be freely reused.
     void submit(const std::uint8_t* nhcw_input, const std::function<void(int, hailo_status)>& on_done) {
         const int slot = acquire_slot();
         Slot& sl = *slots_[static_cast<std::size_t>(slot)];
-        // 호스트가 입력 프레임을 채운다. 캐시된 dma-buf(heap)면 CPU 쓰기 구간을 sync 로 감싼다.
-        // Vulkan export 버퍼는 HOST_COHERENT 라 needs_sync == false 다.
+        // The host fills the input frame. For a cached dma-buf (heap), the CPU write section is wrapped in sync.
+        // Vulkan export buffers are HOST_COHERENT, so needs_sync == false.
         const bool in_sync = sl.in_ref.needs_sync && sl.in_ref.fd >= 0;
         if (in_sync) yvo::dma_sync_begin(sl.in_ref.fd, yvo::DmaSyncDir::Write, /*strict=*/true);
         std::memcpy(sl.in_ref.ptr, nhcw_input, in_meta_.frame_size);
@@ -400,11 +400,11 @@ public:
             submit_read_async(slot);
     }
 
-    // 모든 슬롯이 반납될 때까지 기다린다. timeout_ms 안에 못 끝내면 false.
+    // Waits until all slots are released. Returns false if not done within timeout_ms.
     //
-    // ⚠ **시한이 필요한 이유(P2에서 실측)**: infer_async() 에 hw_frame_size 와 다른 크기를 넘기면
-    //   HailoRT 는 SUCCESS 를 돌려준 뒤 내부 워커에서 CHECK 에 걸려 요청을 조용히 버린다
-    //   (hailort.log core_op.cpp:524). **콜백이 하나도 오지 않는다.** 무한 대기하면 프로브가 멈춘다.
+    // ⚠ **Why a deadline is needed (measured in P2)**: if infer_async() gets a size different from hw_frame_size,
+    //   HailoRT returns SUCCESS, then its internal worker hits a CHECK and silently drops the request
+    //   (hailort.log core_op.cpp:524). **Not a single callback arrives.** Waiting forever would hang the probe.
     bool drain(int timeout_ms = 30000) {
         std::unique_lock<std::mutex> lk(m_);
         return cv_.wait_for(lk, std::chrono::milliseconds(timeout_ms),
@@ -413,16 +413,16 @@ public:
 
 private:
     struct Slot {
-        std::shared_ptr<std::uint8_t> in;                 // 호스트 malloc 경로의 수명만 쥔다
-        yvo::p2::OutBufRef in_ref;                        // 실제로 쓰는 입력 버퍼. fd < 0 이면 호스트 포인터
-        std::vector<yvo::p2::OutBufRef> out;              // 6개. fd < 0 이면 호스트 포인터 경로
-        std::vector<std::shared_ptr<std::uint8_t>> keep;  // malloc 모드의 수명 유지
+        std::shared_ptr<std::uint8_t> in;                 // Holds only the lifetime for the host malloc path
+        yvo::p2::OutBufRef in_ref;                        // The input buffer actually used. Host pointer if fd < 0
+        std::vector<yvo::p2::OutBufRef> out;              // 6 of them. Host pointer path if fd < 0
+        std::vector<std::shared_ptr<std::uint8_t>> keep;  // Keeps lifetimes in malloc mode
         std::atomic<int> remaining{0};
         std::atomic<hailo_status> status{HAILO_SUCCESS};
         std::function<void(int, hailo_status)> on_done;
     };
 
-    // dma_map_dmabuf / read_async 에 넘길 크기. dmabuf_size 가 0(측정 실패)이면 hw 로 떨어진다.
+    // Size passed to dma_map_dmabuf / read_async. Falls back to hw if dmabuf_size is 0 (measurement failed).
     static std::size_t size_for(const yvo::p2::OutBufRef& b, std::size_t hw, SizeKind k) {
         if (k == SizeKind::Hw || b.dmabuf_size == 0) return hw;
         return b.dmabuf_size;
@@ -452,7 +452,7 @@ private:
     int acquire_slot() {
         std::unique_lock<std::mutex> lk(m_);
         if (!cv_.wait_for(lk, std::chrono::seconds(30), [&] { return !free_slots_.empty(); }))
-            throw std::runtime_error("RawSession::acquire_slot: 30초 안에 빈 슬롯이 생기지 않았다(콜백 유실)");
+            throw std::runtime_error("RawSession::acquire_slot: no free slot within 30 seconds (lost callbacks)");
         const int s = free_slots_.front();
         free_slots_.pop_front();
         return s;
@@ -484,8 +484,8 @@ private:
         Slot& sl = *slots_[static_cast<std::size_t>(slot)];
         hailort::NamedBuffersCallbacks named;
         {
-            // BufferRepresentation은 union이다. buffer_type을 먼저 세팅하고 해당 멤버만 대입한다.
-            // NamedBuffersCallbacks 는 입출력을 구분하지 않는 단일 맵이라 입력도 DMA_BUFFER 를 넣을 수 있다
+            // BufferRepresentation is a union. Set buffer_type first and assign only the corresponding member.
+            // NamedBuffersCallbacks is a single map that does not distinguish inputs from outputs, so the input can also be DMA_BUFFER
             // (/usr/include/hailo/network_group.hpp:48).
             hailort::BufferRepresentation br{};
             if (sl.in_ref.fd >= 0) {
@@ -512,15 +512,15 @@ private:
             named.emplace(out_meta_[i].name,
                           std::make_pair(br, [this, slot](hailo_status st) { note_callback(slot, st); }));
         }
-        // 백프레셔: ongoing callback 수가 num_slots_ 미만이 될 때까지 막는다.
-        // increase_ongoing_callbacks() 를 직접 부르지 않는 이유는 hailo_raw_runner.cpp 의 같은 자리
-        // 주석에 있다 — infer_async 가 요청당 1 을 이미 세므로 수동 쌍을 넣으면 프레임당 2 가 올라가
-        // in-flight 상한이 num_slots_/2 로 깎인다(HailoRT 4.24.0 실측).
+        // Backpressure: block until the ongoing callback count is below num_slots_.
+        // The reason increase_ongoing_callbacks() is not called directly is in the comment at the same spot in
+        // hailo_raw_runner.cpp — infer_async already counts 1 per request, so adding a manual pair raises it by 2 per frame
+        // and cuts the in-flight limit to num_slots_/2 (measured on HailoRT 4.24.0).
         const auto st_wait = ng_->wait_for_ongoing_callbacks_count_under(static_cast<std::size_t>(num_slots_));
         if (st_wait != HAILO_SUCCESS) throw yvo::HailoError("wait_for_ongoing_callbacks_count_under", st_wait);
         const auto st = ng_->infer_async(named, [](hailo_status) {});
         if (st != HAILO_SUCCESS) {
-            // 콜백이 오지 않으므로 슬롯을 직접 반납한다.
+            // No callback will arrive, so release the slot directly.
             sl.status.store(st);
             first_error_.store(st);
             sl.remaining.store(0);
@@ -531,13 +531,13 @@ private:
 
     void submit_read_async(int slot) {
         Slot& sl = *slots_[static_cast<std::size_t>(slot)];
-        // FIFO 짝맞추기: write 1회 + read 6회를 한 mutex 안에서 발행한다.
-        // 스트림별 N번째 요청이 N번째 프레임에 대응한다는 보장이 이 잠금뿐이다.
+        // FIFO pairing: issue 1 write + 6 reads inside one mutex.
+        // This lock is the only guarantee that the N-th request of each stream corresponds to the N-th frame.
         std::lock_guard<std::mutex> issue(issue_m_);
         const auto cb_in = [this, slot](const hailort::InputStream::CompletionInfo& ci) {
             note_callback(slot, ci.status);
         };
-        // dmabuf fd 오버로드(/usr/include/hailo/stream.hpp:253)는 헤더에 "currently experimental" 이다.
+        // The dmabuf fd overload (/usr/include/hailo/stream.hpp:253) is marked "currently experimental" in the header.
         const auto st_in =
             sl.in_ref.fd >= 0
                 ? input_->write_async(sl.in_ref.fd, size_for(sl.in_ref, in_meta_.frame_size, cfg_.in_write_size),
@@ -560,7 +560,7 @@ private:
                                                           cb)
                                 : outputs_[i]->read_async(sl.out[i].ptr, out_meta_[i].frame_size, cb);
             if (st != HAILO_SUCCESS) {
-                // 이미 발행한 요청의 콜백은 온다. 남은 개수를 줄여 프레임이 끝날 수 있게 한다.
+                // Callbacks for already-issued requests will arrive. Reduce the remaining count so the frame can finish.
                 sl.status.store(st);
                 first_error_.store(st);
                 const int not_issued = static_cast<int>(outputs_.size() - i);
@@ -571,8 +571,8 @@ private:
     }
 
 public:
-    // 슬롯의 출력 버퍼(6개)를 복사해 낸다. on_done 콜백 안이나 반환 직후에만 유효하다.
-    // heap 모드는 CPU 캐시 일관성을 위해 DMA_BUF_IOCTL_SYNC(START|READ) ... (END|READ) 로 감싼다.
+    // Copies out the slot's output buffers (6). Valid only inside the on_done callback or right after it returns.
+    // In heap mode, wrapped in DMA_BUF_IOCTL_SYNC(START|READ) ... (END|READ) for CPU cache coherency.
     RawFrame copy_out(int slot) const {
         RawFrame f;
         const Slot& sl = *slots_[static_cast<std::size_t>(slot)];
@@ -584,8 +584,8 @@ public:
         return f;
     }
 
-    // 6 텐서 전체(1.22 MB)를 CPU 가 순차로 읽는 데 걸리는 시간(ms). dst 는 호출자가 재사용한다.
-    // 계획서 §6.2 P2-⑥ cpu_read_1.22MB_ms 의 측정 함수다.
+    // Time (ms) for the CPU to read all 6 tensors (1.22 MB) sequentially. dst is reused by the caller.
+    // Measurement function for plan §6.2 P2-⑥ cpu_read_1.22MB_ms.
     double read_all_ms(int slot, std::uint8_t* dst) const {
         const Slot& sl = *slots_[static_cast<std::size_t>(slot)];
         const auto t0 = std::chrono::steady_clock::now();
@@ -605,7 +605,7 @@ public:
         return n;
     }
 
-    // 보고용: 슬롯 0 의 텐서별 (hw_frame_size, dmabuf_size)
+    // For reporting: per-tensor (hw_frame_size, dmabuf_size) of slot 0
     std::vector<std::pair<std::size_t, std::size_t>> size_pairs() const {
         std::vector<std::pair<std::size_t, std::size_t>> v;
         if (slots_.empty()) return v;
@@ -644,7 +644,7 @@ private:
     long map_failed_ = 0;
     hailo_status map_status_ = HAILO_SUCCESS;
     double map_ms_ = 0.0;
-    // 입력(H2D) 매핑은 따로 센다. 출력 통계(P2 판정)를 오염시키지 않기 위해서다.
+    // Input (H2D) mappings are counted separately, so they do not pollute the output statistics (P2 verdict).
     long in_map_calls_ = 0;
     long in_map_failed_ = 0;
     hailo_status in_map_status_ = HAILO_SUCCESS;
@@ -654,10 +654,10 @@ private:
 
 namespace {
 
-// ---------------------------------------------------------------- 스케일 레이아웃 파생
+// ---------------------------------------------------------------- scale layout derivation
 
-// 스트림 6개에서 (클래스 텐서, box 텐서) 짝을 스케일별로 찾는다.
-// reg_max·stride·classes는 shape에서 파생 계산하고 불일치하면 예외를 던진다(계획서 §4.0(b)).
+// Finds the (class tensor, box tensor) pair per scale among the 6 streams.
+// reg_max·stride·classes are derived from the shape, and a mismatch throws (plan §4.0(b)).
 struct ScaleLayout {
     int cls_idx = -1, box_idx = -1;
     int grid_h = 0, grid_w = 0, w_padded = 0, stride = 0;
@@ -670,23 +670,23 @@ struct RawLayout {
 };
 
 RawLayout derive_layout(const std::vector<StreamMeta>& out) {
-    if (out.size() != 6) throw std::runtime_error("원시 출력 스트림이 6개가 아니다: " + std::to_string(out.size()));
+    if (out.size() != 6) throw std::runtime_error("raw output stream count is not 6: " + std::to_string(out.size()));
     RawLayout L;
     for (std::size_t i = 0; i < out.size(); ++i) {
         const auto& hw = out[i].info.hw_shape;
         const auto& sh = out[i].info.shape;
         const std::size_t expect = static_cast<std::size_t>(hw.height) * hw.width * hw.features;
         if (expect != out[i].info.hw_frame_size) {
-            throw std::runtime_error("hw_shape와 hw_frame_size가 안 맞는다: " + out[i].name);
+            throw std::runtime_error("hw_shape and hw_frame_size do not match: " + out[i].name);
         }
         const int h = static_cast<int>(hw.height);
-        if (h == 0 || 640 % h != 0) throw std::runtime_error("grid height에서 stride를 파생할 수 없다: " + out[i].name);
+        if (h == 0 || 640 % h != 0) throw std::runtime_error("cannot derive stride from grid height: " + out[i].name);
         const int stride = 640 / h;
         int si = -1;
         if (stride == 8) si = 0;
         else if (stride == 16) si = 1;
         else if (stride == 32) si = 2;
-        else throw std::runtime_error("예상 밖 stride " + std::to_string(stride) + ": " + out[i].name);
+        else throw std::runtime_error("unexpected stride " + std::to_string(stride) + ": " + out[i].name);
 
         ScaleLayout& s = L.s[si];
         s.grid_h = h;
@@ -697,19 +697,19 @@ RawLayout derive_layout(const std::vector<StreamMeta>& out) {
         if (feats % yvo::kDflSides == 0 && feats / yvo::kDflSides == yvo::kDflRegMax) {
             s.box_idx = static_cast<int>(i);
             if (L.reg_max == 0) L.reg_max = feats / yvo::kDflSides;
-            else if (L.reg_max != feats / yvo::kDflSides) throw std::runtime_error("reg_max 불일치");
+            else if (L.reg_max != feats / yvo::kDflSides) throw std::runtime_error("reg_max mismatch");
         } else {
             s.cls_idx = static_cast<int>(i);
             if (L.num_classes == 0) L.num_classes = feats;
-            else if (L.num_classes != feats) throw std::runtime_error("클래스 수 불일치");
+            else if (L.num_classes != feats) throw std::runtime_error("class count mismatch");
         }
     }
     for (int i = 0; i < 3; ++i) {
         if (L.s[i].cls_idx < 0 || L.s[i].box_idx < 0)
-            throw std::runtime_error("스케일 " + std::to_string(i) + "의 cls/box 짝을 못 찾았다");
+            throw std::runtime_error("scale " + std::to_string(i) + ": cls/box pair not found");
     }
     if (L.num_classes != 80 || L.reg_max != yvo::kDflRegMax)
-        throw std::runtime_error("classes/reg_max가 80/16이 아니다");
+        throw std::runtime_error("classes/reg_max is not 80/16");
     return L;
 }
 
@@ -736,7 +736,7 @@ yvo::RawOutputSet make_raw_set(const RawLayout& L, const RawFrame& f, bool p5_in
     return r;
 }
 
-// ---------------------------------------------------------------- 옵션
+// ---------------------------------------------------------------- options
 
 struct Options {
     std::string video = YVO_DEFAULT_VIDEO;
@@ -744,11 +744,11 @@ struct Options {
     std::string out_dir = YVO_REPO_ROOT "/build/out/yvo_hailo_raw_probe";
     std::string fixture_dir = YVO_FIXTURE_DIR;
     std::string api = "both";           // infer_async | read_async | both
-    int compare_frames = 30;            // CPU 기준 구현 ↔ HailoRT NMS 비교 프레임 수 (>= 20)
-    int api_check_frames = 8;           // API 경로 확인용 프레임 수
-    int dump_frames = 5;                // 픽스처로 저장할 프레임 수
-    int bench_frames = 200;             // 처리량 측정 프레임 수
-    int bench_repeat = 3;               // 설정당 반복 횟수(중앙값 보고)
+    int compare_frames = 30;            // Frames for CPU reference implementation ↔ HailoRT NMS comparison (>= 20)
+    int api_check_frames = 8;           // Frames for API path check
+    int dump_frames = 5;                // Frames saved as fixtures
+    int bench_frames = 200;             // Frames for throughput measurement
+    int bench_repeat = 3;               // Repetitions per configuration (median reported)
     int warmup = 30;
     int batch = 8;
     int slots = 16;
@@ -757,15 +757,15 @@ struct Options {
     // ── P2 ──
     std::string probe = "p1";           // p1 | p2 | f0
     std::string alloc = "malloc,heap,vulkan";
-    int matrix_frames = 2;              // size 조합 표에서 한 셀당 제출할 프레임 수
-    int matrix_slots = 2;               // 표 셀의 슬롯 수 (빠르게 돌리기 위해 작게)
-    int cpu_read_reps = 30;             // cpu_read_1.22MB_ms 반복 횟수
-    float cool_above = 75.0f;           // 이 온도를 넘으면 냉각한다
+    int matrix_frames = 2;              // Frames submitted per cell in the size combination table
+    int matrix_slots = 2;               // Slot count per table cell (kept small to run fast)
+    int cpu_read_reps = 30;             // Repetitions for cpu_read_1.22MB_ms
+    float cool_above = 75.0f;           // Cool down if above this temperature
     float cool_target = 65.0f;
     int cool_max_s = 120;
-    // ── F0: 입력 dma-buf(H2D) ──
-    bool in_dmabuf = false;             // p2 의 vulkan 최종 실행에서 입력도 dma-buf 로 준다
-    int f0_frames = 16;                 // f0 게이트가 A/B 로 비교할 프레임 수
+    // ── F0: input dma-buf (H2D) ──
+    bool in_dmabuf = false;             // Also pass the input as dma-buf in p2's final vulkan run
+    int f0_frames = 16;                 // Frames the f0 gate compares A/B
 };
 
 void usage() {
@@ -776,12 +776,12 @@ void usage() {
                  "        [--skip-bench] [--skip-infer-model]\n"
                  "        [--probe p1|p2|f0|runner] [--alloc malloc,heap,vulkan] [--matrix-frames N]\n"
                  "        [--matrix-slots N] [--cpu-read-reps N] [--no-cool] [--in-dmabuf] [--f0-frames N]\n"
-                 "  --probe f0 : 입력 dma-buf(H2D) + 출력 dma-buf(D2H) 동시 사용 관문. A/B 를 스스로 돌린다.\n"
-                 "  --probe runner : RawSession -> yvo::HailoRawRunner 승격 스모크. f0 경로와 바이트 비교한다.\n"
-                 "  --in-dmabuf: --probe p2 의 vulkan 최종 실행에서 입력도 Vulkan export dma-buf 로 준다.\n");
+                 "  --probe f0 : gate for simultaneous input dma-buf (H2D) + output dma-buf (D2H). Runs A/B by itself.\n"
+                 "  --probe runner : RawSession -> yvo::HailoRawRunner promotion smoke test. Byte-compares with the f0 path.\n"
+                 "  --in-dmabuf: also pass the input as Vulkan export dma-buf in the final vulkan run of --probe p2.\n");
 }
 
-// ---------------------------------------------------------------- 한 API 경로 실행 결과
+// ---------------------------------------------------------------- result of one API path run
 
 struct ApiOutcome {
     RawApi api = RawApi::InferAsync;
@@ -800,9 +800,9 @@ struct ApiOutcome {
     float temp_before = 0.0f, temp_after = 0.0f;
 };
 
-// ---------------------------------------------------------------- P2: dma-buf 출력 경로
+// ---------------------------------------------------------------- P2: dma-buf output path
 
-// 칩 온도만 읽고 장치를 즉시 놓는다. 세션을 만들기 전 냉각 판정에 쓴다.
+// Reads only the chip temperature and releases the device immediately. Used for the cool-down decision before creating a session.
 float read_chip_temp() {
     hailo_vdevice_params_t vp;
     if (hailo_init_vdevice_params(&vp) != HAILO_SUCCESS) return std::nanf("");
@@ -816,7 +816,7 @@ float read_chip_temp() {
     return std::max(t->ts0_temperature, t->ts1_temperature);
 }
 
-// 06_tools/bench/pipeline_bench.sh 의 cool_down() 과 같은 규칙. 대기한 초를 돌려준다.
+// Same rule as cool_down() in 06_tools/bench/pipeline_bench.sh. Returns the seconds waited.
 int cool_down(float above, float target, int max_s, float& temp_before, float& temp_after) {
     temp_before = read_chip_temp();
     temp_after = temp_before;
@@ -848,8 +848,8 @@ int count_hailort_log(bool thermal_only) {
     return n;
 }
 
-// hailort.log 의 [warning] 줄 수. needle 이 nullptr 이 아니면 그 문자열을 포함한 줄만 센다
-// (F0 합격 기준 ③ "unaligned buffer causes performance degradation" 판정용).
+// Number of [warning] lines in hailort.log. If needle is not nullptr, counts only lines containing that string
+// (for F0 pass criterion ③ "unaligned buffer causes performance degradation").
 int count_hailort_warnings(const char* needle) {
     std::ifstream f("hailort.log");
     std::string line;
@@ -874,25 +874,25 @@ const char* alloc_name(AllocMode m) {
 
 std::unique_ptr<yvo::p2::OutBufPool> make_pool(AllocMode m, bool verbose) {
     switch (m) {
-        case AllocMode::Malloc: return nullptr;   // RawSession 내부 malloc 경로를 쓴다
+        case AllocMode::Malloc: return nullptr;   // Uses RawSession's internal malloc path
         case AllocMode::Heap: return std::make_unique<yvo::p2::HeapOutPool>();
         case AllocMode::Vulkan: return std::make_unique<yvo::p2::VulkanOutPool>(verbose);
     }
     return nullptr;
 }
 
-// 프레임 N장을 제출해 6 텐서를 확보한다. 프레임마다 drain 해서 슬롯 버퍼를 그대로 읽는다.
+// Submits N frames to obtain the 6 tensors. Drains after every frame and reads the slot buffers as is.
 struct RunOutcome {
     bool constructed = false;
-    bool issued = true;          // read_async/infer_async 발행이 전부 성공했는가
+    bool issued = true;          // Whether all read_async/infer_async issues succeeded
     std::string error;
     long cb_total = 0, cb_failed = 0;
-    bool callbacks_lost = false;   // drain 시한 초과 = 콜백 유실
+    bool callbacks_lost = false;   // drain deadline exceeded = lost callbacks
     hailo_status first_error = HAILO_SUCCESS;
     long map_calls = 0, map_failed = 0;
     hailo_status map_status = HAILO_SUCCESS;
     double map_ms = 0.0;
-    // 입력 H2D dma-buf (F0)
+    // Input H2D dma-buf (F0)
     bool in_dmabuf = false;
     long in_map_calls = 0, in_map_failed = 0;
     hailo_status in_map_status = HAILO_SUCCESS;
@@ -901,7 +901,7 @@ struct RunOutcome {
     std::vector<RawFrame> frames;
     std::vector<double> cpu_read_ms;
     std::vector<std::pair<std::size_t, std::size_t>> sizes;   // (hw_frame_size, dmabuf_size)
-    std::vector<StreamMeta> out_meta;   // 출력 스트림 메타(이름순). --probe runner 의 텐서 번호 대응에 쓴다
+    std::vector<StreamMeta> out_meta;   // Output stream metadata (by name). Used for tensor index mapping in --probe runner
     int slots = 0;
 };
 
@@ -932,10 +932,10 @@ RunOutcome run_capture(const RawSessionConfig& base, yvo::p2::OutBufPool* pool, 
     r.in_map_status = sess->in_map_status();
     r.in_size = sess->in_size_pair();
     if (r.in_map_failed > 0 && r.error.empty())
-        r.error = "dma_map_dmabuf(H2D) 실패: " + status_name(r.in_map_status);
+        r.error = "dma_map_dmabuf(H2D) failed: " + status_name(r.in_map_status);
     if (r.map_failed > 0) {
-        // 매핑이 실패했어도 발행을 시도해 본다(HailoRT 가 내부에서 자동 매핑할 수도 있다).
-        if (r.error.empty()) r.error = "dma_map_dmabuf 실패: " + status_name(r.map_status);
+        // Even if mapping failed, try issuing anyway (HailoRT may map automatically internally).
+        if (r.error.empty()) r.error = "dma_map_dmabuf failed: " + status_name(r.map_status);
     }
 
     std::vector<std::uint8_t> scratch(sess->total_out_bytes());
@@ -954,13 +954,13 @@ RunOutcome run_capture(const RawSessionConfig& base, yvo::p2::OutBufPool* pool, 
             break;
         }
         if (!sess->drain(15000)) {
-            // 콜백이 오지 않았다. 이 조합은 쓸 수 없다 — 슬롯 버퍼의 내용도 신뢰할 수 없다.
+            // Callbacks did not arrive. This combination is unusable — slot buffer contents cannot be trusted either.
             r.callbacks_lost = true;
-            if (r.error.empty()) r.error = "drain 시한 초과: 제출한 프레임의 콜백이 오지 않았다";
+            if (r.error.empty()) r.error = "drain deadline exceeded: callbacks for submitted frames did not arrive";
             break;
         }
     }
-    // cpu_read_1.22MB_ms: 워밍업 후 반복. 슬롯 0 을 계속 읽는다(내용은 이미 채워져 있다).
+    // cpu_read_1.22MB_ms: repeated after warm-up. Keeps reading slot 0 (contents are already filled).
     if (r.frames_ok > 0 && cpu_read_reps > 0) {
         for (int i = 0; i < 3; ++i) (void)sess->read_all_ms(0, scratch.data());
         for (int i = 0; i < cpu_read_reps; ++i) r.cpu_read_ms.push_back(sess->read_all_ms(0, scratch.data()));
@@ -988,13 +988,13 @@ bool frames_identical(const std::vector<RawFrame>& a, const std::vector<RawFrame
     return compared > 0 && matched == compared;
 }
 
-// ---------------------------------------------------------------- F0: 입력 dma-buf(H2D) 관문
+// ---------------------------------------------------------------- F0: input dma-buf (H2D) gate
 //
-// 통합 파이프라인은 V3D 가 쓴 전처리 출력을 그대로 NPU 입력으로 준다. 그 조합
-// (Vulkan export dma-buf 입력 H2D + dma-buf 출력 6개 D2H)만 미검증이라, 여기서 A/B 로 닫는다.
-//   A(기준) : 호스트 malloc 입력 + dma-buf 출력 6개  ← P2 에서 이미 통과한 경로
-//   B(관문) : Vulkan export dma-buf 입력 + dma-buf 출력 6개
-// 두 실행의 출력 6텐서가 바이트 단위로 같아야 하고, 프레임당 콜백 7개가 전부 SUCCESS 여야 한다.
+// The integrated pipeline feeds the V3D-written preprocessing output directly as NPU input. Only that combination
+// (Vulkan export dma-buf input H2D + 6 dma-buf outputs D2H) is unverified, so it is closed here with A/B.
+//   A (baseline): host malloc input + 6 dma-buf outputs  ← path already passed in P2
+//   B (gate)    : Vulkan export dma-buf input + 6 dma-buf outputs
+// The 6 output tensors of both runs must be byte-identical, and all 7 callbacks per frame must be SUCCESS.
 struct F0Row {
     bool in_dmabuf = false;
     RawApi api = RawApi::InferAsync;
@@ -1004,7 +1004,7 @@ struct F0Row {
     RunOutcome out;
     int bytes_matched = 0, bytes_compared = 0;
     long cb_expect = 0;
-    int log_err = 0;      // 이 실행 구간에만 찍힌 hailort.log [error] 수
+    int log_err = 0;      // Number of hailort.log [error] lines printed only during this run
     bool pass = false;
 };
 
@@ -1028,26 +1028,26 @@ int run_f0(const Options& o, const std::vector<std::vector<std::uint8_t>>& input
     RawSessionConfig base;
     base.hef_path = o.hef;
     base.batch = static_cast<std::uint16_t>(o.batch);
-    // 출력 쪽 크기 계약은 P2 가 고른 값을 그대로 쓴다(p2_alloc_matrix.txt: map=dmabuf_size, read=hw_frame_size).
+    // The output-side size contract uses the values chosen by P2 as is (p2_alloc_matrix.txt: map=dmabuf_size, read=hw_frame_size).
     base.map_size = SizeKind::Dmabuf;
     base.read_size = SizeKind::Hw;
 
     const int n = std::max(1, std::min<int>(o.f0_frames, static_cast<int>(inputs.size())));
 
     Tee t(o.out_dir + "/f0_in_dmabuf.txt");
-    t << "# F0 관문: 입력 dma-buf(H2D) + 출력 dma-buf(D2H) 동시 사용\n";
+    t << "# F0 gate: simultaneous input dma-buf (H2D) + output dma-buf (D2H)\n";
     t << fmt("# pcie=%s x%s hef=%s video=%s\n", link_speed.c_str(), link_width.c_str(), o.hef.c_str(),
              o.video.c_str());
-    t << fmt("# batch=%d slots=%d frames=%d api=%s 출력계약(map=dmabuf_size, transfer=hw_frame_size)\n", o.batch,
+    t << fmt("# batch=%d slots=%d frames=%d api=%s output contract(map=dmabuf_size, transfer=hw_frame_size)\n", o.batch,
              o.slots, n, o.api.c_str());
-    t << fmt("# 냉각: hailo %.1f -> %.1f C, 대기 %d s\n\n", static_cast<double>(t_before),
+    t << fmt("# cooling: hailo %.1f -> %.1f C, waited %d s\n\n", static_cast<double>(t_before),
              static_cast<double>(t_after), cooled_s);
     const long fds_files = count_open_fds();
 
-    // 실행 하나. in_dmabuf 면 Vulkan 풀 **하나**가 입력 버퍼와 출력 버퍼를 모두 낸다
-    // (통합 파이프라인과 같은 구조다 — V3D 가 입력을 쓰고 셰이더가 출력을 읽는다).
-    // VulkanContext 가 세는 검증 레이어 에러·경고를 실행마다 누적한다
-    // (VK_LOADER_LAYERS_ENABLE='*validation' 으로 켜면 값이 의미를 가진다).
+    // One run. With in_dmabuf, **one** Vulkan pool provides both the input and output buffers
+    // (same structure as the integrated pipeline — V3D writes the input and a shader reads the output).
+    // Accumulates the validation layer errors/warnings counted by VulkanContext per run
+    // (the values are meaningful when enabled with VK_LOADER_LAYERS_ENABLE='*validation').
     std::uint64_t vk_errors = 0, vk_warnings = 0;
     bool vk_layer_active = false;
     auto run_one = [&](bool in_dmabuf, RawApi api, SizeKind in_map, SizeKind in_write, int slots, int frames) {
@@ -1095,17 +1095,17 @@ int run_f0(const Options& o, const std::vector<std::vector<std::uint8_t>>& input
     for (RawApi api : apis) {
         Leg leg;
         leg.api = api;
-        std::printf("[f0] %s: A(호스트 입력) 기준 캡처 %d 프레임...\n", api_name(api), n);
+        std::printf("[f0] %s: A (host input) baseline capture of %d frames...\n", api_name(api), n);
         leg.ref = run_one(false, api, SizeKind::Dmabuf, SizeKind::Hw, o.slots, n);
         leg.ref_ok = leg.ref.constructed && leg.ref.frames_ok == n && leg.ref.cb_failed == 0;
         if (!leg.ref_ok) {
-            std::printf("[f0] %s: 기준 캡처 실패 — %s\n", api_name(api), leg.ref.error.c_str());
+            std::printf("[f0] %s: baseline capture failed — %s\n", api_name(api), leg.ref.error.c_str());
             legs.push_back(std::move(leg));
             continue;
         }
         const std::size_t n_tensors = leg.ref.frames[0].t.size();
 
-        // 입력 크기 계약 4조합 전수 시도. 틀린 크기를 넘기면 콜백이 오지 않으므로 drain 시한이 잡아낸다.
+        // Try all 4 input size contract combinations. A wrong size means no callbacks, which the drain deadline catches.
         const int sw_frames = std::max(1, std::min(o.matrix_frames, n));
         for (int mk = 0; mk < 2; ++mk) {
             for (int wk = 0; wk < 2; ++wk) {
@@ -1123,14 +1123,14 @@ int run_f0(const Options& o, const std::vector<std::vector<std::uint8_t>>& input
             }
         }
 
-        // 계약(부록 A.13) 그대로의 조합으로 전체 슬롯 실행. 이것이 관문의 본 실행이다.
+        // Full-slot run with the combination exactly per the contract (appendix A.13). This is the gate's main run.
         F0Row full;
         full.in_dmabuf = true;
         full.api = api;
         full.in_map = SizeKind::Dmabuf;
         full.in_write = SizeKind::Hw;
         full.frames = n;
-        std::printf("[f0] %s: B(입력 dma-buf) 본 실행 %d 프레임, slots=%d...\n", api_name(api), n, o.slots);
+        std::printf("[f0] %s: B (input dma-buf) main run of %d frames, slots=%d...\n", api_name(api), n, o.slots);
         const int err_before_full = count_hailort_log(false);
         full.out = run_one(true, api, full.in_map, full.in_write, o.slots, n);
         full.log_err = count_hailort_log(false) - err_before_full;
@@ -1141,18 +1141,18 @@ int run_f0(const Options& o, const std::vector<std::vector<std::uint8_t>>& input
         legs.push_back(std::move(leg));
     }
 
-    // ── 보고
-    t << "## 입력 버퍼 크기\n";
+    // ── Report
+    t << "## Input buffer size\n";
     for (const auto& leg : legs) {
         if (leg.full.out.in_size.first == 0) continue;
-        t << fmt("  입력: hw_frame_size=%zu dmabuf_size=%zu (차 %+zd)\n", leg.full.out.in_size.first,
+        t << fmt("  input: hw_frame_size=%zu dmabuf_size=%zu (diff %+zd)\n", leg.full.out.in_size.first,
                  leg.full.out.in_size.second,
                  static_cast<std::ptrdiff_t>(leg.full.out.in_size.second) -
                      static_cast<std::ptrdiff_t>(leg.full.out.in_size.first));
         break;
     }
-    t << "\n## 입력 크기 계약 4조합 (한 셀: slots=" + std::to_string(o.matrix_slots) + ")\n";
-    t << "api           dma_map(H2D)   transfer size    map_status                  issue  cb/기대   bytes    판정\n";
+    t << "\n## Input size contract, 4 combinations (per cell: slots=" + std::to_string(o.matrix_slots) + ")\n";
+    t << "api           dma_map(H2D)   transfer size    map_status                  issue  cb/exp    bytes    verdict\n";
     t << "------------  -------------  ---------------  --------------------------  -----  --------  -------  ----\n";
     for (const auto& leg : legs) {
         for (const auto& r : leg.sweep) {
@@ -1165,24 +1165,24 @@ int run_f0(const Options& o, const std::vector<std::vector<std::uint8_t>>& input
         }
     }
 
-    t << "\n## 본 실행 (입력 dma_map=dmabuf_size, 전송 크기=hw_frame_size)\n";
+    t << "\n## Main run (input dma_map=dmabuf_size, transfer size=hw_frame_size)\n";
     for (const auto& leg : legs) {
         t << fmt("[%s]\n", api_name(leg.api));
-        t << fmt("  A 기준(호스트 입력) : constructed=%d frames_ok=%d/%d cb=%ld 실패=%ld %s\n",
+        t << fmt("  A baseline (host input) : constructed=%d frames_ok=%d/%d cb=%ld failed=%ld %s\n",
                  leg.ref.constructed ? 1 : 0, leg.ref.frames_ok, n, leg.ref.cb_total, leg.ref.cb_failed,
                  leg.ref.error.empty() ? "" : ("error: " + leg.ref.error).c_str());
         const F0Row& b = leg.full;
-        t << fmt("  B 관문(입력 dma-buf): constructed=%d frames_ok=%d/%d\n", b.out.constructed ? 1 : 0,
+        t << fmt("  B gate (input dma-buf)  : constructed=%d frames_ok=%d/%d\n", b.out.constructed ? 1 : 0,
                  b.out.frames_ok, b.frames);
-        t << fmt("    dma_map_dmabuf(H2D) : %ld회, 실패 %ld, status=%s\n", b.out.in_map_calls, b.out.in_map_failed,
+        t << fmt("    dma_map_dmabuf(H2D) : %ld calls, failed %ld, status=%s\n", b.out.in_map_calls, b.out.in_map_failed,
                  status_name(b.out.in_map_status).c_str());
-        t << fmt("    dma_map_dmabuf(D2H) : %ld회, 실패 %ld, status=%s (H2D+D2H 총 %.3f ms)\n", b.out.map_calls,
+        t << fmt("    dma_map_dmabuf(D2H) : %ld calls, failed %ld, status=%s (H2D+D2H total %.3f ms)\n", b.out.map_calls,
                  b.out.map_failed, status_name(b.out.map_status).c_str(), b.out.map_ms);
-        t << fmt("    콜백                : %ld개 / 기대 %ld개 (프레임당 7), 실패 %ld, first_error=%s\n",
+        t << fmt("    callbacks           : %ld / expected %ld (7 per frame), failed %ld, first_error=%s\n",
                  b.out.cb_total, b.cb_expect, b.out.cb_failed, status_name(b.out.first_error).c_str());
-        t << fmt("    A 대비 출력 6텐서 바이트 일치 : %d / %d frames\n", b.bytes_matched, b.bytes_compared);
+        t << fmt("    6 output tensors byte-identical vs A : %d / %d frames\n", b.bytes_matched, b.bytes_compared);
         if (!b.out.error.empty()) t << fmt("    error: %s\n", b.out.error.c_str());
-        t << fmt("  판정: %s\n\n", b.pass ? "PASS" : "FAIL");
+        t << fmt("  verdict: %s\n\n", b.pass ? "PASS" : "FAIL");
     }
 
     const long fds_end = count_open_fds();
@@ -1201,53 +1201,53 @@ int run_f0(const Options& o, const std::vector<std::vector<std::uint8_t>>& input
     const bool read_ok = read_row && read_row->pass;
     const bool gate = infer_ok || read_ok;
 
-    t << "## 합격 기준\n";
-    t << fmt("  ① 프레임당 콜백 7개 전부 SUCCESS : %s (infer_async %s, write_async %s)\n",
+    t << "## Pass criteria\n";
+    t << fmt("  ① all 7 callbacks per frame SUCCESS : %s (infer_async %s, write_async %s)\n",
              gate ? "PASS" : "FAIL",
-             infer_row ? fmt("%ld/%ld 실패 %ld", infer_row->out.cb_total, infer_row->cb_expect,
+             infer_row ? fmt("%ld/%ld failed %ld", infer_row->out.cb_total, infer_row->cb_expect,
                              infer_row->out.cb_failed)
                              .c_str()
-                       : "(미실행)",
-             read_row ? fmt("%ld/%ld 실패 %ld", read_row->out.cb_total, read_row->cb_expect, read_row->out.cb_failed)
+                       : "(not run)",
+             read_row ? fmt("%ld/%ld failed %ld", read_row->out.cb_total, read_row->cb_expect, read_row->out.cb_failed)
                             .c_str()
-                      : "(미실행)");
-    t << fmt("  ② 출력 6텐서가 호스트 입력 실행과 바이트 일치 : %s (infer_async %d/%d, write_async %d/%d)\n",
+                      : "(not run)");
+    t << fmt("  ② 6 output tensors byte-identical to the host-input run : %s (infer_async %d/%d, write_async %d/%d)\n",
              gate ? "PASS" : "FAIL", infer_row ? infer_row->bytes_matched : 0,
              infer_row ? infer_row->bytes_compared : 0, read_row ? read_row->bytes_matched : 0,
              read_row ? read_row->bytes_compared : 0);
     int full_err = 0;
     for (const auto& leg : legs) full_err += leg.full.log_err;
-    t << fmt("  ③ hailort.log warning 0 : %s (전체 %d건, unaligned buffer %d건, 온도/클럭 %d건)\n",
+    t << fmt("  ③ hailort.log warning 0 : %s (total %d, unaligned buffer %d, thermal/clock %d)\n",
              (warns == 0) ? "PASS" : "FAIL", warns, unaligned, thermal);
-    t << fmt("     error: 본 실행 구간 %d건, 전체 %d건 (차 %d건은 크기 계약 4조합 표의 **의도된** 거부다)\n",
+    t << fmt("     error: main-run section %d, total %d (the difference of %d is the **intended** rejections of the 4-combination size contract table)\n",
              full_err, log_err, log_err - full_err);
-    t << fmt("  ④ fd 누수 0 : %s (시작 %ld, 증거 파일 연 뒤 %ld, 종료 %ld → %+ld)\n",
+    t << fmt("  ④ fd leak 0 : %s (start %ld, after opening evidence file %ld, end %ld → %+ld)\n",
              (fds_end - fds_files == 0) ? "PASS" : "FAIL", fds_start, fds_files, fds_end, fds_end - fds_files);
-    t << fmt("  ⑤ API 별 결과 : infer_async=%s, write_async(read_async 경로)=%s\n",
-             infer_row ? (infer_ok ? "PASS" : "FAIL") : "(미실행)",
-             read_row ? (read_ok ? "PASS" : "FAIL") : "(미실행)");
-    t << fmt("  ⑥ Vulkan 검증 레이어 : errors %llu, warnings %llu (레이어 활성 %s)\n",
+    t << fmt("  ⑤ per-API result : infer_async=%s, write_async(read_async path)=%s\n",
+             infer_row ? (infer_ok ? "PASS" : "FAIL") : "(not run)",
+             read_row ? (read_ok ? "PASS" : "FAIL") : "(not run)");
+    t << fmt("  ⑥ Vulkan validation layer : errors %llu, warnings %llu (layer active %s)\n",
              static_cast<unsigned long long>(vk_errors), static_cast<unsigned long long>(vk_warnings),
-             vk_layer_active ? "yes" : "no — VK_LOADER_LAYERS_ENABLE='*validation' 없이 돌린 실행이다");
-    t << fmt("\n[결론] %s\n", gate ? "입력 dma-buf(H2D) + 출력 dma-buf(D2H) 동시 사용 가능 — F0 관문 통과"
-                                   : "두 API 모두 실패 — 입력은 호스트 버퍼로 남겨야 한다");
+             vk_layer_active ? "yes" : "no — this run was done without VK_LOADER_LAYERS_ENABLE='*validation'");
+    t << fmt("\n[conclusion] %s\n", gate ? "input dma-buf (H2D) + output dma-buf (D2H) can be used together — F0 gate passed"
+                                   : "both APIs failed — the input must stay a host buffer");
 
     std::printf("\n[F0] %s (infer_async %s, write_async %s)\n", gate ? "PASS" : "FAIL", infer_ok ? "PASS" : "FAIL",
                 read_ok ? "PASS" : "FAIL");
-    std::printf("[f0] hailort.log warning %d(unaligned %d), error %d(본 실행 %d) / fd 누수 %+ld\n", warns, unaligned,
+    std::printf("[f0] hailort.log warning %d(unaligned %d), error %d(main run %d) / fd leak %+ld\n", warns, unaligned,
                 log_err, full_err, fds_end - fds_files);
     return gate ? 0 : 1;
 }
 
-// ---------------------------------------------------------------- RUNNER: 라이브러리 승격 스모크
+// ---------------------------------------------------------------- RUNNER: library promotion smoke test
 //
-// 단계 3a 에서 RawSession 을 01_src/hailo/hailo_raw_runner.{hpp,cpp} 로 뽑아냈다. 승격한 코드가
-// 원본과 **바이트 단위로 같은 출력**을 내는지 한 프로세스 안에서 A/B 로 확인한다.
-//   A(기준) : RawSession, --probe f0 의 B 다리와 **완전히 같은 설정**
-//             (Vulkan export dma-buf 입력 H2D + 출력 6개 D2H, map=dmabuf_size, transfer=hw_frame_size)
-//   B(승격) : yvo::HailoRawRunner. 같은 프레임을 같은 순서로 제출한다.
-// 텐서 번호 대응도 여기서 검증된다 — 러너의 t[2s]/t[2s+1](cls/box)이
-// derive_layout() 이 고른 스트림과 실제로 같은 버퍼인지 바이트로 확인한다.
+// In step 3a, RawSession was extracted into 01_src/hailo/hailo_raw_runner.{hpp,cpp}. This checks with A/B in one process
+// that the promoted code produces **byte-identical output** to the original.
+//   A (baseline): RawSession, with **exactly the same settings** as the B leg of --probe f0
+//                 (Vulkan export dma-buf input H2D + 6 outputs D2H, map=dmabuf_size, transfer=hw_frame_size)
+//   B (promoted): yvo::HailoRawRunner. Submits the same frames in the same order.
+// The tensor index mapping is verified here too — bytes confirm that the runner's t[2s]/t[2s+1] (cls/box)
+// really are the same buffers as the streams chosen by derive_layout().
 int run_runner(const Options& o, const std::vector<std::vector<std::uint8_t>>& inputs, const std::string& link_speed,
                const std::string& link_width) {
     const long fds_start = count_open_fds();
@@ -1262,7 +1262,7 @@ int run_runner(const Options& o, const std::vector<std::vector<std::uint8_t>>& i
 
     const int n = std::max(1, std::min<int>(o.f0_frames, static_cast<int>(inputs.size())));
 
-    // ── A: RawSession (f0 의 B 다리와 같은 설정)
+    // ── A: RawSession (same settings as f0's B leg)
     RawSessionConfig sc;
     sc.hef_path = o.hef;
     sc.batch = static_cast<std::uint16_t>(o.batch);
@@ -1278,7 +1278,7 @@ int run_runner(const Options& o, const std::vector<std::vector<std::uint8_t>>& i
     {
         auto pool = std::make_unique<yvo::p2::VulkanOutPool>(false);
         sc.in_pool = pool.get();
-        std::printf("[runner] A(RawSession) 기준 캡처 %d 프레임...\n", n);
+        std::printf("[runner] A (RawSession) baseline capture of %d frames...\n", n);
         ref = run_capture(sc, pool.get(), o.slots, inputs, n, 0);
         vk_errors += pool->ctx().validation_errors();
         vk_warnings += pool->ctx().validation_warnings();
@@ -1286,11 +1286,11 @@ int run_runner(const Options& o, const std::vector<std::vector<std::uint8_t>>& i
     }
     const bool ref_ok = ref.constructed && ref.frames_ok == n && ref.cb_failed == 0;
     if (!ref_ok) {
-        std::fprintf(stderr, "[runner] 기준 캡처 실패 — %s\n", ref.error.c_str());
+        std::fprintf(stderr, "[runner] baseline capture failed — %s\n", ref.error.c_str());
         return 1;
     }
     const RawLayout layout = derive_layout(ref.out_meta);
-    // 텐서 번호 i(러너 규약) → 기준 캡처의 스트림 인덱스
+    // Tensor index i (runner convention) → stream index of the baseline capture
     int ref_idx[6];
     for (int s = 0; s < 3; ++s) {
         ref_idx[2 * s] = layout.s[s].cls_idx;
@@ -1305,11 +1305,11 @@ int run_runner(const Options& o, const std::vector<std::vector<std::uint8_t>>& i
         std::size_t min_queue = 0;
         long cb_total = 0, cb_failed = 0;
         int frames_ok = 0;
-        std::vector<RawFrame> frames;   // 러너 텐서 번호 순서(0..5)
+        std::vector<RawFrame> frames;   // In runner tensor index order (0..5)
         double fps = 0.0, fps_min = 0.0, fps_max = 0.0, lat_median = 0.0, lat_p90 = 0.0;
         float temp_before = 0.0f, temp_after = 0.0f;
         bool names_match = true;
-        yvo::RawModelInfo info;   // 러너가 HEF 메타만으로 파생한 정보(보고용 사본)
+        yvo::RawModelInfo info;   // Info the runner derived from HEF metadata alone (copy for reporting)
     } rr;
 
     {
@@ -1330,12 +1330,12 @@ int run_runner(const Options& o, const std::vector<std::vector<std::uint8_t>>& i
             const auto& in = runner->info();
             rr.info = in;
 
-            // 스트림 이름이 기준 캡처의 대응 스트림과 같은지(= 번호 규약이 맞는지) 먼저 본다
+            // First check that the stream name matches the corresponding stream of the baseline capture (= the numbering convention holds)
             for (int i = 0; i < 6; ++i)
                 if (in.t[i].stream_name != ref.out_meta[static_cast<std::size_t>(ref_idx[i])].name)
                     rr.names_match = false;
 
-            // 슬롯마다 입력 1 + 출력 6을 같은 Vulkan 풀에서 받아 bind_slot()
+            // For each slot, take 1 input + 6 outputs from the same Vulkan pool and bind_slot()
             for (int s = 0; s < rr.slots; ++s) {
                 in_bufs.push_back(pool->acquire(in.input_frame_size));
                 std::array<yvo::p2::OutBufRef, 6> ob{};
@@ -1352,8 +1352,8 @@ int run_runner(const Options& o, const std::vector<std::vector<std::uint8_t>>& i
 
             rr.temp_before = runner->chip_temperature();
 
-            // ① 바이트 비교: 프레임마다 제출 → drain → 슬롯 버퍼를 읽는다.
-            //    (콜백 안에서는 슬롯 번호만 기록한다 — 콜백은 짧아야 하고 Vulkan 메모리를 만지지 않는다)
+            // ① Byte comparison: per frame, submit → drain → read the slot buffers.
+            //    (Inside the callback only the slot number is recorded — callbacks must be short and must not touch Vulkan memory)
             rr.frames.resize(static_cast<std::size_t>(n));
             for (int i = 0; i < n; ++i) {
                 const std::size_t fi = static_cast<std::size_t>(i) % inputs.size();
@@ -1378,11 +1378,11 @@ int run_runner(const Options& o, const std::vector<std::vector<std::uint8_t>>& i
                 ++rr.frames_ok;
             }
 
-            // ② 처리량: 파이프라인을 채운 채로 돌린다(백프레셔는 러너 안의
-            //    wait_for_ongoing_callbacks_count_under 가 건다). 버퍼는 읽지 않는다.
+            // ② Throughput: run with the pipeline kept full (backpressure is applied by
+            //    wait_for_ongoing_callbacks_count_under inside the runner). Buffers are not read.
             if (!o.skip_bench) {
-                // 통합 파이프라인이 쓸 패턴 그대로다: 콜백은 슬롯 번호를 free 큐에 넣고 바로 나가고,
-                // 제출 스레드가 큐에서 꺼내 다시 제출한다(러너는 콜백 **진입 전에** 슬롯을 반납한다).
+                // Exactly the pattern the integrated pipeline will use: the callback pushes the slot number to a free queue and returns,
+                // and the submit thread pops it and resubmits (the runner releases the slot **before entering** the callback).
                 std::atomic<int> done{0};
                 std::mutex lm;
                 std::condition_variable lcv;
@@ -1395,7 +1395,7 @@ int run_runner(const Options& o, const std::vector<std::vector<std::uint8_t>>& i
                         {
                             std::unique_lock<std::mutex> lk(lm);
                             if (!lcv.wait_for(lk, std::chrono::seconds(10), [&] { return !free_q.empty(); }))
-                                throw std::runtime_error("runner bench: 10초 안에 빈 슬롯이 생기지 않았다");
+                                throw std::runtime_error("runner bench: no free slot within 10 seconds");
                             slot = free_q.front();
                             free_q.pop_front();
                         }
@@ -1445,7 +1445,7 @@ int run_runner(const Options& o, const std::vector<std::vector<std::uint8_t>>& i
         vk_layer_active = vk_layer_active || pool->ctx().validation_layer_active();
     }
 
-    // ── 바이트 비교 (러너 텐서 번호 ↔ 기준 캡처 스트림 인덱스)
+    // ── Byte comparison (runner tensor index ↔ baseline capture stream index)
     int matched = 0, compared = 0;
     long diff_bytes = 0;
     for (int i = 0; i < n && i < static_cast<int>(rr.frames.size()); ++i) {
@@ -1480,21 +1480,21 @@ int run_runner(const Options& o, const std::vector<std::vector<std::uint8_t>>& i
                       rr.frames_ok == n && compared == n && matched == compared && log_err == 0 && warns == 0;
 
     Tee t(o.out_dir + "/runner_smoke.txt");
-    t << "# 단계 3a: RawSession -> yvo::HailoRawRunner 승격 스모크\n";
+    t << "# step 3a: RawSession -> yvo::HailoRawRunner promotion smoke test\n";
     t << fmt("# pcie=%s x%s hef=%s video=%s\n", link_speed.c_str(), link_width.c_str(), o.hef.c_str(),
              o.video.c_str());
-    t << fmt("# batch=%d 요청slots=%d frames=%d api=infer_async 계약(map=dmabuf_size, transfer=hw_frame_size)\n",
+    t << fmt("# batch=%d requested_slots=%d frames=%d api=infer_async contract(map=dmabuf_size, transfer=hw_frame_size)\n",
              o.batch, o.slots, n);
-    t << fmt("# 냉각: hailo %.1f -> %.1f C, 대기 %d s\n\n", static_cast<double>(t_before),
+    t << fmt("# cooling: hailo %.1f -> %.1f C, waited %d s\n\n", static_cast<double>(t_before),
              static_cast<double>(t_after), cooled_s);
 
-    t << "## 러너가 HEF 메타만으로 파생한 모델 정보 (픽스처 파일을 읽지 않는다)\n";
-    t << fmt("  입력: %s  %dx%d  hw_frame_size=%zu  min_queue=%zu  classes=%d reg_max=%d\n",
+    t << "## Model info the runner derived from HEF metadata alone (no fixture files read)\n";
+    t << fmt("  input: %s  %dx%d  hw_frame_size=%zu  min_queue=%zu  classes=%d reg_max=%d\n",
              rr.info.input_name.c_str(), rr.info.input_w, rr.info.input_h, rr.info.input_frame_size,
              rr.info.min_queue, rr.info.num_classes, rr.info.reg_max);
-    t << "\n## 텐서 번호 대응 (cls(s)=2s, box(s)=2s+1)\n";
-    t << "  i  러너 스트림 이름                기준(derive_layout) 스트림 이름  grid(pad)  f   stride  bytes     "
-         "scale         zp      같음\n";
+    t << "\n## Tensor index mapping (cls(s)=2s, box(s)=2s+1)\n";
+    t << "  i  runner stream name              ref(derive_layout) stream name  grid(pad)  f   stride  bytes     "
+         "scale         zp      same\n";
     for (int i = 0; i < 6; ++i) {
         const auto& m = rr.info.t[i];
         t << fmt("  %d  %-30s  %-30s  %2dx%2d(%2d)  %3d  %2d      %-8zu  %-12.9g  %-6.4g  %s\n", i,
@@ -1505,35 +1505,35 @@ int run_runner(const Options& o, const std::vector<std::vector<std::uint8_t>>& i
     }
 
     t << "\n## A(RawSession) vs B(HailoRawRunner)\n";
-    t << fmt("  A: constructed=%d frames_ok=%d/%d cb=%ld 실패=%ld\n", ref.constructed ? 1 : 0, ref.frames_ok, n,
+    t << fmt("  A: constructed=%d frames_ok=%d/%d cb=%ld failed=%ld\n", ref.constructed ? 1 : 0, ref.frames_ok, n,
              ref.cb_total, ref.cb_failed);
-    t << fmt("  B: constructed=%d slots=%d(min_queue=%zu) frames_ok=%d/%d cb=%ld 실패=%ld\n",
+    t << fmt("  B: constructed=%d slots=%d(min_queue=%zu) frames_ok=%d/%d cb=%ld failed=%ld\n",
              rr.constructed ? 1 : 0, rr.slots, rr.min_queue, rr.frames_ok, n, rr.cb_total, rr.cb_failed);
     if (!rr.error.empty()) t << fmt("     error: %s\n", rr.error.c_str());
-    t << fmt("  출력 6텐서 바이트 일치 : %d / %d frames (다른 바이트 %ld개)\n", matched, compared, diff_bytes);
+    t << fmt("  6 output tensors byte-identical : %d / %d frames (%ld differing bytes)\n", matched, compared, diff_bytes);
     if (!o.skip_bench)
-        t << fmt("  B 처리량(파이프라인, %d frames x%d 중앙값): %.2f FPS (min %.2f, max %.2f),\n"
+        t << fmt("  B throughput (pipeline, %d frames x%d median): %.2f FPS (min %.2f, max %.2f),\n"
                  "     latency median %.2f ms p90 %.2f ms, temp %.1f -> %.1f C\n",
                  o.bench_frames, std::max(1, o.bench_repeat), rr.fps, rr.fps_min, rr.fps_max, rr.lat_median,
                  rr.lat_p90, static_cast<double>(rr.temp_before), static_cast<double>(rr.temp_after));
 
-    t << "\n## 합격 기준\n";
-    t << fmt("  ① 러너 생성 + 슬롯 bind 성공            : %s\n", (rr.constructed && rr.error.empty()) ? "PASS" : "FAIL");
-    t << fmt("  ② 텐서 번호 ↔ 스트림 이름 대응 일치     : %s\n", rr.names_match ? "PASS" : "FAIL");
-    t << fmt("  ③ 콜백 실패 0, 프레임 %d/%d             : %s\n", rr.frames_ok, n,
+    t << "\n## Pass criteria\n";
+    t << fmt("  ① runner creation + slot bind succeeded  : %s\n", (rr.constructed && rr.error.empty()) ? "PASS" : "FAIL");
+    t << fmt("  ② tensor index ↔ stream name mapping ok  : %s\n", rr.names_match ? "PASS" : "FAIL");
+    t << fmt("  ③ callback failures 0, frames %d/%d       : %s\n", rr.frames_ok, n,
              (rr.cb_failed == 0 && rr.frames_ok == n) ? "PASS" : "FAIL");
-    t << fmt("  ④ f0 경로와 출력 6텐서 바이트 일치      : %s (%d/%d)\n",
+    t << fmt("  ④ 6 output tensors byte-identical to f0  : %s (%d/%d)\n",
              (compared == n && matched == compared) ? "PASS" : "FAIL", matched, compared);
-    t << fmt("  ⑤ hailort.log error %d / warning %d(온도·클럭 %d) : %s\n", log_err, warns, thermal,
+    t << fmt("  ⑤ hailort.log error %d / warning %d(thermal/clock %d) : %s\n", log_err, warns, thermal,
              (log_err == 0 && warns == 0) ? "PASS" : "FAIL");
-    t << fmt("  ⑥ fd 누수 0                             : %s (시작 %ld, 종료 %ld → %+ld)\n",
+    t << fmt("  ⑥ fd leak 0                              : %s (start %ld, end %ld → %+ld)\n",
              (fds_end - fds_start <= 1) ? "PASS" : "FAIL", fds_start, fds_end, fds_end - fds_start);
-    t << fmt("  ⑦ Vulkan 검증 레이어 errors %llu (활성 %s)\n", static_cast<unsigned long long>(vk_errors),
+    t << fmt("  ⑦ Vulkan validation layer errors %llu (active %s)\n", static_cast<unsigned long long>(vk_errors),
              vk_layer_active ? "yes" : "no");
-    t << fmt("\n[결론] %s\n", pass ? "HailoRawRunner 는 RawSession 과 같은 출력을 낸다 — 승격 검증 통과"
-                                   : "불일치 — 승격 코드를 고쳐야 한다");
+    t << fmt("\n[conclusion] %s\n", pass ? "HailoRawRunner produces the same output as RawSession — promotion verified"
+                                   : "mismatch — the promoted code must be fixed");
 
-    std::printf("\n[RUNNER] %s (bytes %d/%d, cb 실패 %ld, log error %d warning %d, fd %+ld)\n",
+    std::printf("\n[RUNNER] %s (bytes %d/%d, cb failed %ld, log error %d warning %d, fd %+ld)\n",
                 pass ? "PASS" : "FAIL", matched, compared, rr.cb_failed, log_err, warns, fds_end - fds_start);
     return pass ? 0 : 1;
 }
@@ -1554,7 +1554,7 @@ int run_p2(const Options& o, const std::vector<std::vector<std::uint8_t>>& input
     const int log_errors_start = count_hailort_log(false);
     const int log_thermal_start = count_hailort_log(true);
 
-    // --alloc 파싱
+    // Parse --alloc
     std::vector<AllocMode> modes;
     {
         std::string cur;
@@ -1567,19 +1567,19 @@ int run_p2(const Options& o, const std::vector<std::vector<std::uint8_t>>& input
             if (cur == "malloc") modes.push_back(AllocMode::Malloc);
             else if (cur == "heap") modes.push_back(AllocMode::Heap);
             else if (cur == "vulkan") modes.push_back(AllocMode::Vulkan);
-            else if (!cur.empty()) throw std::runtime_error("알 수 없는 --alloc 값: " + cur);
+            else if (!cur.empty()) throw std::runtime_error("unknown --alloc value: " + cur);
             cur.clear();
         }
     }
-    if (modes.empty()) throw std::runtime_error("--alloc 이 비었다");
+    if (modes.empty()) throw std::runtime_error("--alloc is empty");
     std::vector<RawApi> apis;
     if (o.api == "infer_async" || o.api == "both") apis.push_back(RawApi::InferAsync);
     if (o.api == "read_async" || o.api == "both") apis.push_back(RawApi::ReadAsync);
 
-    // NPU 를 쓰기 전 냉각 (계획서 §7 / measure 스킬)
+    // Cool down before using the NPU (plan §7 / measure skill)
     float t_before = 0, t_after = 0;
     const int cooled_s = cool_down(o.cool_above, o.cool_target, o.cool_max_s, t_before, t_after);
-    std::printf("[p2] cooling: hailo %.1f -> %.1f C, waited %d s (기준: >%.0f C 면 %.0f C 까지, 최대 %d s)\n",
+    std::printf("[p2] cooling: hailo %.1f -> %.1f C, waited %d s (rule: if >%.0f C, down to %.0f C, max %d s)\n",
                 static_cast<double>(t_before), static_cast<double>(t_after), cooled_s,
                 static_cast<double>(o.cool_above), static_cast<double>(o.cool_target), o.cool_max_s);
 
@@ -1589,32 +1589,32 @@ int run_p2(const Options& o, const std::vector<std::vector<std::uint8_t>>& input
 
     const int n_cmp = std::min<int>(o.compare_frames, static_cast<int>(inputs.size()));
 
-    // ── 기준값: malloc, read_async(호스트 포인터). P1 에서 이미 검증된 경로다.
+    // ── Baseline: malloc, read_async (host pointer). The path already verified in P1.
     base.api = apis.front();
     base.map_size = SizeKind::Hw;
     base.read_size = SizeKind::Hw;
     RunOutcome ref = run_capture(base, nullptr, o.slots, inputs, n_cmp, o.cpu_read_reps);
     if (!ref.constructed || ref.frames_ok == 0)
-        throw std::runtime_error("P2 기준(malloc) 캡처 실패: " + ref.error);
+        throw std::runtime_error("P2 baseline (malloc) capture failed: " + ref.error);
     const std::size_t n_tensors = ref.frames[0].t.size();
-    std::printf("[p2] 기준 malloc(%s): frames_ok=%d cb=%ld failed=%ld cpu_read median=%.3f ms\n",
+    std::printf("[p2] baseline malloc(%s): frames_ok=%d cb=%ld failed=%ld cpu_read median=%.3f ms\n",
                 api_name(base.api), ref.frames_ok, ref.cb_total, ref.cb_failed, percentile(ref.cpu_read_ms, 0.5));
 
-    // ── size 4조합 x alloc(dma-buf) x api 전수 시도
+    // ── Exhaustive trial of 4 size combinations x alloc (dma-buf) x api
     Tee mat(o.out_dir + "/p2_alloc_matrix.txt");
-    mat << "# P2-④ size 인자 4조합 전수 시도 (계획서 §4.2)\n";
+    mat << "# P2-④ exhaustive trial of the 4 size-argument combinations (plan §4.2)\n";
     mat << fmt("# pcie=%s x%s hef=%s\n", link_speed.c_str(), link_width.c_str(), o.hef.c_str());
-    mat << fmt("# 한 셀: slots=%d, frames=%d. bytes 는 --alloc malloc 결과와의 바이트 단위 비교다.\n",
+    mat << fmt("# per cell: slots=%d, frames=%d. bytes is a byte-level comparison with the --alloc malloc result.\n",
                o.matrix_slots, o.matrix_frames);
-    mat << "# hw_frame_size = 512000/409600/128000/102400/38400/30720,  dmabuf_size = 그것을 16384로 올림\n\n";
+    mat << "# hw_frame_size = 512000/409600/128000/102400/38400/30720,  dmabuf_size = that rounded up to 16384\n\n";
     mat << "alloc   api           dma_map size   read_async size  map_status                  issue  cb/fail"
-           "  bytes      판정\n";
+           "  bytes      verdict\n";
     mat << "------  ------------  -------------  ---------------  --------------------------  -----  -------"
            "  ---------  ----\n";
 
     std::vector<MatrixRow> rows;
     for (AllocMode m : modes) {
-        if (m == AllocMode::Malloc) continue;   // fd 가 없어 size 계약이 존재하지 않는다
+        if (m == AllocMode::Malloc) continue;   // No fd, so there is no size contract
         for (RawApi api : apis) {
             for (int mk = 0; mk < 2; ++mk) {
                 for (int rk = 0; rk < 2; ++rk) {
@@ -1658,14 +1658,14 @@ int run_p2(const Options& o, const std::vector<std::vector<std::uint8_t>>& input
         }
     }
 
-    // size 가 안 맞는 조합은 HailoRT 가 CHECK failed 로 거부한다 — **의도된** hailort.log error 다.
-    // 최종 판정(신뢰성)은 이 단계 이후의 error 만 센다. P1 이 Phase 3 의 의도된 실패를 분리한 것과 같은 규율이다.
+    // Combinations with mismatched sizes are rejected by HailoRT with CHECK failed — these are **intended** hailort.log errors.
+    // The final verdict (reliability) counts only errors after this stage. Same discipline as P1 separating Phase 3's intended failures.
     const int log_errors_after_matrix = count_hailort_log(false);
-    mat << fmt("\n# 이 단계에서 hailort.log 에 찍힌 error %d건은 **의도된** 크기 불일치 거부다\n",
+    mat << fmt("\n# The %d errors logged to hailort.log in this stage are **intended** size-mismatch rejections\n",
                log_errors_after_matrix - log_errors_start);
 
-    // 통과 조합 중 하나를 고른다. read_async 헤더가 "expected to be get_frame_size()" 라고 하므로
-    // read=hw 를 우선하고, 그다음 매핑 범위가 넓은 map=dmabuf 를 우선한다.
+    // Pick one of the passing combinations. The read_async header says "expected to be get_frame_size()", so
+    // prefer read=hw, then prefer map=dmabuf with the wider mapping range.
     auto score = [](const MatrixRow& r) {
         return (r.read_size == SizeKind::Hw ? 2 : 0) + (r.map_size == SizeKind::Dmabuf ? 1 : 0);
     };
@@ -1676,36 +1676,36 @@ int run_p2(const Options& o, const std::vector<std::vector<std::uint8_t>>& input
     }
     mat << "\n";
     if (best) {
-        mat << fmt("[선택] dma_map=%s read_async=%s (통과 조합 %d / 전체 %zu)\n", size_kind_name(best->map_size),
+        mat << fmt("[chosen] dma_map=%s read_async=%s (passing combinations %d / total %zu)\n", size_kind_name(best->map_size),
                    size_kind_name(best->read_size),
                    static_cast<int>(std::count_if(rows.begin(), rows.end(), [](const MatrixRow& r) { return r.pass; })),
                    rows.size());
     } else {
-        mat << "[선택] 통과한 size 조합이 없다 → 크기 계약 불명확. 계획서 §6.2 P2-④ 불합격.\n";
+        mat << "[chosen] no size combination passed → size contract unclear. Plan §6.2 P2-④ failed.\n";
     }
     for (std::size_t i = 0; i < ref.sizes.size(); ++i)
         mat << fmt("  tensor %zu: hw_frame_size=%zu\n", i, ref.sizes[i].first);
 
-    // ── 선택한 조합으로 전체 슬롯(16 x 6 = fd 96개) 실행
+    // ── Run all slots (16 x 6 = 96 fds) with the chosen combination
     Tee res(o.out_dir + "/p2_result.txt");
     Tee cr(o.out_dir + "/p2_cpu_read.txt");
-    res << "# P2 결과 (yvo_hailo_raw_probe --probe p2)\n";
+    res << "# P2 result (yvo_hailo_raw_probe --probe p2)\n";
     res << fmt("# pcie=%s x%s hef=%s video=%s\n", link_speed.c_str(), link_width.c_str(), o.hef.c_str(),
                o.video.c_str());
     res << fmt("# batch=%d slots=%d compare_frames=%d api=%s alloc=%s\n", o.batch, o.slots, n_cmp, o.api.c_str(),
                o.alloc.c_str());
-    res << fmt("# 냉각: hailo %.1f -> %.1f C, 대기 %d s\n\n", static_cast<double>(t_before),
+    res << fmt("# cooling: hailo %.1f -> %.1f C, waited %d s\n\n", static_cast<double>(t_before),
                static_cast<double>(t_after), cooled_s);
 
     std::size_t total_bytes = 0;
     for (const auto& sz : ref.sizes) total_bytes += sz.first;
-    cr << "# P2-⑥ cpu_read_1.22MB_ms — 6 텐서 전체를 CPU 가 순차 memcpy 로 읽는 시간\n";
-    cr << fmt("# 총 %zu B, 반복 %d회(워밍업 3회 제외). 참고: V3D 출력 버퍼 순차 memcpy 1,228,800 B = 0.85~0.87 ms\n",
+    cr << "# P2-⑥ cpu_read_1.22MB_ms — time for the CPU to read all 6 tensors with sequential memcpy\n";
+    cr << fmt("# total %zu B, %d repetitions (excluding 3 warm-ups). Reference: sequential memcpy of V3D output buffer 1,228,800 B = 0.85~0.87 ms\n",
               total_bytes, o.cpu_read_reps);
-    cr << "alloc    median_ms   p90_ms    min_ms    GB/s(median)   비고\n";
+    cr << "alloc    median_ms   p90_ms    min_ms    GB/s(median)   note\n";
     cr << "-------  ----------  --------  --------  ------------   ----\n";
 
-    // 증거 파일 3개(p2_alloc_matrix/p2_result/p2_cpu_read)가 열린 뒤의 fd 수. 누수 판정 기준선이다.
+    // fd count after the 3 evidence files (p2_alloc_matrix/p2_result/p2_cpu_read) are opened. This is the leak baseline.
     const long fds_files = count_open_fds();
 
     struct FinalRow {
@@ -1716,7 +1716,7 @@ int run_p2(const Options& o, const std::vector<std::vector<std::uint8_t>>& input
     };
     std::vector<FinalRow> finals;
 
-    // malloc 기준값도 표에 넣는다
+    // Also put the malloc baseline in the table
     {
         FinalRow f;
         f.alloc = AllocMode::Malloc;
@@ -1729,7 +1729,7 @@ int run_p2(const Options& o, const std::vector<std::vector<std::uint8_t>>& input
 
     for (AllocMode m : modes) {
         if (m == AllocMode::Malloc) continue;
-        // 이 alloc 모드에서 통과한 조합 중 최고 점수를 고른다(모드별로 다를 수 있다).
+        // Pick the highest-scoring passing combination for this alloc mode (may differ per mode).
         const MatrixRow* mb = nullptr;
         for (const auto& r : rows) {
             if (!r.pass || r.alloc != m) continue;
@@ -1738,7 +1738,7 @@ int run_p2(const Options& o, const std::vector<std::vector<std::uint8_t>>& input
         FinalRow f;
         f.alloc = m;
         if (!mb) {
-            f.out.error = "통과한 size 조합이 없다";
+            f.out.error = "no size combination passed";
             finals.push_back(f);
             continue;
         }
@@ -1750,7 +1750,7 @@ int run_p2(const Options& o, const std::vector<std::vector<std::uint8_t>>& input
         long fds_with_pool = 0;
         try {
             pool = make_pool(m, false);
-            // --in-dmabuf: vulkan 모드에서만 입력도 같은 풀의 dma-buf 로 준다(F0 조합).
+            // --in-dmabuf: only in vulkan mode, also pass the input as a dma-buf from the same pool (F0 combination).
             if (o.in_dmabuf && m == AllocMode::Vulkan) sc.in_pool = pool.get();
             f.out = run_capture(sc, pool.get(), o.slots, inputs, n_cmp, o.cpu_read_reps);
             fds_with_pool = count_open_fds();
@@ -1763,16 +1763,16 @@ int run_p2(const Options& o, const std::vector<std::vector<std::uint8_t>>& input
                  f.out.cb_failed == 0 && f.bytes_compared > 0 && f.bytes_matched == f.bytes_compared;
         res << fmt("[%s] api=%s dma_map=%s read_async=%s slots=%d\n", alloc_name(m), api_name(mb->api),
                    size_kind_name(mb->map_size), size_kind_name(mb->read_size), f.out.slots);
-        res << fmt("  dma_map_dmabuf : %ld회, 실패 %ld, status=%s, 총 %.3f ms (%.3f ms/회)\n", f.out.map_calls,
+        res << fmt("  dma_map_dmabuf : %ld calls, failed %ld, status=%s, total %.3f ms (%.3f ms/call)\n", f.out.map_calls,
                    f.out.map_failed, status_name(f.out.map_status).c_str(), f.out.map_ms,
                    f.out.map_calls > 0 ? f.out.map_ms / static_cast<double>(f.out.map_calls) : 0.0);
-        res << fmt("  콜백           : %ld개, 실패 %ld, first_error=%s\n", f.out.cb_total, f.out.cb_failed,
+        res << fmt("  callbacks      : %ld, failed %ld, first_error=%s\n", f.out.cb_total, f.out.cb_failed,
                    status_name(f.out.first_error).c_str());
-        res << fmt("  malloc 대비 바이트 일치 : %d / %d frames\n", f.bytes_matched, f.bytes_compared);
-        res << fmt("  pool 보유 시 열린 fd    : %ld (시작 %ld)\n", fds_with_pool, fds_start);
+        res << fmt("  byte match vs malloc    : %d / %d frames\n", f.bytes_matched, f.bytes_compared);
+        res << fmt("  open fds with pool held : %ld (start %ld)\n", fds_with_pool, fds_start);
         if (!f.out.error.empty()) res << fmt("  error: %s\n", f.out.error.c_str());
         for (std::size_t i = 0; i < f.out.sizes.size(); ++i)
-            res << fmt("  tensor %zu: hw_frame_size=%zu dmabuf_size=%zu (차 %+zd)\n", i, f.out.sizes[i].first,
+            res << fmt("  tensor %zu: hw_frame_size=%zu dmabuf_size=%zu (diff %+zd)\n", i, f.out.sizes[i].first,
                        f.out.sizes[i].second,
                        static_cast<std::ptrdiff_t>(f.out.sizes[i].second) -
                            static_cast<std::ptrdiff_t>(f.out.sizes[i].first));
@@ -1789,16 +1789,16 @@ int run_p2(const Options& o, const std::vector<std::vector<std::uint8_t>>& input
                               : *std::min_element(f.out.cpu_read_ms.begin(), f.out.cpu_read_ms.end());
         const double gbs = med > 0 ? static_cast<double>(total_bytes) / (med * 1e-3) / 1e9 : 0.0;
         cr << fmt("%-7s  %10.3f  %8.3f  %8.3f  %12.3f   %s\n", alloc_name(f.alloc), med, p90, mn, gbs,
-                  f.alloc == AllocMode::Heap ? "DMA_BUF_IOCTL_SYNC 포함, 캐시됨"
-                                             : (f.alloc == AllocMode::Vulkan ? "V3D HOST_COHERENT (캐시 없음)"
-                                                                             : "호스트 malloc (기준)"));
+                  f.alloc == AllocMode::Heap ? "includes DMA_BUF_IOCTL_SYNC, cached"
+                                             : (f.alloc == AllocMode::Vulkan ? "V3D HOST_COHERENT (uncached)"
+                                                                             : "host malloc (baseline)"));
     }
-    cr << fmt("\n총 읽기 바이트 = %zu B (6 텐서 hw_frame_size 합)\n", total_bytes);
+    cr << fmt("\ntotal bytes read = %zu B (sum of hw_frame_size over 6 tensors)\n", total_bytes);
 
-    // ── 판정
+    // ── Verdict
     const int log_errors_total = count_hailort_log(false) - log_errors_start;
     const int log_errors_matrix = log_errors_after_matrix - log_errors_start;
-    const int log_errors = log_errors_total - log_errors_matrix;   // 최종 실행 구간만
+    const int log_errors = log_errors_total - log_errors_matrix;   // Final run section only
     const int log_thermal = count_hailort_log(true) - log_thermal_start;
     const long fds_end = count_open_fds();
 
@@ -1821,38 +1821,38 @@ int run_p2(const Options& o, const std::vector<std::vector<std::uint8_t>>& input
         map_calls_96 = hp->out.map_calls;
     }
 
-    res << "합격 기준 판정 (계획서 §6.2 P2)\n";
+    res << "Pass criteria verdict (plan §6.2 P2)\n";
     res << fmt("  ① dma_map_dmabuf(fd, size, D2H) == SUCCESS : %s (vulkan %s / heap %s)\n",
                any_ok ? "PASS" : "FAIL",
-               vk ? status_name(vk->out.map_status).c_str() : "(미실행)",
-               hp ? status_name(hp->out.map_status).c_str() : "(미실행)");
-    res << fmt("  ② read_async(fd, ...) 콜백 SUCCESS         : %s (vulkan 실패 %ld / heap 실패 %ld)\n",
+               vk ? status_name(vk->out.map_status).c_str() : "(not run)",
+               hp ? status_name(hp->out.map_status).c_str() : "(not run)");
+    res << fmt("  ② read_async(fd, ...) callbacks SUCCESS    : %s (vulkan failed %ld / heap failed %ld)\n",
                any_ok ? "PASS" : "FAIL", vk ? vk->out.cb_failed : -1, hp ? hp->out.cb_failed : -1);
-    res << fmt("  ③ 6 텐서가 malloc 결과와 바이트 일치       : %s (vulkan %d/%d, heap %d/%d)\n",
+    res << fmt("  ③ 6 tensors byte-identical to malloc      : %s (vulkan %d/%d, heap %d/%d)\n",
                any_ok ? "PASS" : "FAIL", vk ? vk->bytes_matched : 0, vk ? vk->bytes_compared : 0,
                hp ? hp->bytes_matched : 0, hp ? hp->bytes_compared : 0);
-    res << fmt("  ④ size 조합 중 최소 하나 동작              : %s%s\n", best ? "PASS" : "FAIL",
+    res << fmt("  ④ at least one size combination works     : %s%s\n", best ? "PASS" : "FAIL",
                best ? fmt(" (dma_map=%s, read_async=%s)", size_kind_name(best->map_size),
                           size_kind_name(best->read_size))
                           .c_str()
                     : "");
-    res << fmt("  ⑤ dma_map_dmabuf %ld회 총 < 100 ms         : %s (%.3f ms)\n", map_calls_96,
+    res << fmt("  ⑤ dma_map_dmabuf %ld calls total < 100 ms  : %s (%.3f ms)\n", map_calls_96,
                (map_calls_96 > 0 && map_ms_96 < 100.0) ? "PASS" : "FAIL", map_ms_96);
-    res << fmt("  ⑥ cpu_read_1.22MB_ms 세 방식 출력          : %s (%s/p2_cpu_read.txt)\n",
-               finals.size() >= 2 ? "기록" : "부족", o.out_dir.c_str());
-    res << fmt("\nhailort.log: error %d건(최종 실행 구간), 온도/클럭 warning %d건 %s\n", log_errors, log_thermal,
-               (log_errors == 0 && log_thermal == 0) ? "" : "→ 이 실행의 수치는 신뢰 불가");
-    res << fmt("            + size 조합 표에서 의도된 크기 불일치 거부 %d건 (전체 %d건)\n", log_errors_matrix,
+    res << fmt("  ⑥ cpu_read_1.22MB_ms output for 3 modes   : %s (%s/p2_cpu_read.txt)\n",
+               finals.size() >= 2 ? "recorded" : "insufficient", o.out_dir.c_str());
+    res << fmt("\nhailort.log: %d errors (final run section), %d thermal/clock warnings %s\n", log_errors, log_thermal,
+               (log_errors == 0 && log_thermal == 0) ? "" : "→ numbers from this run are unreliable");
+    res << fmt("            + %d intended size-mismatch rejections in the size combination table (%d total)\n", log_errors_matrix,
                log_errors_total);
-    res << fmt("열린 fd: 프로세스 시작 %ld, 증거 파일 3개 연 뒤 %ld(기준선), 종료 %ld → 누수 %+ld\n", fds_start,
+    res << fmt("open fds: process start %ld, after opening 3 evidence files %ld (baseline), end %ld → leak %+ld\n", fds_start,
                fds_files, fds_end, fds_end - fds_files);
-    res << fmt("\n[결론] %s\n", vk_ok ? "계획서 §4.2 채택안(Vulkan 소유 dma-buf) 그대로 진행 가능"
-                                      : (hp_ok ? "채택안 불가 → dma-heap 대체안으로 설계 변경해 계속"
-                                               : "①~③이 heap 안으로도 통과하지 못했다 → 계획서 §4.8 중단 조건"));
+    res << fmt("\n[conclusion] %s\n", vk_ok ? "plan §4.2 adopted option (Vulkan-owned dma-buf) can proceed as is"
+                                      : (hp_ok ? "adopted option not viable → continue with the design changed to the dma-heap alternative"
+                                               : "①~③ did not pass even with the heap option → plan §4.8 stop condition"));
 
     std::printf("\n[P2] %s (vulkan %s, heap %s)\n", any_ok ? "PASS" : "FAIL", vk_ok ? "PASS" : "FAIL",
                 hp_ok ? "PASS" : "FAIL");
-    std::printf("[p2] fd: 시작 %ld, 기준선 %ld, 종료 %ld (누수 %+ld)\n", fds_start, fds_files, fds_end,
+    std::printf("[p2] fd: start %ld, baseline %ld, end %ld (leak %+ld)\n", fds_start, fds_files, fds_end,
                 fds_end - fds_files);
     return any_ok ? 0 : 1;
 }
@@ -1907,7 +1907,7 @@ int main(int argc, char** argv) {
         return 2;
     }
     if (o.in_dmabuf && o.probe == "p1") {
-        std::fprintf(stderr, "--in-dmabuf 는 --probe p2 또는 f0 에서만 쓴다 (p1 은 GPU 를 쓰지 않는 경로다)\n");
+        std::fprintf(stderr, "--in-dmabuf is only for --probe p2 or f0 (p1 is a path that does not use the GPU)\n");
         return 2;
     }
 
@@ -1915,33 +1915,33 @@ int main(int argc, char** argv) {
         std::filesystem::create_directories(o.out_dir);
         std::filesystem::create_directories(o.fixture_dir);
 
-        // ---- 환경 (측정 조건을 추측하지 않는다)
+        // ---- Environment (do not guess measurement conditions)
         const std::string link_speed = read_first_line("/sys/bus/pci/devices/0001:01:00.0/current_link_speed");
         const std::string link_width = read_first_line("/sys/bus/pci/devices/0001:01:00.0/current_link_width");
         std::printf("[env] pcie current_link_speed=%s width=x%s (8.0 GT/s = Gen3)\n", link_speed.c_str(),
                     link_width.c_str());
 
-        // ---- 입력 프레임
+        // ---- Input frames
         const yvo::LetterboxParams lb = yvo::make_letterbox(kSrcW, kSrcH, 640, 640);
         const int need = std::max({o.compare_frames, o.dump_frames, o.api_check_frames});
         auto nv12 = read_nv12_frames(o.video, need, kSrcW, kSrcH);
         if (static_cast<int>(nv12.size()) < need)
-            throw std::runtime_error("프레임 부족: " + std::to_string(nv12.size()) + " / " + std::to_string(need));
+            throw std::runtime_error("not enough frames: " + std::to_string(nv12.size()) + " / " + std::to_string(need));
         const std::size_t in_size = static_cast<std::size_t>(640) * 640 * 3;
         auto inputs = make_nhcw_inputs(nv12, lb, in_size);
         std::printf("[info] frames=%zu letterbox scale=%.6f pad=(%d,%d) input=%zu B (NHCW)\n", inputs.size(),
                     lb.scale, lb.pad_x, lb.pad_y, in_size);
 
-        // ---- P2: dma-buf 출력 경로 (계획서 §6.2 P2). P1 과 공유하는 것은 환경 확인과 입력 프레임까지다.
+        // ---- P2: dma-buf output path (plan §6.2 P2). Shared with P1 only up to the environment check and input frames.
         if (o.probe == "p2") return run_p2(o, inputs, link_speed, link_width);
 
-        // ---- F0: 입력 dma-buf(H2D) + 출력 dma-buf(D2H) 동시 사용 관문
+        // ---- F0: gate for simultaneous input dma-buf (H2D) + output dma-buf (D2H)
         if (o.probe == "f0") return run_f0(o, inputs, link_speed, link_width);
 
-        // ---- RUNNER: RawSession -> yvo::HailoRawRunner 승격 검증
+        // ---- RUNNER: RawSession -> yvo::HailoRawRunner promotion verification
         if (o.probe == "runner") return run_runner(o, inputs, link_speed, link_width);
 
-        // ---- Phase 0: Hef 파싱만으로 출력 스트림 덤프
+        // ---- Phase 0: dump output streams from HEF parsing alone
         Tee info(o.out_dir + "/stream_infos_quant.txt");
         info << fmt("# yvo_hailo_raw_probe stream infos / quant infos\n");
         info << fmt("# hef=%s pcie=%s x%s\n\n", o.hef.c_str(), link_speed.c_str(), link_width.c_str());
@@ -1967,20 +1967,20 @@ int main(int argc, char** argv) {
                             static_cast<double>(s.quant_info.limvals_max));
             }
             if (outs.size() != 6) {
-                info << fmt("\n[FAIL] P1-① 원시 출력 스트림이 6개가 아니다: %zu\n", outs.size());
+                info << fmt("\n[FAIL] P1-① raw output stream count is not 6: %zu\n", outs.size());
                 return 1;
             }
             info << "\n";
         }
 
-        // ---- Phase 1: 원시 스트림 세션 (API 경로별)
+        // ---- Phase 1: raw stream session (per API path)
         std::vector<RawApi> apis;
         if (o.api == "infer_async" || o.api == "both") apis.push_back(RawApi::InferAsync);
         if (o.api == "read_async" || o.api == "both") apis.push_back(RawApi::ReadAsync);
 
         std::vector<ApiOutcome> outcomes;
-        std::vector<RawFrame> captured;       // primary api의 compare_frames 분량
-        std::vector<RawFrame> captured_alt;   // 다른 api의 같은 프레임 (바이트 비교용)
+        std::vector<RawFrame> captured;       // compare_frames worth from the primary api
+        std::vector<RawFrame> captured_alt;   // Same frames from the other api (for byte comparison)
         RawLayout layout;
         std::vector<StreamMeta> out_meta;
         bool layout_ok = false;
@@ -1998,11 +1998,11 @@ int main(int argc, char** argv) {
                 sc.batch = static_cast<std::uint16_t>(o.batch);
                 sc.want_slots = o.slots;
                 sc.api = api;
-                sess = std::make_unique<RawSession>(sc);   // out_pool == nullptr → 호스트 malloc (P1)
+                sess = std::make_unique<RawSession>(sc);   // out_pool == nullptr → host malloc (P1)
                 oc.constructed = true;
             } catch (const std::exception& e) {
                 oc.error = e.what();
-                std::printf("[%s] 세션 생성 실패: %s\n", api_name(api), e.what());
+                std::printf("[%s] session creation failed: %s\n", api_name(api), e.what());
                 outcomes.push_back(oc);
                 continue;
             }
@@ -2031,7 +2031,7 @@ int main(int argc, char** argv) {
                     }
                     if (m.quant.size() != 1) quant_per_feature = true;
                 }
-                info << fmt("  num_slots=%d (요청 %d, 큐 최솟값 %zu로 클램프)\n\n", oc.slots, o.slots, oc.min_queue);
+                info << fmt("  num_slots=%d (requested %d, clamped to minimum queue size %zu)\n\n", oc.slots, o.slots, oc.min_queue);
                 layout = derive_layout(out_meta);
                 layout_ok = true;
                 for (int i = 0; i < 3; ++i) {
@@ -2040,13 +2040,13 @@ int main(int argc, char** argv) {
                                 short_name(out_meta[static_cast<std::size_t>(layout.s[i].cls_idx)].name).c_str(),
                                 short_name(out_meta[static_cast<std::size_t>(layout.s[i].box_idx)].name).c_str());
                 }
-                info << fmt("  num_classes=%d reg_max=%d (shape에서 파생)\n\n", layout.num_classes, layout.reg_max);
+                info << fmt("  num_classes=%d reg_max=%d (derived from shape)\n\n", layout.num_classes, layout.reg_max);
                 if (quant_per_feature) {
-                    info << "[FAIL] P1-② get_quant_infos().size() > 1 (per-feature 양자화) → 설계 변경 필요\n";
+                    info << "[FAIL] P1-② get_quant_infos().size() > 1 (per-feature quantization) → design change needed\n";
                 }
             }
 
-            // API 경로 확인: 프레임 몇 장으로 7개 콜백이 전부 SUCCESS인지 본다
+            // API path check: see with a few frames whether all 7 callbacks are SUCCESS
             const int n_check = std::min<int>(o.api_check_frames, static_cast<int>(inputs.size()));
             std::vector<RawFrame> local(static_cast<std::size_t>(o.compare_frames));
             std::atomic<long> done{0};
@@ -2072,14 +2072,14 @@ int main(int argc, char** argv) {
                         oc.ok ? "OK" : "FAIL");
 
             if (oc.ok) {
-                // compare_frames 분량의 6 텐서를 확보한다
+                // Obtain compare_frames worth of the 6 tensors
                 const int n_cmp = std::min<int>(o.compare_frames, static_cast<int>(inputs.size()));
                 for (int i = 0; i < n_cmp; ++i) {
                     sess->submit(inputs[static_cast<std::size_t>(i)].data(),
                                  [&](int slot, hailo_status st) {
                                      if (st == HAILO_SUCCESS) local[static_cast<std::size_t>(i)] = sess->copy_out(slot);
                                  });
-                    sess->drain();   // 슬롯 버퍼를 프레임별로 그대로 읽으려면 프레임마다 완료를 기다린다
+                    sess->drain();   // To read slot buffers per frame as is, wait for completion after every frame
                 }
                 if (!primary_done) {
                     captured = std::move(local);
@@ -2089,12 +2089,12 @@ int main(int argc, char** argv) {
                     captured_alt = std::move(local);
                 }
 
-                // 처리량 (primary api에서만). 설정당 --bench-repeat회 돌려 중앙값을 쓴다.
+                // Throughput (primary api only). Run --bench-repeat times per configuration and use the median.
                 //
-                // FPS 계산: **파이프라인 채우기·비우기 구간을 빼야 한다.** 구간을
-                // [warmup 프레임의 완료] ~ [마지막 프레임의 완료]로 잡으면 그 사이 완료 수가 정확히
-                // bench_frames다. (t0를 "warmup번째 submit 직전"으로 잡으면 아직 비행 중인 slots개가
-                // 구간 안에서 완료되어 FPS가 slots/(slots+bench) 만큼 과소평가된다 — 실측 48.6 vs 52.4.)
+                // FPS calculation: **the pipeline fill and drain phases must be excluded.** If the interval is taken as
+                // [completion of the warmup-th frame] ~ [completion of the last frame], the number of completions in between is exactly
+                // bench_frames. (If t0 is taken as "just before the warmup-th submit", the slots frames still in flight
+                // complete within the interval and FPS is underestimated by slots/(slots+bench) — measured 48.6 vs 52.4.)
                 if (!o.skip_bench && api == primary_api) {
                     std::vector<double> fps_runs, med_runs, p90_runs;
                     for (int rep = 0; rep < o.bench_repeat; ++rep) {
@@ -2138,11 +2138,11 @@ int main(int argc, char** argv) {
                         api_name(api), oc.slots, oc.min_queue, oc.infer_queue, static_cast<int>(oc.scheduled),
                         static_cast<double>(oc.temp_before), static_cast<double>(oc.temp_after), oc.fps);
             outcomes.push_back(oc);
-            sess.reset();   // 다음 단계를 위해 장치를 완전히 놓는다
+            sess.reset();   // Fully release the device for the next stage
         }
 
         if (!primary_done) {
-            std::fprintf(stderr, "[FAIL] P1-③ infer_async / read_async 둘 다 실패했다. 원시 경로 불가 → 중단.\n");
+            std::fprintf(stderr, "[FAIL] P1-③ both infer_async / read_async failed. Raw path not possible → aborting.\n");
             Tee api_out(o.out_dir + "/p1_api_result.txt");
             for (const auto& oc : outcomes) {
                 api_out << fmt("%s: constructed=%d ok=%d cb=%ld failed=%ld first_error=%s error=%s\n",
@@ -2152,7 +2152,7 @@ int main(int argc, char** argv) {
             return 1;
         }
 
-        // ---- 픽스처 덤프: 다음 단계에서 Vulkan 셰이더를 NPU 없이 디버깅하는 데 쓴다
+        // ---- Fixture dump: used in the next stage to debug Vulkan shaders without the NPU
         const int n_dump = std::min<int>(o.dump_frames, static_cast<int>(captured.size()));
         std::size_t dumped_bytes = 0;
         for (int i = 0; i < n_dump; ++i) {
@@ -2169,8 +2169,8 @@ int main(int argc, char** argv) {
         }
         {
             std::ofstream j(o.fixture_dir + "/fixtures.json");
-            // float 값은 유효자리 9개로 쓴다. 기본 6자리면 qp_scale·letterbox scale이 잘려
-            // 다음 단계(GPU 셰이더를 NPU 없이 디버깅)에서 비트 일치를 못 맞춘다.
+            // Float values are written with 9 significant digits. With the default 6 digits, qp_scale and letterbox scale get truncated
+            // and the next stage (debugging GPU shaders without the NPU) cannot achieve a bit-exact match.
             j << std::setprecision(9);
             j << "{\n";
             j << "  \"generator\": \"yvo_hailo_raw_probe\",\n";
@@ -2208,7 +2208,7 @@ int main(int argc, char** argv) {
         std::printf("[info] fixture dump: %d frames x %zu tensors = %.2f MB -> %s\n", n_dump, out_meta.size(),
                     static_cast<double>(dumped_bytes) / (1024.0 * 1024.0), o.fixture_dir.c_str());
 
-        // 두 API 경로가 같은 바이트를 주는지 (both 일 때만)
+        // Whether the two API paths give the same bytes (only with both)
         long alt_identical = -1;
         if (!captured_alt.empty()) {
             alt_identical = 0;
@@ -2219,17 +2219,17 @@ int main(int argc, char** argv) {
                     if (captured[i].t[k] != captured_alt[i].t[k]) same = false;
                 if (same) ++alt_identical;
             }
-            std::printf("[info] infer_async vs read_async 텐서 바이트 일치: %ld / %zu 프레임\n", alt_identical,
+            std::printf("[info] infer_async vs read_async tensor byte match: %ld / %zu frames\n", alt_identical,
                         captured.size());
         }
 
-        // ---- Phase 2: 기준 검출 (HailoRT NMS vstream 경로). 장치를 독점하므로 위 세션을 모두 파괴한 뒤에 한다.
+        // ---- Phase 2: reference detections (HailoRT NMS vstream path). It takes the device exclusively, so it runs after destroying all sessions above.
         std::vector<std::vector<yvo::Detection>> ref(captured.size());
         long ref_errors = 0;
         {
             yvo::HailoRunnerConfig hcfg;
             hcfg.hef_path = o.hef;
-            hcfg.input_layout = yvo::TensorLayout::Nhcw;   // 원시 패스와 **같은 바이트**를 장치에 넣는다
+            hcfg.input_layout = yvo::TensorLayout::Nhcw;   // Feeds the device **the same bytes** as the raw pass
             hcfg.allow_host_ptr_nhcw = true;
             hcfg.batch_size = 1;
             hcfg.num_slots = 4;
@@ -2254,12 +2254,12 @@ int main(int argc, char** argv) {
             }
             long total = 0;
             for (const auto& v : ref) total += static_cast<long>(v.size());
-            std::printf("[ref] HailoRT NMS 경로: %zu frames, 검출 합계 %ld (%.2f/frame), errors %ld\n", ref.size(),
+            std::printf("[ref] HailoRT NMS path: %zu frames, total detections %ld (%.2f/frame), errors %ld\n", ref.size(),
                         total, static_cast<double>(total) / static_cast<double>(ref.size()), ref_errors);
         }
 
-        // hailort.log의 error 수를 Phase 3 **이전에** 센다. Phase 3은 configure() 실패를
-        // 의도적으로 일으키는 증거 수집이므로 그 error는 ⑥의 판정 대상이 아니다.
+        // Count hailort.log errors **before** Phase 3. Phase 3 collects evidence by deliberately
+        // causing configure() failures, so those errors are not subject to the ⑥ verdict.
         auto count_log = [](bool thermal_only) {
             std::ifstream f("hailort.log");
             std::string line;
@@ -2279,12 +2279,12 @@ int main(int argc, char** argv) {
         const int errors_before_phase3 = count_log(false);
         const int thermal_warnings = count_log(true);
 
-        // ---- Phase 3: (B)안 폐기 증거 — InferModel로는 원시 출력을 받을 수 없다
+        // ---- Phase 3: evidence for dropping option (B) — raw outputs cannot be obtained with InferModel
         if (!o.skip_infer_model) {
             Tee ev(o.out_dir + "/infer_model_raw_attempt.txt");
-            ev << "# (B)안 폐기 증거: InferModel 유지안으로 원시(NHCW) 출력을 받을 수 있는가\n";
-            ev << "# 기대: 출력 vstream이 yolov8_nms_postprocess 하나뿐이고, 여기에 NHCW format order를\n";
-            ev << "#       걸면 configure()가 실패한다 (계획서 §4.1).\n\n";
+            ev << "# Evidence for dropping option (B): can raw (NHCW) outputs be obtained while keeping InferModel?\n";
+            ev << "# Expected: the only output vstream is yolov8_nms_postprocess, and setting NHCW format order on it\n";
+            ev << "#       makes configure() fail (plan §4.1).\n\n";
             try {
                 hailo_vdevice_params_t vp;
                 check(hailo_init_vdevice_params(&vp), "hailo_init_vdevice_params");
@@ -2300,28 +2300,28 @@ int main(int argc, char** argv) {
                 }
                 auto out = unwrap(im->output(), "InferModel::output");
                 out.set_format_order(HAILO_FORMAT_ORDER_NHCW);
-                ev << "\nset_format_order(HAILO_FORMAT_ORDER_NHCW) 후 configure():\n";
+                ev << "\nconfigure() after set_format_order(HAILO_FORMAT_ORDER_NHCW):\n";
                 auto configured = im->configure();
                 if (configured) {
-                    ev << "  [unexpected] configure() SUCCESS — 설계 재검토 필요\n";
+                    ev << "  [unexpected] configure() SUCCESS — design needs review\n";
                 } else {
-                    ev << fmt("  configure() 실패 status = %s\n", status_name(configured.status()).c_str());
-                    ev << "  → 출력 vstream은 NMS 하나뿐이고 post-process를 끌 수 없다. (B)안 폐기 확정.\n";
+                    ev << fmt("  configure() failed status = %s\n", status_name(configured.status()).c_str());
+                    ev << "  → the only output vstream is NMS and post-process cannot be disabled. Option (B) dropped for good.\n";
                 }
             } catch (const std::exception& e) {
-                ev << fmt("  예외: %s\n", e.what());
+                ev << fmt("  exception: %s\n", e.what());
             }
         }
 
-        // ---- Phase 4: 텐서 해석 전수 시도 (NPU 불필요)
+        // ---- Phase 4: exhaustive tensor interpretation trial (no NPU needed)
         Tee sweep(o.out_dir + "/p1_combination_sweep.txt");
-        sweep << "# P1-④ 텐서 해석 미확정 변수 전수 시도 (2x2x2x2 = 16조합)\n";
-        sweep << fmt("# 기준: HailoRT NMS 경로 검출 vs cpu_yolov8_postprocess, match() IoU>=%.2f\n",
+        sweep << "# P1-④ exhaustive trial of unresolved tensor interpretation variables (2x2x2x2 = 16 combinations)\n";
+        sweep << fmt("# reference: HailoRT NMS path detections vs cpu_yolov8_postprocess, match() IoU>=%.2f\n",
                      static_cast<double>(kIouMatchThreshold));
-        sweep << fmt("# 프레임 %zu장, score_thr=%.2f iou_thr=%.2f max/class=%d\n", captured.size(),
+        sweep << fmt("# %zu frames, score_thr=%.2f iou_thr=%.2f max/class=%d\n", captured.size(),
                      static_cast<double>(kHefScoreThreshold), static_cast<double>(kHefIouThreshold),
                      kHefMaxPerClass);
-        sweep << "# cand_limit 초과(20000) 조합은 NMS를 돌리지 않고 기각한다(호스트 NMS가 O(n^2)다).\n\n";
+        sweep << "# Combinations exceeding cand_limit (20000) are rejected without running NMS (host NMS is O(n^2)).\n\n";
         sweep << "argmax  sigmoid  dfl_order   thr_cmp  cand/frame   ref   test  matched   ratio\n";
         sweep << "------  -------  ----------  -------  ----------  ----  -----  -------  ------\n";
 
@@ -2375,14 +2375,14 @@ int main(int argc, char** argv) {
                                                                                            : "b*4+coord",
                                      row.opt.threshold_inclusive ? ">=" : ">", row.cand_per_frame, row.ref,
                                      row.test, row.matched,
-                                     row.rejected ? "  기각(cand>20000)" : fmt("%.4f", row.ratio).c_str());
+                                     row.rejected ? "  rejected(cand>20000)" : fmt("%.4f", row.ratio).c_str());
                     }
                 }
             }
         }
 
-        // 동률이면 (argmax_only=false, threshold_inclusive=true)를 고른다 — 헤더 기본값과 맞춘다.
-        auto better = [](const SweepRow& x, const SweepRow& y) {   // x가 y보다 좋은가
+        // On a tie, pick (argmax_only=false, threshold_inclusive=true) — matching the header defaults.
+        auto better = [](const SweepRow& x, const SweepRow& y) {   // Whether x is better than y
             if (y.rejected != x.rejected) return y.rejected;
             if (x.ratio != y.ratio) return x.ratio > y.ratio;
             if (x.opt.argmax_only != y.opt.argmax_only) return !x.opt.argmax_only;
@@ -2392,7 +2392,7 @@ int main(int argc, char** argv) {
         for (std::size_t i = 1; i < rows.size(); ++i)
             if (better(rows[i], rows[best])) best = i;
         const auto& b = rows[best];
-        sweep << "\n[동률 목록] 최고 ratio와 같은 값을 낸 조합 (구분 불가한 변수를 드러낸다)\n";
+        sweep << "\n[tie list] combinations that gave the same value as the best ratio (reveals indistinguishable variables)\n";
         for (const auto& r : rows) {
             if (r.rejected || r.ratio < b.ratio) continue;
             sweep << fmt("  argmax=%-3s sigmoid=%-3s dfl=%-10s thr=%-2s ratio=%.4f cand/frame=%.1f test=%ld\n",
@@ -2404,16 +2404,16 @@ int main(int argc, char** argv) {
                      b.opt.argmax_only ? "true" : "false", b.opt.apply_sigmoid ? "true" : "false",
                      b.opt.dfl_order == yvo::DflChannelOrder::CoordMajor ? "CoordMajor" : "BinMajor",
                      b.opt.threshold_inclusive ? ">=" : ">", b.ratio);
-        // `>` 와 `>=` 가 구분되는지는 양자화 격자가 threshold 를 정확히 맞출 수 있는지에 달려 있다.
+        // Whether `>` and `>=` are distinguishable depends on whether the quantization grid can hit the threshold exactly.
         for (int si = 0; si < 3; ++si) {
             const auto& q = out_meta[static_cast<std::size_t>(layout.s[si].cls_idx)].quant[0];
             const double qf = static_cast<double>(kHefScoreThreshold) / static_cast<double>(q.qp_scale) +
                               static_cast<double>(q.qp_zp);
-            sweep << fmt("  scale %d: thr %.2f / qp_scale %.9g = q %.4f (정수가 아니면 `>`와 `>=`는 원리적으로 같다)\n",
+            sweep << fmt("  scale %d: thr %.2f / qp_scale %.9g = q %.4f (if not an integer, `>` and `>=` are equivalent in principle)\n",
                          si, static_cast<double>(kHefScoreThreshold), static_cast<double>(q.qp_scale), qf);
         }
 
-        // ---- P1-⑤ P5 열 20~23 포함/제외 비교
+        // ---- P1-⑤ P5 columns 20~23 include/exclude comparison
         long inc_ref = 0, inc_test = 0, inc_matched = 0;
         double inc_cand = 0;
         for (std::size_t i = 0; i < captured.size(); ++i) {
@@ -2434,8 +2434,8 @@ int main(int argc, char** argv) {
         const long inc_denom = std::max(inc_ref, inc_test);
         const double inc_ratio =
             inc_denom > 0 ? static_cast<double>(inc_matched) / static_cast<double>(inc_denom) : 0.0;
-        // 패딩 열(20..23)의 실제 바이트 내용. 0이면 유령 검출이 안 생기지만, 그래도 제외가 옳다
-        // (w=20..23은 (w+0.5)*32 >= 656 으로 640 입력 밖의 좌표를 만든다).
+        // Actual byte contents of the padding columns (20..23). If 0 no ghost detections arise, but excluding is still right
+        // (w=20..23 gives (w+0.5)*32 >= 656, coordinates outside the 640 input).
         int pad_cls_max = 0, pad_box_max = 0;
         long pad_nonzero = 0, pad_bytes = 0;
         for (const auto& f : captured) {
@@ -2459,36 +2459,36 @@ int main(int argc, char** argv) {
                 }
             }
         }
-        sweep << "\n# P1-⑤ P5 (20x24) 패딩 열 20~23 처리\n";
-        sweep << fmt("  제외(grid_w=20): cand/frame=%.1f test=%ld matched=%ld ratio=%.4f\n", b.cand_per_frame,
+        sweep << "\n# P1-⑤ P5 (20x24) handling of padding columns 20~23\n";
+        sweep << fmt("  exclude(grid_w=20): cand/frame=%.1f test=%ld matched=%ld ratio=%.4f\n", b.cand_per_frame,
                      b.test, b.matched, b.ratio);
-        sweep << fmt("  포함(grid_w=24): cand/frame=%.1f test=%ld matched=%ld ratio=%.4f\n", inc_cand, inc_test,
+        sweep << fmt("  include(grid_w=24): cand/frame=%.1f test=%ld matched=%ld ratio=%.4f\n", inc_cand, inc_test,
                      inc_matched, inc_ratio);
-        sweep << fmt("  패딩 열 바이트: %ld개 중 0이 아닌 것 %ld개 (cls max q=%d, box max q=%d)\n", pad_bytes,
+        sweep << fmt("  padding column bytes: %ld total, %ld nonzero (cls max q=%d, box max q=%d)\n", pad_bytes,
                      pad_nonzero, pad_cls_max, pad_box_max);
-        sweep << fmt("  패딩 열 클래스 점수 상한 = %d * %.9g = %.6f (threshold %.2f)\n", pad_cls_max,
+        sweep << fmt("  padding column class score upper bound = %d * %.9g = %.6f (threshold %.2f)\n", pad_cls_max,
                      static_cast<double>(out_meta[static_cast<std::size_t>(layout.s[2].cls_idx)].quant[0].qp_scale),
                      static_cast<double>(pad_cls_max) *
                          static_cast<double>(out_meta[static_cast<std::size_t>(layout.s[2].cls_idx)].quant[0].qp_scale),
                      static_cast<double>(kHefScoreThreshold));
         if (inc_ratio < b.ratio || inc_test > b.test) {
-            sweep << "  → 제외가 맞다: 포함하면 유령 검출이 늘거나 ratio가 떨어진다.\n";
+            sweep << "  → excluding is right: including increases ghost detections or lowers the ratio.\n";
         } else {
-            sweep << "  → 제외가 맞다(약한 증거): 이 영상에서는 패딩 열이 threshold를 못 넘어 결과가 같다.\n";
-            sweep << "     그래도 제외해야 한다 — w=20..23은 (w+0.5)*32 >= 656 으로 640 입력 밖 좌표를 만들고,\n";
-            sweep << "     패딩 값은 정의되지 않으므로 다른 영상/모델에서 유령 검출이 될 수 있다.\n";
+            sweep << "  → excluding is right (weak evidence): in this video the padding columns do not exceed the threshold, so results are the same.\n";
+            sweep << "     Still, they must be excluded — w=20..23 gives (w+0.5)*32 >= 656, coordinates outside the 640 input,\n";
+            sweep << "     and padding values are undefined, so they may become ghost detections with other videos/models.\n";
         }
 
-        // ---- 최종 P1 판정
+        // ---- Final P1 verdict
         const int hailort_errors = errors_before_phase3;
         const int hailort_thermal = thermal_warnings;
         const int hailort_errors_total = count_log(false);
 
         Tee res(o.out_dir + "/p1_api_result.txt");
-        res << "# P1 결과 요약 (yvo_hailo_raw_probe)\n";
+        res << "# P1 result summary (yvo_hailo_raw_probe)\n";
         res << fmt("# pcie=%s x%s, hef=%s, video=%s\n", link_speed.c_str(), link_width.c_str(), o.hef.c_str(),
                    o.video.c_str());
-        res << fmt("# batch=%d, 요청 slots=%d, compare_frames=%zu, bench_frames=%d\n\n", o.batch, o.slots,
+        res << fmt("# batch=%d, requested slots=%d, compare_frames=%zu, bench_frames=%d\n\n", o.batch, o.slots,
                    captured.size(), o.bench_frames);
         for (const auto& oc : outcomes) {
             res << fmt("[%s] constructed=%d ok=%d slots=%d min_queue=%zu infer_queue=%zu scheduled=%d\n"
@@ -2506,23 +2506,23 @@ int main(int argc, char** argv) {
         for (const auto& oc : outcomes)
             if (oc.api == primary_api) primary_fps = oc.fps;
         res << fmt("\nprimary api          : %s\n", api_name(primary_api));
-        res << fmt("두 api 텐서 바이트 일치 : %s\n",
-                   alt_identical < 0 ? "(한쪽만 실행)" : fmt("%ld / %zu frames", alt_identical, captured.size()).c_str());
-        res << fmt("픽스처                : %d frames x %zu tensors, %.2f MB -> %s\n", n_dump, out_meta.size(),
+        res << fmt("tensor bytes match between both apis : %s\n",
+                   alt_identical < 0 ? "(only one ran)" : fmt("%ld / %zu frames", alt_identical, captured.size()).c_str());
+        res << fmt("fixtures             : %d frames x %zu tensors, %.2f MB -> %s\n", n_dump, out_meta.size(),
                    static_cast<double>(dumped_bytes) / (1024.0 * 1024.0), o.fixture_dir.c_str());
-        res << fmt("hailort.log errors    : %d (추론 구간), 온도/클럭 warning: %d\n", hailort_errors, hailort_thermal);
-        res << fmt("                        %d (전체 — Phase 3의 의도된 configure() 실패 %d건 포함)\n\n",
+        res << fmt("hailort.log errors    : %d (inference section), thermal/clock warning: %d\n", hailort_errors, hailort_thermal);
+        res << fmt("                        %d (total — includes %d intended configure() failures from Phase 3)\n\n",
                    hailort_errors_total, hailort_errors_total - hailort_errors);
-        res << "합격 기준 판정\n";
-        res << fmt("  ① 원시 출력 6개, 이름/shape 일치           : %s\n", layout_ok ? "PASS" : "FAIL");
+        res << "Pass criteria verdict\n";
+        res << fmt("  ① 6 raw outputs, name/shape match          : %s\n", layout_ok ? "PASS" : "FAIL");
         res << fmt("  ② get_quant_infos().size() == 1            : %s\n", quant_per_feature ? "FAIL" : "PASS");
-        res << fmt("  ③ api 중 최소 하나가 7콜백 전부 SUCCESS    : PASS (%s)\n", api_name(primary_api));
+        res << fmt("  ③ at least one api with all 7 callbacks SUCCESS : PASS (%s)\n", api_name(primary_api));
         res << fmt("  ④ match() ratio >= 0.95 (%zu frames)       : %s (best %.4f)\n", captured.size(),
                    b.ratio >= 0.95 ? "PASS" : "FAIL", b.ratio);
-        res << fmt("  ⑤ P5 열 20~23 제외가 맞다                  : %s (제외 %.4f / 포함 %.4f, 패딩 nonzero %ld/%ld)\n",
-                   (inc_ratio < b.ratio || inc_test > b.test) ? "PASS" : "PASS(약한 증거: 패딩이 threshold 미달)",
+        res << fmt("  ⑤ excluding P5 columns 20~23 is right      : %s (exclude %.4f / include %.4f, padding nonzero %ld/%ld)\n",
+                   (inc_ratio < b.ratio || inc_test > b.test) ? "PASS" : "PASS(weak evidence: padding below threshold)",
                    b.ratio, inc_ratio, pad_nonzero, pad_bytes);
-        res << fmt("  ⑥ batch %d, %d프레임 FPS >= 50, log error 0 : %s (%.2f FPS, errors %d)\n", o.batch,
+        res << fmt("  ⑥ batch %d, %d frames FPS >= 50, log error 0 : %s (%.2f FPS, errors %d)\n", o.batch,
                    o.bench_frames, (primary_fps >= 50.0 && hailort_errors == 0) ? "PASS" : "FAIL", primary_fps,
                    hailort_errors);
 

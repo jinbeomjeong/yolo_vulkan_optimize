@@ -1,7 +1,7 @@
-// ongoing_callbacks 의미론 실측기 (일회용 실험, 프로젝트 트리 밖).
-//   · 호스트 malloc 버퍼로 infer_async 를 돌리며 프레임당 in-flight 상한을 잰다.
-//   · --manual 0/1 로 increase/decrease 쌍의 유무를 바꾼다.
-//   · --threshold k 로 wait_for_ongoing_callbacks_count_under(k) 의 k 를 바꾼다.
+// ongoing_callbacks semantics measurer (one-off experiment, outside the project tree).
+//   · runs infer_async with host malloc buffers and measures the per-frame in-flight ceiling.
+//   · --manual 0/1 toggles whether increase/decrease pairs are used.
+//   · --threshold k changes k in wait_for_ongoing_callbacks_count_under(k).
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -67,7 +67,7 @@ int main(int argc, char** argv) {
     std::vector<std::size_t> out_size;
     for (auto* o : outs) out_size.push_back(o->get_frame_size());
 
-    // 슬롯별 호스트 버퍼 (16 KB 정렬 — unaligned 경고 회피)
+    // per-slot host buffers (16 KB aligned — avoids unaligned warning)
     struct SlotBuf { void* in; std::vector<void*> out; };
     std::vector<SlotBuf> bufs((std::size_t)slots);
     auto ali = [](std::size_t n) {
@@ -134,7 +134,7 @@ int main(int argc, char** argv) {
             {
                 std::unique_lock<std::mutex> lk(m);
                 if (!cv.wait_for(lk, std::chrono::seconds(10), [&] { return !freeq.empty(); })) {
-                    std::fprintf(stderr, "FAIL: 10초 안에 빈 슬롯 없음\n");
+                    std::fprintf(stderr, "FAIL: no free slot within 10 s\n");
                     std::exit(2);
                 }
                 slot = freeq.front();
@@ -145,12 +145,12 @@ int main(int argc, char** argv) {
         // drain
         std::unique_lock<std::mutex> lk(m);
         if (!cv.wait_for(lk, std::chrono::seconds(10), [&] { return inflight.load() == 0; })) {
-            std::fprintf(stderr, "FAIL: drain 시한 초과 inflight=%d\n", inflight.load());
+            std::fprintf(stderr, "FAIL: drain timeout exceeded inflight=%d\n", inflight.load());
             std::exit(3);
         }
     };
 
-    run(std::min(20, frames));   // 워밍업
+    run(std::min(20, frames));   // warm-up
     peak.store(0);
     done.store(0);
     const auto t0 = std::chrono::steady_clock::now();

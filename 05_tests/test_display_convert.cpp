@@ -1,14 +1,14 @@
-// display_convert.comp(표시 변환, 1:1 경로) vs CPU 기준 구현 — 비트 일치 게이트.
+// display_convert.comp (display conversion, 1:1 path) vs CPU reference implementation — bit-exact gate.
 //
-// 왜 이 테스트가 있나 (2026-09-21):
-//   BT.709 limited → RGB 계수가 저장소에 세 벌 있다.
-//     ① ref/cpu_letterbox.hpp  (CPU 기준, 수식의 원문)
-//     ② 02_shaders/sand_letterbox.comp  (전처리)  — test_preproc 이 비트 일치를 강제한다
-//     ③ 02_shaders/display_convert.comp (표시)    — **ctest 가 없었다**(수동 프로브 P8 뿐)
-//   ③ 을 고쳐도 아무 테스트도 실패하지 않는 상태였다. 이 테스트가 그 구멍을 막는다.
-//   판정 로직은 testkit/display_convert_check.hpp 하나뿐이고 display_probe(P8)도 같은 함수를 쓴다.
+// Why this test exists (2026-09-21):
+//   The BT.709 limited → RGB coefficients exist in three copies in the repository.
+//     ① ref/cpu_letterbox.hpp  (CPU reference, the original formula)
+//     ② 02_shaders/sand_letterbox.comp  (preprocessing)  — test_preproc enforces bit-exactness
+//     ③ 02_shaders/display_convert.comp (display)    — **had no ctest** (only manual probe P8)
+//   Changing ③ made no test fail. This test closes that hole.
+//   The verdict logic lives only in testkit/display_convert_check.hpp, and display_probe (P8) uses the same function.
 //
-// 필요한 것: V3D GPU + HEVC HW 디코더. NPU·디스플레이는 필요 없다(오프스크린).
+// Requires: V3D GPU + HEVC HW decoder. No NPU or display needed (offscreen).
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
@@ -22,7 +22,7 @@
 #include "vulkan/vulkan_context.hpp"
 
 #ifndef YVO_TEST_VIDEO
-#error "YVO_TEST_VIDEO 가 정의돼야 한다 (05_tests/CMakeLists.txt)"
+#error "YVO_TEST_VIDEO must be defined (05_tests/CMakeLists.txt)"
 #endif
 
 namespace {
@@ -38,17 +38,17 @@ yvo::vk::VulkanContext& ctx() {
 }
 
 void expect_exact(int frame, const yvo::display::ConvertAccuracy& r) {
-    EXPECT_EQ(r.max_err, 0) << "frame " << frame << ": 처음 어긋난 픽셀 (" << r.first_x << "," << r.first_y
+    EXPECT_EQ(r.max_err, 0) << "frame " << frame << ": first mismatching pixel (" << r.first_x << "," << r.first_y
                             << ") gpu=(" << r.gpu_rgb[0] << "," << r.gpu_rgb[1] << "," << r.gpu_rgb[2]
                             << ") cpu=(" << r.cpu_rgb[0] << "," << r.cpu_rgb[1] << "," << r.cpu_rgb[2]
-                            << "), 다른 픽셀 " << r.diff_px << " / " << r.total_px;
-    EXPECT_EQ(r.alpha_bad, 0) << "frame " << frame << ": alpha != 255 인 픽셀이 있다";
+                            << "), differing pixels " << r.diff_px << " / " << r.total_px;
+    EXPECT_EQ(r.alpha_bad, 0) << "frame " << frame << ": there are pixels with alpha != 255";
     EXPECT_TRUE(r.ok);
     std::printf("[display_convert] frame %d: max_err %d, diff %lld / %lld px, alpha_bad %d\n", frame, r.max_err,
                 r.diff_px, r.total_px, r.alpha_bad);
 }
 
-// 서로 떨어진 프레임 셋. 장면(밝기·색)이 달라야 계수 오류가 드러난다.
+// Three frames far apart. The scenes (brightness, color) must differ for coefficient errors to show.
 TEST(DisplayConvert, OneToOneMatchesCpuReference) {
     yvo::FfmpegDrmDecoder dec;
     ASSERT_TRUE(dec.open(YVO_TEST_VIDEO)) << dec.error();
@@ -58,7 +58,7 @@ TEST(DisplayConvert, OneToOneMatchesCpuReference) {
         std::optional<yvo::DrmFrame> f;
         while (idx <= want) {
             f = dec.next();
-            ASSERT_TRUE(f.has_value()) << "프레임 " << idx << " 디코드 실패";
+            ASSERT_TRUE(f.has_value()) << "frame " << idx << " decode failed";
             ++idx;
         }
         expect_exact(want, yvo::display::check_display_convert_1to1(ctx(), *f));

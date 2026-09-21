@@ -38,7 +38,7 @@ OffscreenBackend::OffscreenBackend(yvo::vk::VulkanContext& ctx, int width, int h
         VkImageCreateInfo ici{};
         ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         ici.imageType = VK_IMAGE_TYPE_2D;
-        ici.format = VK_FORMAT_R8G8B8A8_UNORM;   // 스왑체인과 같은 포맷 — 셰이더 rgba8 한정자와 맞춘다
+        ici.format = VK_FORMAT_R8G8B8A8_UNORM;   // same format as the swapchain — matches the shader rgba8 qualifier
         ici.extent = {extent_.width, extent_.height, 1};
         ici.mipLevels = 1;
         ici.arrayLayers = 1;
@@ -92,7 +92,7 @@ bool OffscreenBackend::acquire(SwapchainFrame* out) {
     if (images_.empty()) return false;
     const std::uint32_t i = next_ % static_cast<std::uint32_t>(images_.size());
     Image& im = images_[i];
-    // 스왑체인과 같은 규칙: 아직 쓰이는 중이면 **기다리지 않고 이 프레임 표시를 버린다.**
+    // Same rule as the swapchain: if it is still in use, **drop this frame's display without waiting.**
     if (im.in_flight) {
         if (vkGetFenceStatus(ctx_.device(), im.fence) != VK_SUCCESS) {
             ++dropped_;
@@ -110,23 +110,23 @@ bool OffscreenBackend::acquire(SwapchainFrame* out) {
     out->target_image = im.image;
     out->target_view = im.view;
     out->extent = extent_;
-    out->wait_semaphore = VK_NULL_HANDLE;    // end_and_submit 이 개수 0 으로 처리한다
+    out->wait_semaphore = VK_NULL_HANDLE;    // end_and_submit treats this as count 0
     out->signal_semaphore = VK_NULL_HANDLE;
     out->submit_fence = im.fence;
-    out->present_id = 0;                     // present_wait 없음
+    out->present_id = 0;                     // no present_wait
     return true;
 }
 
 void OffscreenBackend::record_acquire_transition(VkCommandBuffer cb, const SwapchainFrame& f) const {
-    // 직전 사용자는 같은 이미지에 쓴 **이전 프레임의 컴퓨트 쓰기**다(프레젠테이션 엔진이 없다).
-    // 전 픽셀을 덮어쓰므로 oldLayout 은 UNDEFINED 로 둔다.
+    // The previous user is the **previous frame's compute write** to the same image (there is no presentation engine).
+    // Every pixel is overwritten, so oldLayout is left as UNDEFINED.
     image_barrier(cb, f.target_image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
                   VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
                   VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT);
 }
 
 void OffscreenBackend::record_present_transition(VkCommandBuffer /*cb*/, const SwapchainFrame& /*f*/) const {
-    // 화면으로 보내지 않으므로 PRESENT_SRC 전환이 없다. 다음 acquire 전환이 UNDEFINED 에서 시작한다.
+    // Not sent to the screen, so there is no PRESENT_SRC transition. The next acquire transition starts from UNDEFINED.
 }
 
 void OffscreenBackend::present(const SwapchainFrame& f) {

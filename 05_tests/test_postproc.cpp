@@ -1,33 +1,33 @@
-// GPU 후처리(`--postproc gpu`) 회귀 고정 — 계획서 [G] 단계.
+// GPU postprocessing (`--postproc gpu`) regression lock — plan stage [G].
 //
-// `--postproc gpu` 는 정확도 게이트를 전부 통과했지만 그 판정이 수동 1회성 실행에만 의존했다.
-// 이 파일이 그 판정을 ctest 로 박아 둔다. 두 묶음이 있고 **의존 장치가 다르다**.
+// `--postproc gpu` passed every accuracy gate, but that verdict depended only on a manual one-off run.
+// This file pins that verdict into ctest. There are two groups, and **they depend on different devices**.
 //
-//  PostprocFixture.*  (NPU 불필요, 수 초)
-//      `04_data/raw_tensors/`(5프레임 x 6텐서 + fixtures.json)를 `YoloPostproc`
-//      (input_alloc = Plain, input_sync = HostWrite)에 호스트 memcpy 로 먹이고
-//      `01_src/ref/cpu_yolov8_decode.hpp` 의 `cpu_yolov8_candidates()` 와 비교한다.
-//      게이트(계획서 §4.5):
-//        G5 후보 개수 : CPU 와 **동일**(only_cpu = only_gpu = 0, overflow = 0)   알려진 값 115 / 115
-//        G5 점수      : **비트 일치**(불일치 0)                                   알려진 값 0
-//        G5 좌표      : **< 0.25 px**                                             알려진 값 0.000122 px
-//        G6 결정성    : 10회 반복에서 `(score, anchor_key)` 전순서 정규형이 바이트 동일
-//      ⚠ 이 묶음은 `/dev/hailo0` 을 열지 않는다. NPU 가 다른 작업에 잡혀 있어도 돌아야 한다.
+//  PostprocFixture.*  (no NPU needed, a few seconds)
+//      Feeds `04_data/raw_tensors/` (5 frames x 6 tensors + fixtures.json) to `YoloPostproc`
+//      (input_alloc = Plain, input_sync = HostWrite) via host memcpy and
+//      compares against `cpu_yolov8_candidates()` in `01_src/ref/cpu_yolov8_decode.hpp`.
+//      Gates (plan §4.5):
+//        G5 candidate count : **identical** to CPU (only_cpu = only_gpu = 0, overflow = 0)   known value 115 / 115
+//        G5 score      : **bit-exact** (0 mismatches)                                   known value 0
+//        G5 coordinates      : **< 0.25 px**                                             known value 0.000122 px
+//        G6 determinism    : over 10 repeats the `(score, anchor_key)` total-order canonical form is byte-identical
+//      ⚠ This group does not open `/dev/hailo0`. It must run even while the NPU is held by another job.
 //
-//  PostprocFixture.EfficientNmsBitExact / EfficientNms.*  (NPU 불필요)
-//      GPU NMS(`02_shaders/efficient_nms.comp`)가 `cpu_nms_greedy_by_class()` 와 **비트 일치**하는가
-//      (개수·순서·class·anchor_key·score·좌표). fallback 비트가 선 프레임은 비교에서 빼고 수를 보고한다.
-//      EfficientNms.* 는 합성 DetBuf 를 직접 먹인다(동점, 클래스 정원, 클래스 간 겹침, 용량 초과, 0/1개,
-//      IoU 보호대, 입력 순서 섞기 x 10회 결정성).
+//  PostprocFixture.EfficientNmsBitExact / EfficientNms.*  (no NPU needed)
+//      Is GPU NMS (`02_shaders/efficient_nms.comp`) **bit-exact** with `cpu_nms_greedy_by_class()`
+//      (count, order, class, anchor_key, score, coordinates). Frames with a fallback bit set are excluded from comparison and their count is reported.
+//      EfficientNms.* feeds synthetic DetBufs directly (ties, per-class quota, cross-class overlap, over capacity, 0/1 inputs,
+//      IoU guard band, input order shuffle x 10 determinism).
 //
-//  PostprocLive.*  (Hailo-8 독점, RUN_SERIAL)
-//      `test_detections.cpp` 와 같은 "Hailo 장치 1개 → 2패스" 구조다.
-//        패스 1: SandLetterbox(NHCW, dma-buf) → HostNmsStage (HEF 내장 NMS + HailoRT 호스트 후처리)
-//        패스 2: **객체 전부 파괴 후** SandLetterbox(NHCW, dma-buf) → GpuPostprocStage
-//                (HailoRawRunner 원시 6스트림 → yolo_decode.comp → cpu_nms_greedy_by_class)
-//      게이트: `detection_match.hpp` 의 규칙으로 매칭 비율 >= 0.95 (목표 0.99).
+//  PostprocLive.*  (takes Hailo-8 exclusively, RUN_SERIAL)
+//      Same "one Hailo device → 2 passes" structure as `test_detections.cpp`.
+//        Pass 1: SandLetterbox(NHCW, dma-buf) → HostNmsStage (HEF built-in NMS + HailoRT host postprocessing)
+//        Pass 2: **after destroying all objects** SandLetterbox(NHCW, dma-buf) → GpuPostprocStage
+//                (HailoRawRunner raw 6 streams → yolo_decode.comp → cpu_nms_greedy_by_class)
+//      Gate: match ratio >= 0.95 by the rules in `detection_match.hpp` (target 0.99).
 //
-// 환경변수: YVO_POSTPROC_FRAMES(기본 100), YVO_POSTPROC_REPEATS(기본 10, G6),
+// Env vars: YVO_POSTPROC_FRAMES (default 100), YVO_POSTPROC_REPEATS (default 10, G6),
 //           YVO_FIXTURE_DIR, YVO_TEST_VIDEO.
 #include <algorithm>
 #include <array>
@@ -84,7 +84,7 @@ using yvo::vk::yolo_box_tensor;
 using yvo::vk::yolo_cls_tensor;
 using namespace yvo::fixture;
 
-// HEF 의 YOLOV8 post-process 설정과 같은 값이어야 한다. 다르면 host/gpu 경로가 원리적으로 갈라진다.
+// Must equal the HEF's YOLOV8 post-process settings. Otherwise the host/gpu paths diverge in principle.
 constexpr float kScoreThr = 0.2f;
 
 long env_long(const char* name, long fallback) {
@@ -98,14 +98,14 @@ std::string env_str(const char* name, const char* fallback) {
 }
 
 
-// ───────────────────────────────────────────────── 최소 JSON 리더 (fixtures.json 전용)
+// ───────────────────────────────────────────────── Minimal JSON reader (fixtures.json only)
 //
-// nlohmann_json 은 이 시스템에서 conda prefix 에만 있어(다른 시스템 헤더를 가릴 위험) 테스트 하나를
-// 위해 그 include 경로를 끌어오지 않는다. 스키마가 고정돼 있으므로 필요한 만큼만 직접 읽는다.
-// (같은 이유로 `01_src/tools/vulkan/postproc_probe.cpp` 도 자체 리더를 쓴다 — 그 파일은 읽기만 했다.)
-// 픽스처 읽기·비교는 testkit/postproc_fixture.hpp 하나뿐이다(프로브와 공유).
+// nlohmann_json exists only in the conda prefix on this system (risk of shadowing other system headers), so we do not pull in
+// that include path for a single test. The schema is fixed, so we read only what we need directly.
+// (For the same reason `01_src/tools/vulkan/postproc_probe.cpp` also uses its own reader — that file was only read.)
+// Fixture reading/comparison lives only in testkit/postproc_fixture.hpp (shared with the probe).
 
-// ═══════════════════════════════════════════════ PostprocFixture (NPU 불필요)
+// ═══════════════════════════════════════════════ PostprocFixture (no NPU needed)
 
 class PostprocFixture : public ::testing::Test {
 protected:
@@ -120,10 +120,10 @@ protected:
 
             yvo::vk::VulkanContext ctx;
             YoloPostprocConfig pc;
-            pc.num_slots = fs.frames;          // 프레임 하나당 슬롯 하나 (프로브의 fixture 모드와 같다)
+            pc.num_slots = fs.frames;          // one slot per frame (same as the probe's fixture mode)
             pc.score_thr = kScoreThr;
-            pc.input_alloc = YoloInputAlloc::Plain;    // dma-buf 없음 → NPU 도, dma-heap 도 건드리지 않는다
-            pc.input_sync = YoloInputSync::HostWrite;  // 호스트 memcpy → 셰이더 읽기
+            pc.input_alloc = YoloInputAlloc::Plain;    // no dma-buf → touches neither the NPU nor dma-heap
+            pc.input_sync = YoloInputSync::HostWrite;  // host memcpy → shader read
             pc.checksum_pipeline = false;
             YoloPostproc pp(ctx, layout, pc);
 
@@ -149,7 +149,7 @@ protected:
                 canon_ref[static_cast<std::size_t>(s)] = canonical(gpu);
             }
 
-            // G6: 같은 입력으로 repeats 회 반복 — 정규형이 바이트 단위로 같아야 한다.
+            // G6: repeat `repeats` times with the same input — the canonical form must be byte-identical.
             repeats_ = repeats;
             for (int rep = 1; rep < repeats && determinism_fail_.empty(); ++rep)
                 for (int s = 0; s < n; ++s) {
@@ -157,7 +157,7 @@ protected:
                     pp.wait(s);
                     if (canonical(pp.read_candidates(s)) != canon_ref[static_cast<std::size_t>(s)]) {
                         determinism_fail_ = "rep " + std::to_string(rep) + " slot " + std::to_string(s) +
-                                            " 의 후보 집합이 1회차와 다르다";
+                                            " candidate set differs from the 1st run";
                         break;
                     }
                 }
@@ -168,7 +168,7 @@ protected:
 
     void SetUp() override {
         if (!setup_error_.empty()) FAIL() << setup_error_;
-        ASSERT_FALSE(cmp_.empty()) << "픽스처 프레임이 0개다";
+        ASSERT_FALSE(cmp_.empty()) << "fixture has 0 frames";
     }
 
     static void report() {
@@ -179,7 +179,7 @@ protected:
             gpu += c.gpu;
             worst = std::max(worst, c.max_coord_err);
         }
-        std::printf("[fixture] frames %zu, 후보 합계 cpu %zu / gpu %zu, 좌표 최대오차 %.6f px\n", cmp_.size(), cpu,
+        std::printf("[fixture] frames %zu, candidates total cpu %zu / gpu %zu, max coord error %.6f px\n", cmp_.size(), cpu,
                     gpu, static_cast<double>(worst));
     }
 
@@ -190,61 +190,61 @@ protected:
     static inline std::vector<std::uint32_t> overflow_;
 };
 
-// G5 ①: 후보 개수가 CPU 기준과 **동일**해야 한다. 알려진 통과값 115 / 115.
+// G5 ①: the candidate count must be **identical** to the CPU reference. Known passing value 115 / 115.
 TEST_F(PostprocFixture, CandidateCountMatchesCpu) {
     report();
     for (std::size_t s = 0; s < cmp_.size(); ++s) {
         const Compare& c = cmp_[s];
-        EXPECT_EQ(c.cpu, c.gpu) << "frame " << s << ": 후보 개수가 다르다";
-        EXPECT_EQ(c.only_cpu, 0u) << "frame " << s << ": CPU 에만 있는 후보 " << c.only_cpu << "개";
-        EXPECT_EQ(c.only_gpu, 0u) << "frame " << s << ": GPU 에만 있는 후보 " << c.only_gpu << "개";
-        EXPECT_EQ(overflow_[s], 0u) << "frame " << s << ": max_dets 초과 (셰이더 overflow 플래그)";
+        EXPECT_EQ(c.cpu, c.gpu) << "frame " << s << ": candidate count differs";
+        EXPECT_EQ(c.only_cpu, 0u) << "frame " << s << ": CPU-only candidates: " << c.only_cpu << " found";
+        EXPECT_EQ(c.only_gpu, 0u) << "frame " << s << ": GPU-only candidates: " << c.only_gpu << " found";
+        EXPECT_EQ(overflow_[s], 0u) << "frame " << s << ": max_dets exceeded (shader overflow flag)";
     }
 }
 
-// G5 ②: 매칭된 후보의 점수는 **비트 일치**여야 한다(fp32 재현성). 알려진 통과값 불일치 0.
+// G5 ②: scores of matched candidates must be **bit-exact** (fp32 reproducibility). Known passing value: 0 mismatches.
 TEST_F(PostprocFixture, ScoreBitExactVsCpu) {
     for (std::size_t s = 0; s < cmp_.size(); ++s)
-        EXPECT_EQ(cmp_[s].score_bit_mismatch, 0u) << "frame " << s << ": 점수 비트 불일치";
+        EXPECT_EQ(cmp_[s].score_bit_mismatch, 0u) << "frame " << s << ": score bit mismatch";
 }
 
-// G5 ③: 좌표 오차 < 0.25 px. 알려진 통과값 0.000122 px.
+// G5 ③: coordinate error < 0.25 px. Known passing value 0.000122 px.
 TEST_F(PostprocFixture, CoordinatesWithinQuarterPixel) {
     for (std::size_t s = 0; s < cmp_.size(); ++s)
-        EXPECT_LT(cmp_[s].max_coord_err, kCoordTolPx) << "frame " << s << ": 좌표 최대오차 초과";
+        EXPECT_LT(cmp_[s].max_coord_err, kCoordTolPx) << "frame " << s << ": max coord error exceeded";
 }
 
-// G6: 같은 픽스처를 10회 돌려 후보 집합의 정규형이 바이트 동일해야 한다.
+// G6: run the same fixture 10 times; the canonical form of the candidate set must be byte-identical.
 TEST_F(PostprocFixture, DeterministicAcrossRepeats) {
-    ASSERT_GE(repeats_, 2) << "반복 횟수가 1 이하면 결정성을 검사하지 못한다";
+    ASSERT_GE(repeats_, 2) << "determinism cannot be checked with 1 or fewer repeats";
     EXPECT_TRUE(determinism_fail_.empty()) << determinism_fail_;
-    std::printf("[fixture] G6 %d회 x %zu프레임\n", repeats_, cmp_.size());
+    std::printf("[fixture] G6 %d runs x %zu frames\n", repeats_, cmp_.size());
 }
 
 // ═══════════════════════════════════════════════ GPU NMS (efficient_nms.comp) vs cpu_nms_greedy_by_class
 
-constexpr float kIouThr = 0.7f;      // HEF 설정
-constexpr int kMaxPerClass = 100;    // HEF 설정
+constexpr float kIouThr = 0.7f;      // HEF setting
+constexpr int kMaxPerClass = 100;    // HEF setting
 
-// 비트 비교. 다르면 첫 차이를 설명하는 문자열, 같으면 빈 문자열.
+// Bit comparison. Returns a string describing the first difference if they differ, an empty string if equal.
 std::string diff_bits(const std::vector<DetectionKeyed>& gpu, const std::vector<DetectionKeyed>& cpu) {
     if (gpu.size() != cpu.size())
-        return "개수 gpu " + std::to_string(gpu.size()) + " / cpu " + std::to_string(cpu.size());
+        return "count gpu " + std::to_string(gpu.size()) + " / cpu " + std::to_string(cpu.size());
     for (std::size_t i = 0; i < gpu.size(); ++i) {
         const auto& a = gpu[i];
         const auto& b = cpu[i];
         const float fa[5] = {a.score, a.x1, a.y1, a.x2, a.y2};
         const float fb[5] = {b.score, b.x1, b.y1, b.x2, b.y2};
         if (a.class_id != b.class_id || a.anchor_key != b.anchor_key || std::memcmp(fa, fb, sizeof(fa)) != 0)
-            return "위치 " + std::to_string(i) + ": gpu (cls " + std::to_string(a.class_id) + ", key " +
+            return "position " + std::to_string(i) + ": gpu (cls " + std::to_string(a.class_id) + ", key " +
                    std::to_string(a.anchor_key) + ") / cpu (cls " + std::to_string(b.class_id) + ", key " +
-                   std::to_string(b.anchor_key) + ") 또는 float 비트 차이";
+                   std::to_string(b.anchor_key) + ") or float bit difference";
     }
     return {};
 }
 
-// 픽스처 5프레임 x score {0.2, 0.01}: 디코드 + GPU NMS 를 한 커맨드 버퍼로 돌리고,
-// 같은 GPU 후보를 CPU 로 억제한 결과와 비트 비교한다. 10회 반복에서 결과가 바이트 동일해야 한다.
+// Fixture 5 frames x score {0.2, 0.01}: run decode + GPU NMS in one command buffer, and
+// bit-compare with the result of suppressing the same GPU candidates on the CPU. Results must be byte-identical over 10 repeats.
 TEST_F(PostprocFixture, EfficientNmsBitExact) {
     const std::string dir = env_str("YVO_FIXTURE_DIR", YVO_FIXTURE_DIR);
     const int repeats = static_cast<int>(env_long("YVO_POSTPROC_REPEATS", 10));
@@ -286,7 +286,7 @@ TEST_F(PostprocFixture, EfficientNmsBitExact) {
                     yvo::cpu_nms_greedy_by_class(cpu, kIouThr, kMaxPerClass);
                     if (!ok) {
                         ++fallback;
-                        std::printf("[nms] thr %.2f frame %d: fallback reason %u (후보 %u)\n", static_cast<double>(thr),
+                        std::printf("[nms] thr %.2f frame %d: fallback reason %u (candidates %u)\n", static_cast<double>(thr),
                                     s, pp.nms_fallback_reason(s), pp.raw_count(s));
                         EXPECT_NE(pp.nms_fallback_reason(s), 0u);
                     } else {
@@ -297,20 +297,20 @@ TEST_F(PostprocFixture, EfficientNmsBitExact) {
                     first[static_cast<std::size_t>(s)] = gpu;
                 } else {
                     EXPECT_EQ(diff_bits(gpu, first[static_cast<std::size_t>(s)]), "")
-                        << "thr " << thr << " rep " << rep << " frame " << s << ": 반복 결과가 1회차와 다르다";
+                        << "thr " << thr << " rep " << rep << " frame " << s << ": repeated result differs from the 1st run";
                 }
             }
         }
-        std::printf("[nms] thr %.2f: frames %d, 후보 %zu → 생존 %zu, 비교 %zu, fallback %zu, gpu nms max %.4f ms, %d회\n",
+        std::printf("[nms] thr %.2f: frames %d, candidates %zu → kept %zu, compared %zu, fallback %zu, gpu nms max %.4f ms, %d runs\n",
                     static_cast<double>(thr), n, cand_total, kept_total, compared, fallback, nms_ms_max, repeats);
         if (thr == 0.2f) {
-            EXPECT_EQ(fallback, 0u) << "score 0.2 픽스처는 fallback 없이 GPU 로 끝나야 한다";
+            EXPECT_EQ(fallback, 0u) << "the score 0.2 fixture must finish on the GPU without fallback";
         }
-        EXPECT_GT(compared, 0u) << "비교한 프레임이 없다";
+        EXPECT_GT(compared, 0u) << "no frames were compared";
     }
 }
 
-// 합성 DetBuf 를 EfficientNms 에 직접 먹이는 하네스. 입력 버퍼는 HOST_VISIBLE|COHERENT 하나.
+// Harness that feeds synthetic DetBufs directly to EfficientNms. The input buffer is a single HOST_VISIBLE|COHERENT one.
 class NmsHarness {
 public:
     static constexpr std::uint32_t kInputMax = 2048;
@@ -366,7 +366,7 @@ public:
     NmsHarness(const NmsHarness&) = delete;
     NmsHarness& operator=(const NmsHarness&) = delete;
 
-    // count 는 헤더에 쓸 값(기본 = in.size()). dets 는 min(in.size(), kInputMax) 개만 쓴다.
+    // count is the value to write in the header (default = in.size()). Only min(in.size(), kInputMax) dets are written.
     bool run(const std::vector<DetectionKeyed>& in, std::vector<DetectionKeyed>& out, std::uint32_t* reason,
              long count = -1, std::uint32_t overflow = 0) {
         auto* h = reinterpret_cast<yvo::vk::YoloDetBufHeader*>(host_);
@@ -447,7 +447,7 @@ DetectionKeyed make_det(float x1, float y1, float x2, float y2, float score, int
     return d;
 }
 
-// GPU 결과를 CPU 기준과 비트 비교한다. fallback 이면 false 를 돌려주고 사유를 reason 에 둔다.
+// Bit-compare the GPU result with the CPU reference. On fallback, returns false and puts the cause in reason.
 bool expect_matches_cpu(NmsHarness& h, const std::vector<DetectionKeyed>& in, std::uint32_t* reason = nullptr) {
     std::vector<DetectionKeyed> gpu;
     std::uint32_t why = 0;
@@ -467,7 +467,7 @@ protected:
     static inline std::unique_ptr<yvo::vk::VulkanContext> ctx_;
 };
 
-// 0개·1개 입력: 0개면 count 0 / dispatch_x 1, 1개면 그대로 나온다.
+// 0 and 1 inputs: 0 gives count 0 / dispatch_x 1, 1 comes out as is.
 TEST_F(EfficientNms, SyntheticEmptyAndSingle) {
     NmsHarness h(*ctx_);
     std::vector<DetectionKeyed> out;
@@ -478,12 +478,12 @@ TEST_F(EfficientNms, SyntheticEmptyAndSingle) {
     ASSERT_TRUE(expect_matches_cpu(h, {make_det(10, 20, 110, 220, 0.5f, 3, 77)}));
 }
 
-// 동점 점수: (score 같음) → anchor_key 오름차순이 먼저 살아남는다. 입력은 key 내림차순으로 넣는다.
+// Tied scores: (same score) → ascending anchor_key survives first. Inputs are inserted in descending key order.
 TEST_F(EfficientNms, SyntheticTiedScores) {
     NmsHarness h(*ctx_);
     std::vector<DetectionKeyed> in;
     for (int i = 0; i < 40; ++i) {
-        const float o = static_cast<float>(i % 4);   // 4개씩 거의 같은 자리 → 서로 억제
+        const float o = static_cast<float>(i % 4);   // groups of 4 at nearly the same position → suppress each other
         in.push_back(make_det(100 + 50 * static_cast<float>(i / 4) + o, 100, 140 + 50 * static_cast<float>(i / 4) + o,
                               160, 0.5f, 1, static_cast<std::uint32_t>(1000 - i)));
     }
@@ -491,11 +491,11 @@ TEST_F(EfficientNms, SyntheticTiedScores) {
     std::vector<DetectionKeyed> out;
     ASSERT_TRUE(h.run(in, out, nullptr));
     ASSERT_FALSE(out.empty());
-    EXPECT_EQ(out.front().anchor_key, 1000u - 39u) << "전부 동점이면 anchor_key 가 가장 작은 후보가 맨 앞이다";
+    EXPECT_EQ(out.front().anchor_key, 1000u - 39u) << "when all are tied, the candidate with the smallest anchor_key comes first";
 }
 
-// 클래스 정원: 서로 안 겹치는 같은 클래스 150개 → 100개만. 정원 초과 후보는 억제 연산을 하지 않는다
-// (정원 밖 후보와 크게 겹치는 다른 후보가 살아남아야 한다 — CPU 와 같은 의미).
+// Per-class quota: 150 non-overlapping boxes of the same class → only 100. Candidates beyond the quota do not perform suppression
+// (another candidate heavily overlapping an out-of-quota candidate must survive — same semantics as the CPU).
 TEST_F(EfficientNms, SyntheticClassCapOver100) {
     NmsHarness h(*ctx_);
     std::vector<DetectionKeyed> in;
@@ -504,29 +504,29 @@ TEST_F(EfficientNms, SyntheticClassCapOver100) {
         in.push_back(make_det(x, y, x + 40, y + 40, 0.9f - 0.001f * static_cast<float>(i), 7,
                               static_cast<std::uint32_t>(i)));
     }
-    // 정원 밖(순위 120)의 후보와 거의 같은 박스를 더 낮은 점수로 넣는다 → CPU 는 억제하지 않는다
+    // Insert a box nearly identical to the out-of-quota (rank 120) candidate with a lower score → the CPU does not suppress it
     in.push_back(make_det(in[120].x1 + 1, in[120].y1, in[120].x2 + 1, in[120].y2, 0.1f, 7, 5000));
-    in.push_back(make_det(0, 0, 40, 40, 0.95f, 8, 6000));   // 다른 클래스는 따로 센다
+    in.push_back(make_det(0, 0, 40, 40, 0.95f, 8, 6000));   // other classes are counted separately
     std::vector<DetectionKeyed> out;
     ASSERT_TRUE(expect_matches_cpu(h, in));
     ASSERT_TRUE(h.run(in, out, nullptr));
     EXPECT_EQ(std::count_if(out.begin(), out.end(), [](const DetectionKeyed& d) { return d.class_id == 7; }), 100);
 }
 
-// 서로 다른 클래스의 같은 박스는 억제하지 않는다.
+// Identical boxes of different classes do not suppress each other.
 TEST_F(EfficientNms, SyntheticCrossClassOverlap) {
     NmsHarness h(*ctx_);
     std::vector<DetectionKeyed> in;
     for (int c = 0; c < 80; ++c)
         in.push_back(make_det(10, 10, 200, 200, 0.3f + 0.001f * static_cast<float>(c), c, static_cast<std::uint32_t>(c)));
-    in.push_back(make_det(11, 10, 201, 200, 0.2f, 5, 999));   // 같은 클래스 5 는 억제된다
+    in.push_back(make_det(11, 10, 201, 200, 0.2f, 5, 999));   // same class 5 gets suppressed
     std::vector<DetectionKeyed> out;
     ASSERT_TRUE(expect_matches_cpu(h, in));
     ASSERT_TRUE(h.run(in, out, nullptr));
     EXPECT_EQ(out.size(), 80u);
 }
 
-// N > kMaxSelected(1024) 이거나 디코드 DetBuf 가 넘쳤으면 자르지 않고 fallback 비트 1.
+// If N > kMaxSelected (1024) or the decode DetBuf overflowed, do not truncate; fallback bit 1.
 TEST_F(EfficientNms, SyntheticOverCapacityFallsBack) {
     NmsHarness h(*ctx_);
     std::vector<DetectionKeyed> in;
@@ -537,16 +537,16 @@ TEST_F(EfficientNms, SyntheticOverCapacityFallsBack) {
     EXPECT_FALSE(h.run(in, out, &why));
     EXPECT_EQ(why & yvo::vk::kNmsFallbackCapacity, yvo::vk::kNmsFallbackCapacity);
     EXPECT_TRUE(out.empty());
-    in.resize(1024);   // 정확히 kMaxSelected 는 GPU 로 끝난다
+    in.resize(1024);   // exactly kMaxSelected finishes on the GPU
     EXPECT_TRUE(expect_matches_cpu(h, in));
-    in.resize(10);     // 디코드 overflow 플래그 / count > 입력 용량
+    in.resize(10);     // decode overflow flag / count > input capacity
     EXPECT_FALSE(h.run(in, out, &why, -1, 1u));
     EXPECT_EQ(why, yvo::vk::kNmsFallbackCapacity);
     EXPECT_FALSE(h.run(in, out, &why, NmsHarness::kInputMax + 1));
     EXPECT_EQ(why, yvo::vk::kNmsFallbackCapacity);
 }
 
-// IoU 가 임계값 0.7 에 딱 붙은 쌍(inter 70 / ua 100)은 보호대 → fallback 비트 2.
+// A pair whose IoU sits right at the 0.7 threshold (inter 70 / ua 100) is in the guard band → fallback bit 2.
 TEST_F(EfficientNms, SyntheticIouGuardBand) {
     NmsHarness h(*ctx_);
     const std::vector<DetectionKeyed> in = {make_det(0, 0, 10, 10, 0.9f, 0, 1), make_det(0, 0, 10, 7, 0.8f, 0, 2)};
@@ -554,12 +554,12 @@ TEST_F(EfficientNms, SyntheticIouGuardBand) {
     std::uint32_t why = 0;
     EXPECT_FALSE(h.run(in, out, &why));
     EXPECT_EQ(why, yvo::vk::kNmsFallbackIouGuard);
-    // 보호대 밖(0.69 / 0.71)은 GPU 로 끝나고 CPU 와 같다
+    // Outside the guard band (0.69 / 0.71) finishes on the GPU and matches the CPU
     EXPECT_TRUE(expect_matches_cpu(h, {make_det(0, 0, 10, 10, 0.9f, 0, 1), make_det(0, 0, 10, 6.9f, 0.8f, 0, 2)}));
     EXPECT_TRUE(expect_matches_cpu(h, {make_det(0, 0, 10, 10, 0.9f, 0, 1), make_det(0, 0, 10, 7.1f, 0.8f, 0, 2)}));
 }
 
-// 무작위 군집 박스: CPU 와 비트 일치, 입력 순서를 섞어 10회 돌려도 결과가 바이트 동일(결정성).
+// Random clustered boxes: bit-exact with the CPU, and byte-identical results over 10 runs with shuffled input order (determinism).
 TEST_F(EfficientNms, SyntheticRandomDeterministic) {
     NmsHarness h(*ctx_);
     std::mt19937 rng(12345);
@@ -572,7 +572,7 @@ TEST_F(EfficientNms, SyntheticRandomDeterministic) {
             const float cx = 100.0f + 1700.0f * U(rng) * 0.25f + static_cast<float>(i % 8) * 200.0f;
             const float cy = 100.0f + 800.0f * U(rng);
             const float w = 20.0f + 200.0f * U(rng), hh = 20.0f + 200.0f * U(rng);
-            // 점수는 픽스처처럼 양자화된 값(동점이 생긴다)
+            // Scores are quantized values like the fixture (ties occur)
             const float score = 0.2f + static_cast<float>(static_cast<int>(U(rng) * 60.0f)) * 0.0125f;
             in.push_back(make_det(std::max(0.0f, cx - w / 2), std::max(0.0f, cy - hh / 2), std::min(1920.0f, cx + w / 2),
                                   std::min(1080.0f, cy + hh / 2), score, static_cast<int>(U(rng) * 4.0f),
@@ -591,14 +591,14 @@ TEST_F(EfficientNms, SyntheticRandomDeterministic) {
             std::shuffle(in.begin(), in.end(), rng);
             std::vector<DetectionKeyed> out;
             ASSERT_TRUE(h.run(in, out, nullptr));
-            EXPECT_EQ(diff_bits(out, ref), "") << "trial " << trial << " rep " << rep << ": 입력 순서에 따라 달라졌다";
+            EXPECT_EQ(diff_bits(out, ref), "") << "trial " << trial << " rep " << rep << ": result depended on input order";
         }
     }
-    std::printf("[nms] 무작위 20회: 비교 %d, 보호대 fallback %d\n", compared, fallback);
+    std::printf("[nms] random 20 trials: compared %d, guard-band fallback %d\n", compared, fallback);
     EXPECT_GT(compared, 15);
 }
 
-// ═══════════════════════════════════════════════ PostprocLive (Hailo-8 독점)
+// ═══════════════════════════════════════════════ PostprocLive (takes Hailo-8 exclusively)
 
 enum LivePath { kHost = 0, kGpu = 1, kNumLivePaths = 2 };
 const char* kLivePathName[kNumLivePaths] = {"host", "gpu"};
@@ -608,10 +608,10 @@ protected:
     static void SetUpTestSuite() {
         const std::string video = env_str("YVO_TEST_VIDEO", YVO_TEST_VIDEO);
         const long want = env_long("YVO_POSTPROC_FRAMES", 100);
-        // 장치 **부재**는 skip, 장치가 있는데 실패하면 FAIL 이다. 드라이버가 없는 보드에서
-        // 회귀 실패처럼 보이지 않게 하되, 여기서 나는 다른 에러는 전부 진짜 실패로 다룬다.
+        // Device **absence** is a skip; a failure with the device present is a FAIL. So that boards without the driver
+        // do not look like regression failures, while every other error here is treated as a real failure.
         if (!std::filesystem::exists("/dev/hailo0")) {
-            skip_reason_ = "/dev/hailo0 이 없다 — Hailo-8 이 없는 환경";
+            skip_reason_ = "/dev/hailo0 not found — environment without Hailo-8";
             return;
         }
         if (!std::filesystem::exists(video)) {
@@ -620,25 +620,25 @@ protected:
         }
         results_.assign(kNumLivePaths, {});
         for (auto& r : results_) r.resize(static_cast<std::size_t>(want));
-        // 패스 1(host) 이 완전히 끝나고 객체가 파괴된 뒤에 패스 2(gpu) 를 연다 — Hailo 장치가 하나다.
+        // Open pass 2 (gpu) only after pass 1 (host) is fully finished and its objects destroyed — there is one Hailo device.
         run_pass(kHost, video, want);
         if (setup_error_.empty() && frames_ > 0) run_pass(kGpu, video, frames_);
     }
 
-    // 한 경로의 전체 패스. SandLetterbox(NHCW, dma-buf) → InferStage → 프레임마다 drain.
+    // Full pass of one path. SandLetterbox(NHCW, dma-buf) → InferStage → drain per frame.
     static void run_pass(LivePath path, const std::string& video, long nframes) {
         std::string& err = path == kHost ? setup_error_ : gpu_error_;
         int export_fd = -1;
         try {
             yvo::vk::VulkanContext ctx;
             if (!ctx.dmabuf_export_supported()) {
-                err = "Vulkan dma-buf export 미지원";
+                err = "Vulkan dma-buf export not supported";
                 return;
             }
             yvo::vk::SandLetterboxConfig pcfg;
             pcfg.num_slots = 1;
             pcfg.export_dmabuf = true;
-            pcfg.out_layout = yvo::TensorLayout::Nhcw;   // 두 경로 모두 NHCW dma-buf 입력이다
+            pcfg.out_layout = yvo::TensorLayout::Nhcw;   // both paths take NHCW dma-buf input
             yvo::vk::SandLetterbox pre(ctx, pcfg);
 
             std::unique_ptr<yvo::pipeline::InferStage> stage;
@@ -659,7 +659,7 @@ protected:
                 stage = std::make_unique<yvo::pipeline::HostNmsStage>(hcfg);
             }
             if (stage->input_frame_size() != pre.output_size()) {
-                err = "입력 크기 불일치: NPU " + std::to_string(stage->input_frame_size()) + ", GPU " +
+                err = "input size mismatch: NPU " + std::to_string(stage->input_frame_size()) + ", GPU " +
                       std::to_string(pre.output_size());
                 return;
             }
@@ -678,7 +678,7 @@ protected:
             for (long n = 0; n < nframes; ++n) {
                 auto f = dec.next();
                 if (!f) {
-                    if (path == kGpu) err = "프레임 부족: " + std::to_string(n) + " / " + std::to_string(nframes);
+                    if (path == kGpu) err = "not enough frames: " + std::to_string(n) + " / " + std::to_string(nframes);
                     break;
                 }
                 f->pts = n;
@@ -692,14 +692,14 @@ protected:
                     if (r.status != HAILO_SUCCESS) ++infer_errors_;
                     results_[path][static_cast<std::size_t>(n)] = std::move(r.detections);
                 });
-                // 슬롯이 하나뿐이다: 다음 프레임이 같은 dma-buf 를 덮어쓰기 전에 완료를 받아야 한다.
+                // There is only one slot: completion must be received before the next frame overwrites the same dma-buf.
                 stage->drain();
                 ++done;
             }
             if (path == kHost) frames_ = done;
             pre.clear_import_cache();
             dec.close();
-            stage.reset();   // 러너가 dma-buf 매핑을 쥐고 있다 — fd 를 닫기 전에 파괴한다
+            stage.reset();   // the runner holds the dma-buf mapping — destroy it before closing the fd
         } catch (const std::exception& e) {
             err = std::string("exception: ") + e.what();
         }
@@ -721,8 +721,8 @@ protected:
     static inline std::vector<std::vector<std::vector<yvo::Detection>>> results_;   // [path][frame]
 };
 
-// GPU 후처리 경로의 검출이 host 경로(HEF 내장 NMS + HailoRT 호스트 후처리)와 일치하는가.
-// 게이트 0.95, 알려진 통과값 0.9990 (검출 총수 9457 로 host 와 동일).
+// Do the GPU postprocessing path's detections match the host path (HEF built-in NMS + HailoRT host postprocessing)?
+// Gate 0.95, known passing value 0.9990 (total detections 9457, same as host).
 TEST_F(PostprocLive, GpuPostprocMatchesHost) {
     MatchResult total;
     int printed = 0;
@@ -743,7 +743,7 @@ TEST_F(PostprocLive, GpuPostprocMatchesHost) {
     const double ratio = denom > 0 ? static_cast<double>(total.matched) / static_cast<double>(denom) : 1.0;
     std::printf("[%s] frames %ld, detections host %ld / gpu %ld, matched %ld, ratio %.4f\n",
                 kLivePathName[kGpu], frames_, total.ref, total.test, total.matched, ratio);
-    EXPECT_GT(total.ref, 0) << "host 경로 검출이 0개";
+    EXPECT_GT(total.ref, 0) << "host path has 0 detections";
     EXPECT_GE(ratio, kMinMatchRatio);
     EXPECT_EQ(infer_errors_, 0);
 }

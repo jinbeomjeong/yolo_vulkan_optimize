@@ -1,29 +1,29 @@
-// DisplayPipeline: 디코더 SAND dma-buf + 검출 목록 → HDMI 한 프레임.
+// DisplayPipeline: decoder SAND dma-buf + detection list → one HDMI frame.
 //
-// `yvo_display_probe --probe convert` 의 `run_convert_display()` 루프를 그대로 클래스로 옮긴 것이다.
-// 한 프레임의 순서는 프로브와 **완전히 같다**:
+// The `run_convert_display()` loop of `yvo_display_probe --probe convert` moved as-is into a class.
+// The per-frame order is **exactly the same** as the probe:
 //     acquire(timeout=0) → begin → record_acquire_transition → DisplayConvert::record
 //       → OverlayRenderer::set_frame/record → record_present_transition
 //       → end_and_submit → present
-// 다른 점은 셋뿐이다.
-//   ① 프레임이 디코드 루프가 아니라 **파이프라인 슬롯**에서 온다(`retain` → `show`).
-//   ② 완료 회수가 `while(ready)` 블로킹이 아니라 **`pump()` 펜스 폴링 + 콜백**이다.
-//   ③ Wayland 가 없으면 `OffscreenBackend` 로 내려간다(`--display-backend offscreen`).
+// Only three things differ.
+//   ① Frames come from a **pipeline slot**, not a decode loop (`retain` → `show`).
+//   ② Completion is collected by **`pump()` fence polling + callback**, not a blocking `while(ready)`.
+//   ③ Without Wayland it falls back to `OffscreenBackend` (`--display-backend offscreen`).
 //
-// ── 설계 결정: display_done 은 present 펜스가 아니라 **submit 펜스**에서 세운다 ────────────────
-// 디코더 프레임(SAND dma-buf)을 놓아도 되는 시점은 **GPU 가 그것을 다 읽은 때**이고, 그것이
-// `DisplayConvert::finish(d)` 가 기다리는 submit 펜스다. present 펜스(VkSwapchainPresentFenceInfoEXT)는
-// "스왑체인 이미지를 다시 써도 된다"는 더 나중의 사건이라 1~2 vsync(16~33 ms) 더 잡게 된다.
-// 스왑체인 이미지의 재사용 안전성은 `VulkanSwapchain::acquire()` 가 sync 슬롯 펜스로 따로 본다.
+// ── Design decision: display_done is raised on the **submit fence**, not the present fence ────────────────
+// The decoder frame (SAND dma-buf) may be released **once the GPU has finished reading it**, and that is
+// the submit fence `DisplayConvert::finish(d)` waits on. The present fence (VkSwapchainPresentFenceInfoEXT) is
+// the later event "the swapchain image may be rewritten", so it would hold the frame 1~2 vsync (16~33 ms) longer.
+// Swapchain image reuse safety is checked separately by `VulkanSwapchain::acquire()` with the sync slot fence.
 //
-// ── 슬롯 두 개의 번호 체계를 섞지 않는다 ──────────────────────────────────────────────────────
-//   · **파이프라인 슬롯** (0..cfg.num_slots-1) : main.cpp 의 GPU·NPU 공용 슬롯. retain/show/콜백의 인자.
-//   · **표시 슬롯**       (0..image_count-1)   : `SwapchainFrame::sync_index`. DisplayConvert/Overlay 의 슬롯.
-//   둘의 대응은 `show()` 가 `inflight_` 에 기록하고, `pump()` 가 펜스 완료 때 되돌려 콜백에 넘긴다.
+// ── Do not mix the numbering schemes of the two kinds of slots ──────────────────────────────────────────────────────
+//   · **pipeline slot** (0..cfg.num_slots-1) : GPU/NPU shared slot of main.cpp. Argument of retain/show/callback.
+//   · **display slot**  (0..image_count-1)   : `SwapchainFrame::sync_index`. Slot of DisplayConvert/Overlay.
+//   The mapping is recorded in `inflight_` by `show()`, and `pump()` maps it back on fence completion and passes it to the callback.
 //
-// ── 스레드 ────────────────────────────────────────────────────────────────────────────────────
-// 전부 메인 스레드다. `vkQueueSubmit`/`vkQueuePresentKHR` 를 하므로 다른 스레드에서 부르면 안 된다
-// (`infer_stage.hpp` 의 스레드 규율과 같은 이유 — VkQueue 가 하나뿐이다).
+// ── Threads ────────────────────────────────────────────────────────────────────────────────────
+// Everything runs on the main thread. It calls `vkQueueSubmit`/`vkQueuePresentKHR`, so it must not be called from other threads
+// (same reason as the threading discipline in `infer_stage.hpp` — there is only one VkQueue).
 #pragma once
 
 #include <chrono>
@@ -54,32 +54,32 @@ class VulkanContext;
 namespace yvo::display {
 
 enum class DisplayBackendKind {
-    Auto,        // Wayland 를 먼저 시도하고 실패하면 offscreen
-    Wayland,     // strict — 실패하면 예외(조용한 폴백 금지)
+    Auto,        // try Wayland first, fall back to offscreen on failure
+    Wayland,     // strict — throw on failure (no silent fallback)
     Offscreen,
-    WaylandPlanes,  // HVS 두 평면 스캔아웃 (PlaneDisplay + WaylandPlaneScanout). DisplayPipeline 은 만들지 않는다
-    Kms,            // 같은 두 평면을 KMS atomic 으로 직접 커밋 (PlaneDisplay + KmsScanout). DRM master 필요
+    WaylandPlanes,  // HVS two-plane scanout (PlaneDisplay + WaylandPlaneScanout). DisplayPipeline is not created
+    Kms,            // commit the same two planes directly with KMS atomic (PlaneDisplay + KmsScanout). Requires DRM master
 };
 
-// 평면 스캔아웃이 요청할 COLOR_RANGE.
-//   wayland-planes: wp_color_representation_v1 로 컴포지터에 요청. kms: 영상 평면 COLOR_RANGE 속성에 그대로 싣는다.
+// COLOR_RANGE requested by plane scanout.
+//   wayland-planes: requested from the compositor via wp_color_representation_v1. kms: put as-is into the video plane COLOR_RANGE property.
 enum class ColorRangeRequest {
-    Auto,      // wayland-planes = Full: labwc 0.20.1/wlroots 0.20.2 는 요청과 **뒤집혀** 나간다("fullhack") → 실제로 limited
-               // kms = Limited (뒤집힘이 없다)
+    Auto,      // wayland-planes = Full: labwc 0.20.1/wlroots 0.20.2 emit it **inverted** from the request ("fullhack") → actually limited
+               // kms = Limited (no inversion)
     Full,
     Limited,
 };
 
-// 어느 프레임을 어떤 검출과 함께 보여 줄 것인가.
+// Which frame to show together with which detections.
 enum class DisplaySync {
-    Matched,   // 그 프레임의 검출이 나온 뒤 함께 표시 (기본). 지연은 늘지만 박스가 정확히 맞는다
-    Latest,    // 전처리가 끝나는 대로 표시하고 검출은 **가장 최근 것**을 얹는다. 표시 지연 최소
+    Matched,   // show together once that frame's detections are out (default). More latency but boxes match exactly
+    Latest,    // show as soon as preprocessing finishes and overlay the **most recent** detections. Minimum display latency
 };
 
 enum class DisplayPace {
-    None,      // 페이싱 없음 (표시 off)
-    Source,    // 소스 프레임 레이트(기본 30 fps)로 맞춘다 — 지연·드롭 판정용
-    Asap,      // 최대 속도 — 처리량 판정용
+    None,      // no pacing (display off)
+    Source,    // match the source frame rate (default 30 fps) — for latency/drop assessment
+    Asap,      // maximum speed — for throughput assessment
 };
 
 struct DisplayPipelineConfig {
@@ -88,9 +88,9 @@ struct DisplayPipelineConfig {
     DisplayPace pace = DisplayPace::Source;
 
     bool fullscreen = false;
-    int width = 1280;                  // --display-size (fullscreen 이면 컴포지터가 덮어쓴다)
+    int width = 1280;                  // --display-size (overridden by the compositor when fullscreen)
     int height = 720;
-    int every = 1;                     // K 프레임마다 1장만 표시 (1 = 전부)
+    int every = 1;                     // show only 1 frame every K frames (1 = all)
     VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
     bool force_blit = false;           // --display-blit
 
@@ -98,13 +98,13 @@ struct DisplayPipelineConfig {
     int overlay_text_scale = 2;
     int max_dets = 80;
 
-    int src_w = 1920;                  // 디코더 원본 크기 (오버레이 affine + 1:1 판정)
+    int src_w = 1920;                  // decoder source size (overlay affine + 1:1 decision)
     int src_h = 1080;
-    double source_fps = 30.0;          // pace = Source 의 목표
-    int num_slots = 4;                 // 파이프라인 슬롯 수 (retain 배열 크기)
+    double source_fps = 30.0;          // target for pace = Source
+    int num_slots = 4;                 // number of pipeline slots (retain array size)
 
-    ColorRangeRequest color_range = ColorRangeRequest::Auto;   // wayland-planes / kms 전용
-    std::string connector;             // kms 전용 (--display-connector). "" = 연결된 첫 HDMI-A
+    ColorRangeRequest color_range = ColorRangeRequest::Auto;   // wayland-planes / kms only
+    std::string connector;             // kms only (--display-connector). "" = first connected HDMI-A
 
     std::string title = "yolo_vulkan_optimize";
     std::string app_id = "yvo_pipeline";
@@ -115,55 +115,55 @@ class DisplayPipeline final : public DisplaySink {
 public:
     using Clock = DisplaySink::Clock;
 
-    // ⚠ **VulkanContext 보다 먼저** 불러야 한다. vkGetPhysicalDeviceWaylandPresentationSupportKHR 가
-    //   wl_display* 를 요구하기 때문이다(vulkan_context.hpp 의 닭-달걀 설명).
-    //   backend == Offscreen 이면 아무것도 하지 않고 false 를 돌려준다.
-    //   backend == Wayland 에서 실패해도 **예외를 던지지 않는다** — 호출자가 error() 를 보고 판단한다.
+    // ⚠ Must be called **before VulkanContext**, because vkGetPhysicalDeviceWaylandPresentationSupportKHR
+    //   requires a wl_display* (see the chicken-and-egg note in vulkan_context.hpp).
+    //   If backend == Offscreen it does nothing and returns false.
+    //   Even if it fails with backend == Wayland it **does not throw** — the caller checks error() and decides.
     static bool open_window(WaylandWindow& win, const DisplayPipelineConfig& cfg);
 
-    // win == nullptr 또는 ctx.present_enabled()==false 면 오프스크린 백엔드로 만든다.
+    // If win == nullptr or ctx.present_enabled()==false, it is built with the offscreen backend.
     DisplayPipeline(yvo::vk::VulkanContext& ctx, WaylandWindow* win, const DisplayPipelineConfig& cfg);
     ~DisplayPipeline() override;
     DisplayPipeline(const DisplayPipeline&) = delete;
     DisplayPipeline& operator=(const DisplayPipeline&) = delete;
 
-    // 표시가 끝나 슬롯을 놓아도 된다고 알린다(submit 펜스 기준). 인자는 **파이프라인 슬롯**.
+    // Signals that display is done and the slot may be released (submit fence based). The argument is a **pipeline slot**.
     void set_display_done_callback(std::function<void(int)> cb) override { done_cb_ = std::move(cb); }
 
-    // 원본 프레임 크기. **디코더를 연 뒤 첫 show() 전에** 부른다(`InferStage::set_source_size` 와 같은 규약).
-    // 초기화 순서가 창 → 컨텍스트 → 표시 → 디코더라서 생성자 시점에는 아직 알 수 없다
-    // (`extra_hw_frames` 가 `image_count()` 에 의존하므로 디코더가 마지막이어야 한다).
-    // 1:1 인지 균일 스케일인지가 여기서 정해진다 — 잘못 두면 조용히 2.6배 느린 경로로 간다.
+    // Source frame size. Call it **after opening the decoder, before the first show()** (same convention as `InferStage::set_source_size`).
+    // Init order is window → context → display → decoder, so it is not yet known at constructor time
+    // (`extra_hw_frames` depends on `image_count()`, so the decoder must come last).
+    // This decides whether it is 1:1 or uniform scale — get it wrong and it silently takes a 2.6x slower path.
     void set_source_size(int w, int h) override;
 
-    // 디코드 직후: 이 슬롯이 쓸 프레임의 keepalive 를 **추가로** 붙든다(main 의 f.reset() 앞에서).
-    // 동시에 이 시각을 glass-to-glass 의 시작점으로 기록한다.
+    // Right after decode: **additionally** holds the keepalive of the frame this slot will use (before main's f.reset()).
+    // At the same time it records this moment as the glass-to-glass start point.
     void retain(int slot, const DrmFrame& f) override;
 
-    // 한 프레임을 화면에 낸다. false = 표시 드롭 — 호출자는 **즉시** display_done(slot) 을 세워야 한다.
+    // Puts one frame on screen. false = display drop — the caller must raise display_done(slot) **immediately**.
     bool show(int slot, const std::vector<Detection>& dets, std::string_view hud = {}) override;
 
-    // 펜스 폴링 → finish → display_done 콜백. 블로킹하지 않는다. 매 바퀴 부른다.
+    // Fence polling → finish → display_done callback. Non-blocking. Call every iteration.
     void pump() override;
 
-    // 남은 표시 작업을 전부 끝낸다(블로킹). 종료 때 한 번.
+    // Finishes all remaining display work (blocking). Once at shutdown.
     void drain() override;
 
-    // Wayland 이벤트 처리 + 창 크기 변경 예약. false = 창이 닫혔거나 종료 키가 눌렸다(오프스크린이면 항상 true).
-    // 둘은 quit_requested() 로 구분한다.
+    // Wayland event handling + schedules window resize. false = window closed or quit key pressed (always true when offscreen).
+    // Distinguish the two with quit_requested().
     bool poll_window() override;
 
-    // 표시 창에 포커스가 있을 때 종료 키(Esc, q, Ctrl+C)가 눌렸다 — 호출자는 SIGINT 와 같은 중단으로 취급한다.
+    // A quit key (Esc, q, Ctrl+C) was pressed while the display window had focus — the caller treats it as an interrupt like SIGINT.
     bool quit_requested() const override;
 
-    // 이 경로가 지금 붙들고 있는 디코더 프레임 수 (retained + DisplayConvert 인플라이트).
+    // Number of decoder frames this path is currently holding (retained + DisplayConvert in-flight).
     int frames_held() const override;
 
-    // pace 에 따른 이 프레임의 처리 마감 시각. 페이싱이 없으면 빈 optional.
-    // 호출자는 그때까지 pump 루프를 돈다(블로킹 sleep 을 쓰면 NPU·GPU 후처리가 굶는다).
+    // Processing deadline for this frame according to pace. Empty optional if there is no pacing.
+    // The caller runs the pump loop until then (a blocking sleep would starve the NPU and GPU postprocess).
     std::optional<Clock::time_point> pace_deadline(std::int64_t frame_index) override;
 
-    // ── 통계 ──
+    // ── Statistics ──
     const char* backend_name() const override { return offscreen_ ? "offscreen" : "wayland"; }
     std::uint64_t presented() const override { return backend_->presented(); }
     std::uint64_t display_dropped() const override { return backend_->display_dropped() + skipped_ + busy_dropped_; }
@@ -182,17 +182,17 @@ public:
     const std::vector<double>& glass_ms() const override { return glass_ms_; }
 
 private:
-    struct Pending {              // 표시 슬롯 → 파이프라인 슬롯 + 지연 측정 정보
+    struct Pending {              // display slot → pipeline slot + latency measurement info
         int disp = -1;
-        int pipe = -1;            // -1 = 호출자가 스스로 display_done 을 세운다(latest 모드)
+        int pipe = -1;            // -1 = the caller raises display_done itself (latest mode)
         Clock::time_point t_retain{};
         bool have_retain = false;
     };
 
-    void build_passes();            // DisplayConvert/Overlay 를 백엔드 이미지 수·크기에 맞춰 만든다
-    void apply_extent();            // 크기가 바뀐 뒤 uniform_scale·LUT 상한·슬롯 수를 맞춘다
+    void build_passes();            // builds DisplayConvert/Overlay to match the backend image count and size
+    void apply_extent();            // after a resize, adjusts uniform_scale, LUT upper bound, and slot count
     void recreate_if_needed();
-    void collect(const Pending& p); // finish + timestamp 회수 + display_done
+    void collect(const Pending& p); // finish + timestamp collection + display_done
     void drain_present_waits(bool blocking);
 
     yvo::vk::VulkanContext& ctx_;
@@ -207,7 +207,7 @@ private:
 
     std::function<void(int)> done_cb_;
 
-    // 파이프라인 슬롯이 붙들고 있는 프레임 (show() 가 소비한다)
+    // Frames held by pipeline slots (consumed by show())
     struct Retained {
         DrmFrame frame;
         Clock::time_point t{};
@@ -215,7 +215,7 @@ private:
     };
     std::vector<Retained> retained_;
 
-    std::deque<Pending> inflight_;     // 표시 제출 순서
+    std::deque<Pending> inflight_;     // display submit order
     struct PresentWait {
         std::uint64_t id = 0;
         Clock::time_point t_retain{};
@@ -224,11 +224,11 @@ private:
     std::deque<PresentWait> present_ids_;
     Clock::time_point last_present_{};
     bool have_last_present_ = false;
-    bool pace_blocking_ok_ = true;   // pace=asap 에서는 present_wait 로 스로틀하면 안 된다
+    bool pace_blocking_ok_ = true;   // with pace=asap we must not throttle via present_wait
 
-    std::int64_t shown_counter_ = 0;   // --display-every K 카운터
-    std::uint64_t skipped_ = 0;        // every 로 건너뛴 수
-    std::uint64_t busy_dropped_ = 0;   // 표시 슬롯이 전부 GPU 에 걸려 있어 버린 수
+    std::int64_t shown_counter_ = 0;   // --display-every K counter
+    std::uint64_t skipped_ = 0;        // number skipped due to every
+    std::uint64_t busy_dropped_ = 0;   // number dropped because all display slots were tied up on the GPU
     std::uint64_t overlay_overflow_ = 0;
 
     Clock::time_point pace_t0_{};

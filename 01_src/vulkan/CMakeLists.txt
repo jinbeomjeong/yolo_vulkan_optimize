@@ -1,4 +1,4 @@
-# Vulkan 컴퓨트 전처리: V3D 컨텍스트, dma-buf import, SAND128 → letterbox RGB888
+# Vulkan compute preprocessing: V3D context, dma-buf import, SAND128 → letterbox RGB888
 add_library(yvo_vulkan STATIC
   vulkan_context.cpp
   dmabuf_import.cpp

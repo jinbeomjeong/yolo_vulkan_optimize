@@ -1,14 +1,14 @@
-// dma-buf fd → VkBuffer(STORAGE_BUFFER) import와 캐시
+// dma-buf fd → VkBuffer(STORAGE_BUFFER) import and cache
 //
-// import 절차:
-//   1) dup(fd) (vkAllocateMemory 성공 시 드라이버가 dup한 fd의 소유권을 가져간다. 실패하면 우리가 close)
-//   2) vkGetMemoryFdPropertiesKHR(DMA_BUF)로 import 가능한 memoryTypeBits 확인
-//   3) VkExternalMemoryBufferCreateInfo(DMA_BUF)를 붙여 VkBuffer 생성, 요구사항과 교집합인 메모리 타입 선택
-//   4) VkImportMemoryFdInfoKHR(+ 필요하면 VkMemoryDedicatedAllocateInfo)로 vkAllocateMemory → bind
-// 캐시 키: fd 번호. 디코더 버퍼 풀의 fd는 고정이지만, 디코더를 다시 열면 번호가 재사용될 수 있으므로
-//   fstat(st_dev, st_ino)와 크기로 같은 dma-buf인지 확인하고, 다르면 새로 import한다.
-// 수명: 캐시 항목은 dma-buf 참조(dup fd)를 들고 있다. 디코더를 닫은 뒤에는 clear()로 비울 것.
-//   사용 중(GPU 대기 중인 커맨드가 참조) 항목은 호출자가 pin/unpin으로 표시하며, 교체·clear 대상에서 빠진다.
+// Import procedure:
+//   1) dup(fd) (if vkAllocateMemory succeeds, the driver takes ownership of the dup'ed fd. On failure we close it)
+//   2) check importable memoryTypeBits with vkGetMemoryFdPropertiesKHR(DMA_BUF)
+//   3) create the VkBuffer with VkExternalMemoryBufferCreateInfo(DMA_BUF) attached, pick a memory type in the intersection with its requirements
+//   4) vkAllocateMemory with VkImportMemoryFdInfoKHR(+ VkMemoryDedicatedAllocateInfo if needed) → bind
+// Cache key: fd number. The decoder buffer pool's fds are fixed, but numbers can be reused when the decoder is reopened, so
+//   fstat(st_dev, st_ino) and size are used to confirm it is the same dma-buf; if different, it is imported anew.
+// Lifetime: cache entries hold a dma-buf reference (dup fd). Empty with clear() after closing the decoder.
+//   Entries in use (referenced by commands pending on the GPU) are marked by the caller with pin/unpin and are excluded from eviction and clear.
 #pragma once
 
 #include <cstddef>
@@ -25,39 +25,39 @@ class VulkanContext;
 struct ImportedDmaBuf {
     VkBuffer buffer = VK_NULL_HANDLE;
     VkDeviceMemory memory = VK_NULL_HANDLE;
-    VkDeviceSize size = 0;     // dma-buf 크기 (= import allocationSize)
-    VkDeviceSize range = 0;    // VkBuffer 크기. 드라이버 여유 요구 때문에 size보다 작을 수 있다(V3DV: -256 B)
+    VkDeviceSize size = 0;     // dma-buf size (= import allocationSize)
+    VkDeviceSize range = 0;    // VkBuffer size. May be smaller than size because of the driver's slack requirement (V3DV: -256 B)
     dev_t st_dev = 0;
     ino_t st_ino = 0;
-    int pins = 0;              // 사용 중 참조 수
+    int pins = 0;              // number of in-use references
     std::uint64_t last_use = 0;
 };
 
 class DmaBufImportCache {
 public:
-    // max_entries: 캐시 상한(디코더 풀 크기 × plane 수보다 넉넉히). 초과하면 사용 중이 아닌 가장 오래된 항목 제거.
+    // max_entries: cache limit (comfortably more than decoder pool size × number of planes). When exceeded, the oldest entry not in use is evicted.
     explicit DmaBufImportCache(VulkanContext& ctx, std::size_t max_entries = 64);
     ~DmaBufImportCache();
     DmaBufImportCache(const DmaBufImportCache&) = delete;
     DmaBufImportCache& operator=(const DmaBufImportCache&) = delete;
 
-    // fd(size 바이트)를 import한 항목. 캐시에 있으면 재사용. 실패하면 예외.
+    // Entry importing fd (size bytes). Reused if already cached. Throws on failure.
     //
-    // min_range > 0 이면 **강제 검증**: 결과 range가 min_range보다 작으면 예외를 던진다(계획서 부록 B.12).
-    // V3DV는 스토리지 버퍼 요구 크기에 여유(+256 B)를 더하고 그만큼 VkBuffer 범위를 줄이므로,
-    // dma-buf가 실데이터 크기에 딱 맞으면 셰이더가 마지막 바이트를 못 읽는다. 조용히 넘기면
-    // 셰이더가 잘못된 데이터를 읽으므로 여기서 끊는다. 호출자는 실데이터 바이트 수를 넘긴다.
-    // 막으려면 할당 때 헤드룸을 더해야 한다(vulkan/vk_storage_headroom.hpp → DmaHeapConfig::device_headroom).
+    // If min_range > 0, **enforced check**: throws if the resulting range is smaller than min_range (plan Appendix B.12).
+    // V3DV adds slack (+256 B) to the storage buffer requirement size and shrinks the VkBuffer range by that much, so
+    // if the dma-buf exactly fits the real data size, the shader cannot read the last bytes. Silently letting it pass
+    // would make the shader read wrong data, so we stop here. The caller passes the real data byte count.
+    // To prevent it, headroom must be added at allocation time (vulkan/vk_storage_headroom.hpp → DmaHeapConfig::device_headroom).
     ImportedDmaBuf& get(int fd, std::size_t size, std::size_t min_range = 0);
     void pin(ImportedDmaBuf& e) { ++e.pins; }
     void unpin(ImportedDmaBuf& e) { --e.pins; }
 
-    // 사용 중이 아닌 항목 전부 해제 (디코더를 닫거나 다시 열 때 호출)
+    // Release all entries not in use (call when closing or reopening the decoder)
     void clear();
 
     std::size_t entries() const { return map_.size(); }
-    std::uint64_t imports() const { return imports_; }   // 실제 import 횟수
-    std::uint64_t hits() const { return hits_; }         // 캐시 적중 횟수
+    std::uint64_t imports() const { return imports_; }   // actual import count
+    std::uint64_t hits() const { return hits_; }         // cache hit count
 
 private:
     void release(ImportedDmaBuf& e);

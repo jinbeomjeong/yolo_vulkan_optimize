@@ -1,9 +1,9 @@
-// CPU 오버레이 페인터: 박스·라벨·HUD 를 투명 RGBA 버퍼(메모리 바이트 순서 R,G,B,A = DRM AB24)에 그린다.
-// 그리기 규약은 본체의 CPU 기준 구현 src/display/overlay_reference.hpp 를 그대로 쓴다(= overlay_boxes.comp 와 비트 일치).
+// CPU overlay painter: draws boxes, labels, and HUD into a transparent RGBA buffer (memory byte order R,G,B,A = DRM AB24).
+// Drawing rules reuse the main body's CPU reference implementation src/display/overlay_reference.hpp as-is (= bit-exact with overlay_boxes.comp).
 //
-// 비용을 줄이는 요령: 매 프레임 1920x1080x4(8.3 MB)를 지우지 않는다. 버퍼마다 "지난번에 그린 사각형" 목록을
-// 기억해 두었다가 그 사각형만 0(완전 투명, premultiplied 에서도 0)으로 지운다.
-// 픽셀은 알파 255(불투명) 아니면 (0,0,0,0) 이므로 straight/premultiplied 어느 쪽으로 해석해도 같다.
+// Cost-saving trick: do not clear 1920x1080x4 (8.3 MB) every frame. Each buffer remembers a list of "rectangles drawn last time"
+// and clears only those rectangles to 0 (fully transparent, also 0 in premultiplied).
+// Pixels are either alpha 255 (opaque) or (0,0,0,0), so straight/premultiplied interpretation gives the same result.
 #pragma once
 
 #include <algorithm>
@@ -18,7 +18,7 @@
 namespace hvsprobe {
 
 struct DirtyRect {
-    int x0 = 0, y0 = 0, x1 = -1, y1 = -1; // 포함 범위
+    int x0 = 0, y0 = 0, x1 = -1, y1 = -1; // inclusive range
 };
 
 class OverlayPainter {
@@ -29,8 +29,8 @@ public:
         style_.text_scale = w >= 1920 ? 2 : 1;
     }
 
-    // buf: 패킹된 w*h*4 (stride = w*4) 버퍼. idx: 링 인덱스.
-    // 반환값: 이번에 건드린(지운 + 그린) 바이트 수 추정치
+    // buf: packed w*h*4 (stride = w*4) buffer. idx: ring index.
+    // returns: estimated number of bytes touched (cleared + drawn) this time
     std::size_t paint(std::uint8_t* buf, int idx, const std::vector<yvo::Detection>& dets, const std::string& hud) {
         auto& d = dirty_.at(static_cast<std::size_t>(idx));
         std::size_t touched = 0;

@@ -24,7 +24,7 @@ DmaBufImportCache::~DmaBufImportCache() {
 void DmaBufImportCache::release(ImportedDmaBuf& e) {
     VkDevice dev = ctx_.device();
     if (e.buffer != VK_NULL_HANDLE) vkDestroyBuffer(dev, e.buffer, nullptr);
-    if (e.memory != VK_NULL_HANDLE) vkFreeMemory(dev, e.memory, nullptr); // import한 fd도 함께 닫힌다
+    if (e.memory != VK_NULL_HANDLE) vkFreeMemory(dev, e.memory, nullptr); // the imported fd is closed as well
     e.buffer = VK_NULL_HANDLE;
     e.memory = VK_NULL_HANDLE;
 }
@@ -46,7 +46,7 @@ void DmaBufImportCache::evict_if_needed() {
         for (auto it = map_.begin(); it != map_.end(); ++it)
             if (it->second.pins == 0 && (victim == map_.end() || it->second.last_use < victim->second.last_use))
                 victim = it;
-        if (victim == map_.end()) return; // 전부 사용 중
+        if (victim == map_.end()) return; // all in use
         release(victim->second);
         map_.erase(victim);
     }
@@ -54,12 +54,12 @@ void DmaBufImportCache::evict_if_needed() {
 
 namespace {
 
-// 부록 B.12 강제 검증. range < min_range 면 셰이더가 실데이터를 잘라 읽는다 → 예외.
+// Appendix B.12 enforced check. If range < min_range the shader reads truncated real data → exception.
 void check_min_range(const ImportedDmaBuf& e, std::size_t min_range) {
     if (min_range == 0 || e.range >= min_range) return;
     throw std::runtime_error("DmaBufImportCache: VkBuffer range " + std::to_string(e.range) +
-                             " B < 요청 데이터 " + std::to_string(min_range) + " B (dma-buf " +
-                             std::to_string(e.size) + " B). 할당 때 드라이버 헤드룸을 더해야 한다 "
+                             " B < requested data " + std::to_string(min_range) + " B (dma-buf " +
+                             std::to_string(e.size) + " B). Driver headroom must be added at allocation time "
                              "(vulkan/vk_storage_headroom.hpp → DmaHeapConfig::device_headroom)");
 }
 
@@ -75,12 +75,12 @@ ImportedDmaBuf& DmaBufImportCache::get(int fd, std::size_t size, std::size_t min
     if (it != map_.end()) {
         ImportedDmaBuf& e = it->second;
         if (e.st_dev == st.st_dev && e.st_ino == st.st_ino && e.size == size) {
-            check_min_range(e, min_range);   // 캐시 적중에서도 검증한다
+            check_min_range(e, min_range);   // validate on a cache hit too
             ++hits_;
             e.last_use = ++clock_;
             return e;
         }
-        // fd 번호가 다른 dma-buf에 재사용됨 → 오래된 import 해제
+        // fd number reused for a different dma-buf → release the stale import
         if (e.pins != 0)
             throw std::runtime_error("DmaBufImportCache: fd reused while previous import is still in use");
         release(e);
@@ -94,14 +94,14 @@ ImportedDmaBuf& DmaBufImportCache::get(int fd, std::size_t size, std::size_t min
     e.st_dev = st.st_dev;
     e.st_ino = st.st_ino;
 
-    // 1) 이 fd를 import할 수 있는 메모리 타입
+    // 1) memory type that can import this fd
     VkMemoryFdPropertiesKHR fdp{};
     fdp.sType = VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR;
     YVO_VK_CHECK(ctx_.vkGetMemoryFdPropertiesKHR(dev, VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT, fd, &fdp));
 
-    // 2) 외부 메모리용 버퍼.
-    //    V3DV는 스토리지 버퍼 요구 크기에 TMU 선읽기용 여유(256 B)를 더한다. import 메모리 크기는 dma-buf 크기로
-    //    고정이므로, 요구 크기가 dma-buf를 넘으면 버퍼 크기를 그만큼 줄여 다시 만든다(끝 256 B는 셰이더에서 안 씀).
+    // 2) buffer for external memory.
+    //    V3DV adds slack for TMU prefetch (256 B) to the storage buffer requirement size. The import memory size is fixed
+    //    to the dma-buf size, so if the requirement exceeds the dma-buf, recreate the buffer smaller by that amount (the last 256 B are unused by the shader).
     VkExternalMemoryBufferCreateInfo ext{};
     ext.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO;
     ext.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
@@ -143,7 +143,7 @@ ImportedDmaBuf& DmaBufImportCache::get(int fd, std::size_t size, std::size_t min
                                      std::to_string(req.memoryTypeBits) + ", fd bits 0x" +
                                      std::to_string(fdp.memoryTypeBits) + ")");
 
-        // 3) import. 성공하면 dup fd의 소유권은 Vulkan으로 넘어간다.
+        // 3) import. On success, ownership of the dup fd passes to Vulkan.
         const int dfd = dup(fd);
         if (dfd < 0) throw std::runtime_error(std::string("DmaBufImportCache: dup failed: ") + std::strerror(errno));
         VkImportMemoryFdInfoKHR imp{};

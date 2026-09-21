@@ -1,7 +1,7 @@
-# GoogleTest: GPU/NPU 경로를 CPU 기준 구현과 비교
+# GoogleTest: compare GPU/NPU paths against the CPU reference implementation
 include(GoogleTest)
-# 자산 경로: 모든 테스트가 yvo_assets(cmake/YvoTargets.cmake)를 링크한다. YVO_FIXTURE_DIR 은 거기서 오고,
-# 테스트 소스가 쓰는 YVO_TEST_VIDEO / YVO_TEST_HEF 는 YVO_DEFAULT_VIDEO / YVO_DEFAULT_HEF 의 별칭이다(이름 유지).
+# Asset paths: every test links yvo_assets (cmake/YvoTargets.cmake). YVO_FIXTURE_DIR comes from there, and
+# YVO_TEST_VIDEO / YVO_TEST_HEF used by the test sources are aliases of YVO_DEFAULT_VIDEO / YVO_DEFAULT_HEF (names kept).
 
 if(TARGET yvo_vulkan)
   add_executable(test_preproc test_preproc.cpp)
@@ -13,16 +13,16 @@ if(TARGET yvo_vulkan)
     target_link_libraries(test_preproc PRIVATE yvo_opencv)
     target_compile_definitions(test_preproc PRIVATE YVO_HAVE_OPENCV=1)
   endif()
-  # 실패 시 차이 이미지는 build/05_tests/preproc_diff/ 에 저장된다
+  # On failure, diff images are saved to build/05_tests/preproc_diff/
   gtest_discover_tests(test_preproc
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     PROPERTIES TIMEOUT 300
     DISCOVERY_TIMEOUT 60)
 endif()
 
-# ISP 전처리 화질: CPU 기준·GPU 셰이더와 비교 (PiSP BE 필요, NPU 불필요)
-# 비트 일치가 아니라 통계 지표로 판정한다(리샘플 커널이 다르다). 패딩만 하드 게이트(오차 0)다.
-# /dev/media0을 독점하므로 RUN_SERIAL로 돌린다.
+# ISP preprocessing quality: compare against the CPU reference and the GPU shader (needs PiSP BE, no NPU)
+# Judged by statistical metrics, not bit-exactness (the resampling kernels differ). Only the padding is a hard gate (zero error).
+# Runs with RUN_SERIAL because it takes /dev/media0 exclusively.
 if(TARGET yvo_isp AND TARGET yvo_vulkan AND TARGET yvo_decoder)
   add_executable(test_isp_preproc test_isp_preproc.cpp)
   target_link_libraries(test_isp_preproc PRIVATE yvo_isp yvo_vulkan yvo_decoder yvo_assets GTest::gtest_main)
@@ -33,16 +33,16 @@ if(TARGET yvo_isp AND TARGET yvo_vulkan AND TARGET yvo_decoder)
     target_link_libraries(test_isp_preproc PRIVATE yvo_opencv)
     target_compile_definitions(test_isp_preproc PRIVATE YVO_HAVE_OPENCV=1)
   endif()
-  # 실패 시 차이 이미지는 build/05_tests/isp_preproc_diff/ 에 저장된다
+  # On failure, diff images are saved to build/05_tests/isp_preproc_diff/
   gtest_discover_tests(test_isp_preproc
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     PROPERTIES TIMEOUT 300 RUN_SERIAL TRUE
     DISCOVERY_TIMEOUT 60)
 endif()
 
-# 추론 결과 일치: CPU 전처리 경로 vs GPU 전처리 경로(ptr/dmabuf) 검출 비교 (Hailo-8 필요)
-# 프레임 수는 환경변수 YVO_DET_FRAMES(기본 100). 전처리·추론을 한 번만 하도록 바이너리 전체를 한 테스트로 등록하고,
-# NPU를 독점하므로 RUN_SERIAL로 돌린다.
+# Inference result agreement: compare detections of the CPU preprocessing path vs the GPU preprocessing path (ptr/dmabuf) (needs Hailo-8)
+# Frame count from env var YVO_DET_FRAMES (default 100). The whole binary is registered as one test so preprocessing/inference run only once,
+# and it runs with RUN_SERIAL because it takes the NPU exclusively.
 if(TARGET yvo_vulkan AND TARGET yvo_hailo AND TARGET yvo_decoder)
   add_executable(test_detections test_detections.cpp)
   target_link_libraries(test_detections PRIVATE yvo_vulkan yvo_hailo yvo_decoder yvo_assets GTest::gtest_main)
@@ -57,12 +57,12 @@ if(TARGET yvo_vulkan AND TARGET yvo_hailo AND TARGET yvo_decoder)
     RUN_SERIAL TRUE)
 endif()
 
-# GPU 후처리(--postproc gpu) 회귀 고정 — 계획서 [G]
-#   PostprocFixture.* : 04_data/raw_tensors 픽스처 vs cpu_yolov8_candidates / cpu_nms_greedy_by_class. **NPU 불필요**
-#   EfficientNms.*    : 합성 DetBuf → efficient_nms.comp vs cpu_nms_greedy_by_class (NPU 불필요)
-#   PostprocLive.*    : host 경로 vs raw+GPU 경로 검출 매칭. **Hailo-8 독점** → RUN_SERIAL
-# 두 묶음을 **별도 ctest 항목**으로 등록한다. 한 항목으로 묶으면 fixture 판정까지 NPU 를 기다리게 되고,
-# NPU 가 다른 작업에 잡혀 있을 때 셰이더 회귀를 못 잡는다.
+# GPU postprocessing (--postproc gpu) regression lock — plan [G]
+#   PostprocFixture.* : 04_data/raw_tensors fixtures vs cpu_yolov8_candidates / cpu_nms_greedy_by_class. **No NPU needed**
+#   EfficientNms.*    : synthetic DetBuf → efficient_nms.comp vs cpu_nms_greedy_by_class (no NPU needed)
+#   PostprocLive.*    : detection matching of host path vs raw+GPU path. **Takes Hailo-8 exclusively** → RUN_SERIAL
+# The two groups are registered as **separate ctest entries**. If bundled into one entry, the fixture verdict would wait for the NPU,
+# and shader regressions would go uncaught while the NPU is held by another job.
 if(TARGET yvo_stages AND TARGET yvo_decoder)
   add_executable(test_postproc test_postproc.cpp)
   target_link_libraries(test_postproc PRIVATE yvo_stages yvo_decoder yvo_testkit_postproc yvo_assets GTest::gtest_main)
@@ -70,8 +70,8 @@ if(TARGET yvo_stages AND TARGET yvo_decoder)
   target_compile_definitions(test_postproc PRIVATE
     YVO_TEST_VIDEO=YVO_DEFAULT_VIDEO
     YVO_TEST_HEF=YVO_DEFAULT_HEF)
-  # fixture 쪽은 게이트마다 따로 등록한다 — 어느 게이트가 깨졌는지 ctest 줄만 보고 알 수 있게.
-  # TEST_FILTER 로 PostprocLive 는 제외한다(아래에서 RUN_SERIAL 로 따로 등록한다).
+  # The fixture side is registered per gate — so the ctest line alone tells which gate broke.
+  # TEST_FILTER excludes PostprocLive (registered separately with RUN_SERIAL below).
   gtest_discover_tests(test_postproc
     TEST_FILTER PostprocFixture.*:EfficientNms.*
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
@@ -84,28 +84,28 @@ if(TARGET yvo_stages AND TARGET yvo_decoder)
     RUN_SERIAL TRUE)
 endif()
 
-# 오버레이(박스·라벨·HUD) GPU 셰이더 vs CPU 기준 구현 — 비트 일치 (NPU 불필요, 오프스크린)
-# 단 KmsScanout.* 는 /dev/dri/card1(master 를 가져가지 않는다)과 HEVC HW 디코더를 쓴다 — 없으면 skip.
-# 계획서 §7: OverlayGeometry / OverlayText / OverlayDeterminism 은 max 오차 0 이 하드 게이트다.
-# OverlayVsOpenCV 는 참고용(느슨한 기하 기준)이고 OpenCV 가 있을 때만 빌드된다.
+# Overlay (boxes, labels, HUD) GPU shader vs CPU reference implementation — bit-exact (no NPU needed, offscreen)
+# Except KmsScanout.* uses /dev/dri/card1 (does not take master) and the HEVC HW decoder — skipped if absent.
+# Plan §7: OverlayGeometry / OverlayText / OverlayDeterminism have max error 0 as a hard gate.
+# OverlayVsOpenCV is for reference only (loose geometric criteria) and is built only when OpenCV is available.
 if(TARGET yvo_display)
   add_executable(test_overlay test_overlay.cpp)
-  # yvo_decoder: KmsScanout.* 가 디코더 NV12 SAND128 프레임으로 영상 FB(AddFB2)를 만든다
+  # yvo_decoder: KmsScanout.* builds a video FB (AddFB2) from the decoder's NV12 SAND128 frames
   target_link_libraries(test_overlay PRIVATE yvo_display yvo_decoder yvo_testkit_display yvo_assets GTest::gtest_main)
   yvo_target_defaults(test_overlay)
   if(TARGET yvo_opencv)
     target_link_libraries(test_overlay PRIVATE yvo_opencv)
     target_compile_definitions(test_overlay PRIVATE YVO_HAVE_OPENCV=1)
   endif()
-  # 실패 시 차이 이미지는 build/05_tests/overlay_diff/ 에 저장된다
+  # On failure, diff images are saved to build/05_tests/overlay_diff/
   gtest_discover_tests(test_overlay
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     PROPERTIES TIMEOUT 300
     DISCOVERY_TIMEOUT 60)
 endif()
 
-# 표시 변환(display_convert.comp, 1:1) vs CPU 기준 구현 — 비트 일치 (GPU + HEVC HW 디코더, NPU 불필요)
-# BT.709 계수의 세 번째 사본에 게이트가 없던 구멍을 막는다(2026-09-21). 판정은 testkit/display_convert_check.hpp.
+# Display conversion (display_convert.comp, 1:1) vs CPU reference implementation — bit-exact (GPU + HEVC HW decoder, no NPU needed)
+# Closes the hole where the third copy of the BT.709 coefficients had no gate (2026-09-21). The verdict is in testkit/display_convert_check.hpp.
 if(TARGET yvo_display AND TARGET yvo_decoder)
   add_executable(test_display_convert test_display_convert.cpp)
   target_link_libraries(test_display_convert PRIVATE yvo_display yvo_decoder yvo_testkit_display yvo_assets GTest::gtest_main)

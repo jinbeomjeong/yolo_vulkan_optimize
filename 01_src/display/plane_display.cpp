@@ -13,8 +13,8 @@ namespace {
 
 using Clock = PlaneDisplay::Clock;
 
-// steady_clock 은 Linux(libstdc++)에서 CLOCK_MONOTONIC 이다. wp_presentation 이 CLOCK_MONOTONIC 으로 준
-// 표시 시각과 retain() 시각을 같은 축에서 뺀다.
+// steady_clock is CLOCK_MONOTONIC on Linux (libstdc++). The presentation time given by wp_presentation in CLOCK_MONOTONIC
+// and the retain() time are subtracted on the same axis.
 std::int64_t steady_ns(Clock::time_point t) {
     return std::chrono::duration_cast<std::chrono::nanoseconds>(t.time_since_epoch()).count();
 }
@@ -27,7 +27,7 @@ PlaneDisplay::PlaneDisplay(yvo::vk::VulkanContext& ctx, std::unique_ptr<PlaneSca
     if (!scanout_) throw std::invalid_argument("PlaneDisplay: scanout is null");
     scanout_->set_listener(this);
     const VkExtent2D ext = scanout_->output_extent();
-    if (ext.width == 0 || ext.height == 0) throw std::runtime_error("PlaneDisplay: 출력 크기가 0 이다");
+    if (ext.width == 0 || ext.height == 0) throw std::runtime_error("PlaneDisplay: output size is 0");
 
     OverlayPlaneConfig oc;
     oc.ring = kOverlayRing;
@@ -50,14 +50,14 @@ PlaneDisplay::PlaneDisplay(yvo::vk::VulkanContext& ctx, std::unique_ptr<PlaneSca
 }
 
 PlaneDisplay::~PlaneDisplay() {
-    // 호출자(SlotExchange)가 이미 사라졌을 수 있다 → 콜백을 끊고 정리한다. 소멸자 밖으로 예외를 내지 않는다.
+    // The caller (SlotExchange) may already be gone → cut the callback and clean up. Do not throw out of the destructor.
     done_cb_ = nullptr;
     try {
         drain();
     } catch (...) {
     }
-    // 전송층(wl_buffer 가 OverlayPlane 의 dma-buf 를 가리킨다)을 먼저 없애고 박스 링을 푼다.
-    // 소멸 중인 전송층이 반쯤 해체된 this 로 이벤트를 보내지 않도록 리스너를 먼저 끊는다.
+    // Tear down the transport first (wl_buffer points at the OverlayPlane dma-buf), then release the box ring.
+    // Detach listeners first so the transport being destroyed does not send events to a half-dismantled this.
     if (scanout_) scanout_->set_listener(nullptr);
     scanout_.reset();
     ov_.reset();
@@ -72,13 +72,13 @@ void PlaneDisplay::set_source_size(int w, int h) {
 
 void PlaneDisplay::retain(int slot, const DrmFrame& f) {
     Retained& r = retained_.at(static_cast<std::size_t>(slot));
-    r.frame = f;   // keepalive 추가 참조
+    r.frame = f;   // extra keepalive reference
     r.t = Clock::now();
     r.valid = true;
 }
 
 std::optional<Clock::time_point> PlaneDisplay::pace_deadline(std::int64_t frame_index) {
-    // DisplayPipeline::pace_deadline 과 같은 의미(소스 fps 시간표).
+    // Same meaning as DisplayPipeline::pace_deadline (source fps timetable).
     if (cfg_.pace != DisplayPace::Source || cfg_.source_fps <= 0.0) return std::nullopt;
     if (!pace_started_) {
         pace_t0_ = Clock::now();
@@ -100,12 +100,12 @@ bool PlaneDisplay::show(int slot, const std::vector<Detection>& dets, std::strin
     ++shown_counter_;
     if (skip) {
         ++skipped_;
-        return false;   // it 가 스코프를 벗어나며 keepalive 를 놓는다
+        return false;   // it releases the keepalive as it leaves scope
     }
     if (drained_) return false;
     it.pipe = cfg_.sync == DisplaySync::Latest ? -1 : slot;
 
-    // 박스: 비차단 submit. 링이 비었으면 이번 프레임은 직전 박스를 유지한다.
+    // Boxes: non-blocking submit. If the ring is empty, this frame keeps the previous boxes.
     const int idx = ov_->acquire();
     if (idx < 0) {
         ++overlay_skipped_;
@@ -114,7 +114,7 @@ bool PlaneDisplay::show(int slot, const std::vector<Detection>& dets, std::strin
         it.overlay = idx;
     }
 
-    // pending 이 가득 차 있으면 가장 오래된 것을 버린다(드롭). 새 프레임은 뒤에 선다.
+    // If pending is full, drop the oldest one. The new frame goes to the back.
     while (static_cast<int>(pending_.size()) >= kMaxPending) {
         drop_item(pending_.front());
         pending_.pop_front();
@@ -129,7 +129,7 @@ bool PlaneDisplay::overlay_ready(Item& it) {
     if (it.overlay < 0) return true;
     if (!ov_->ready(it.overlay)) return false;
     if (!it.overlay_stat) {
-        // ready() 가 처음 true 를 낸 호출이 timestamp 를 회수한 호출이다(Claimed 항목은 acquire 가 건드리지 않는다).
+        // The call where ready() first returns true is the call that reaped the timestamp (acquire does not touch Claimed entries).
         it.overlay_stat = true;
         const double o = ov_->last_overlay_ms();
         const double c = ov_->last_clear_ms();
@@ -140,7 +140,7 @@ bool PlaneDisplay::overlay_ready(Item& it) {
 
 void PlaneDisplay::drop_item(Item& it) {
     if (it.overlay >= 0) {
-        ov_->release(it.overlay);   // Claimed → Free (GPU 가 아직 쓰는 중이면 acquire 가 건너뛴다)
+        ov_->release(it.overlay);   // Claimed → Free (acquire skips it if the GPU is still using it)
         it.overlay = -1;
     }
     it.frame = DrmFrame{};
@@ -149,7 +149,7 @@ void PlaneDisplay::drop_item(Item& it) {
 }
 
 void PlaneDisplay::finish_item(Item& it) {
-    it.frame = DrmFrame{};          // keepalive 해제 → 디코더 풀로 돌아간다
+    it.frame = DrmFrame{};          // release keepalive → returns to the decoder pool
     if (it.pipe >= 0 && done_cb_) done_cb_(it.pipe);
     it.pipe = -1;
 }
@@ -159,21 +159,21 @@ void PlaneDisplay::try_commit(bool force) {
     Item& p = pending_.front();
     const Clock::time_point now = Clock::now();
     if (force) {
-        // 종료 때만: 박스 GPU 완료를 기다리고(유한, OverlayPlane::wait 5 s), 상한·vblank 게이트를 무시한다.
+        // Only at shutdown: wait for box GPU completion (bounded, OverlayPlane::wait 5 s) and ignore the cap and vblank gate.
         if (p.overlay >= 0) {
             ov_->wait(p.overlay);
             overlay_ready(p);
         }
     } else {
-        if (!overlay_ready(p)) return;                                     // 박스 GPU 진행 중
-        if (static_cast<int>(committed_.size()) >= kMaxCommitted) return;  // 컴포지터가 아직 놓지 않았다
-        // pace=source: 소스 프레임 간격보다 빨리 커밋하지 않는다(반 vblank 여유). matched + batch 2 는 검출이
-        // 두 장씩 한꺼번에 나와서, 이 게이트가 없으면 두 장이 연속 vblank(16.7 ms)에 나가고 다음은 66.7 ms 뒤에
-        // 나가는 들쭉날쭉한 cadence 가 된다(실측 present 간격 median 16.7 / p90 66.7).
+        if (!overlay_ready(p)) return;                                     // box GPU in progress
+        if (static_cast<int>(committed_.size()) >= kMaxCommitted) return;  // compositor has not released yet
+        // pace=source: do not commit faster than the source frame interval (half-vblank margin). With matched + batch 2, detections
+        // come out two at a time, so without this gate two frames go out on consecutive vblanks (16.7 ms) and the next one 66.7 ms later,
+        // giving a jagged cadence (measured present interval median 16.7 / p90 66.7).
         if (min_commit_interval_.count() > 0 && commits_ > 0 && now - last_commit_ < min_commit_interval_) return;
         if (frame_cb_pending_) {
-            if (now - last_commit_ < kFrameCallbackTimeout) return;        // 다음 vblank 대기
-            // 콜백이 안 온다(창이 가려졌거나 컴포지터가 멈췄다). 기다리지 않고 커밋한다 — 커밋은 비차단이다.
+            if (now - last_commit_ < kFrameCallbackTimeout) return;        // wait for the next vblank
+            // The callback does not arrive (window occluded or compositor stalled). Commit without waiting — commit is non-blocking.
             ++frame_cb_timeouts_;
             frame_cb_pending_ = false;
         }
@@ -231,10 +231,10 @@ void PlaneDisplay::on_discarded(std::uint64_t token) {
     await_present_.erase(token);
 }
 
-// ── 루프 ──────────────────────────────────────────────────────────────────────────────────────
+// ── Loop ──────────────────────────────────────────────────────────────────────────────────────
 void PlaneDisplay::pump() {
     if (drained_) return;
-    (void)scanout_->dispatch(0);   // 연결 오류는 poll_window() 가 보고한다
+    (void)scanout_->dispatch(0);   // connection errors are reported by poll_window()
     try_commit(false);
     if (!snap_start_taken_ && presented() >= kSnapshotAfterPresented) {
         snap_start_taken_ = true;
@@ -254,26 +254,26 @@ bool PlaneDisplay::quit_requested() const { return scanout_->quit_requested(); }
 void PlaneDisplay::drain() {
     if (drained_ || !scanout_) return;
     (void)scanout_->dispatch(0);
-    // 남은 pending(matched 의 끝 프레임들이 flush_results 에서 방금 show 됐다)을 평소 게이트대로 최대 200 ms
-    // 동안 내보내고, 그래도 남으면 게이트를 무시하고 낸다(앞 것은 화면에 안 나가고 discarded 될 수 있다).
+    // Emit the remaining pending (matched's final frames were just shown in flush_results) with the usual gate for up to 200 ms,
+    // and if some still remain, emit them ignoring the gate (earlier ones may never reach the screen and be discarded).
     const auto flush_deadline = Clock::now() + std::chrono::milliseconds(200);
     while (!pending_.empty() && Clock::now() < flush_deadline) {
         if (!scanout_->dispatch(5)) break;
         try_commit(false);
     }
     while (!pending_.empty()) try_commit(true);
-    // 마지막 표시 피드백을 잠깐(최대 100 ms) 기다린다 — glass-to-glass 표본과 debugfs 끝 스냅샷을 위해.
+    // Briefly wait (up to 100 ms) for the last presentation feedback — for the glass-to-glass samples and the debugfs end snapshot.
     const auto deadline = Clock::now() + std::chrono::milliseconds(100);
     while (!await_present_.empty() && Clock::now() < deadline)
         if (!scanout_->dispatch(10)) break;
-    snapshot("end", &snap_end_);   // 화면에서 내리기 **전에** 읽는다
+    snapshot("end", &snap_end_);   // read **before** taking it off the screen
 
-    // 화면에서 내리고 남은 release 를 유한 시간 기다린다. 그래도 남은 것은 강제로 놓는다(종료).
+    // Take it off the screen and wait a bounded time for the remaining releases. Whatever still remains is force-released (shutdown).
     scanout_->shutdown(kDrainTimeoutMs);
     for (auto& [tok, item] : committed_) finish_item(item);
     committed_.clear();
     await_present_.clear();
-    for (Item& it : pending_) {   // force 커밋이 거부됐을 때만 남는다
+    for (Item& it : pending_) {   // remains only when the force commit was rejected
         drop_item(it);
         ++shutdown_dropped_;
     }

@@ -1,52 +1,52 @@
 #version 450
-// 클래스별 greedy NMS — TensorRT EfficientNMS 구조(08_learn/11_tensorrt_efficient_nms.md)의 Vulkan(V3D) 번역.
-// 입력은 `yolo_decode.comp`(pass 1)가 채운 후보 DetBuf, 출력은 같은 형식의 DetBuf(생존자만, 정렬 순서).
+// Per-class greedy NMS — a Vulkan (V3D) translation of the TensorRT EfficientNMS structure (08_learn/11_tensorrt_efficient_nms.md).
+// The input is the candidate DetBuf filled by `yolo_decode.comp` (pass 1); the output is a DetBuf of the same format (survivors only, in sorted order).
 //
-// ── 기준 구현 ─────────────────────────────────────────────────────────────────────────────────
-// **의미론의 원문은 `01_src/ref/cpu_yolov8_decode.hpp` 의 `cpu_nms_greedy_by_class()` 와 `iou_xyxy()` 다.**
-// 결과는 그 함수와 **비트 단위로 같아야 한다**(개수·순서·class·anchor_key·score·좌표).
-//   · 전순서: score 내림차순, anchor_key 오름차순 (anchor_key 는 프레임 안에서 유일하다)
-//   · 같은 클래스에서 IoU >= iou_thr 인 뒤쪽 후보를 억제. 억제된 후보는 아무것도 억제하지 않는다
-//   · 클래스당 max_per_class 개. 정원이 찬 클래스의 후보는 억제 연산 없이 탈락한다
+// ── Reference implementation ─────────────────────────────────────────────────────────────────
+// **The source of truth for the semantics is `cpu_nms_greedy_by_class()` and `iou_xyxy()` in `01_src/ref/cpu_yolov8_decode.hpp`.**
+// The result **must be bit-identical** to that function (count, order, class, anchor_key, score, coordinates).
+//   · Total order: score descending, anchor_key ascending (anchor_key is unique within a frame)
+//   · Within the same class, suppress later candidates with IoU >= iou_thr. A suppressed candidate suppresses nothing
+//   · max_per_class per class. Candidates of a class whose quota is full are dropped without any suppression work
 //
-// ── TRT 단계 → 이 셰이더 ─────────────────────────────────────────────────────────────────────
-//   Filter(§5.1)   : 이미 yolo_decode.comp 의 atomicAdd emit 이다. 여기서는 하지 않는다
-//   Sort(§5.3)     : 워크그룹 하나의 shared **bitonic sort**. 키 = (score 비트 내림차순, anchor_key 오름차순).
-//                    score 는 양수라 uint 비트 순서 = 실수 순서다. int64 가 없어 2단 비교로 한다
-//   NMS(§5.4)      : 타일 + blockState 방송. invocation 하나가 kTiles 개 후보를 맡고, i 의 소유자(리더)가
-//                    판정을 s_block_state 로 방송한다 — 1 생존 / -1 이미 탈락 또는 클래스 정원 초과 / -2 전체 상한
-//   Write(§5.5)    : 생존자를 정렬 순서대로 압축 기록. sigmoid 는 kScoreSigmoid 일 때 생존자에게만 적용
+// ── TRT stages → this shader ─────────────────────────────────────────────────────────────────
+//   Filter(§5.1)   : already done by the atomicAdd emit in yolo_decode.comp. Not done here
+//   Sort(§5.3)     : shared-memory **bitonic sort** in a single workgroup. Key = (score bits descending, anchor_key ascending).
+//                    score is positive, so uint bit order = float order. No int64, so a two-stage comparison is used
+//   NMS(§5.4)      : tiles + blockState broadcast. Each invocation owns kTiles candidates, and the owner (leader) of i
+//                    broadcasts the verdict via s_block_state — 1 survives / -1 already dropped or class quota exceeded / -2 global limit
+//   Write(§5.5)    : compact-write survivors in sorted order. sigmoid is applied only to survivors when kScoreSigmoid
 //
-// ── IoU 판정과 보호대(guard band) ─────────────────────────────────────────────────────────────
-// CPU 쪽 iou_xyxy 는 -O3 -mcpu=cortex-a76 + GCC 기본 -ffp-contract=fast 로 `ua` 의 합이 fmadd 로
-// 축약된다(어셈블리로 확인). Vulkan 은 fma() 도 "OpFMul 뒤 OpFAdd 를 상속"으로만 정의하고 나눗셈은
-// 2.5 ULP 라서 **GPU 에서 CPU 의 IoU 비트를 재현할 수 없다.** 그래서 나눗셈을 하지 않고
-//   d_hi = inter - iou_hi * ua >= 0  → 확실히 억제      (iou_hi = thr + G)
-//   d_lo = inter - iou_lo * ua <  0  → 확실히 유지      (iou_lo = thr - G)
-//   그 사이                          → 보호대: overflow 비트 1(값 2)을 세우고 호스트가 그 프레임을 CPU 로 처리
-// 로 판정한다. G 의 근거(오차 상한 약 26u, u = 2^-24)는 `efficient_nms.hpp` 주석에 있다.
-// `precise` 는 GPU 쪽 축약을 막아 식을 CPU 연산 순서와 같게 둔다(상한 분석은 축약 여부와 무관하다).
+// ── IoU decision and guard band ───────────────────────────────────────────────────────────────
+// On the CPU side, iou_xyxy is built with -O3 -mcpu=cortex-a76 + GCC's default -ffp-contract=fast, so the sum in `ua` is
+// contracted into fmadd (verified in assembly). Vulkan defines even fma() only as "inherited from OpFMul followed by OpFAdd", and division is
+// 2.5 ULP, so **the GPU cannot reproduce the CPU's IoU bits.** Therefore we do not divide, and decide by
+//   d_hi = inter - iou_hi * ua >= 0  → definitely suppress   (iou_hi = thr + G)
+//   d_lo = inter - iou_lo * ua <  0  → definitely keep       (iou_lo = thr - G)
+//   in between                       → guard band: set overflow bit 1 (value 2) and the host processes that frame on the CPU
+// instead. The rationale for G (error bound about 26u, u = 2^-24) is in the comments of `efficient_nms.hpp`.
+// `precise` blocks contraction on the GPU side so the expression keeps the same operation order as the CPU (the bound analysis does not depend on contraction).
 //
-// ── overflow 비트 (호스트는 0 이 아니면 그 프레임을 CPU 로 처리한다) ──────────────────────────
-//   1 : 후보 수 > kMaxSelected, 또는 디코드 DetBuf 가 이미 넘쳤다(count > n_max / overflow != 0)
-//   2 : IoU 보호대에 걸린 쌍이 있었다
-//   4 : class_id >= kNumClasses (입력 계약 위반)
+// ── overflow bits (if nonzero, the host processes that frame on the CPU) ─────────────────────
+//   1 : number of candidates > kMaxSelected, or the decode DetBuf already overflowed (count > n_max / overflow != 0)
+//   2 : some pair fell inside the IoU guard band
+//   4 : class_id >= kNumClasses (input contract violation)
 //
-// ── V3D 제약 ──────────────────────────────────────────────────────────────────────────────────
-//   워크그룹 <= 256, shared <= 32 KB(호스트가 생성 시 maxComputeSharedMemorySize 와 비교), int64 없음.
-//   로컬 배열을 쓰지 않는다 — 타일 루프 상한이 spec constant 라 특수화 후 풀린다.
-//   모든 barrier() 는 균일 제어 흐름에 있다(루프 상한 n·P 와 방송 값은 shared 에서 읽은 균일 값이다).
+// ── V3D constraints ───────────────────────────────────────────────────────────────────────────
+//   workgroup <= 256, shared <= 32 KB (the host compares against maxComputeSharedMemorySize at creation), no int64.
+//   No local arrays — the tile loop bound is a spec constant, so it is unrolled after specialization.
+//   Every barrier() is in uniform control flow (the loop bounds n·P and the broadcast values are uniform values read from shared).
 
 layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
-layout(constant_id = 1) const uint kMaxSelected = 1024u;   // 2의 거듭제곱, <= 4096 (출력 위치 12비트)
-layout(constant_id = 2) const uint kNumClasses = 80u;      // <= 65536 (상태 워드 하위 16비트)
-layout(constant_id = 3) const bool kScoreSigmoid = false;  // 점수가 이미 확률이다(cpu_yolov8_decode.hpp 2))
+layout(constant_id = 1) const uint kMaxSelected = 1024u;   // power of two, <= 4096 (12-bit output position)
+layout(constant_id = 2) const uint kNumClasses = 80u;      // <= 65536 (low 16 bits of the state word)
+layout(constant_id = 3) const bool kScoreSigmoid = false;  // scores are already probabilities (cpu_yolov8_decode.hpp 2))
 layout(constant_id = 4) const bool kClassAgnostic = false;
 
 const uint kLocal = gl_WorkGroupSize.x;
 const uint kTiles = (kMaxSelected + kLocal - 1u) / kLocal;
 
-// yolo_decode.comp / overlay_boxes.comp 의 DetGpu 와 같은 32 B 레이아웃
+// Same 32 B layout as DetGpu in yolo_decode.comp / overlay_boxes.comp
 struct DetGpu {
     float x1, y1, x2, y2;
     float score;
@@ -57,7 +57,7 @@ struct DetGpu {
 
 layout(std430, set = 0, binding = 0) readonly buffer InBuf {
     uint in_dispatch[3];
-    uint in_count;       // emit 시도 총수 (n_max 를 넘을 수 있다)
+    uint in_count;       // total emit attempts (may exceed n_max)
     uint in_overflow;
     uint in_text_bytes;
     uint in_text[32];
@@ -65,13 +65,13 @@ layout(std430, set = 0, binding = 0) readonly buffer InBuf {
 };
 
 layout(std430, set = 0, binding = 1) writeonly buffer OutBuf {
-    uint out_dispatch_x;   // max(count, 1) — 오버레이 indirect dispatch 계약
+    uint out_dispatch_x;   // max(count, 1) — overlay indirect dispatch contract
     uint out_dispatch_y;
     uint out_dispatch_z;
-    uint out_count;        // 생존자 수
-    uint out_overflow;     // 위의 fallback 비트
+    uint out_count;        // number of survivors
+    uint out_overflow;     // the fallback bits above
     uint out_text_bytes;
-    uint out_text[32];     // 쓰지 않는다
+    uint out_text[32];     // unused
     DetGpu out_dets[];
 };
 
@@ -80,22 +80,22 @@ layout(push_constant, std430) uniform Params {
     float iou_lo;          // thr - G
     float iou_hi;          // thr + G
     uint max_per_class;    // 100
-    uint max_output;       // 0 = 무제한 (CPU 기준과 같다)
-    uint n_max;            // 입력 DetBuf 용량(max_dets)
+    uint max_output;       // 0 = unlimited (same as the CPU reference)
+    uint n_max;            // input DetBuf capacity (max_dets)
 } pc;
 
 const uint kDead = 1u << 31;
 const uint kSel = 1u << 30;
 const uint kClassMask = 0xffffu;
-const float kTiny = 1e-30;   // 비정규수 근처 면적은 FTZ 여부가 갈릴 수 있어 보호대로 보낸다
+const float kTiny = 1e-30;   // areas near denormals may differ depending on FTZ, so send them to the guard band
 
-// 정렬 단계: s_a = score 비트, s_b = anchor_key.  정렬 뒤 재사용: s_a = x1 비트, s_b = y1 비트.
+// Sort stage: s_a = score bits, s_b = anchor_key.  Reused after sorting: s_a = x1 bits, s_b = y1 bits.
 shared uint s_a[kMaxSelected];
 shared uint s_b[kMaxSelected];
-shared uint s_idx[kMaxSelected];    // 정렬 위치 → 입력 dets 인덱스
+shared uint s_idx[kMaxSelected];    // sorted position → input dets index
 shared float s_x2[kMaxSelected];
 shared float s_y2[kMaxSelected];
-shared uint s_st[kMaxSelected];     // class(0..15) | 출력 위치(16..27) | kSel | kDead
+shared uint s_st[kMaxSelected];     // class(0..15) | output position(16..27) | kSel | kDead
 shared uint s_kept[kNumClasses];
 shared int s_block_state;
 shared uint s_n;
@@ -103,10 +103,10 @@ shared uint s_pow2;
 shared uint s_flags;
 shared uint s_total;
 
-// (score 비트, key) 전순서에서 a 가 b 보다 앞인가
+// Does a come before b in the (score bits, key) total order
 bool before(uint sa, uint ka, uint sb, uint kb) { return sa > sb || (sa == sb && ka < kb); }
 
-// 0 = 유지, 1 = 억제, +2 = 보호대. a 가 생존자(i), b 가 후보(j) — iou_xyxy(dets[i], dets[j]) 와 같은 순서.
+// 0 = keep, 1 = suppress, +2 = guard band. a is the survivor (i), b is the candidate (j) — same order as iou_xyxy(dets[i], dets[j]).
 uint iou_decide(float ax1, float ay1, float ax2, float ay2, float bx1, float by1, float bx2, float by2) {
     precise float ix = max(0.0, min(ax2, bx2) - max(ax1, bx1));
     precise float iy = max(0.0, min(ay2, by2) - max(ay1, by1));
@@ -116,7 +116,7 @@ uint iou_decide(float ax1, float ay1, float ax2, float ay2, float bx1, float by1
     precise float ua = aa + ab - inter;
     if ((aa > 0.0 && aa < kTiny) || (ab > 0.0 && ab < kTiny) || (inter > 0.0 && inter < kTiny))
         return 2u | ((ua > 0.0 && inter >= pc.iou_thr * ua) ? 1u : 0u);
-    if (!(ua > 0.0)) return (0.0 >= pc.iou_thr) ? 1u : 0u;   // CPU: ua > 0 이 아니면 IoU = 0
+    if (!(ua > 0.0)) return (0.0 >= pc.iou_thr) ? 1u : 0u;   // CPU: if ua > 0 does not hold, IoU = 0
     precise float d_hi = inter - pc.iou_hi * ua;
     if (d_hi >= 0.0) return 1u;
     precise float d_lo = inter - pc.iou_lo * ua;
@@ -137,12 +137,12 @@ void write_header(uint total, uint flags) {
 void main() {
     const uint tid = gl_LocalInvocationID.x;
 
-    // ── 0) 입력 크기 판정과 초기화 ────────────────────────────────────────────────────────
+    // ── 0) Input size check and initialization ─────────────────────────────────────────────
     if (tid == 0u) {
         const uint raw = in_count;
         const uint n = min(raw, pc.n_max);
         uint flags = 0u;
-        if (in_overflow != 0u || raw > pc.n_max || n > kMaxSelected) flags |= 1u;   // 자르지 않는다 → CPU
+        if (in_overflow != 0u || raw > pc.n_max || n > kMaxSelected) flags |= 1u;   // do not truncate → CPU
         uint p = 1u;
         while (p < n) p <<= 1;
         s_n = n;
@@ -153,14 +153,14 @@ void main() {
     }
     for (uint c = tid; c < kNumClasses; c += kLocal) s_kept[c] = 0u;
     barrier();
-    if ((s_flags & 1u) != 0u) {   // 균일 분기(모두 같은 shared 값을 본다) — 이후 barrier 없음
+    if ((s_flags & 1u) != 0u) {   // uniform branch (all see the same shared value) — no barrier after this
         if (tid == 0u) write_header(0u, s_flags);
         return;
     }
     const uint n = s_n;
     const uint P = s_pow2;
 
-    // ── 1) 정렬 키 적재 (P 까지 패딩: score 비트 0 은 어떤 양수 점수보다 뒤다) ──────────────
+    // ── 1) Load sort keys (pad up to P: score bits 0 sort after any positive score) ──────────
     for (uint t = 0u; t < kTiles; ++t) {
         const uint p = tid + t * kLocal;
         if (p >= P) continue;
@@ -180,7 +180,7 @@ void main() {
         return;
     }
 
-    // ── 2) bitonic sort (TRT §5.3 의 radix sort 대체). 쌍 (p, p^j) 는 p 의 소유자가 둘 다 쓴다 ──
+    // ── 2) bitonic sort (replaces the radix sort of TRT §5.3). The owner of p writes both of the pair (p, p^j) ──
     for (uint k = 2u; k <= P; k <<= 1) {
         for (uint j = k >> 1; j > 0u; j >>= 1) {
             for (uint t = 0u; t < kTiles; ++t) {
@@ -189,7 +189,7 @@ void main() {
                 if (p >= P || l <= p) continue;
                 const uint sa = s_a[p], ka = s_b[p], sb = s_a[l], kb = s_b[l];
                 const bool a_first = before(sa, ka, sb, kb);
-                const bool fwd = (p & k) == 0u;   // 이 블록은 전순서 방향으로 정렬한다
+                const bool fwd = (p & k) == 0u;   // this block sorts in the total-order direction
                 if (fwd != a_first) {
                     s_a[p] = sb;
                     s_b[p] = kb;
@@ -204,7 +204,7 @@ void main() {
         }
     }
 
-    // ── 3) 정렬 순서로 박스·클래스 적재 (s_a/s_b 재사용) ──────────────────────────────────
+    // ── 3) Load boxes and classes in sorted order (reusing s_a/s_b) ──────────────────────────
     for (uint t = 0u; t < kTiles; ++t) {
         const uint p = tid + t * kLocal;
         if (p >= n) continue;
@@ -217,21 +217,21 @@ void main() {
     }
     barrier();
 
-    // ── 4) 메인 NMS: 타일 + blockState 방송 (TRT §5.4) ─────────────────────────────────────
+    // ── 4) Main NMS: tiles + blockState broadcast (TRT §5.4) ───────────────────────────────
     for (uint i = 0u; i < n; ++i) {
-        if (i % kLocal == tid) {   // 리더 = i 의 소유자
+        if (i % kLocal == tid) {   // leader = owner of i
             const uint st = s_st[i];
             const uint c = st & kClassMask;
             int v;
             if ((st & kDead) != 0u) {
-                v = -1;                                   // 이미 억제됨
+                v = -1;                                   // already suppressed
             } else if (s_kept[c] >= pc.max_per_class) {
-                v = -1;                                   // 클래스 정원 초과 — CPU 와 같이 억제 연산 없음
+                v = -1;                                   // class quota exceeded — like the CPU, no suppression work
                 s_st[i] = st | kDead;
             } else if (pc.max_output != 0u && s_total >= pc.max_output) {
-                v = -2;                                   // 전체 상한 → 조기 종료
+                v = -2;                                   // global limit → early exit
             } else {
-                v = 1;                                    // 생존 확정
+                v = 1;                                    // confirmed survivor
                 s_kept[c] += 1u;
                 s_st[i] = st | kSel | (s_total << 16);
                 s_total += 1u;
@@ -240,7 +240,7 @@ void main() {
         }
         barrier();
         const int v = s_block_state;
-        if (v == -2) break;   // 균일
+        if (v == -2) break;   // uniform
         if (v == 1) {
             const float ax1 = uintBitsToFloat(s_a[i]);
             const float ay1 = uintBitsToFloat(s_b[i]);
@@ -251,7 +251,7 @@ void main() {
                 const uint j = tid + t * kLocal;
                 if (j <= i || j >= n) continue;
                 const uint st = s_st[j];
-                if ((st & kDead) != 0u) continue;   // 한 번 탈락한 후보는 다시 비교하지 않는다
+                if ((st & kDead) != 0u) continue;   // a candidate dropped once is never compared again
                 if (!kClassAgnostic && (st & kClassMask) != ci) continue;
                 const uint r = iou_decide(ax1, ay1, ax2, ay2, uintBitsToFloat(s_a[j]), uintBitsToFloat(s_b[j]),
                                           s_x2[j], s_y2[j]);
@@ -263,7 +263,7 @@ void main() {
     }
     barrier();
 
-    // ── 5) 결과 기록 (TRT §5.5): 생존자를 정렬 순서대로 압축 ────────────────────────────────
+    // ── 5) Write results (TRT §5.5): compact survivors in sorted order ─────────────────────
     for (uint t = 0u; t < kTiles; ++t) {
         const uint p = tid + t * kLocal;
         if (p >= n) continue;

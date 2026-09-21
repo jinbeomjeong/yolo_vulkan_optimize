@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
-"""두 파이프라인의 detections.jsonl을 비교한다.
+"""Compare detections.jsonl of two pipelines.
 
-매칭 규칙은 01_src/ref/detection_match.hpp 의 match() 와 **동치**다(C++ 쪽이 정본):
-  같은 클래스만, 참조 검출을 (점수 내림차순, 원래 순번 오름차순) 전순서로 훑으며
-  IoU가 가장 큰 미사용 테스트 검출과 greedy 매칭(IoU 동률이면 먼저 나온 것).
-  매칭 비율 = matched / max(ref_count, test_count)  (프레임 합계)
+The matching rule is **equivalent** to match() in 01_src/ref/detection_match.hpp (the C++ side is canonical):
+  same class only; walk reference detections in the total order (score descending, original index ascending)
+  and greedily match the unused test detection with the largest IoU (on IoU ties, the earlier one).
+  match ratio = matched / max(ref_count, test_count)  (summed over frames)
 
-동치를 위해 두 가지를 C++ 에 맞춘다(2026-09-21 이전에는 둘 다 어긋나 있었다):
-  · 정렬: C++ 가 std::sort(불안정)였고 여기는 sorted(안정)라 점수 동점에서 선택이 갈렸다.
-    지금은 양쪽 다 (-score, index) 전순서다.
-  · 정밀도: C++ 는 IoU 를 float32 로 계산한다. 여기서도 f32() 로 연산마다 반올림한다.
-    (기본 연산 하나를 double 로 하고 float32 로 반올림하면 float32 연산 결과와 정확히 같다.
-     g++ 는 -std=c++20(ISO 모드)에서 FMA 축약을 하지 않으므로 이 흉내가 성립한다.)
+Two things are aligned with C++ for equivalence (before 2026-09-21 both diverged):
+  · Sorting: C++ used std::sort (unstable) and this used sorted (stable), so the choice diverged on score ties.
+    Now both sides use the (-score, index) total order.
+  · Precision: C++ computes IoU in float32. Here f32() rounds after every operation.
+    (Doing one basic operation in double and rounding to float32 gives exactly the float32 result.
+     g++ does not contract to FMA under -std=c++20 (ISO mode), so this emulation holds.)
 
-좌표 오차(G4)는 매칭된 (ref, test) 쌍마다
-  err = max(|dx1|, |dy1|, |dx2|, |dy2|)   [원본 프레임 픽셀 좌표계]
-를 모아 max/mean/p50/p90을 IoU 임계값별로 낸다.
-백분위는 01_src/toolkit/stats.hpp 와 같은 선형 보간이다.
-CSV에서 접미사 없는 *_coord_err_px 열은 PRIMARY_IOU 기준이다.
+Coordinate error (G4): for each matched (ref, test) pair
+  err = max(|dx1|, |dy1|, |dx2|, |dy2|)   [original frame pixel coordinates]
+is collected and max/mean/p50/p90 are reported per IoU threshold.
+Percentiles use the same linear interpolation as 01_src/toolkit/stats.hpp.
+In the CSV, the unsuffixed *_coord_err_px columns are based on PRIMARY_IOU.
 
-사용법:
+Usage:
   python 06_tools/python/compare_detections.py REF.jsonl TEST.jsonl [--csv OUT.csv] [--label NAME]
 """
 import argparse
@@ -30,17 +30,17 @@ import sys
 from collections import Counter
 
 IOUS = (0.5, 0.7, 0.9)
-# 접미사 없는 좌표 오차 열의 기준. ref/detection_match.hpp 의 kIouThreshold 와 같다.
+# Reference for the unsuffixed coordinate error columns. Same as kIouThreshold in ref/detection_match.hpp.
 PRIMARY_IOU = 0.9
 
 
 def f32(x):
-    """float32 로 반올림한다. C++ 의 float 연산을 흉내 내는 데 쓴다."""
+    """Round to float32. Used to emulate C++ float arithmetic."""
     return struct.unpack("f", struct.pack("f", x))[0]
 
 
 def iou(a, b):
-    """ref/cpu_yolov8_decode.hpp 의 iou_xyxy() 를 float32 로 흉내 낸다(연산 순서까지 같다)."""
+    """Emulates iou_xyxy() of ref/cpu_yolov8_decode.hpp in float32 (same operation order)."""
     a = [f32(v) for v in a]
     b = [f32(v) for v in b]
     ix = max(0.0, f32(min(a[2], b[2]) - max(a[0], b[0])))
@@ -53,7 +53,7 @@ def iou(a, b):
 
 
 def match_pairs(ref, test, thr):
-    """ref/detection_match.hpp 의 match() 와 동치인 greedy 매칭. 매칭된 (ref, test) 쌍 목록을 반환."""
+    """Greedy matching equivalent to match() in ref/detection_match.hpp. Returns the list of matched (ref, test) pairs."""
     used = [False] * len(test)
     pairs = []
     thr32 = f32(thr)
@@ -74,17 +74,17 @@ def match_pairs(ref, test, thr):
 
 
 def match(ref, test, thr):
-    """매칭 수를 반환. match_pairs()와 같은 규칙이다."""
+    """Return the match count. Same rule as match_pairs()."""
     return len(match_pairs(ref, test, thr))
 
 
 def coord_err(a, b):
-    """매칭 쌍의 네 좌표 절대 오차 중 최댓값 [원본 프레임 픽셀]."""
+    """Maximum of the four absolute coordinate errors of a matched pair [original frame pixels]."""
     return max(abs(a[k] - b[k]) for k in range(4))
 
 
 def percentile(sorted_vals, p):
-    """main.cpp stats()와 같은 선형 보간 백분위. 빈 목록이면 NaN."""
+    """Linear-interpolation percentile, same as main.cpp stats(). NaN for an empty list."""
     if not sorted_vals:
         return float("nan")
     idx = p * (len(sorted_vals) - 1)
@@ -94,7 +94,7 @@ def percentile(sorted_vals, p):
 
 
 def err_stats(errs):
-    """좌표 오차 목록 → {n, max, mean, p50, p90}. 매칭 쌍이 0개면 n=0, 나머지는 NaN."""
+    """Coordinate error list -> {n, max, mean, p50, p90}. With 0 matched pairs, n=0 and the rest NaN."""
     n = len(errs)
     if n == 0:
         nan = float("nan")
@@ -104,12 +104,12 @@ def err_stats(errs):
 
 
 def fmt_err(v, prec=6):
-    """NaN(매칭 쌍 0개)이면 n/a."""
+    """n/a if NaN (0 matched pairs)."""
     return "n/a" if v != v else f"{v:.{prec}f}"
 
 
 def csv_err(v, prec=6):
-    """CSV용. NaN이면 빈 칸."""
+    """For CSV. Empty cell if NaN."""
     return "" if v != v else f"{v:.{prec}f}"
 
 
@@ -136,9 +136,9 @@ def main():
     ref, test = load(a.ref), load(a.test)
     common = sorted(set(ref) & set(test))
     if not common:
-        sys.exit("공통 프레임이 없다")
+        sys.exit("no common frames")
     if len(common) != len(ref) or len(common) != len(test):
-        print(f"[warn] 프레임 수가 다르다: ref {len(ref)}, test {len(test)}, 공통 {len(common)}")
+        print(f"[warn] frame counts differ: ref {len(ref)}, test {len(test)}, common {len(common)}")
 
     n_ref = sum(len(ref[i]) for i in common)
     n_test = sum(len(test[i]) for i in common)
@@ -164,12 +164,12 @@ def main():
     print(f"detections ref   : {n_ref}")
     pct = (100.0 * (n_test - n_ref) / n_ref) if n_ref else float("nan")
     print(f"detections test  : {n_test}  ({pct:+.2f} %)" if n_ref else
-          f"detections test  : {n_test}  (n/a — ref 검출 0)")
+          f"detections test  : {n_test}  (n/a — 0 ref detections)")
     for thr in IOUS:
         ratio = matched[thr] / denom if denom else 0.0
         print(f"match @ IoU {thr:.1f} : {matched[thr]} / {denom} = {ratio:.4f}")
 
-    print("\ncoord err px (매칭 쌍의 max(|dx1|,|dy1|,|dx2|,|dy2|))")
+    print("\ncoord err px (max(|dx1|,|dy1|,|dx2|,|dy2|) of matched pairs)")
     print("IoU    pairs          max         mean          p50          p90")
     for thr in IOUS:
         s = stats[thr]

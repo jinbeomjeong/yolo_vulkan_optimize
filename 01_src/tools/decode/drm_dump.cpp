@@ -1,5 +1,5 @@
-// yvo_drm_dump: 디코더 DRM_PRIME 출력 확인 도구
-//   descriptor 덤프, CPU de-SAND vs av_hwframe_transfer_data 바이트 비교, 전체 디코드 성능 측정
+// yvo_drm_dump: inspection tool for the decoder's DRM_PRIME output
+//   descriptor dump, byte comparison of CPU de-SAND vs av_hwframe_transfer_data, full decode performance measurement
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -35,12 +35,12 @@ namespace {
 using yvo::tool::cpu_ms;
 struct Args {
     std::string video;
-    int frames = 3;          // descriptor를 출력할 프레임 수
-    std::string desand_dir;  // 비어 있지 않으면 de-SAND 비교·저장
-    int desand_frame = 0;    // 비교할 프레임 번호
-    bool count = false;      // 전체 디코드 성능 측정
-    int hold = 0;            // count 모드에서 동시에 들고 있을 프레임 수
-    int max_frames = 0;      // count 모드 프레임 상한(0 = 전부)
+    int frames = 3;          // number of frames whose descriptor is printed
+    std::string desand_dir;  // if non-empty, de-SAND compare and save
+    int desand_frame = 0;    // frame index to compare
+    bool count = false;      // full decode performance measurement
+    int hold = 0;            // frames held at once in count mode
+    int max_frames = 0;      // frame limit in count mode (0 = all)
     yvo::FfmpegDrmDecoder::Options dec_opt;
 };
 
@@ -131,7 +131,7 @@ void dump_descriptor(const yvo::DrmFrame& f) {
                 f.uv_sand_col_height, yvo::kSandColWidth * f.uv_sand_col_height);
 }
 
-// dma-buf CPU 매핑(읽기 전용) + DMA_BUF_IOCTL_SYNC
+// dma-buf CPU mapping (read-only) + DMA_BUF_IOCTL_SYNC
 class DmaBufReadMap {
 public:
     DmaBufReadMap(int fd, std::size_t size) : fd_(fd), size_(size) {
@@ -170,7 +170,7 @@ bool write_file(const std::string& path, const void* data, std::size_t n, const 
     return static_cast<bool>(o);
 }
 
-// 1프레임 CPU de-SAND → NV12/PGM 저장, av_hwframe_transfer_data 결과와 바이트 비교. 성공 시 0.
+// Single-frame CPU de-SAND → save NV12/PGM, byte comparison with the av_hwframe_transfer_data result. Returns 0 on success.
 int desand_and_compare(const yvo::DrmFrame& f, const std::string& dir) {
     const int w = f.width, h = f.height;
     const std::size_t ws = static_cast<std::size_t>(w), hs = static_cast<std::size_t>(h);
@@ -205,7 +205,7 @@ int desand_and_compare(const yvo::DrmFrame& f, const std::string& dir) {
     }
     std::printf("saved %s, %s\n", nv12_path.c_str(), pgm_path.c_str());
 
-    // 참조: av_hwframe_transfer_data (DRM → SW)
+    // Reference: av_hwframe_transfer_data (DRM → SW)
     AVFrame* hw = yvo::FfmpegDrmDecoder::av_frame(f);
     AVPixelFormat* fmts = nullptr;
     if (av_hwframe_transfer_get_formats(hw->hw_frames_ctx, AV_HWFRAME_TRANSFER_DIRECTION_FROM, &fmts, 0) >= 0 &&

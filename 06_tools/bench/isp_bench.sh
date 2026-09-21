@@ -1,26 +1,26 @@
 #!/usr/bin/env bash
-# 전처리 단계 성능 측정: PiSP BE(ISP) 경로 vs Vulkan 셰이더 경로 vs 디코드 단독
-#   NPU를 쓰지 않는다(전처리 단계만). 전체 파이프라인은 06_tools/bench/pipeline_bench.sh다.
+# Preprocess-stage performance: PiSP BE (ISP) path vs Vulkan shader path vs decode alone
+#   Does not use the NPU (preprocess stage only). The full pipeline is 06_tools/bench/pipeline_bench.sh.
 #
-# 사용법:
-#   bash 06_tools/bench/isp_bench.sh                       # 전체(1816프레임), 설정당 3회
-#   RUNS=1 FRAMES=300 bash 06_tools/bench/isp_bench.sh     # 짧게
-#   ONLY='isp_' bash 06_tools/bench/isp_bench.sh           # 설정 id(grep -E 패턴) 일부만
-#   OUT_DIR=/path bash ...                             # 출력 디렉터리
+# Usage:
+#   bash 06_tools/bench/isp_bench.sh                       # all (1816 frames), 3 runs per config
+#   RUNS=1 FRAMES=300 bash 06_tools/bench/isp_bench.sh     # short
+#   ONLY='isp_' bash 06_tools/bench/isp_bench.sh           # subset by config id (grep -E pattern)
+#   OUT_DIR=/path bash ...                             # output directory
 #
-# 시간 축이 두 개다. 섞어 읽으면 안 된다.
-#   wall   : 호스트 wall-clock. ISP는 BackendDevice::Run() 직전/직후(동기).
-#   device : Vulkan timestamp query가 준 GPU 디바이스 시간. 호스트 제출·대기 비용이 빠져 있다.
-# 그래서 GPU는 두 설정으로 잰다: depth 2(파이프라인, 처리량)와 depth 1(동기, wall-clock 비교용).
+# There are two time axes. Do not mix them up.
+#   wall   : host wall-clock. For ISP, right before/after BackendDevice::Run() (synchronous).
+#   device : GPU device time from Vulkan timestamp queries. Excludes host submit/wait cost.
+# So the GPU is measured in two configs: depth 2 (pipelined, throughput) and depth 1 (synchronous, for wall-clock comparison).
 #
-# 실행 순서: 반복(run) 바깥 루프, 설정 안쪽 루프(열 상태 편향을 설정 간에 고르게 나눈다).
-# 냉각: 이 단계는 NPU를 쓰지 않으므로 SoC 온도 기준이다. 실행 직전 SoC 온도가 HOT_C 초과면
-#       COOL_C 이하가 될 때까지(최대 COOL_MAX_S초) 대기한다. Hailo 칩 온도는 스냅샷용으로만 읽는다.
+# Run order: repetition (run) is the outer loop, config the inner loop (spreads thermal bias evenly across configs).
+# Cool-down: this stage doesn't use the NPU, so it keys on SoC temperature. If SoC temp exceeds HOT_C right before a run,
+#       wait until it is at or below COOL_C (at most COOL_MAX_S s). Hailo chip temp is read only for snapshots.
 set -euo pipefail
 
 PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-# 공통 함수(온도·PCIe·냉각·hailort 경고 판정·벤치 락)는 lib/common.sh 하나로 모았다.
-# 예전에는 이 함수들이 7개 스크립트에 복붙돼 있었고 실제로 갈라져 있었다(pcie_link 의 Gen5 분기 등).
+# Common functions (temperature, PCIe, cool-down, hailort warning verdict, bench lock) live in lib/common.sh.
+# They used to be copy-pasted into 7 scripts and had actually diverged (e.g. pcie_link's Gen5 branch).
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 ISP_BIN="${ISP_BIN:-$BIN_DIR/yvo_isp_bench}"
 GPU_BIN="${GPU_BIN:-$BIN_DIR/yvo_preproc_bench}"
@@ -31,7 +31,7 @@ FRAMES="${FRAMES:-0}"
 WARMUP="${WARMUP:-60}"
 SLOTS="${SLOTS:-4}"
 ONLY="${ONLY:-.}"
-COOL_C="${COOL_C:-66}"   # Pi 5(CM5, 액티브 쿨러)는 유휴에서도 SoC 65~66 C다. 이보다 낮게 잡으면 절대 못 내려간다.
+COOL_C="${COOL_C:-66}"   # Pi 5 (CM5, active cooler) idles at SoC 65-66 C. Set lower and it will never get there.
 COOL_MAX_S="${COOL_MAX_S:-120}"
 HOT_C="${HOT_C:-72}"
 APPEND="${APPEND:-0}"
@@ -39,7 +39,7 @@ APPEND="${APPEND:-0}"
 require_bin "$ISP_BIN" yvo_isp_bench
 require_bin "$GPU_BIN" yvo_preproc_bench
 check_only_exit
-guard_out_dir   # OUT_DIR 이 비어 있지 않으면 FORCE=1 없이는 멈춘다(보관 결과 보호)
+guard_out_dir   # stop if OUT_DIR is not empty unless FORCE=1 (archived-result protection)
 bench_lock_acquire
 mkdir -p "$OUT_DIR/raw" "$OUT_DIR/samples"
 
@@ -59,19 +59,19 @@ configs=(
   echo "kernel: $(uname -r)"
   echo "model: $(tr -d '\0' < /proc/device-tree/model 2>/dev/null || echo unknown)"
   echo "soc temp: $(soc_temp) C, hailo temp: $(hailo_temp) C"
-  echo "throttled: $(throttled)  (0x80000 = 과거 기록 비트, 현재 스로틀링 아님)"
+  echo "throttled: $(throttled)  (0x80000 = past-event bit, not currently throttling)"
   vcgencmd measure_clock arm 2>/dev/null || true
   vcgencmd measure_clock v3d 2>/dev/null || true
   pcie_link
   echo "libpisp: $(pkg-config --modversion libpisp 2>/dev/null || echo NA)"
   echo "video: $VIDEO frames: ${FRAMES:-all} runs: $RUNS warmup: $WARMUP slots: $SLOTS"
-  echo "note: 이 측정은 NPU를 쓰지 않는다(전처리 단계 단독). hailort 경고 열은 항상 0이다."
+  echo "note: this measurement does not use the NPU (preprocess stage alone). The hailort warning column is always 0."
 } > "$OUT_DIR/env_bench.txt"
 
 RAW="$OUT_DIR/results_raw.csv"
 CSV_HEADER="label,tool,variant,time_axis,frames,wall_s,fps,cpu_ms_per_frame,pre_ms_median,pre_ms_p90,pre_ms_mean,pre_ms_min,pre_ms_max,host_submit_us_median,host_wait_us_median,repack_ms_median,repack_ms_p90,sync_ms_median,n,ok,run,cool_wait_s,soc_t0,soc_t1,throttled,hailort_warnings,hailort_errors"
 if [[ "$APPEND" == "1" && -f "$RAW" ]]; then
-  head -1 "$RAW" | grep -qx "$CSV_HEADER" || { echo "APPEND=1인데 기존 $RAW 헤더가 다르다" >&2; exit 1; }
+  head -1 "$RAW" | grep -qx "$CSV_HEADER" || { echo "APPEND=1 but the existing $RAW header differs" >&2; exit 1; }
 else
   echo "$CSV_HEADER" > "$RAW"
 fi
@@ -86,7 +86,7 @@ for ((r = 1; r <= RUNS; r++)); do
     COOL_WAITED=0
     t_now=$(soc_temp)
     if awk -v t="$t_now" -v h="$HOT_C" 'BEGIN{exit !(t!="nan" && t>h)}'; then
-      cool_down "SoC 온도 ${t_now} C > ${HOT_C} C" soc   # 이 벤치는 NPU 를 쓰지 않는다
+      cool_down "SoC temp ${t_now} C > ${HOT_C} C" soc   # this bench does not use the NPU
     fi
     run_dir="$OUT_DIR/raw/${id}_run${r}"
     rm -rf "$run_dir"; mkdir -p "$run_dir"
@@ -98,7 +98,7 @@ for ((r = 1; r <= RUNS; r++)); do
       (cd "$run_dir" && "$ISP_BIN" --video "$VIDEO" --slots "$SLOTS" --warmup "$WARMUP" \
           "${frames_arg[@]}" $extra --no-png --csv-label "$id" > stdout.log 2>&1)
     else
-      # GPU는 warmup 플래그가 없다. --repeat 2로 돌리고 두 번째(워밍업된) 블록을 쓴다.
+      # The GPU has no warmup flag. Run with --repeat 2 and use the second (warmed-up) block.
       # shellcheck disable=SC2086
       (cd "$run_dir" && "$GPU_BIN" --video "$VIDEO" --slots 8 --repeat 2 \
           "${frames_arg[@]}" $extra --png-dir "$OUT_DIR/samples" --png-frame 100 > stdout.log 2>&1)
@@ -116,7 +116,7 @@ for ((r = 1; r <= RUNS; r++)); do
     if [[ "$tool" == "isp" ]]; then
       line=$(grep '^RESULT_CSV,' "$run_dir/stdout.log" | tail -1 | sed 's/^RESULT_CSV,//' || true)
       if [[ -z "$line" ]]; then
-        echo "  실패 rc=$rc (stdout.log 참조)"; tail -5 "$run_dir/stdout.log"; continue
+        echo "  failed rc=$rc (see stdout.log)"; tail -5 "$run_dir/stdout.log"; continue
       fi
       # RESULT_CSV: label,mode,repack,slots,frames,wall_s,fps,cpu,med,p90,mean,min,max,rep_med,rep_p90,sync_med,n,ok
       IFS=',' read -r _lab mode repack _slots nfr wall fps cpu med p90 mean mn mx rmed rp90 smed nn ok <<<"$line"
@@ -124,12 +124,12 @@ for ((r = 1; r <= RUNS; r++)); do
       echo "$id,isp,$variant,wall,$nfr,$wall,$fps,$cpu,$med,$p90,$mean,$mn,$mx,,,$rmed,$rp90,$smed,$nn,$ok,$r,$COOL_WAITED,$soc_t0,$soc_t1,$thr,$nwarn,$nerr" >> "$RAW"
       echo "  fps=$fps cpu=$cpu ms/f isp_median=$med ms repack_median=${rmed:-} rc=$rc"
     else
-      # preproc_bench의 마지막 [decode+gpu] 블록을 파싱한다(--repeat 2의 두 번째 = 워밍업 후).
+      # Parse preproc_bench's last [decode+gpu] block (the second of --repeat 2 = after warmup).
       mapfile -t gl < <(grep '^\[decode+gpu\]' "$run_dir/stdout.log")
       if (( ${#gl[@]} < 3 )); then
-        echo "  실패 rc=$rc (stdout.log 참조)"; tail -5 "$run_dir/stdout.log"; continue
+        echo "  failed rc=$rc (see stdout.log)"; tail -5 "$run_dir/stdout.log"; continue
       fi
-      # 마지막 3줄 = 마지막 반복의 frames/gpu/host 줄
+      # last 3 lines = frames/gpu/host lines of the final repetition
       l_fr="${gl[-3]}"; l_gpu="${gl[-2]}"; l_host="${gl[-1]}"
       nfr=$(sed -E 's/.*frames=([0-9]+).*/\1/' <<<"$l_fr")
       wall=$(sed -E 's/.*wall=([0-9.]+) s.*/\1/' <<<"$l_fr")
@@ -150,7 +150,7 @@ for ((r = 1; r <= RUNS; r++)); do
   done
 done
 
-# 설정별 중앙값
+# Per-config medians
 /usr/bin/python3 - "$RAW" "$OUT_DIR/results.csv" <<'EOF'
 import csv, statistics, sys
 rows = list(csv.DictReader(open(sys.argv[1])))
@@ -180,10 +180,10 @@ with open(sys.argv[2], "w", newline="") as f:
 print(open(sys.argv[2]).read())
 EOF
 
-# 샘플 PNG (측정과 별도)
-echo "[samples] ISP letterbox PNG (측정 제외)"
+# Sample PNGs (separate from measurement)
+echo "[samples] ISP letterbox PNG (excluded from measurement)"
 (cd "$OUT_DIR/samples" && "$ISP_BIN" --video "$VIDEO" --frames 200 --warmup 0 --repack none \
-    --png-dir "$OUT_DIR/samples" --png-frame 100 > isp_sample.log 2>&1) || echo "  samples 실행 실패"
+    --png-dir "$OUT_DIR/samples" --png-frame 100 > isp_sample.log 2>&1) || echo "  samples run failed"
 
 {
   echo "# after $(date -Is)"

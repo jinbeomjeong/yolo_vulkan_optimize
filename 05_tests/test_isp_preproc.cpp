@@ -1,18 +1,18 @@
-// ISP 전처리(IspResizer) vs CPU 기준(de-SAND → cpu_letterbox_nv12_bt709) 화질 비교
+// ISP preprocessing (IspResizer) vs CPU reference (de-SAND → cpu_letterbox_nv12_bt709) quality comparison
 //
-// GPU 경로(test_preproc.cpp)와 달리 **비트 일치를 요구하지 않는다.** 리샘플 커널이 다르기 때문이다:
-//   - 셰이더: bilinear 4-tap
-//   - ISP:   libpisp smart selection → 3배 축소 구간은 michel-netravali(Mitchell-Netravali)
-// 색 변환(BT.709 limited YUV→RGB)은 같은 수식이지만 ISP는 1024 스케일 고정소수점이라 반올림이 다르다.
+// Unlike the GPU path (test_preproc.cpp), **bit-exactness is not required.** The resampling kernels differ:
+//   - shader: bilinear 4-tap
+//   - ISP:   libpisp smart selection → michel-netravali (Mitchell-Netravali) for the 3x downscale range
+// Color conversion (BT.709 limited YUV→RGB) uses the same formula, but the ISP uses 1024-scale fixed point, so rounding differs.
 //
-// 합격선(요청받은 게이트):
-//   패딩 영역      max|err| == 0                      (하드 게이트: letterbox가 ISP 쓰기 밖인지)
-//   콘텐츠 영역    |채널별 평균 부호 오차| <= 1.0      (CSC 오류·range 혼동·R↔B 스왑 탐지기)
-//   콘텐츠 영역    MAE <= 3.0
-//   PSNR, max|err|, |err|>16 비율은 보고만 한다(불합격 근거로 쓰지 않는다).
+// Pass criteria (requested gates):
+//   padding region   max|err| == 0                      (hard gate: is the letterbox outside the ISP writes)
+//   content region   |per-channel mean signed error| <= 1.0      (detector for CSC errors, range confusion, R↔B swap)
+//   content region   MAE <= 3.0
+//   PSNR, max|err|, and the |err|>16 ratio are only reported (not used as failure grounds).
 //
-// 교차 검산: (ISP vs GPU셰이더)도 같이 계산한다. GPU는 CPU와 비트 일치이므로 두 지표가 같아야 한다.
-// 실패하면 build/05_tests/isp_preproc_diff/ 에 ISP·CPU·차이(x8) 이미지를 저장한다.
+// Cross-check: (ISP vs GPU shader) is computed too. The GPU is bit-exact with the CPU, so both metrics must match.
+// On failure, ISP / CPU / diff (x8) images are saved to build/05_tests/isp_preproc_diff/.
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -77,9 +77,9 @@ struct FrameData {
     double isp_ms = -1;
 };
 
-// 콘텐츠 영역 비교 지표
+// Comparison metrics for the content region
 struct Metrics {
-    double mean_signed[3] = {0, 0, 0}; // 채널별 mean(a - b)
+    double mean_signed[3] = {0, 0, 0}; // per-channel mean(a - b)
     double mae = 0;
     double psnr = 0;
     int max_abs = 0;
@@ -130,7 +130,7 @@ Metrics compare(const std::vector<std::uint8_t>& a, const std::vector<std::uint8
     return m;
 }
 
-// 전체 스위트에서 한 번만 디코드: 대상 프레임의 ISP·GPU·CPU 결과를 모은다
+// Decode only once for the whole suite: collect ISP / GPU / CPU results for the target frames
 class IspPreprocTest : public ::testing::TestWithParam<int> {
 protected:
     static void SetUpTestSuite() {
@@ -160,7 +160,7 @@ protected:
                     return;
                 }
                 if (std::find(kTestFrames.begin(), kTestFrames.end(), i) == kTestFrames.end()) continue;
-                if (!isp_) { // 첫 대상 프레임의 기하로 ISP 설정을 확정한다
+                if (!isp_) { // fix the ISP configuration from the geometry of the first target frame
                     yvo::isp::IspResizerConfig icfg;
                     icfg.num_slots = 2;
                     icfg.buffer_count = 12;
@@ -268,7 +268,7 @@ TEST_P(IspPreprocTest, MatchesCpuReference) {
     const int new_w = static_cast<int>(d.src_w * lb.scale + 0.5f);
     const int new_h = static_cast<int>(d.src_h * lb.scale + 0.5f);
 
-    // GPU는 CPU와 비트 일치여야 한다(test_preproc의 게이트). 여기서는 교차 검산용 전제 확인.
+    // The GPU must be bit-exact with the CPU (test_preproc's gate). Here it is a precondition check for the cross-check.
     EXPECT_EQ(d.gpu, d.cpu) << "GPU shader is expected to be bit-identical to the CPU reference";
 
     const Metrics m = compare(d.isp, d.cpu, lb, new_w, new_h);
@@ -287,19 +287,19 @@ TEST_P(IspPreprocTest, MatchesCpuReference) {
                     std::abs(m.mean_signed[1]) <= 1.0 && std::abs(m.mean_signed[2]) <= 1.0;
     if (!ok) save_images(idx, d);
 
-    // 하드 게이트: letterbox 패딩은 ISP가 물리적으로 건드리지 않아야 한다.
+    // Hard gate: the ISP must physically not touch the letterbox padding.
     EXPECT_EQ(m.pad_max_abs, 0) << "padding bytes != " << int(lb.pad_value) << " (" << m.pad_bad << " bytes)";
-    // CSC 오류·range 혼동·R↔B 스왑 탐지기
+    // Detector for CSC errors, range confusion, R↔B swap
     EXPECT_LE(std::abs(m.mean_signed[0]), 1.0) << "R channel mean signed error";
     EXPECT_LE(std::abs(m.mean_signed[1]), 1.0) << "G channel mean signed error";
     EXPECT_LE(std::abs(m.mean_signed[2]), 1.0) << "B channel mean signed error";
     EXPECT_LE(m.mae, 3.0);
-    // GPU가 CPU와 비트 일치이므로 두 비교 결과는 같아야 한다.
+    // The GPU is bit-exact with the CPU, so the two comparison results must match.
     EXPECT_DOUBLE_EQ(m.mae, g.mae);
     EXPECT_EQ(m.max_abs, g.max_abs);
 }
 
-// NEON 전치는 스칼라 전치와 바이트 단위로 같아야 한다.
+// The NEON transpose must be byte-identical to the scalar transpose.
 TEST_P(IspPreprocTest, NeonRepackMatchesScalar) {
     const int idx = GetParam();
     auto it = frames_.find(idx);
@@ -310,7 +310,7 @@ TEST_P(IspPreprocTest, NeonRepackMatchesScalar) {
     yvo::isp::rgb_packed_to_nhcw_scalar(d.isp.data(), w, h, a.data());
     yvo::isp::rgb_packed_to_nhcw_neon(d.isp.data(), w, h, b.data());
     EXPECT_EQ(a, b) << "NEON repack differs from the scalar repack";
-    // 되돌리면 원본과 같아야 한다(전치가 정보를 잃지 않음).
+    // Reverting must give back the original (the transpose loses no information).
     std::vector<std::uint8_t> back(d.isp.size());
     yvo::nhcw_to_rgb_packed(b.data(), w, h, back.data());
     EXPECT_EQ(back, d.isp);

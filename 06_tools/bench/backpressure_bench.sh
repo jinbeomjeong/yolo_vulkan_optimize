@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# 러너 백프레셔 수정(hailo_raw_runner.cpp: 수동 increase/decrease 제거) 전후 비교 측정.
-# host(기준 경로) 와 gpu(원시 러너 경로) 를 **같은 세션에서 인터리브**해 열 상태 편향을 없앤다.
-# 냉각·환경 스냅샷·루프 구조는 06_tools/bench/op_point_bench.sh 에서 복사했다.
+# Before/after measurement of the runner backpressure fix (hailo_raw_runner.cpp: manual increase/decrease removed).
+# host (reference path) and gpu (raw runner path) are **interleaved in the same session** to remove thermal bias.
+# Cool-down, environment snapshot and loop structure are copied from 06_tools/bench/op_point_bench.sh.
 set -euo pipefail
 PROJ="${PROJ:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-# 공통 함수(온도·PCIe·냉각·hailort 경고 판정·벤치 락)는 lib/common.sh 하나로 모았다.
-# 예전에는 이 함수들이 7개 스크립트에 복붙돼 있었고 실제로 갈라져 있었다(pcie_link 의 Gen5 분기 등).
+# Common functions (temperature, PCIe, cool-down, hailort warning verdict, bench lock) live in lib/common.sh.
+# They used to be copy-pasted into 7 scripts and had actually diverged (e.g. pcie_link's Gen5 branch).
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 BIN="${BIN:-$BIN_DIR/yvo_pipeline}"
 VIDEO="${VIDEO:-$PROJ/04_data/videos/video_h265.mp4}"
@@ -15,7 +15,7 @@ RUNS="${RUNS:-3}"; FRAMES="${FRAMES:-900}"; ONLY="${ONLY:-.}"
 COOL_C="${COOL_C:-65}"; COOL_MAX_S="${COOL_MAX_S:-120}"; HOT_C="${HOT_C:-75}"
 require_bin "$BIN" yvo_pipeline
 check_only_exit
-guard_out_dir   # OUT_DIR 이 비어 있지 않으면 FORCE=1 없이는 멈춘다(보관 결과 보호)
+guard_out_dir   # stop if OUT_DIR is not empty unless FORCE=1 (archived-result protection)
 bench_lock_acquire
 mkdir -p "$OUT_DIR/raw"
 
@@ -48,8 +48,8 @@ for ((r = 1; r <= RUNS; r++)); do
     IFS='|' read -r id args <<<"$c"; id="${id// /}"
     echo "$id" | grep -Eq "$ONLY" || continue
     COOL_WAITED=0; t_now=$(hailo_temp)
-    if (( prev_warn > 0 )); then cool_down "hailort.log 경고 ${prev_warn}건"
-    elif awk -v t="$t_now" -v h="$HOT_C" 'BEGIN{exit !(t!="nan" && t>h)}'; then cool_down "칩 온도 ${t_now} C > ${HOT_C} C"; fi
+    if (( prev_warn > 0 )); then cool_down "hailort.log warnings: ${prev_warn}"
+    elif awk -v t="$t_now" -v h="$HOT_C" 'BEGIN{exit !(t!="nan" && t>h)}'; then cool_down "chip temp ${t_now} C > ${HOT_C} C"; fi
     run_dir="$OUT_DIR/raw/${id}_run${r}"; rm -rf "$run_dir"; mkdir -p "$run_dir"
     echo "[$(date +%T)] run $r/$RUNS $id (hailo $(hailo_temp) C)"
     set +e
@@ -65,15 +65,15 @@ for ((r = 1; r <= RUNS; r++)); do
     prev_warn=$nwarn
     l1=$(grep '^RESULT_CSV,'  "$run_dir/stdout.log" | sed 's/^RESULT_CSV,//'  || true)
     l2=$(grep '^RESULT_CSV2,' "$run_dir/stdout.log" | sed 's/^RESULT_CSV2,//' || true)
-    if [[ -z "$l1" || -z "$l2" ]]; then echo "  실패 rc=$rc"; tail -5 "$run_dir/stdout.log"; continue; fi
-    # RESULT_CSV(22) + RESULT_CSV2 의 후처리 지표 6개 + 메타 + in-flight(= fps x npu_mean/1000)
+    if [[ -z "$l1" || -z "$l2" ]]; then echo "  failed rc=$rc"; tail -5 "$run_dir/stdout.log"; continue; fi
+    # RESULT_CSV(22) + 6 postproc metrics from RESULT_CSV2 + meta + in-flight (= fps x npu_mean/1000)
     /usr/bin/python3 - "$RAW" "$l1" "$l2" "$r" "$COOL_WAITED" "$nwarn" "$nerr" <<'EOF'
 import sys
 raw, l1, l2, run, cool, nwarn, nerr = sys.argv[1:8]
 a = l1.split(","); b = l2.split(",")
 fps = float(a[7]); npu = float(a[12])
 row = a[:2] + [b[1]] + a[2:22] + b[3:9] + [run, cool, nwarn, nerr, f"{fps*npu/1000.0:.2f}"]
-# label,postproc 순서로 맞춘다: a[0]=label, a[1]=mode → label,postproc,mode,...
+# Reorder to label,postproc: a[0]=label, a[1]=mode -> label,postproc,mode,...
 row = [a[0], b[1]] + a[1:22] + b[3:9] + [run, cool, nwarn, nerr, f"{fps*npu/1000.0:.2f}"]
 open(raw, "a").write(",".join(row) + "\n")
 EOF
@@ -84,7 +84,7 @@ done
 /usr/bin/python3 - "$RAW" "$OUT_DIR/results.csv" <<'EOF'
 import csv, statistics, sys
 rows = list(csv.DictReader(open(sys.argv[1])))
-if not rows: print("행이 없다"); sys.exit(0)
+if not rows: print("no rows"); sys.exit(0)
 NON_NUM = {"label", "postproc", "mode", "layout", "run"}
 def numeric(k):
     if k in NON_NUM: return False

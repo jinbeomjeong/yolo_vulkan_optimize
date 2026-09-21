@@ -1,16 +1,16 @@
-// hvs_kms_probe: 디코더 SAND128 NV12 dma-buf 를 KMS 평면(HVS6)에 직접 올리는 경로를 측정한다.
+// hvs_kms_probe: measures the path that puts the decoder's SAND128 NV12 dma-buf directly on a KMS plane (HVS6).
 //
-//   비디오 평면 : drmPrimeFDToHandle → drmModeAddFB2WithModifiers(NV12, SAND128, pitch=열 높이)
+//   video plane : drmPrimeFDToHandle → drmModeAddFB2WithModifiers(NV12, SAND128, pitch=column height)
 //                 COLOR_ENCODING=BT.709, COLOR_RANGE=limited
-//   오버레이    : AB24(메모리 R,G,B,A) dumb buffer 3개 링, zpos 비디오 위, pixel blend mode=Pre-multiplied
-//   페이싱      : 60 Hz 출력에서 30 fps. page-flip 이벤트(seq S) → vblank 이벤트(S+1) → 다음 commit → flip(S+2)
-//   보유        : flip 완료 전까지 이전 프레임 keepalive 를 들고 있는다(held 최대치 기록)
-//   측정        : flip 시각 간격, seq 간격(누락), commit→flip, CPU, V3D gpu_stats(0 이어야 함), debugfs 스냅샷
-//   색 확인     : --writeback-at K 이면 Writeback 커넥터로 HVS 출력을 캡처해 CPU 기준 변환과 비교할 PPM 을 쓴다
+//   overlay     : ring of 3 AB24 (memory R,G,B,A) dumb buffers, zpos above video, pixel blend mode=Pre-multiplied
+//   pacing      : 30 fps on a 60 Hz output. page-flip event (seq S) → vblank event (S+1) → next commit → flip (S+2)
+//   holding     : keep the previous frame's keepalive until the flip completes (records max held)
+//   measure     : flip time intervals, seq gaps (drops), commit→flip, CPU, V3D gpu_stats (must be 0), debugfs snapshots
+//   color check : with --writeback-at K, capture HVS output via a Writeback connector and write PPMs to compare with the CPU reference conversion
 //
-// ⚠ DRM master 가 필요하다. labwc(lightdm)가 떠 있으면 master 를 얻지 못한다. 그때는 master 없이 가능한 단계
-//   (FB 생성, dumb buffer, 평면 선택)까지만 검사하고 종료 코드 3 으로 끝난다. 이 프로그램은 어떤 세션도
-//   멈추거나 VT 를 바꾸지 않는다. 실행 절차는 tools/hvs_probe/run_kms_probe.sh 참고.
+// ⚠ Requires DRM master. If labwc (lightdm) is running, master cannot be obtained. In that case it checks only the steps
+//   possible without master (FB creation, dumb buffer, plane selection) and exits with code 3. This program never
+//   stops any session or switches VT. See tools/hvs_probe/run_kms_probe.sh for the procedure.
 #include <drm_fourcc.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -49,13 +49,13 @@ struct Args {
     std::string label = "kms";
     int frames = 300;
     bool overlay = true;
-    int dst_w = 0, dst_h = 0; // 0 = 모드 크기(1:1)
+    int dst_w = 0, dst_h = 0; // 0 = mode size (1:1)
     int video_plane = 0, overlay_plane = 0;
     int sand_param = 0;
     long pitch_y = -1, pitch_uv = -1;
     int writeback_at = -1;
-    bool check_only = false;  // master 가 있어도 commit 하지 않고 TEST_ONLY 까지만
-    int enc = -1, range = -1; // -1 = BT.709 / limited 를 enum 이름으로 찾는다
+    bool check_only = false;  // even with master, stop at TEST_ONLY without committing
+    int enc = -1, range = -1; // -1 = look up BT.709 / limited by enum name
 };
 
 void usage(const char* p) {
@@ -92,7 +92,7 @@ bool parse_args(int argc, char** argv, Args& a) {
     return a.frames > 0;
 }
 
-// ── KMS 객체 속성 표 ────────────────────────────────────────────────────────────────────────
+// ── KMS object property table ────────────────────────────────────────────────────────────────────────
 struct Props {
     std::map<std::string, std::uint32_t> id;
     std::map<std::string, std::uint64_t> val;
@@ -213,7 +213,7 @@ void destroy_dumb(int fd, DumbBuf& b) {
     b = DumbBuf{};
 }
 
-// ── 비디오 FB 캐시 ─────────────────────────────────────────────────────────────────────────
+// ── Video FB cache ─────────────────────────────────────────────────────────────────────────
 struct VideoFb {
     std::uint32_t fb = 0, hy = 0, huv = 0;
 };
@@ -224,7 +224,7 @@ struct FrameRec {
     std::uint32_t seq = 0;
     int held_at_commit = 0;
     double overlay_draw_ms = 0;
-    double commit_ms = 0; // drmModeAtomicCommit 호출 시간
+    double commit_ms = 0; // drmModeAtomicCommit call time
     int ndets = 0;
 };
 
@@ -247,7 +247,7 @@ struct Kms {
     std::map<std::int64_t, std::vector<yvo::Detection>> dets;
     yvo::FfmpegDrmDecoder dec;
 
-    // 표시 상태
+    // display state
     struct Held {
         yvo::DrmFrame f;
         int ov_idx = -1;
@@ -281,7 +281,7 @@ std::pair<ino_t, ino_t> buf_key(const yvo::DrmFrame& f) {
     return {sy.st_ino, suv.st_ino};
 }
 
-// 디코더 프레임 → KMS FB (dma-buf inode 로 캐시). 실패하면 0.
+// Decoder frame → KMS FB (cached by dma-buf inode). Returns 0 on failure.
 std::uint32_t fb_for(Kms& k, const yvo::DrmFrame& f, std::string* err) {
     const auto key = buf_key(f);
     auto it = k.fbs.find(key);
@@ -337,7 +337,7 @@ void disable_plane(drmModeAtomicReqPtr req, const PlaneCaps& p) {
     drmModeAtomicAddProperty(req, p.id, p.props.get("CRTC_ID"), 0);
 }
 
-// 한 프레임의 atomic 요청을 만든다
+// Build the atomic request for one frame
 drmModeAtomicReqPtr build_req(Kms& k, std::uint32_t vfb, int ov_idx, bool modeset) {
     drmModeAtomicReqPtr req = drmModeAtomicAlloc();
     const int mw = k.mode.hdisplay, mh = k.mode.vdisplay;
@@ -348,7 +348,7 @@ drmModeAtomicReqPtr build_req(Kms& k, std::uint32_t vfb, int ov_idx, bool modese
         drmModeAtomicAddProperty(req, k.conn_id, k.conn_props.get("CRTC_ID"), k.crtc_id);
         drmModeAtomicAddProperty(req, k.crtc_id, k.crtc_props.get("MODE_ID"), k.mode_blob);
         drmModeAtomicAddProperty(req, k.crtc_id, k.crtc_props.get("ACTIVE"), 1);
-        // 이 CRTC 에 붙어 있을 수 있는 나머지 평면(labwc 가 쓰던 primary 등)을 끈다
+        // Disable the other planes that may be attached to this CRTC (e.g. the primary labwc was using)
         for (const auto& p : k.planes) {
             if (&p == k.vplane || &p == k.oplane) continue;
             if (!(p.possible_crtcs & (1u << k.crtc_idx))) continue;
@@ -363,7 +363,7 @@ drmModeAtomicReqPtr build_req(Kms& k, std::uint32_t vfb, int ov_idx, bool modese
             drmModeAtomicAddProperty(req, k.vplane->id, vp.get("COLOR_RANGE"),
                                      k.args.range >= 0 ? static_cast<std::uint64_t>(k.args.range)
                                                        : enum_or(vp, "COLOR_RANGE", "YCbCr limited range", 0));
-        // primary 의 zpos 는 immutable(0) 이라 건드리지 않는다
+        // primary's zpos is immutable (0), so leave it alone
         if (vp.get("zpos") && k.vplane->type != "Primary") drmModeAtomicAddProperty(req, k.vplane->id, vp.get("zpos"), 1);
         if (k.oplane) {
             const Props& op = k.oplane->props;
@@ -406,7 +406,7 @@ bool decode_ahead(Kms& k) {
     return true;
 }
 
-// 다음 프레임을 commit (nonblocking + page flip event)
+// Commit the next frame (nonblocking + page flip event)
 bool commit_next(Kms& k) {
     if (k.committed >= k.args.frames || g_stop) {
         k.done = true;
@@ -430,7 +430,7 @@ bool commit_next(Kms& k) {
     }
     int ov_idx = -1;
     if (k.oplane && !k.ov.empty()) {
-        // 화면·대기 중이 아닌 버퍼를 고른다 (링 3개면 항상 하나는 빈다)
+        // Pick a buffer that is neither on screen nor pending (with a ring of 3, one is always free)
         for (int t = 0; t < static_cast<int>(k.ov.size()); ++t) {
             const int c = (k.ov_next + t) % static_cast<int>(k.ov.size());
             if ((k.on_screen && k.on_screen->ov_idx == c) || (k.pending && k.pending->ov_idx == c)) continue;
@@ -456,7 +456,7 @@ bool commit_next(Kms& k) {
     const std::int64_t t1 = now_ns();
     drmModeAtomicFree(req);
     if (ret != 0) {
-        std::fprintf(stderr, "[kms] atomic commit 실패 (frame %lld): %s\n", static_cast<long long>(f.pts), std::strerror(errno));
+        std::fprintf(stderr, "[kms] atomic commit failed (frame %lld): %s\n", static_cast<long long>(f.pts), std::strerror(errno));
         k.commit_fail++;
         k.held--;
         k.done = true;
@@ -480,7 +480,7 @@ void on_flip(int, unsigned int seq, unsigned int sec, unsigned int usec, unsigne
     r.flip_ns = static_cast<std::int64_t>(sec) * 1000000000LL + static_cast<std::int64_t>(usec) * 1000;
     r.seq = seq;
     k->last_flip_seq = seq;
-    // 이전 화면 프레임 반납 (이제 스캔아웃하지 않는다)
+    // Return the previous on-screen frame (no longer scanned out)
     if (k->on_screen) {
         k->on_screen.reset();
         k->held--;
@@ -489,9 +489,9 @@ void on_flip(int, unsigned int seq, unsigned int sec, unsigned int usec, unsigne
     const int n = k->committed;
     if (n == k->args.frames / 4 || n == k->args.frames / 2 || n == (3 * k->args.frames) / 4)
         snapshot_state(*k, "f" + std::to_string(n));
-    // 다음 프레임을 미리 디코드해 둔다 (commit 은 다음 vblank 에서)
+    // Pre-decode the next frame (commit happens at the next vblank)
     decode_ahead(*k);
-    // 30 fps: 다음 vblank(seq+1) 이벤트를 받아 commit 하면 flip 은 seq+2 에 일어난다.
+    // 30 fps: committing on the next vblank (seq+1) event makes the flip happen at seq+2.
     drmVBlank vbl{};
     vbl.request.type = static_cast<drmVBlankSeqType>(DRM_VBLANK_ABSOLUTE | DRM_VBLANK_EVENT |
                                                      (k->crtc_idx > 1 ? ((k->crtc_idx << DRM_VBLANK_HIGH_CRTC_SHIFT) &
@@ -500,7 +500,7 @@ void on_flip(int, unsigned int seq, unsigned int sec, unsigned int usec, unsigne
     vbl.request.sequence = seq + 1;
     vbl.request.signal = reinterpret_cast<unsigned long>(k);
     if (drmWaitVBlank(k->fd, &vbl) != 0) {
-        // vblank 이벤트를 못 걸면 바로 commit (60 fps 가 될 수 있다 — 로그로 남긴다)
+        // If the vblank event can't be armed, commit immediately (may become 60 fps — logged)
         k->log.push_back(std::string("[warn] drmWaitVBlank: ") + std::strerror(errno));
         commit_next(*k);
     } else {
@@ -514,7 +514,7 @@ void on_vblank(int, unsigned int, unsigned int, unsigned int, void* data) {
     commit_next(*k);
 }
 
-// Writeback 커넥터로 현재 비디오 FB(+오버레이)를 한 번 합성해 캡처한다. 성공하면 PPM 을 쓴다.
+// Composite the current video FB (+overlay) once via a Writeback connector and capture it. Writes a PPM on success.
 bool writeback_capture(Kms& k, std::uint32_t vfb, int ov_idx, const std::string& path) {
     drmModeResPtr res = drmModeGetResources(k.fd);
     if (!res) return false;
@@ -541,10 +541,10 @@ bool writeback_capture(Kms& k, std::uint32_t vfb, int ov_idx, const std::string&
     }
     drmModeFreeResources(res);
     if (!wb_conn) {
-        std::printf("[wb] HDMI CRTC 와 다른 CRTC 에 붙는 writeback 커넥터가 없다\n");
+        std::printf("[wb] no writeback connector attachable to a CRTC other than the HDMI CRTC\n");
         return false;
     }
-    // 이 CRTC 에 붙일 수 있는 빈 평면 2개(NV12 SAND 1, AB24 1)
+    // Two free planes attachable to this CRTC (1 NV12 SAND, 1 AB24)
     PlaneCaps *pv = nullptr, *po = nullptr;
     for (auto& p : k.planes) {
         if (&p == k.vplane || &p == k.oplane || !(p.possible_crtcs & (1u << wb_crtc_idx))) continue;
@@ -552,7 +552,7 @@ bool writeback_capture(Kms& k, std::uint32_t vfb, int ov_idx, const std::string&
         else if (!po && p.ab24_lin) po = &p;
     }
     if (!pv) {
-        std::printf("[wb] writeback CRTC 에 쓸 NV12 평면이 없다\n");
+        std::printf("[wb] no NV12 plane available for the writeback CRTC\n");
         return false;
     }
     Props wprops = load_props(k.fd, wb_conn, DRM_MODE_OBJECT_CONNECTOR);
@@ -592,7 +592,7 @@ bool writeback_capture(Kms& k, std::uint32_t vfb, int ov_idx, const std::string&
     const int ret = drmModeAtomicCommit(k.fd, req, DRM_MODE_ATOMIC_ALLOW_MODESET, nullptr);
     drmModeAtomicFree(req);
     if (ret != 0) {
-        std::printf("[wb] writeback commit 실패: %s\n", std::strerror(errno));
+        std::printf("[wb] writeback commit failed: %s\n", std::strerror(errno));
         destroy_dumb(k.fd, cap);
         return false;
     }
@@ -603,7 +603,7 @@ bool writeback_capture(Kms& k, std::uint32_t vfb, int ov_idx, const std::string&
         close(out_fence);
     }
     std::vector<std::uint8_t> rgb(static_cast<std::size_t>(mw) * static_cast<std::size_t>(mh) * 3);
-    // XB24: 메모리 R,G,B,X / XR24: B,G,R,X — 실제로 만든 fb 포맷을 다시 읽는다
+    // XB24: memory R,G,B,X / XR24: B,G,R,X — re-read the fb format actually created
     drmModeFB2Ptr fbi = drmModeGetFB2(k.fd, cap.fb);
     const bool is_xr24 = fbi && fbi->pixel_format == DRM_FORMAT_XRGB8888;
     if (fbi) drmModeFreeFB2(fbi);
@@ -619,7 +619,7 @@ bool writeback_capture(Kms& k, std::uint32_t vfb, int ov_idx, const std::string&
         }
     write_ppm(path, rgb.data(), mw, mh);
     std::printf("[wb] captured -> %s (%s)\n", path.c_str(), is_xr24 ? "XR24" : "XB24");
-    // writeback CRTC 끄기
+    // disable the writeback CRTC
     req = drmModeAtomicAlloc();
     drmModeAtomicAddProperty(req, wb_conn, wprops.get("CRTC_ID"), 0);
     drmModeAtomicAddProperty(req, wb_crtc, cprops.get("MODE_ID"), 0);
@@ -636,7 +636,7 @@ bool writeback_capture(Kms& k, std::uint32_t vfb, int ov_idx, const std::string&
 
 int main(int argc, char** argv) {
     Kms k;
-    std::setvbuf(stdout, nullptr, _IOLBF, 0); // 로그를 줄 단위로 (tee/리다이렉트 중 중단돼도 남도록)
+    std::setvbuf(stdout, nullptr, _IOLBF, 0); // line-buffered logging (so output survives interruption during tee/redirect)
     if (!parse_args(argc, argv, k.args)) {
         usage(argv[0]);
         return 2;
@@ -653,7 +653,7 @@ int main(int argc, char** argv) {
     drmSetClientCap(k.fd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
     const int atomic_ok = drmSetClientCap(k.fd, DRM_CLIENT_CAP_ATOMIC, 1);
     drmSetClientCap(k.fd, DRM_CLIENT_CAP_WRITEBACK_CONNECTORS, 1);
-    // open 시점에 master 가 없었다면 이미 master 다. 아니면 SET_MASTER 를 시도한다(labwc 가 있으면 EACCES/EBUSY).
+    // If there was no master at open, we're already master. Otherwise try SET_MASTER (EACCES/EBUSY if labwc is running).
     bool master = drmIsMaster(k.fd);
     int set_master_errno = 0;
     if (!master) {
@@ -664,7 +664,7 @@ int main(int argc, char** argv) {
     std::printf("[kms] %s atomic=%s master=%s%s\n", a.card.c_str(), atomic_ok == 0 ? "yes" : "no", master ? "yes" : "NO",
                 master ? "" : (std::string(" (drmSetMaster: ") + std::strerror(set_master_errno) + ")").c_str());
 
-    // 커넥터·CRTC·모드
+    // connector / CRTC / mode
     drmModeResPtr res = drmModeGetResources(k.fd);
     if (!res) {
         std::fprintf(stderr, "drmModeGetResources: %s\n", std::strerror(errno));
@@ -675,7 +675,7 @@ int main(int argc, char** argv) {
         if (!c) continue;
         if (c->connector_type == DRM_MODE_CONNECTOR_HDMIA && c->connection == DRM_MODE_CONNECTED && c->count_modes > 0) {
             k.conn_id = c->connector_id;
-            // 모드: 현재 CRTC 모드가 있으면 그것, 없으면 1920x1080@60 우선, 그다음 preferred
+            // mode: current CRTC mode if any, else prefer 1920x1080@60, then preferred
             std::uint32_t cur_crtc = 0;
             if (c->encoder_id) {
                 if (drmModeEncoderPtr e = drmModeGetEncoder(k.fd, c->encoder_id)) {
@@ -713,7 +713,7 @@ int main(int argc, char** argv) {
     }
     drmModeFreeResources(res);
     if (!k.conn_id || !k.crtc_id) {
-        std::fprintf(stderr, "연결된 HDMI 커넥터/CRTC 를 찾지 못했다\n");
+        std::fprintf(stderr, "no connected HDMI connector/CRTC found\n");
         return 1;
     }
     std::printf("[kms] connector %u crtc %u (idx %d) mode %s %ux%u@%u\n", k.conn_id, k.crtc_id, k.crtc_idx, k.mode.name,
@@ -721,7 +721,7 @@ int main(int argc, char** argv) {
     k.crtc_props = load_props(k.fd, k.crtc_id, DRM_MODE_OBJECT_CRTC);
     k.conn_props = load_props(k.fd, k.conn_id, DRM_MODE_OBJECT_CONNECTOR);
 
-    // 평면 선택
+    // plane selection
     k.planes = load_planes(k.fd);
     for (auto& p : k.planes) {
         if (!(p.possible_crtcs & (1u << k.crtc_idx))) continue;
@@ -744,7 +744,7 @@ int main(int argc, char** argv) {
             }
         }
     if (!k.vplane) {
-        std::fprintf(stderr, "NV12xSAND128 을 받는 평면이 이 CRTC 에 없다\n");
+        std::fprintf(stderr, "no plane on this CRTC accepts NV12xSAND128\n");
         return 1;
     }
     std::printf("[kms] video plane %u (%s) COLOR_ENCODING %s COLOR_RANGE %s | overlay plane %u (%s)\n", k.vplane->id,
@@ -752,11 +752,11 @@ int main(int argc, char** argv) {
                 k.vplane->props.get("COLOR_RANGE") ? "yes" : "no", k.oplane ? k.oplane->id : 0,
                 k.oplane ? k.oplane->type.c_str() : "-");
 
-    // 모드 blob (master 가 없어도 된다: CREATEPROPBLOB 은 DRM_MASTER 가 아니다)
+    // mode blob (works without master: CREATEPROPBLOB is not DRM_MASTER)
     if (drmModeCreatePropertyBlob(k.fd, &k.mode, sizeof(k.mode), &k.mode_blob) != 0)
-        std::printf("[kms] CreatePropertyBlob(mode) 실패: %s\n", std::strerror(errno));
+        std::printf("[kms] CreatePropertyBlob(mode) failed: %s\n", std::strerror(errno));
 
-    // 검출·디코더
+    // detections / decoder
     if (!a.dets.empty()) {
         std::size_t total = 0;
         k.dets = load_detections(a.dets, &total);
@@ -767,7 +767,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    // 오버레이 dumb buffer 링
+    // overlay dumb buffer ring
     const int mw = k.mode.hdisplay, mh = k.mode.vdisplay;
     const int dw = a.dst_w > 0 ? a.dst_w : mw, dh = a.dst_h > 0 ? a.dst_h : mh;
     if (k.oplane) {
@@ -780,17 +780,17 @@ int main(int argc, char** argv) {
                 break;
             }
             if (b.pitch != static_cast<std::uint32_t>(dw * 4))
-                std::printf("[kms] 경고: dumb pitch %u != w*4 — 페인터는 패킹 버퍼를 가정한다\n", b.pitch);
+                std::printf("[kms] warning: dumb pitch %u != w*4 — the painter assumes a packed buffer\n", b.pitch);
             k.ov.push_back(b);
         }
         std::printf("[kms] overlay dumb buffers %zu x %dx%d %s\n", k.ov.size(), dw, dh,
-                    fmt == DRM_FORMAT_ABGR8888 ? "AB24" : "AR24(주의: 채널 순서 R/B 바뀜)");
+                    fmt == DRM_FORMAT_ABGR8888 ? "AB24" : "AR24(caution: R/B channel order swapped)");
         k.painter = std::make_unique<OverlayPainter>(dw, dh, 3);
     }
 
-    // 첫 프레임 FB (master 없이 되는지 확인)
+    // first frame FB (check whether it works without master)
     if (!decode_ahead(k)) {
-        std::fprintf(stderr, "첫 프레임 디코드 실패: %s\n", k.dec.error().c_str());
+        std::fprintf(stderr, "first frame decode failed: %s\n", k.dec.error().c_str());
         return 1;
     }
     {
@@ -811,7 +811,7 @@ int main(int argc, char** argv) {
                     k.oplane ? "on" : "off", dw, dh, ret == 0 ? "OK" : std::strerror(e));
         if (!master) {
             std::printf("\nRESULT_KMS_CHECK,%s,master=no,addfb2=ok,test_only=%s\n", a.label.c_str(), ret == 0 ? "ok" : std::strerror(e));
-            std::printf("DRM master 가 없다(labwc/lightdm 이 잡고 있음). 실제 표시 측정은 run_kms_probe.sh 절차로 사용자가 실행해야 한다.\n");
+            std::printf("No DRM master (held by labwc/lightdm). The user must run the actual display measurement via the run_kms_probe.sh procedure.\n");
             return 3;
         }
         if (ret != 0 || a.check_only) return ret != 0 ? 1 : 0;
@@ -821,7 +821,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    // ── 표시 루프 ──
+    // ── display loop ──
     drmEventContext ev{};
     ev.version = 3;
     ev.page_flip_handler2 = on_flip;
@@ -839,7 +839,7 @@ int main(int argc, char** argv) {
             meas_f0 = k.committed;
         }
         if (a.writeback_at >= 0 && k.committed == a.writeback_at + 1 && !k.flip_pending && k.on_screen) {
-            // on_screen 프레임을 writeback 으로 캡처 (한 번만)
+            // capture the on_screen frame via writeback (once only)
             static bool once = false;
             if (!once) {
                 once = true;
@@ -855,7 +855,7 @@ int main(int argc, char** argv) {
         const int pr = poll(&p, 1, 1000);
         if (pr < 0 && errno != EINTR) break;
         if (pr == 0) {
-            std::fprintf(stderr, "[kms] 1초 동안 이벤트 없음 (flip_pending=%d vblank_pending=%d)\n", k.flip_pending,
+            std::fprintf(stderr, "[kms] no events for 1 second (flip_pending=%d vblank_pending=%d)\n", k.flip_pending,
                          k.vblank_pending);
             if (g_stop) break;
             continue;
@@ -867,7 +867,7 @@ int main(int argc, char** argv) {
     const std::int64_t cpu1 = self_cpu_ns();
     const V3dStats v3d_b = read_v3d_stats();
 
-    // ── 요약 ──
+    // ── summary ──
     std::vector<double> iv, gap, commit_to_flip, draw, commit_call;
     int late = 0;
     for (std::size_t i = 1; i < k.recs.size(); ++i) {
@@ -919,7 +919,7 @@ int main(int argc, char** argv) {
         std::fclose(f);
     }
 
-    // 정리: 평면을 끄고 FB 를 지운다. master 를 놓으면 fbcon/다음 master 가 화면을 다시 잡는다.
+    // Cleanup: disable planes and remove FBs. Once master is released, fbcon/the next master takes the screen back.
     {
         drmModeAtomicReqPtr req = drmModeAtomicAlloc();
         disable_plane(req, *k.vplane);

@@ -1,11 +1,11 @@
-// GPU 전처리(SandLetterbox) vs CPU 기준(de-SAND → cpu_letterbox_nv12_bt709) 비교
+// GPU preprocessing (SandLetterbox) vs CPU reference (de-SAND → cpu_letterbox_nv12_bt709) comparison
 //
-// 같은 DRM_PRIME 프레임을 두 경로로 변환한다.
-//   GPU: dma-buf import → sand_letterbox.comp  (NHWC 파이프라인과 NHCW 파이프라인 각각)
+// Converts the same DRM_PRIME frame via two paths.
+//   GPU: dma-buf import → sand_letterbox.comp  (both the NHWC pipeline and the NHCW pipeline)
 //   CPU: dma-buf mmap(DMA_BUF_IOCTL_SYNC) → desand_nv12(sand.hpp) → cpu_letterbox_nv12_bt709(cpu_letterbox.hpp)
-// 기준: 콘텐츠 영역 최대 오차 <= 2, 평균 오차 <= 0.5, 패딩 영역은 정확히 114.
-// NHCW 케이스는 CPU 기준을 rgb_packed_to_nhcw()로 전치한 버퍼와 바이트 단위로 완전히 같아야 한다(오차 0).
-// 실패하면 build/05_tests/preproc_diff/ 에 GPU·CPU·차이(x32) 이미지를 저장한다(NHCW는 packed로 되돌려 저장).
+// Criteria: content region max error <= 2, mean error <= 0.5, padding region exactly 114.
+// The NHCW case must be byte-for-byte identical (zero error) to the CPU reference transposed with rgb_packed_to_nhcw().
+// On failure, GPU / CPU / diff (x32) images are saved to build/05_tests/preproc_diff/ (NHCW is converted back to packed before saving).
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
@@ -64,11 +64,11 @@ struct FrameData {
     int src_w = 0, src_h = 0;
     yvo::LetterboxParams lb;
     std::vector<std::uint8_t> gpu, cpu;    // packed RGB888 (NHWC)
-    std::vector<std::uint8_t> gpu_nhcw;    // NHCW 파이프라인 출력 그대로
+    std::vector<std::uint8_t> gpu_nhcw;    // NHCW pipeline output as is
     double gpu_ms = -1, gpu_nhcw_ms = -1;
 };
 
-// 전체 스위트에서 한 번만 디코드: 대상 프레임의 GPU·CPU 결과를 모은다
+// Decode only once for the whole suite: collect GPU / CPU results for the target frames
 class PreprocTest : public ::testing::TestWithParam<int> {
 protected:
     static void SetUpTestSuite() {
@@ -124,7 +124,7 @@ protected:
                     return;
                 }
                 frames_[i] = std::move(d);
-                slot ^= 1; // 두 슬롯 번갈아 사용
+                slot ^= 1; // alternate between the two slots
             }
         } catch (const std::exception& e) {
             setup_error_ = std::string("exception: ") + e.what();
@@ -231,12 +231,12 @@ TEST_P(PreprocTest, MatchesCpuReference) {
     EXPECT_LE(max_err, 2) << "worst pixel at (" << worst_x << "," << worst_y << ")";
     EXPECT_LE(mean_err, 0.5);
     EXPECT_EQ(pad_bad, 0u) << "padding bytes != " << int(lb.pad_value);
-    // 검증 레이어를 켠 실행(VK_LOADER_LAYERS_ENABLE='*validation')에서 스위트 전체 에러 0건이어야 한다
+    // In a run with validation layers on (VK_LOADER_LAYERS_ENABLE='*validation'), the whole suite must have 0 errors
     EXPECT_EQ(ctx_->validation_errors(), 0u);
     EXPECT_NE(std::string(ctx_->device_name()).find("V3D"), std::string::npos) << "selected " << ctx_->device_name();
 }
 
-// NHCW 출력: CPU 기준(packed)을 rgb_packed_to_nhcw()로 전치한 버퍼와 바이트 단위로 완전히 같아야 한다.
+// NHCW output: must be byte-for-byte identical to the CPU reference (packed) transposed with rgb_packed_to_nhcw().
 TEST_P(PreprocTest, NhcwMatchesCpuReference) {
     const int idx = GetParam();
     auto it = frames_.find(idx);
@@ -262,7 +262,7 @@ TEST_P(PreprocTest, NhcwMatchesCpuReference) {
             }
         }
     }
-    // 레이아웃만 다르고 픽셀 값은 NHWC 경로와 같아야 한다(전치해서 되돌린 결과가 바이트 단위로 일치).
+    // Only the layout differs; pixel values must equal the NHWC path (transposing back gives a byte-exact match).
     std::vector<std::uint8_t> back(n);
     yvo::nhcw_to_rgb_packed(d.gpu_nhcw.data(), lb.dst_w, lb.dst_h, back.data());
     const bool same_as_nhwc = back == d.gpu;
@@ -273,7 +273,7 @@ TEST_P(PreprocTest, NhcwMatchesCpuReference) {
                 static_cast<int>(worst) % lb.dst_w, same_as_nhwc ? 1 : 0, d.gpu_nhcw_ms);
 
     if (mismatch != 0 || !same_as_nhwc) {
-        FrameData packed = d;   // 시각 확인은 packed로 되돌려 기존 유틸리티를 그대로 쓴다
+        FrameData packed = d;   // for visual inspection, convert back to packed and reuse the existing utility as is
         packed.gpu = back;
         save_images(idx, packed);
     }

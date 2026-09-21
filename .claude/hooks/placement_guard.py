@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""PreToolUse(Write) 훅 본체. stdin 으로 훅 입력 JSON 을 받고, 차단할 때만 exit 2 + stderr.
+"""PreToolUse(Write) hook body. Reads the hook input JSON from stdin; exits 2 + stderr only when blocking.
 
-새 파일 경로 하나를 06_tools/python/check_structure.py 의 classify_new_path() 로 판정한다.
-파일 내용은 보지 않는다. 판정 순서(어느 단계든 예외·판정 불가면 통과 = fail-open):
-  1. file_path 파싱 실패            → 통과
-  2. 프로젝트 루트 밖 경로           → 통과 (~/.claude/plans, 스크래치패드 등)
-  3. 이미 존재하는 파일              → 통과 (덮어쓰기는 편집으로 본다)
-  4. build*/ · 11_logs/ 아래         → 통과
-  5. YVO_PLACEMENT_OFF=1             → 통과
-  6. classify_new_path(relpath)      → import 실패면 통과
-  7. 위반이면 stderr 안내 + exit 2
+Judges a single new file path with classify_new_path() from 06_tools/python/check_structure.py.
+Does not look at file contents. Decision order (an exception or undecidable at any step = pass, fail-open):
+  1. file_path parse failure        -> pass
+  2. path outside project root      -> pass (~/.claude/plans, scratchpad, etc.)
+  3. file already exists            -> pass (overwriting counts as editing)
+  4. under build*/ or 11_logs/      -> pass
+  5. YVO_PLACEMENT_OFF=1            -> pass
+  6. classify_new_path(relpath)     -> pass if import fails
+  7. on violation, stderr guidance + exit 2
 """
 import fnmatch
 import json
@@ -28,7 +28,7 @@ def project_root() -> str:
 
 
 def judge(data: dict, root: str) -> str | None:
-    """차단 메시지를 돌려준다. 통과면 None."""
+    """Return the block message, or None to pass."""
     path = (data.get("tool_input") or {}).get("file_path")
     if not isinstance(path, str) or not path:
         return None                                              # 1
@@ -55,9 +55,9 @@ def judge(data: dict, root: str) -> str | None:
     if v is None:
         return None
     rule_id, why, suggestion = v                                 # 7
-    return (f"[placement_guard] 차단: {rel} — {rule_id} {why}. 올바른 위치: {suggestion}. "
-            f"정본: STRUCTURE.md. 규칙이 틀렸다고 판단되면 사용자 확인 후 STRUCTURE.md 와 "
-            f"06_tools/structure_rules.toml 을 함께 고친다(우회: YVO_PLACEMENT_OFF=1 로 세션 시작).\n")
+    return (f"[placement_guard] blocked: {rel} — {rule_id} {why}. Correct location: {suggestion}. "
+            f"Source of truth: STRUCTURE.md. If you believe the rule is wrong, confirm with the user, then fix STRUCTURE.md and "
+            f"06_tools/structure_rules.toml together (bypass: start the session with YVO_PLACEMENT_OFF=1).\n")
 
 
 def main() -> int:
@@ -66,8 +66,8 @@ def main() -> int:
         if not isinstance(data, dict):
             return 0
         msg = judge(data, project_root())
-    except Exception as e:   # noqa: BLE001 — 판정 불가는 통과시킨다(fail-open). 원인만 남긴다.
-        sys.stderr.write(f"[placement_guard] 판정 생략({type(e).__name__}: {e})\n")
+    except Exception as e:   # noqa: BLE001 — undecidable means pass (fail-open). Only record the cause.
+        sys.stderr.write(f"[placement_guard] decision skipped ({type(e).__name__}: {e})\n")
         return 0
     if msg:
         sys.stderr.write(msg)

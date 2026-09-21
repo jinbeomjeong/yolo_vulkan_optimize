@@ -1,19 +1,19 @@
-// yvo_isp_pipeline: HEVC HW 디코드(DRM_PRIME) → PiSP BE(ISP) letterbox → HailoRT yolov11m 추론
+// yvo_isp_pipeline: HEVC HW decode (DRM_PRIME) → PiSP BE (ISP) letterbox → HailoRT yolov11m inference
 //
-// 01_src/pipeline/main.cpp(yvo_pipeline)와 같은 일을 하되 전처리만 Vulkan 셰이더 → ISP로 바꿨다.
-// main.cpp는 건드리지 않는다. 검출 파싱은 HailoRunner 안의 parse_nms_by_class + letterbox 역변환을
-// 그대로 쓰므로 두 도구의 검출 경로는 완전히 같다.
+// Does the same as 01_src/pipeline/main.cpp (yvo_pipeline), but with preprocessing switched from the Vulkan shader to the ISP.
+// main.cpp is not touched. Detection parsing reuses parse_nms_by_class + letterbox inverse mapping inside HailoRunner,
+// so the detection path of the two tools is identical.
 //
-//   --layout nhwc : ISP 출력(packed RGB888)을 그대로 HailoRT에 넘긴다(A안).
-//                   HailoRT가 CPU에서 NHWC→NHCW 전치를 한다. 그 비용이 이 측정의 핵심 미지수다.
-//   --layout nhcw : ISP 출력을 우리가 NHCW로 전치해 별도 dma-heap 버퍼로 넘긴다(C안).
+//   --layout nhwc : pass the ISP output (packed RGB888) to HailoRT as-is (option A).
+//                   HailoRT does the NHWC→NHCW transpose on the CPU. That cost is the key unknown of this measurement.
+//   --layout nhcw : we transpose the ISP output to NHCW and pass it in a separate dma-heap buffer (option C).
 //
-// 스레드 구조 (main.cpp와 다른 점)
-//   - IspResizer::process()가 동기다(BackendDevice::Run()에 비동기 API가 없다). 그래서 디코드와
-//     전처리가 겹치지 않는다. NPU 상한이 51.7 FPS라 처리량 병목은 아니지만 e2e 지연에는 불리하다.
-//   - HailoRT 콜백 스레드가 슬롯을 반납하는 구조는 main.cpp와 같다.
-// 슬롯 규약: ISP 출력 슬롯 = HailoRT 슬롯 = NHCW 버퍼 슬롯 (0..slots-1)
-//   free → [ISP process] → [(nhcw면) 전치] → [HailoRunner::submit] → [완료 콜백] → free
+// Thread structure (differences from main.cpp)
+//   - IspResizer::process() is synchronous (BackendDevice::Run() has no async API). So decode and
+//     preprocessing do not overlap. The NPU ceiling is 51.7 FPS so it is not a throughput bottleneck, but it hurts e2e latency.
+//   - The HailoRT callback thread returning slots works the same as in main.cpp.
+// Slot convention: ISP output slot = HailoRT slot = NHCW buffer slot (0..slots-1)
+//   free → [ISP process] → [transpose (if nhcw)] → [HailoRunner::submit] → [completion callback] → free
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -66,11 +66,11 @@ struct Args {
     std::string video = YVO_DEFAULT_VIDEO;
     std::string hef = YVO_DEFAULT_HEF;
     std::string media = "/dev/media0";
-    std::string filter; // libpisp resample 필터(비면 smart selection: 1.5배 리샘플 구간 = lanczos2)
-    long frames = 0; // 0 = 전체
+    std::string filter; // libpisp resample filter (empty = smart selection: 1.5x resample range = lanczos2)
+    long frames = 0; // 0 = all
     Mode mode = Mode::Dmabuf;
     yvo::TensorLayout layout = yvo::TensorLayout::Nhwc;
-    yvo::isp::RepackMode repack = yvo::isp::RepackMode::Cpu; // layout nhcw일 때만 의미 있다
+    yvo::isp::RepackMode repack = yvo::isp::RepackMode::Cpu; // meaningful only with layout nhcw
     int batch = 8;
     int slots = 0; // 0 = max(4, batch*2)
     unsigned int branch = 1;
@@ -87,9 +87,9 @@ void usage(const char* a0) {
                  "          [--repack cpu|neon] [--batch N] [--slots N] [--branch N] [--media /dev/mediaN]\n"
                  "          [--filter lanczos3|lanczos2|bicubic-spline|michel-netravali]\n"
                  "          [--score T] [--dump-dir DIR] [--dump-every K] [--quiet] [--csv-label L]\n"
-                 "  --layout nhwc : ISP 출력을 그대로 HailoRT에 (HailoRT가 CPU 전치) — A안\n"
-                 "  --layout nhcw : 우리가 전치해서 별도 dma-heap 버퍼로 넘김 — C안\n"
-                 "  --mode        : HailoRT 입력 전달 방식. dmabuf는 fd(set_dma_buffer), ptr는 매핑 포인터\n",
+                 "  --layout nhwc : pass ISP output to HailoRT as-is (HailoRT transposes on CPU) — option A\n"
+                 "  --layout nhcw : we transpose and pass it in a separate dma-heap buffer — option C\n"
+                 "  --mode        : how HailoRT input is passed. dmabuf = fd (set_dma_buffer), ptr = mapped pointer\n",
                  a0);
 }
 
@@ -130,7 +130,7 @@ bool parse(int argc, char** argv, Args& a) {
     return a.batch >= 1 && a.batch <= 64 && a.dump_every >= 1;
 }
 
-// 스레드 안전 슬롯 풀 + 완료 큐 (main.cpp의 SlotExchange와 같은 규약)
+// Thread-safe slot pool + completion queue (same convention as SlotExchange in main.cpp)
 struct Completion {
     yvo::InferResult result;
     Clock::time_point t_done;
@@ -172,7 +172,7 @@ private:
     std::deque<Completion> done_;
 };
 
-// main.cpp의 draw_and_save와 같은 그림(비교용 PNG가 같은 형식이어야 한다)
+// Same drawing as draw_and_save in main.cpp (comparison PNGs must be in the same format)
 void draw_and_save(const std::string& path, const std::vector<std::uint8_t>& rgb, const yvo::LetterboxParams& lb,
                    const std::vector<yvo::Detection>& dets) {
     cv::Mat m(lb.dst_h, lb.dst_w, CV_8UC3, const_cast<std::uint8_t*>(rgb.data()));
@@ -190,7 +190,7 @@ void draw_and_save(const std::string& path, const std::vector<std::uint8_t>& rgb
         std::snprintf(label, sizeof(label), "%s %.2f", class_name(d.class_id), static_cast<double>(d.score));
         cv::putText(bgr, label, cv::Point(x1, std::max(10, y1 - 3)), cv::FONT_HERSHEY_SIMPLEX, 0.35, color, 1);
     }
-    if (!cv::imwrite(path, bgr)) std::fprintf(stderr, "[warn] PNG 저장 실패: %s\n", path.c_str());
+    if (!cv::imwrite(path, bgr)) std::fprintf(stderr, "[warn] failed to save PNG: %s\n", path.c_str());
 }
 
 const char* layout_name(yvo::TensorLayout l) { return l == yvo::TensorLayout::Nhcw ? "nhcw" : "nhwc"; }
@@ -199,8 +199,8 @@ int run(const Args& a) {
     const bool dmabuf = a.mode == Mode::Dmabuf;
     const bool nhcw = a.layout == yvo::TensorLayout::Nhcw;
     if (!dmabuf && nhcw) {
-        std::fprintf(stderr, "--mode ptr --layout nhcw는 쓰지 않는다: NHCW는 HailoRT가 입력을 직접 DMA 매핑하므로\n"
-                             "dma-buf로 넘겨야 사전 매핑(map_dmabuf)이 된다. --mode dmabuf를 쓸 것.\n");
+        std::fprintf(stderr, "--mode ptr --layout nhcw is not used: HailoRT DMA-maps NHCW input directly, so it\n"
+                             "must be passed as a dma-buf to get pre-mapping (map_dmabuf). Use --mode dmabuf.\n");
         return 2;
     }
     const double soc_t0 = soc_temperature();
@@ -214,7 +214,7 @@ int run(const Args& a) {
     }
     const int src_w = dec.width(), src_h = dec.height();
 
-    // 첫 프레임의 SAND 기하로 ISP 설정을 확정한다(프레임은 바로 놓고 디코더를 다시 연다).
+    // Fix the ISP config from the first frame's SAND geometry (release the frame immediately and reopen the decoder).
     yvo::isp::IspResizerConfig icfg;
     icfg.media_device = a.media;
     icfg.branch = a.branch;
@@ -249,21 +249,21 @@ int run(const Args& a) {
     hcfg.score_threshold = a.score;
     auto runner = std::make_unique<yvo::HailoRunner>(hcfg);
     if (runner->input_frame_size() != isp.output_size()) {
-        std::fprintf(stderr, "입력 크기 불일치: NPU %zu, ISP %zu\n", runner->input_frame_size(), isp.output_size());
+        std::fprintf(stderr, "input size mismatch: NPU %zu, ISP %zu\n", runner->input_frame_size(), isp.output_size());
         return 1;
     }
 
-    // C안: NHCW 전치 결과를 담을 dma-heap 버퍼(슬롯마다 하나) + 사전 DMA 매핑
+    // Option C: dma-heap buffers holding the NHCW transpose result (one per slot) + DMA pre-mapping
     std::unique_ptr<yvo::DmaHeapPool> nhcw_bufs;
     if (nhcw) {
-        // core/dma_heap_alloc.hpp 의 풀을 쓴다. 2026-09-21 이전의 isp 전용 DmaHeapBuffers 에는
-        // HailoRT read_async 가 요구하는 16384 정렬이 없었고 READ 방향 sync 도 없었다.
+        // Uses the pool in core/dma_heap_alloc.hpp. The isp-only DmaHeapBuffers before 2026-09-21
+        // lacked the 16384 alignment HailoRT read_async requires, and had no READ-direction sync either.
         yvo::DmaHeapConfig hc;
         hc.name = "yvo_nhcw";
         nhcw_bufs = std::make_unique<yvo::DmaHeapPool>(hc);
         for (int s = 0; s < a.slots; ++s) {
             const int i = nhcw_bufs->allocate(isp.output_size());
-            // dma_map_dmabuf 에는 dma-buf 실크기를 준다(HailoRT 크기 계약)
+            // pass the real dma-buf size to dma_map_dmabuf (HailoRT size contract)
             runner->map_dmabuf(nhcw_bufs->at(i).fd, nhcw_bufs->at(i).dmabuf_size);
         }
     } else if (dmabuf) {
@@ -362,16 +362,16 @@ int run(const Args& a) {
 
             const auto w0 = Clock::now();
             std::optional<int> slot = ex.acquire_wait(std::chrono::milliseconds(5000));
-            if (!slot) throw std::runtime_error("슬롯 대기 타임아웃(5 s): HailoRT 콜백이 오지 않음");
+            if (!slot) throw std::runtime_error("slot wait timeout (5 s): no HailoRT callback");
             wait_block_ms.push_back(std::chrono::duration<double, std::milli>(Clock::now() - w0).count());
 
             yvo::PreprocOutput out = isp.process(*f, *slot);
             pre_ms.push_back(isp.last_isp_ms());
-            f.reset(); // ISP Run()은 동기라 여기서 입력 프레임을 놓아도 된다
+            f.reset(); // ISP Run() is synchronous, so the input frame can be released here
 
             const bool want_png = jsonl && out.pts % a.dump_every == 0;
             if (nhcw || want_png) {
-                // ISP 출력은 캐시 매핑 dma-heap이다. CPU로 읽기 전에 DMA_BUF_IOCTL_SYNC로 감싼다.
+                // ISP output is cache-mapped dma-heap. Wrap in DMA_BUF_IOCTL_SYNC before reading on the CPU.
                 const yvo::isp::IspResizer::OutputRead lock(isp, *slot);
                 if (nhcw) {
                     auto acc = nhcw_bufs->cpu_access(*slot, yvo::DmaSyncDir::Write);
@@ -393,7 +393,7 @@ int run(const Args& a) {
                 out.dmabuf_fd = nhcw_bufs->at(*slot).fd;
                 out.host_ptr = nhcw_bufs->at(*slot).ptr;
             } else if (!dmabuf) {
-                out.dmabuf_fd = -1; // host 매핑 포인터로 제출
+                out.dmabuf_fd = -1; // submit via host-mapped pointer
             }
             runner->submit(out, on_result);
             ++submitted_npu;
@@ -421,7 +421,7 @@ int run(const Args& a) {
         fail = true;
     }
     const float hailo_t1 = runner->chip_temperature();
-    // 종료 순서: drain(위) → ISP 입력 캐시 비움 → 디코더 close → 러너 해제(dma-buf unmap) → 버퍼 해제
+    // Shutdown order: drain (above) → clear ISP input cache → close decoder → release runner (dma-buf unmap) → free buffers
     isp.clear_input_cache();
     dec.close();
     runner.reset();
@@ -435,7 +435,7 @@ int run(const Args& a) {
     const Stats sd = stats(decode_ms), sp = stats(pre_ms), sr = stats(repack_ms), sn = stats(npu_ms),
                 se = stats(e2e_ms), sw = stats(wait_block_ms);
     if (static_cast<long>(completed) != n || static_cast<long>(completed) != submitted_npu) {
-        std::fprintf(stderr, "[error] 프레임 수 불일치: decoded=%ld npu_submitted=%ld completed=%ld\n", n,
+        std::fprintf(stderr, "[error] frame count mismatch: decoded=%ld npu_submitted=%ld completed=%ld\n", n,
                      submitted_npu, completed);
         fail = true;
     }
@@ -454,7 +454,7 @@ int run(const Args& a) {
         std::printf("repack ms       mean %.3f  median %.3f  p90 %.3f  max %.3f  (%s)\n", sr.mean, sr.median, sr.p90,
                     sr.max, yvo::isp::repack_name(a.repack));
     std::printf("npu latency ms  mean %.3f  median %.3f  p90 %.3f  max %.3f\n", sn.mean, sn.median, sn.p90, sn.max);
-    std::printf("e2e latency ms  mean %.3f  median %.3f  p90 %.3f  max %.3f  (decode 반환 → NPU 완료 콜백)\n",
+    std::printf("e2e latency ms  mean %.3f  median %.3f  p90 %.3f  max %.3f  (decode return → NPU completion callback)\n",
                 se.mean, se.median, se.p90, se.max);
     std::printf("slot wait ms    mean %.3f  p90 %.3f\n", sw.mean, sw.p90);
     std::printf("detections      %ld total, %.2f / frame\n", total_dets,
@@ -462,7 +462,7 @@ int run(const Args& a) {
     std::printf("hailo chip temp %.1f -> %.1f C\n", static_cast<double>(hailo_t0), static_cast<double>(hailo_t1));
     std::printf("soc temp        %.1f -> %.1f C\n", soc_t0, soc_t1);
     if (!a.csv_label.empty()) {
-        // yvo_pipeline과 같은 22열이다. ISP 행에서는 gpu_* 열이 ISP wall 시간을 담는다(전처리 시간 열).
+        // Same 22 columns as yvo_pipeline. In ISP rows the gpu_* columns hold the ISP wall time (preprocessing time columns).
         std::printf(
             "RESULT_CSV,%s,%s,%s,%d,%d,%ld,%.3f,%.2f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%ld,%.1f,%.1f,%.1f,%.1f,%d\n",
             a.csv_label.c_str(), dmabuf ? "dmabuf" : "ptr", layout_name(a.layout), a.batch, a.slots, completed, wall_s,

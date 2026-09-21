@@ -61,15 +61,15 @@ ExportedDmaBuf DmaBufExporter::allocate_once(std::size_t requested, VkDeviceSize
                                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
         if (type == UINT32_MAX) throw std::runtime_error("DmaBufExporter: no HOST_VISIBLE|HOST_COHERENT memory type");
 
-        // 할당 하나 = 버퍼 하나 = dma-buf 하나. 버퍼를 오프셋 0 에 바인드하므로 dma-buf 시작 = 버퍼 시작이다.
+        // One allocation = one buffer = one dma-buf. The buffer is bound at offset 0, so dma-buf start = buffer start.
         //
-        // ⚠ **VkMemoryDedicatedAllocateInfo 를 붙이면 allocationSize 가 req.size 와 정확히 같아야 한다**
-        //   (VUID-VkMemoryDedicatedAllocateInfo-buffer-02965). 그런데 V3DV 는 버퍼 메모리 요구 크기를
-        //   버퍼 크기 + 256 B 로 돌려주므로(import 쪽 -256 B 규칙의 이면) req.size 가 align 배수가 아니다.
-        //   → **할당 크기를 align 배수로 맞추려면 전용 할당을 쓸 수 없다.** 다행히 이 장치는 dma-buf export 에
-        //   전용 할당을 요구하지 않는다(dmabuf_export_dedicated_only() == false, 실측). 그래서 드라이버가
-        //   요구할 때만 전용으로 가고, 그때는 allocationSize 를 올릴 수 없으므로 alloc_size 가 align 배수가
-        //   아닐 수 있다 — 그 사실을 dedicated 플래그로 노출한다(호출자가 판단한다).
+        // ⚠ **If VkMemoryDedicatedAllocateInfo is attached, allocationSize must equal req.size exactly**
+        //   (VUID-VkMemoryDedicatedAllocateInfo-buffer-02965). But V3DV reports the buffer memory requirement size as
+        //   buffer size + 256 B (the flip side of the import-side -256 B rule), so req.size is not a multiple of align.
+        //   → **To round the allocation size up to a multiple of align, a dedicated allocation cannot be used.** Fortunately this device does not
+        //   require dedicated allocation for dma-buf export (dmabuf_export_dedicated_only() == false, measured). So we go
+        //   dedicated only when the driver requires it, and then allocationSize cannot be raised, so alloc_size may not
+        //   be a multiple of align — that fact is exposed through the dedicated flag (the caller decides).
         const bool need_dedicated = ctx_.dmabuf_export_dedicated_only();
         VkMemoryDedicatedAllocateInfo ded{};
         ded.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
@@ -117,11 +117,11 @@ int DmaBufExporter::allocate(std::size_t size) {
     const VkDeviceSize want = align_up(size, cfg_.align);
 
     ExportedDmaBuf e = allocate_once(size, want);
-    // 매핑 시작이 align 배수가 아니면 align 만큼 여유를 더해 한 번만 다시 할당한다.
-    // (정렬된 시작에서 size 바이트를 반드시 쓸 수 있게 만드는 유일한 방법이다.)
+    // If the mapping start is not a multiple of align, reallocate once with align bytes of slack added.
+    // (This is the only way to guarantee that size bytes are writable from an aligned start.)
     if (cfg_.map && e.align_offset != 0) {
         if (cfg_.verbose)
-            std::fprintf(stderr, "[DmaBufExporter] mapped %p not %zu-aligned — %zu B 여유를 더해 재할당\n",
+            std::fprintf(stderr, "[DmaBufExporter] mapped %p not %zu-aligned — reallocating with %zu B of slack\n",
                          static_cast<void*>(e.host_ptr), cfg_.align, cfg_.align);
         release(e);
         e = allocate_once(size, want + cfg_.align);

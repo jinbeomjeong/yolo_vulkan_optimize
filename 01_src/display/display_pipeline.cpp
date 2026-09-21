@@ -16,8 +16,8 @@ double ms_between(Clock::time_point a, Clock::time_point b) {
     return std::chrono::duration<double, std::milli>(b - a).count();
 }
 
-// VulkanSwapchain 을 DisplayBackend 인터페이스에 맞춘다. 로직은 전부 VulkanSwapchain 에 있고
-// 여기서는 이름만 이어 준다(빌드 시점에 wayland 가 없으면 이 파일 자체가 빌드되지 않는다).
+// Adapts VulkanSwapchain to the DisplayBackend interface. All logic lives in VulkanSwapchain;
+// this only forwards the names (if wayland is absent at build time, this file itself is not built).
 class SwapchainBackend final : public DisplayBackend {
 public:
     SwapchainBackend(yvo::vk::VulkanContext& ctx, const SwapchainOptions& opt) : sc_(ctx, opt) {}
@@ -119,14 +119,14 @@ DisplayPipeline::DisplayPipeline(yvo::vk::VulkanContext& ctx, WaylandWindow* win
                                  const DisplayPipelineConfig& cfg)
     : ctx_(ctx), cfg_(cfg) {
     if (cfg_.backend == DisplayBackendKind::WaylandPlanes || cfg_.backend == DisplayBackendKind::Kms)
-        throw std::logic_error("DisplayPipeline: wayland-planes / kms 는 PlaneDisplay 가 맡는다 (plane_display.hpp)");
+        throw std::logic_error("DisplayPipeline: wayland-planes / kms are handled by PlaneDisplay (plane_display.hpp)");
     const bool want_wayland = cfg_.backend != DisplayBackendKind::Offscreen;
     const bool can_wayland = want_wayland && win != nullptr && win->is_open() && ctx_.present_enabled();
     if (cfg_.backend == DisplayBackendKind::Wayland && !can_wayland) {
-        // strict: 조용한 폴백을 금지한다(측정이 몰래 다른 경로로 새는 것을 막는 유일한 방법이다).
-        std::string why = win == nullptr || !win->is_open() ? "Wayland 창을 열지 못했다"
+        // strict: silent fallback is forbidden (the only way to keep measurements from quietly leaking onto another path).
+        std::string why = win == nullptr || !win->is_open() ? "could not open the Wayland window"
                                                             : ctx_.present_unavailable_reason();
-        throw std::runtime_error("--display-backend wayland: " + (why.empty() ? std::string("present 불가") : why));
+        throw std::runtime_error("--display-backend wayland: " + (why.empty() ? std::string("present unavailable") : why));
     }
 
     if (can_wayland) {
@@ -144,7 +144,7 @@ DisplayPipeline::DisplayPipeline(yvo::vk::VulkanContext& ctx, WaylandWindow* win
         backend_ = std::move(sb);
     } else {
         offscreen_ = true;
-        // 오프스크린은 창이 없으므로 요청 크기를 그대로 쓴다. fullscreen 은 1920x1080 을 뜻한다.
+        // Offscreen has no window, so the requested size is used as-is. fullscreen means 1920x1080.
         const int w = cfg_.fullscreen ? cfg_.src_w : cfg_.width;
         const int h = cfg_.fullscreen ? cfg_.src_h : cfg_.height;
         backend_ = std::make_unique<OffscreenBackend>(ctx_, w, h, 3);
@@ -156,7 +156,7 @@ DisplayPipeline::DisplayPipeline(yvo::vk::VulkanContext& ctx, WaylandWindow* win
 }
 
 DisplayPipeline::~DisplayPipeline() {
-    // 예외가 밖으로 나가면 안 된다(소멸자). 남은 GPU 작업은 반드시 끝내고 자원을 놓는다.
+    // Exceptions must not escape (destructor). Remaining GPU work must be finished before releasing resources.
     try {
         drain();
     } catch (...) {
@@ -189,7 +189,7 @@ void DisplayPipeline::apply_extent() {
     const VkExtent2D ext = backend_->extent();
     const bool us = !(static_cast<int>(ext.width) == cfg_.src_w && static_cast<int>(ext.height) == cfg_.src_h &&
                       (cfg_.src_w % 4) == 0);
-    // 이미지 수가 늘었거나 창이 LUT 상한을 넘어 커졌으면 패스를 다시 만든다(인플라이트는 이미 비었다).
+    // If the image count grew or the window grew beyond the LUT upper bound, rebuild the passes (in-flight is already empty).
     const bool rebuild = static_cast<int>(backend_->image_count()) > conv_->num_slots() ||
                          static_cast<int>(ext.width) > conv_->config().max_dst_w;
     if (rebuild) {
@@ -213,7 +213,7 @@ void DisplayPipeline::set_source_size(int w, int h) {
 
 void DisplayPipeline::retain(int slot, const DrmFrame& f) {
     Retained& r = retained_.at(static_cast<std::size_t>(slot));
-    r.frame = f;   // keepalive shared_ptr 추가 참조 — main 의 f.reset() 이후에도 프레임이 산다
+    r.frame = f;   // extra reference to the keepalive shared_ptr — the frame survives even after main's f.reset()
     r.t = Clock::now();
     r.valid = true;
 }
@@ -240,7 +240,7 @@ bool DisplayPipeline::quit_requested() const { return win_ && win_->quit_request
 
 void DisplayPipeline::recreate_if_needed() {
     if (!backend_->needs_recreate()) return;
-    // 구 스왑체인의 이미지·세마포어를 참조하는 제출이 남아 있으면 안 된다 → 전부 끝낸다(블로킹).
+    // No submission referencing the old swapchain's images/semaphores may remain → finish everything (blocking).
     while (!inflight_.empty()) {
         const Pending p = inflight_.front();
         inflight_.pop_front();
@@ -257,7 +257,7 @@ void DisplayPipeline::recreate_if_needed() {
 bool DisplayPipeline::show(int slot, const std::vector<Detection>& dets, std::string_view hud) {
     Retained& r = retained_.at(static_cast<std::size_t>(slot));
     if (!r.valid) return false;
-    // 어떤 경로로 나가든 retained 참조는 여기서 놓는다(표시하면 DisplayConvert 가 따로 잡는다).
+    // Whichever path exits, the retained reference is released here (if displayed, DisplayConvert holds its own).
     const DrmFrame frame = std::move(r.frame);
     const Clock::time_point t_retain = r.t;
     r = Retained{};
@@ -271,30 +271,30 @@ bool DisplayPipeline::show(int slot, const std::vector<Detection>& dets, std::st
         return false;
     }
 
-    // ⚠ **acquire() 보다 먼저** 끝난 표시 슬롯을 회수한다.
-    //   백엔드의 acquire() 는 슬롯을 내주기 전에 그 슬롯의 submit 펜스를 `vkResetFences` 한다
-    //   (VulkanSwapchain::acquire / OffscreenBackend::acquire). 그런데 `DisplayConvert::finish` 는
-    //   그 **같은 펜스**를 무한 대기한다 → acquire 뒤에 finish 하면 이미 리셋된 펜스를 영원히 기다린다.
-    //   (실제로 오프스크린 백엔드에서 교착했다. 스왑체인 경로도 원리상 같은 위험이 있었다.)
-    //   백엔드는 라운드로빈으로 **가장 오래된** 슬롯을 내주고 inflight_ 도 제출 순서라, 앞에서부터
-    //   끝난 것을 걷어내면 acquire 가 내줄 슬롯은 반드시 비어 있다.
+    // ⚠ Collect finished display slots **before acquire()**.
+    //   The backend's acquire() does `vkResetFences` on that slot's submit fence before handing the slot out
+    //   (VulkanSwapchain::acquire / OffscreenBackend::acquire). But `DisplayConvert::finish` waits
+    //   indefinitely on that **same fence** → finishing after acquire waits forever on an already-reset fence.
+    //   (It actually deadlocked on the offscreen backend. The swapchain path had the same risk in principle.)
+    //   The backend hands out the **oldest** slot round-robin and inflight_ is also in submit order, so if
+    //   finished entries are cleared from the front, the slot acquire hands out is guaranteed to be free.
     while (!inflight_.empty() && conv_->ready(inflight_.front().disp)) {
         const Pending p = inflight_.front();
         inflight_.pop_front();
         collect(p);
     }
     if (inflight_.size() >= backend_->image_count()) {
-        // 모든 표시 슬롯이 아직 GPU 에 걸려 있다. **기다리지 않고 버린다** — 표시가 파이프라인을 막으면 안 된다.
+        // All display slots are still tied up on the GPU. **Drop without waiting** — display must not block the pipeline.
         ++busy_dropped_;
         return false;
     }
 
     SwapchainFrame fr;
-    if (!backend_->acquire(&fr)) return false;   // ★ 표시를 버려도 파이프라인은 막히지 않는다
+    if (!backend_->acquire(&fr)) return false;   // ★ dropping the display does not block the pipeline
     const int d = static_cast<int>(fr.sync_index);
     if (conv_->pending(d))
-        throw std::logic_error("DisplayPipeline::show: acquire 가 아직 제출 중인 표시 슬롯을 내줬다 "
-                               "(위 불변식이 깨졌다 — 조용히 교착하느니 여기서 멈춘다)");
+        throw std::logic_error("DisplayPipeline::show: acquire handed out a display slot that is still being submitted "
+                               "(the invariant above is broken — stop here rather than deadlock silently)");
 
     VkCommandBuffer cb = conv_->begin(d);
     backend_->record_acquire_transition(cb, fr);
@@ -313,7 +313,7 @@ bool DisplayPipeline::show(int slot, const std::vector<Detection>& dets, std::st
 
     Pending p;
     p.disp = d;
-    // latest 모드에서는 호출자가 show() 직후 스스로 display_done 을 세운다 → 콜백을 두 번 부르면 안 된다.
+    // In latest mode the caller raises display_done itself right after show() → the callback must not be called twice.
     p.pipe = cfg_.sync == DisplaySync::Latest ? -1 : slot;
     p.t_retain = t_retain;
     p.have_retain = true;
@@ -339,15 +339,15 @@ void DisplayPipeline::drain_present_waits(bool blocking) {
         return;
     }
     while (!present_ids_.empty()) {
-        // 논블로킹이 기본이다. pace=asap 에서 present_wait 로 기다리면 **처리량 측정이 vsync 에 묶인다.**
-        // pace=source(또는 drain)에서는 큐가 프로브와 같은 길이가 됐을 때만 블로킹해 같은 수치를 낸다
-        // (display_probe.cpp:1201 의 image_count-1 규칙과 동일).
+        // Non-blocking is the default. Waiting via present_wait with pace=asap **ties the throughput measurement to vsync.**
+        // With pace=source (or drain) it blocks only when the queue reaches the same length as the probe, to give the same numbers
+        // (same as the image_count-1 rule at display_probe.cpp:1201).
         const bool deep = present_ids_.size() >= std::max<std::size_t>(backend_->image_count() - 1, 1);
         const bool block = blocking || (pace_blocking_ok_ && deep);
         const std::uint64_t timeout = block ? 1000ull * 1000 * 1000 : 0;
         const PresentWait w = present_ids_.front();
         if (!backend_->wait_present(w.id, timeout)) {
-            // 논블로킹 폴링이 계속 실패하는데 큐만 자라면(드롭·재생성) 측정을 포기하고 버린다.
+            // If non-blocking polling keeps failing while the queue only grows (drops/recreation), give up measuring and drop.
             if (!block && present_ids_.size() > backend_->image_count() + 4) {
                 present_ids_.pop_front();
                 continue;
@@ -382,7 +382,7 @@ void DisplayPipeline::drain() {
         collect(p);
     }
     drain_present_waits(true);
-    // 아직 표시되지 않은 채 붙들고 있던 프레임을 놓는다(호출자는 이미 슬롯을 회수했다).
+    // Release frames that were held without being displayed yet (the caller has already reclaimed the slots).
     for (Retained& r : retained_) r = Retained{};
     conv_->clear_import_cache();
     backend_->collect_retired();
@@ -392,7 +392,7 @@ int DisplayPipeline::frames_held() const {
     int n = 0;
     for (const Retained& r : retained_)
         if (r.valid) ++n;
-    // DisplayConvert 가 잡고 있는 프레임은 제출 중인 표시 슬롯 수와 같다.
+    // Frames held by DisplayConvert equal the number of display slots being submitted.
     return n + static_cast<int>(inflight_.size());
 }
 

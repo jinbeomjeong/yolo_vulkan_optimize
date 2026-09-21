@@ -23,7 +23,7 @@ namespace {
 using SteadyClock = std::chrono::steady_clock;
 
 std::string errno_text(int e) {
-    if (e < 0) return "요청 구성 실패(속성 없음 또는 할당 실패)";
+    if (e < 0) return "request construction failed (property missing or allocation failed)";
     return std::string(std::strerror(e)) + " (errno " + std::to_string(e) + ")";
 }
 
@@ -42,7 +42,7 @@ const char* connector_type_name(std::uint32_t t) {
 
 drmModeAtomicReqPtr req_of(void* p) { return static_cast<drmModeAtomicReqPtr>(p); }
 
-// drmModeAtomicReq 의 RAII
+// RAII for drmModeAtomicReq
 struct AtomicReq {
     drmModeAtomicReqPtr p = drmModeAtomicAlloc();
     ~AtomicReq() {
@@ -53,21 +53,21 @@ struct AtomicReq {
     AtomicReq& operator=(const AtomicReq&) = delete;
 };
 
-// drmModeAtomicCommit 을 부르고 errno 를 **즉시** 돌려준다 (0 = 성공). 이후 호출(free 등)이 errno 를 덮기 전에 잡는다.
+// Calls drmModeAtomicCommit and returns errno **immediately** (0 = success). Captured before later calls (free, etc.) overwrite errno.
 int atomic_commit(int fd, drmModeAtomicReqPtr req, std::uint32_t flags, void* user) {
     if (drmModeAtomicCommit(fd, req, flags, user) == 0) return 0;
     const int e = errno;
     return e != 0 ? e : EIO;
 }
 
-// drmHandleEvent 는 user_data 만 넘겨준다. user_data 에는 token 을 싣고, 인스턴스는 dispatch 동안 이 포인터로 찾는다.
+// drmHandleEvent only passes user_data. user_data carries the token, and the instance is found via this pointer during dispatch.
 thread_local KmsScanout* t_dispatching = nullptr;
 
 bool mode_interlaced(const drmModeModeInfo& m) { return (m.flags & DRM_MODE_FLAG_INTERLACE) != 0; }
 
 } // namespace
 
-// ── 속성 표 ───────────────────────────────────────────────────────────────────────────────────
+// ── Property table ────────────────────────────────────────────────────────────────────────────
 std::uint32_t KmsScanout::Props::id(const std::string& n) const {
     auto it = m.find(n);
     return it == m.end() ? 0 : it->second.id;
@@ -107,7 +107,7 @@ void KmsScanout::load_planes() {
     drmModePlaneResPtr pres = drmModeGetPlaneResources(fd_);
     if (!pres) {
         const int e = errno;
-        throw std::runtime_error("kms: drmModeGetPlaneResources 실패: " + errno_text(e));
+        throw std::runtime_error("kms: drmModeGetPlaneResources failed: " + errno_text(e));
     }
     for (std::uint32_t i = 0; i < pres->count_planes; ++i) {
         drmModePlanePtr pl = drmModeGetPlane(fd_, pres->planes[i]);
@@ -126,7 +126,7 @@ void KmsScanout::load_planes() {
             if (drmModePropertyBlobPtr blob = drmModeGetPropertyBlob(fd_, static_cast<std::uint32_t>(inf->value))) {
                 drmModeFormatModifierIterator it{};
                 while (drmModeFormatModifierBlobIterNext(blob, &it)) {
-                    // SAND128 판정은 열 높이 파라미터를 뺀 modifier 로 한다(drm_state.cpp 와 같은 규칙)
+                    // SAND128 is judged on the modifier with the column-height parameter removed (same rule as drm_state.cpp)
                     if (it.fmt == DRM_FORMAT_NV12 && fourcc_mod_broadcom_mod(it.mod) == DRM_FORMAT_MOD_BROADCOM_SAND128)
                         pc.nv12_sand = true;
                     if (it.fmt == DRM_FORMAT_ABGR8888 && it.mod == DRM_FORMAT_MOD_LINEAR) pc.ab24_lin = true;
@@ -139,21 +139,21 @@ void KmsScanout::load_planes() {
     drmModeFreePlaneResources(pres);
 }
 
-// ── 생성 ──────────────────────────────────────────────────────────────────────────────────────
+// ── Construction ──────────────────────────────────────────────────────────────────────────────
 KmsScanout::KmsScanout(const KmsScanoutOptions& opt) : opt_(opt) {
     fd_ = ::open(opt_.card.c_str(), O_RDWR | O_CLOEXEC);
     if (fd_ < 0) {
         const int e = errno;
-        throw std::runtime_error("kms: " + opt_.card + " 열기 실패: " + errno_text(e));
+        throw std::runtime_error("kms: failed to open " + opt_.card + ": " + errno_text(e));
     }
     try {
         if (drmSetClientCap(fd_, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1) != 0) {
             const int e = errno;
-            throw std::runtime_error("kms: DRM_CLIENT_CAP_UNIVERSAL_PLANES 실패: " + errno_text(e));
+            throw std::runtime_error("kms: DRM_CLIENT_CAP_UNIVERSAL_PLANES failed: " + errno_text(e));
         }
         if (drmSetClientCap(fd_, DRM_CLIENT_CAP_ATOMIC, 1) != 0) {
             const int e = errno;
-            throw std::runtime_error("kms: DRM_CLIENT_CAP_ATOMIC 실패(atomic 미지원): " + errno_text(e));
+            throw std::runtime_error("kms: DRM_CLIENT_CAP_ATOMIC failed (atomic not supported): " + errno_text(e));
         }
         std::uint64_t cap = 0;
         ts_monotonic_ = drmGetCap(fd_, DRM_CAP_TIMESTAMP_MONOTONIC, &cap) == 0 && cap != 0;
@@ -165,14 +165,14 @@ KmsScanout::KmsScanout(const KmsScanoutOptions& opt) : opt_(opt) {
 
         crtc_props_ = load_props(crtc_id_, DRM_MODE_OBJECT_CRTC);
         conn_props_ = load_props(conn_id_, DRM_MODE_OBJECT_CONNECTOR);
-        if (!conn_props_.id("CRTC_ID")) throw std::runtime_error("kms: 커넥터 속성 CRTC_ID 없음");
+        if (!conn_props_.id("CRTC_ID")) throw std::runtime_error("kms: connector property CRTC_ID missing");
         for (const char* n : {"MODE_ID", "ACTIVE"})
-            if (!crtc_props_.id(n)) throw std::runtime_error(std::string("kms: CRTC 속성 ") + n + " 없음");
+            if (!crtc_props_.id(n)) throw std::runtime_error(std::string("kms: CRTC property ") + n + " missing");
         prepare_modeset_extras();
-        // 모드 blob 은 master 없이 만들 수 있다(CREATEPROPBLOB 은 DRM_MASTER ioctl 이 아니다)
+        // The mode blob can be created without master (CREATEPROPBLOB is not a DRM_MASTER ioctl)
         if (drmModeCreatePropertyBlob(fd_, mode_raw_.data(), mode_raw_.size(), &mode_blob_) != 0) {
             const int e = errno;
-            throw std::runtime_error("kms: drmModeCreatePropertyBlob(mode) 실패: " + errno_text(e));
+            throw std::runtime_error("kms: drmModeCreatePropertyBlob(mode) failed: " + errno_text(e));
         }
     } catch (...) {
         if (mode_blob_) drmModeDestroyPropertyBlob(fd_, mode_blob_);
@@ -207,7 +207,7 @@ std::string KmsScanout::find_master_holders(const std::string& dri_debug_dir) {
             continue;
         }
         if (line.size() < 21) continue;
-        // command 는 20칸 오른쪽 정렬(%20s) — 공백이 들어간 comm 도 있으므로 폭으로 자른다
+        // command is right-aligned in 20 columns (%20s) — some comm values contain spaces, so cut by width
         std::string cmd = line.substr(0, 20);
         cmd.erase(0, cmd.find_first_not_of(' '));
         std::istringstream rest(line.substr(20));
@@ -219,14 +219,14 @@ std::string KmsScanout::find_master_holders(const std::string& dri_debug_dir) {
         if (!out.empty()) out += ", ";
         out += cmd + "(" + std::to_string(tgid) + ")";
     }
-    return out.empty() ? "(없음)" : out;
+    return out.empty() ? "(none)" : out;
 }
 
 void KmsScanout::acquire_master_or_throw() {
-    // open 시점에 master 가 비어 있었다면 커널이 이미 이 파일을 master 로 만들었다.
+    // If master was free at open time, the kernel has already made this file master.
     master_ = drmIsMaster(fd_) != 0;
     if (!opt_.acquire_master) {
-        // 테스트 모드: 절대 master 를 쥐지 않는다. 자동으로 받았으면 즉시 놓는다(= 열기 전 상태 복원).
+        // Test mode: never hold master. If granted automatically, release it immediately (= restore the pre-open state).
         if (master_) drmDropMaster(fd_);
         master_ = false;
         return;
@@ -238,20 +238,20 @@ void KmsScanout::acquire_master_or_throw() {
     }
     const int e = errno;
     std::string holders = find_master_holders(opt_.dri_debug_dir);
-    if (holders.empty()) holders = "알 수 없음 (" + opt_.dri_debug_dir + "/clients 를 읽지 못했다 — root:sudo 0750)";
-    throw KmsMasterError("kms: " + opt_.card + " 의 DRM master 를 얻지 못했다 (drmSetMaster: " + errno_text(e) +
-                         "). 현재 master: " + holders +
-                         ". 데스크톱 세션을 비활성화한 뒤 실행해야 한다: loginctl activate <비데스크톱 세션 id> "
-                         "(sudo 불필요, 또는 sudo chvt N). lightdm 은 멈추지 않아도 된다. 실행 중에는 VT 를 전환하지 않는다");
+    if (holders.empty()) holders = "unknown (could not read " + opt_.dri_debug_dir + "/clients — root:sudo 0750)";
+    throw KmsMasterError("kms: failed to obtain DRM master of " + opt_.card + " (drmSetMaster: " + errno_text(e) +
+                         "). Current master: " + holders +
+                         ". Run after deactivating the desktop session: loginctl activate <non-desktop session id> "
+                         "(no sudo needed, or sudo chvt N). lightdm does not need to be stopped. Do not switch VT while running");
 }
 
 void KmsScanout::select_output() {
     drmModeResPtr res = drmModeGetResources(fd_);
     if (!res) {
         const int e = errno;
-        throw std::runtime_error("kms: drmModeGetResources 실패: " + errno_text(e));
+        throw std::runtime_error("kms: drmModeGetResources failed: " + errno_text(e));
     }
-    // possible_crtcs 는 32비트 마스크다 — 인덱스 32 이상 CRTC 는 표현할 수 없으니 보지 않는다(B7).
+    // possible_crtcs is a 32-bit mask — CRTCs with index 32 or higher cannot be represented, so they are skipped (B7).
     const int n_crtcs = std::min(res->count_crtcs, 32);
     auto crtc_unused = [&](std::uint32_t id) {
         bool unused = false;
@@ -278,9 +278,9 @@ void KmsScanout::select_output() {
         if (!connected) {
             drmModeFreeConnector(c);
             drmModeFreeResources(res);
-            throw std::runtime_error("kms: 커넥터 " + nm + " 이 연결돼 있지 않다(모드 없음)");
+            throw std::runtime_error("kms: connector " + nm + " is not connected (no modes)");
         }
-        // 모드: 인터레이스 제외(B3). 1920x1080@60 → preferred → 첫 프로그레시브 모드
+        // Mode: interlaced excluded (B3). 1920x1080@60 → preferred → first progressive mode
         const drmModeModeInfo* pick = nullptr;
         for (int m = 0; m < c->count_modes && !pick; ++m)
             if (!mode_interlaced(c->modes[m]) && c->modes[m].hdisplay == 1920 && c->modes[m].vdisplay == 1080 &&
@@ -293,7 +293,7 @@ void KmsScanout::select_output() {
         if (!pick) {
             drmModeFreeConnector(c);
             drmModeFreeResources(res);
-            throw std::runtime_error("kms: 커넥터 " + nm + " 에 프로그레시브 모드가 없다(인터레이스만)");
+            throw std::runtime_error("kms: connector " + nm + " has no progressive mode (interlaced only)");
         }
         conn_id_ = c->connector_id;
         conn_name_ = nm;
@@ -303,7 +303,7 @@ void KmsScanout::select_output() {
         mode_h_ = pick->vdisplay;
         mode_hz_ = static_cast<int>(pick->vrefresh);
         mode_name_ = pick->name;
-        // CRTC: 인코더가 지금 쓰는 CRTC → 사용 중이 아닌 possible CRTC → 첫 possible CRTC (B4)
+        // CRTC: CRTC the encoder currently uses → possible CRTC not in use → first possible CRTC (B4)
         std::uint32_t cur_crtc = 0;
         if (c->encoder_id) {
             if (drmModeEncoderPtr e = drmModeGetEncoder(fd_, c->encoder_id)) {
@@ -334,17 +334,17 @@ void KmsScanout::select_output() {
     drmModeFreeResources(res);
     if (!conn_id_)
         throw std::runtime_error("kms: " +
-                                 (opt_.connector.empty() ? std::string("연결된 HDMI-A 커넥터") : "커넥터 " + opt_.connector) +
-                                 " 를 찾지 못했다 (있는 것: " + seen + ")");
+                                 (opt_.connector.empty() ? std::string("connected HDMI-A connector") : "connector " + opt_.connector) +
+                                 " not found (available: " + seen + ")");
     if (!crtc_id_ || crtc_idx_ < 0 || crtc_idx_ >= 32)
-        throw std::runtime_error("kms: 커넥터 " + conn_name_ + " 에 쓸 CRTC 가 없다");
+        throw std::runtime_error("kms: no usable CRTC for connector " + conn_name_);
 }
 
 void KmsScanout::select_planes() {
     const std::uint32_t bit = 1u << crtc_idx_;
-    // 다른 출력(CRTC)이 쓰는 평면은 뺏지 않는다: 지금 비어 있거나 우리 CRTC 에 붙은 평면 우선, 그다음 아무거나(B2).
+    // Do not steal planes used by another output (CRTC): prefer planes that are free now or attached to our CRTC, then any (B2).
     auto free_or_ours = [&](const Plane& p) { return p.cur_crtc == 0 || p.cur_crtc == crtc_id_; };
-    // 영상: NV12 SAND128 인 Primary 우선, 없으면 Overlay
+    // Video: prefer an NV12 SAND128 Primary, else an Overlay
     for (int pass = 0; pass < 2 && !vplane_; ++pass)
         for (const char* want : {"Primary", "Overlay"}) {
             for (const Plane& p : planes_)
@@ -354,7 +354,7 @@ void KmsScanout::select_planes() {
                 }
             if (vplane_) break;
         }
-    if (!vplane_) throw std::runtime_error("kms: CRTC " + std::to_string(crtc_id_) + " 에 NV12 SAND128 평면이 없다");
+    if (!vplane_) throw std::runtime_error("kms: no NV12 SAND128 plane for CRTC " + std::to_string(crtc_id_));
     for (int pass = 0; pass < 2 && !oplane_; ++pass)
         for (const Plane& p : planes_)
             if (&p != vplane_ && (p.possible_crtcs & bit) && p.ab24_lin && p.type == "Overlay" &&
@@ -362,14 +362,14 @@ void KmsScanout::select_planes() {
                 oplane_ = &p;
                 break;
             }
-    if (!oplane_) throw std::runtime_error("kms: CRTC " + std::to_string(crtc_id_) + " 에 AB24 LINEAR Overlay 평면이 없다");
+    if (!oplane_) throw std::runtime_error("kms: no AB24 LINEAR Overlay plane for CRTC " + std::to_string(crtc_id_));
     for (const Plane* p : {vplane_, oplane_})
         for (const char* n : {"FB_ID", "CRTC_ID", "SRC_X", "SRC_Y", "SRC_W", "SRC_H", "CRTC_X", "CRTC_Y", "CRTC_W", "CRTC_H"})
             if (!p->props.id(n))
-                throw std::runtime_error("kms: 평면 " + std::to_string(p->id) + " 에 속성 " + n + " 가 없다");
+                throw std::runtime_error("kms: plane " + std::to_string(p->id) + " has no property " + n);
 
-    // zpos: 박스 평면이 영상 위. Primary 의 zpos 는 보통 immutable 이다(현재값을 기준으로 삼는다).
-    // mutable 이면 min 을 매 커밋 명시한다(B1 — 이전 master 가 남긴 값에 기대지 않는다).
+    // zpos: box plane above video. The Primary's zpos is usually immutable (its current value is used as the reference).
+    // If mutable, its min is set explicitly on every commit (B1 — do not rely on values left by the previous master).
     std::uint64_t vz = 0;
     if (const Prop* z = vplane_->props.get("zpos")) {
         video_zpos_settable_ = (z->flags & DRM_MODE_PROP_IMMUTABLE) == 0;
@@ -381,19 +381,19 @@ void KmsScanout::select_planes() {
             overlay_zpos_ = z->value;
             overlay_zpos_settable_ = false;
             if (overlay_zpos_ <= vz)
-                throw std::runtime_error("kms: 박스 평면 zpos(immutable " + std::to_string(overlay_zpos_) +
-                                         ") 가 영상 평면 zpos " + std::to_string(vz) + " 보다 위가 아니다");
+                throw std::runtime_error("kms: box plane zpos (immutable " + std::to_string(overlay_zpos_) +
+                                         ") is not above video plane zpos " + std::to_string(vz));
         } else {
             overlay_zpos_ = std::clamp<std::uint64_t>(vz + 1, z->min, z->max);
             overlay_zpos_settable_ = true;
             if (overlay_zpos_ <= vz)
-                throw std::runtime_error("kms: 박스 평면 zpos 범위가 영상 평면 zpos 보다 위로 갈 수 없다");
+                throw std::runtime_error("kms: box plane zpos range cannot go above the video plane zpos");
         }
     }
 }
 
-// 모드셋 때 색 파이프라인을 알려진 기본값으로 둔다(B11). 이전 master 가 감마/CTM/Broadcast RGB 를 바꿔 뒀어도
-// 우리 판정(BT.709 limited)이 그대로 화면에 나가게 한다. 속성이 있고 mutable 일 때만 넣는다. 복원은 capture_state 가 한다.
+// At modeset, put the color pipeline to known defaults (B11). Even if the previous master changed gamma/CTM/Broadcast RGB,
+// our judgement (BT.709 limited) goes to the screen as is. Set only if the property exists and is mutable. Restoring is done by capture_state.
 void KmsScanout::prepare_modeset_extras() {
     modeset_extras_.clear();
     for (const char* n : {"GAMMA_LUT", "CTM"}) {
@@ -420,7 +420,7 @@ KmsScanout::~KmsScanout() {
         if (o.handle) release_handle(o.handle);
     }
     overlay_.clear();
-    for (const auto& [h, n] : handle_refs_) drmCloseBufferHandle(fd_, h);   // 남은 것이 있으면(버그) 누수 방지
+    for (const auto& [h, n] : handle_refs_) drmCloseBufferHandle(fd_, h);   // prevent leaks if anything remains (bug)
     handle_refs_.clear();
     if (mode_blob_) drmModeDestroyPropertyBlob(fd_, mode_blob_);
     if (master_) drmDropMaster(fd_);
@@ -432,9 +432,9 @@ VkExtent2D KmsScanout::output_extent() const {
     return VkExtent2D{static_cast<std::uint32_t>(mode_w_), static_cast<std::uint32_t>(mode_h_)};
 }
 
-// ── GEM 핸들 ──────────────────────────────────────────────────────────────────────────────────
-// drmPrimeFDToHandle 은 같은 dma-buf 에 대해 같은 핸들을 돌려주고 핸들은 참조 계수가 없다(close 한 번이면 사라진다).
-// 그래서 우리가 센다 — Y/UV 가 한 객체이거나 두 FB 가 같은 dma-buf 를 가리켜도 너무 일찍 닫지 않는다.
+// ── GEM handles ───────────────────────────────────────────────────────────────────────────────
+// drmPrimeFDToHandle returns the same handle for the same dma-buf, and handles have no refcount (one close makes them disappear).
+// So we count them — so they are not closed too early even if Y/UV are one object or two FBs point at the same dma-buf.
 bool KmsScanout::import_handle(int fd, std::uint32_t* handle, int* err) {
     if (drmPrimeFDToHandle(fd_, fd, handle) != 0) {
         *err = errno;
@@ -462,7 +462,7 @@ void KmsScanout::destroy_video_fb(VideoFb& v) {
 
 void KmsScanout::fail(const std::string& msg) {
     last_error_ = msg;
-    // 매 프레임 같은 오류가 나면 로그가 넘친다 — 처음 몇 번과 이후 100번마다만 찍는다.
+    // If the same error occurs every frame the log floods — print only the first few times and every 100th after that.
     if (commit_fail_ <= 5 || commit_fail_ % 100 == 0) std::fprintf(stderr, "[kms] %s\n", msg.c_str());
 }
 
@@ -470,10 +470,10 @@ void KmsScanout::on_master_lost(const std::string& where) {
     if (master_lost_) return;
     master_lost_ = true;
     master_ = false;
-    last_error_ = "DRM master 를 잃었다 (" + where + ": EACCES)";
+    last_error_ = "lost DRM master (" + where + ": EACCES)";
     std::fprintf(stderr,
-                 "[kms] 경고: %s — VT 전환 등으로 다른 프로세스가 master 가 됐다. 이후 커밋은 모두 드롭한다"
-                 " (현재 master: %s)\n",
+                 "[kms] warning: %s — another process became master (VT switch, etc.). All later commits are dropped"
+                 " (current master: %s)\n",
                  last_error_.c_str(), find_master_holders(opt_.dri_debug_dir).c_str());
 }
 
@@ -488,9 +488,9 @@ void KmsScanout::register_overlay(const OverlayPlane& ov) {
         const OverlayPlaneBuffer& b = ov.buffer(i);
         OverlayFb o;
         int e = 0;
-        // fd 는 OverlayPlane 소유 그대로다. drmPrimeFDToHandle 은 fd 를 소비하지 않는다(GEM 이 dma-buf 참조를 따로 쥔다).
+        // The fd stays owned by OverlayPlane. drmPrimeFDToHandle does not consume the fd (GEM holds its own dma-buf reference).
         if (!import_handle(b.fd, &o.handle, &e))
-            throw std::runtime_error("kms: 박스 버퍼 #" + std::to_string(i) + " drmPrimeFDToHandle 실패: " + errno_text(e));
+            throw std::runtime_error("kms: box buffer #" + std::to_string(i) + " drmPrimeFDToHandle failed: " + errno_text(e));
         std::uint32_t handles[4] = {o.handle, 0, 0, 0};
         std::uint32_t pitches[4] = {b.pitch, 0, 0, 0};
         std::uint32_t offsets[4] = {b.offset, 0, 0, 0};
@@ -499,9 +499,9 @@ void KmsScanout::register_overlay(const OverlayPlane& ov) {
                                        DRM_MODE_FB_MODIFIERS) != 0) {
             e = errno;
             release_handle(o.handle);
-            throw std::runtime_error("kms: 박스 버퍼 #" + std::to_string(i) + " AddFB2(AB24 LINEAR " +
+            throw std::runtime_error("kms: box buffer #" + std::to_string(i) + " AddFB2(AB24 LINEAR " +
                                      std::to_string(b.width) + "x" + std::to_string(b.height) + " pitch " +
-                                     std::to_string(b.pitch) + ") 실패: " + errno_text(e));
+                                     std::to_string(b.pitch) + ") failed: " + errno_text(e));
         }
         o.w = b.width;
         o.h = b.height;
@@ -517,7 +517,7 @@ std::uint32_t KmsScanout::overlay_fb(int idx) const {
 std::uint32_t KmsScanout::video_fb_for(const DrmFrame& f) {
     struct stat sy{}, suv{};
     if (f.fd < 0 || f.uv_fd < 0 || fstat(f.fd, &sy) != 0 || fstat(f.uv_fd, &suv) != 0) {
-        last_error_ = "영상 프레임 fd 가 유효하지 않다 (fd=" + std::to_string(f.fd) + "/" + std::to_string(f.uv_fd) + ")";
+        last_error_ = "video frame fd is invalid (fd=" + std::to_string(f.fd) + "/" + std::to_string(f.uv_fd) + ")";
         return 0;
     }
     const VideoKey key{static_cast<std::uint64_t>(sy.st_dev), static_cast<std::uint64_t>(sy.st_ino),
@@ -526,9 +526,9 @@ std::uint32_t KmsScanout::video_fb_for(const DrmFrame& f) {
     if (it != video_.end()) {
         VideoFb& v = it->second;
         if (v.w == f.width && v.h == f.height && v.modifier == f.modifier) return v.fb;
-        // 같은 dma-buf 인데 기술자가 바뀌었다(해상도 변경). 화면·flip 대기 중인 FB 는 지우지 않는다(RmFB 가 평면을 끈다).
+        // Same dma-buf but the descriptor changed (resolution change). Do not remove FBs on screen or awaiting flip (RmFB turns the plane off).
         if ((on_screen_.valid && on_screen_.video_fb == v.fb) || (in_flight_.valid && in_flight_.video_fb == v.fb)) {
-            last_error_ = "기술자가 바뀐 영상 버퍼가 아직 스캔아웃 중이다";
+            last_error_ = "video buffer with changed descriptor is still being scanned out";
             return 0;
         }
         destroy_video_fb(v);
@@ -536,31 +536,31 @@ std::uint32_t KmsScanout::video_fb_for(const DrmFrame& f) {
     }
     if (f.drm_format != DRM_FORMAT_NV12) {
         char b[64];
-        std::snprintf(b, sizeof(b), "지원하지 않는 영상 포맷 fourcc=0x%08x", f.drm_format);
+        std::snprintf(b, sizeof(b), "unsupported video format fourcc=0x%08x", f.drm_format);
         last_error_ = b;
         return 0;
     }
     VideoFb v;
     int e = 0;
     if (!import_handle(f.fd, &v.hy, &e)) {
-        last_error_ = "drmPrimeFDToHandle(Y) 실패: " + errno_text(e);
+        last_error_ = "drmPrimeFDToHandle(Y) failed: " + errno_text(e);
         return 0;
     }
     if (!import_handle(f.uv_fd, &v.huv, &e)) {
-        last_error_ = "drmPrimeFDToHandle(UV) 실패: " + errno_text(e);
-        release_handle(v.hy);   // 프로브 결함 수정: Y 핸들을 흘리지 않는다
+        last_error_ = "drmPrimeFDToHandle(UV) failed: " + errno_text(e);
+        release_handle(v.hy);   // probe defect fix: do not leak the Y handle
         return 0;
     }
-    // SAND128: 각 plane 의 pitch 필드 = SAND 열 높이(Y 1088 / UV 544). 커널 vc4 HVS6 관례(frame_types.hpp DrmFrame).
+    // SAND128: pitch field of each plane = SAND column height (Y 1088 / UV 544). Kernel vc4 HVS6 convention (frame_types.hpp DrmFrame).
     std::uint32_t handles[4] = {v.hy, v.huv, 0, 0};
     std::uint32_t pitches[4] = {static_cast<std::uint32_t>(f.y_pitch), static_cast<std::uint32_t>(f.uv_pitch), 0, 0};
     std::uint32_t offsets[4] = {static_cast<std::uint32_t>(f.y_offset), static_cast<std::uint32_t>(f.uv_offset), 0, 0};
     std::uint64_t mods[4] = {f.modifier, f.modifier, 0, 0};
     if (drmModeAddFB2WithModifiers(fd_, static_cast<std::uint32_t>(f.width), static_cast<std::uint32_t>(f.height),
                                    DRM_FORMAT_NV12, handles, pitches, offsets, mods, &v.fb, DRM_MODE_FB_MODIFIERS) != 0) {
-        e = errno;   // snprintf 가 errno 를 덮기 전에 잡는다(B5)
+        e = errno;   // capture before snprintf overwrites errno (B5)
         char b[160];
-        std::snprintf(b, sizeof(b), "AddFB2(NV12 %dx%d mod=0x%016llx pitch(colh)=%zu/%zu) 실패: ", f.width, f.height,
+        std::snprintf(b, sizeof(b), "AddFB2(NV12 %dx%d mod=0x%016llx pitch(colh)=%zu/%zu) failed: ", f.width, f.height,
                       static_cast<unsigned long long>(f.modifier), f.y_pitch, f.uv_pitch);
         last_error_ = b + errno_text(e);
         release_handle(v.hy);
@@ -578,7 +578,7 @@ std::uint32_t KmsScanout::video_fb_for(const DrmFrame& f) {
     return v.fb;
 }
 
-// ── 상태 저장·복원 ────────────────────────────────────────────────────────────────────────────
+// ── State save·restore ────────────────────────────────────────────────────────────────────────
 void KmsScanout::capture_state() {
     saved_.clear();
     auto save = [&](const char* kind, std::uint32_t obj, const Props& p, const char* name) {
@@ -586,7 +586,7 @@ void KmsScanout::capture_state() {
         if (!q || (q->flags & DRM_MODE_PROP_IMMUTABLE)) return;
         saved_.push_back(SavedProp{kind, obj, name, q->id, q->value});
     };
-    // 지금 값을 다시 읽는다(생성 시점 값은 낡았을 수 있다)
+    // Re-read the current values (values from construction time may be stale)
     const Props crtc = load_props(crtc_id_, DRM_MODE_OBJECT_CRTC);
     for (const char* n : {"MODE_ID", "ACTIVE", "GAMMA_LUT", "CTM"}) save("crtc", crtc_id_, crtc, n);
     const Props conn = load_props(conn_id_, DRM_MODE_OBJECT_CONNECTOR);
@@ -600,7 +600,7 @@ void KmsScanout::capture_state() {
         const Props pp = load_props(p.id, DRM_MODE_OBJECT_PLANE);
         const Prop* c = pp.get("CRTC_ID");
         const bool ours = &p == vplane_ || &p == oplane_;
-        // 우리 CRTC 에 붙은 평면(모드셋이 끈다)과 우리가 쓸 두 평면(모드셋이 덮어쓴다)만 저장한다
+        // Save only planes attached to our CRTC (the modeset turns them off) and the two planes we will use (the modeset overwrites them)
         if (!ours && (c == nullptr || c->value != crtc_id_)) continue;
         for (const char* n : kPlaneProps) save("plane", p.id, pp, n);
     }
@@ -633,19 +633,19 @@ int KmsScanout::commit_planes_off(bool crtc_off) {
     if (crtc_off)
         ok = ok && add(req.p, crtc_id_, crtc_props_, "ACTIVE", 0, true) &&
              add(req.p, crtc_id_, crtc_props_, "MODE_ID", 0, true) && add(req.p, conn_id_, conn_props_, "CRTC_ID", 0, true);
-    if (!ok) return -1;   // 요청 구성 실패와 ioctl 실패를 구분한다(B6)
+    if (!ok) return -1;   // distinguish request construction failure from ioctl failure (B6)
     return atomic_commit(fd_, req.p, DRM_MODE_ATOMIC_ALLOW_MODESET, nullptr);
 }
 
-// ── atomic 요청 ───────────────────────────────────────────────────────────────────────────────
+// ── Atomic request ────────────────────────────────────────────────────────────────────────────
 bool KmsScanout::add(void* req, std::uint32_t obj, const Props& p, const char* name, std::uint64_t value, bool required) {
     const std::uint32_t id = p.id(name);
     if (id == 0) {
-        if (required) last_error_ = std::string("속성 ") + name + " 없음 (obj " + std::to_string(obj) + ")";
+        if (required) last_error_ = std::string("property ") + name + " missing (obj " + std::to_string(obj) + ")";
         return !required;
     }
     if (drmModeAtomicAddProperty(req_of(req), obj, id, value) < 0) {
-        last_error_ = std::string("drmModeAtomicAddProperty(") + name + ") 실패";
+        last_error_ = std::string("drmModeAtomicAddProperty(") + name + ") failed";
         return false;
     }
     return true;
@@ -661,7 +661,7 @@ std::uint64_t KmsScanout::color_encoding_value() const {
 std::uint64_t KmsScanout::color_range_value() const {
     const Prop* p = vplane_->props.get("COLOR_RANGE");
     if (!p) return 0;
-    // KMS 는 요청 값이 그대로 평면에 실린다(labwc 의 뒤집힘이 없다). auto = limited = 디코더 출력(HEVC TV range).
+    // In KMS the requested value goes to the plane as is (no labwc inversion). auto = limited = decoder output (HEVC TV range).
     const char* want = opt_.color_range == ColorRangeRequest::Full ? "YCbCr full range" : "YCbCr limited range";
     auto it = p->enums.find(want);
     return it != p->enums.end() ? it->second : p->value;
@@ -682,8 +682,8 @@ bool KmsScanout::build_request(void* req, std::uint32_t video_fb, int vw, int vh
             const Props& p = std::string(x.kind) == "crtc" ? crtc_props_ : conn_props_;
             if (!add(req, x.obj, p, x.name.c_str(), x.value, false)) return false;
         }
-        // 지금 이 CRTC 에 붙어 있는 나머지 평면(labwc/fbcon 이 쓰던 primary·커서 등)을 끈다. 커밋 시점의 실제
-        // 배치를 다시 읽는다 — 다른 CRTC(두 번째 HDMI)가 쓰는 평면은 possible_crtcs 가 겹쳐도 건드리지 않는다.
+        // Turn off the other planes currently attached to this CRTC (primary·cursor etc. used by labwc/fbcon). Re-read the actual
+        // placement at commit time — planes used by another CRTC (second HDMI) are not touched even if possible_crtcs overlaps.
         for (const Plane& p : planes_) {
             if (&p == vplane_ || &p == oplane_ || !(p.possible_crtcs & (1u << crtc_idx_))) continue;
             std::uint32_t cur = 0;
@@ -695,7 +695,7 @@ bool KmsScanout::build_request(void* req, std::uint32_t video_fb, int vw, int vh
             if (!add(req, p.id, p.props, "FB_ID", 0, true) || !add(req, p.id, p.props, "CRTC_ID", 0, true)) return false;
         }
     }
-    // 영상 평면: 매 커밋 전부 넣는다(COLOR_* 포함 — 다른 master 가 중간에 바꿔도 되돌린다)
+    // Video plane: set everything on every commit (including COLOR_* — reverts it even if another master changed it in between)
     const std::uint32_t vo = vplane_->id;
     if (!add(req, vo, vp, "FB_ID", video_fb, true) || !add(req, vo, vp, "CRTC_ID", crtc_id_, true) ||
         !add(req, vo, vp, "SRC_X", 0, true) || !add(req, vo, vp, "SRC_Y", 0, true) ||
@@ -709,7 +709,7 @@ bool KmsScanout::build_request(void* req, std::uint32_t video_fb, int vw, int vh
         !add(req, vo, vp, "COLOR_RANGE", color_range_value(), false))
         return false;
     if (video_zpos_settable_ && !add(req, vo, vp, "zpos", video_zpos_, false)) return false;
-    // 박스 평면
+    // Box plane
     const std::uint32_t oo = oplane_->id;
     if (overlay_idx >= 0) {
         const OverlayFb& b = overlay_[static_cast<std::size_t>(overlay_idx)];
@@ -728,88 +728,88 @@ bool KmsScanout::build_request(void* req, std::uint32_t video_fb, int vw, int vh
         }
         if (!add(req, oo, op, "alpha", 0xffff, false)) return false;
     } else if (modeset) {
-        // 첫 커밋에 박스가 없으면 박스 평면을 꺼 둔다(이전 master 의 내용이 남지 않게)
+        // If the first commit has no boxes, turn the box plane off (so the previous master's contents do not remain)
         if (!add(req, oo, op, "FB_ID", 0, true) || !add(req, oo, op, "CRTC_ID", 0, true)) return false;
     }
-    // overlay_idx < 0 이고 modeset 이 아니면 박스 평면 속성을 넣지 않는다 → 직전 박스 그대로
+    // If overlay_idx < 0 and not a modeset, box plane properties are not set → previous boxes stay
     return true;
 }
 
-// ── 커밋 ──────────────────────────────────────────────────────────────────────────────────────
+// ── Commit ────────────────────────────────────────────────────────────────────────────────────
 bool KmsScanout::commit(const DrmFrame& video, std::uint64_t token, int overlay_idx) {
     if (shut_ || fd_ < 0 || !fatal_.empty()) return false;
-    if (master_lost_) {   // 경고는 on_master_lost 에서 한 번만 냈다. 이후는 조용히 드롭(ioctl 없음)
+    if (master_lost_) {   // the warning was issued only once in on_master_lost. After that, drop silently (no ioctl)
         ++lost_drops_;
         return false;
     }
     if (!master_) {
         ++commit_fail_;
-        fail("commit 거부: " + opt_.card + " 의 DRM master 가 없다 (현재 master: " +
+        fail("commit rejected: no DRM master of " + opt_.card + " (current master: " +
              find_master_holders(opt_.dri_debug_dir) + ")");
         return false;
     }
     if (overlay_idx >= static_cast<int>(overlay_.size())) return false;
     check_flip_watchdog();
     if (in_flight_.valid) {
-        // 이전 flip 이 아직 안 왔다. 비차단 커밋은 EBUSY 가 된다 — ioctl 없이 거부(PlaneDisplay 가 드롭으로 센다).
+        // The previous flip has not arrived yet. A non-blocking commit would get EBUSY — reject without an ioctl (PlaneDisplay counts it as a drop).
         ++busy_;
         return false;
     }
     const std::uint32_t vfb = video_fb_for(video);
     if (vfb == 0) {
         ++commit_fail_;
-        fail("영상 FB 실패 (token " + std::to_string(token) + "): " + last_error_);
+        fail("video FB failed (token " + std::to_string(token) + "): " + last_error_);
         return false;
     }
     const bool modeset = !modeset_done_;
     if (modeset && !state_captured_) {
-        capture_state();   // 화면을 처음 바꾸기 직전의 상태 (shutdown 이 되돌린다)
-        if (opt_.verbose) std::printf("[kms] 저장한 이전 KMS 상태 (%zu 속성):\n%s", saved_.size(), saved_state_text().c_str());
+        capture_state();   // state right before the screen is first changed (shutdown restores it)
+        if (opt_.verbose) std::printf("[kms] saved previous KMS state (%zu properties):\n%s", saved_.size(), saved_state_text().c_str());
     }
     AtomicReq req;
     if (!req.p || !build_request(req.p, vfb, video.width, video.height, overlay_idx, modeset)) {
         ++commit_fail_;
-        fail("atomic 요청 구성 실패: " + last_error_);
+        fail("atomic request construction failed: " + last_error_);
         return false;
     }
     if (modeset) {
-        // 첫 커밋: TEST_ONLY 로 먼저 확인한다(실패해도 화면은 그대로다).
+        // First commit: check with TEST_ONLY first (the screen stays unchanged even on failure).
         const int e = atomic_commit(fd_, req.p, DRM_MODE_ATOMIC_TEST_ONLY | DRM_MODE_ATOMIC_ALLOW_MODESET, nullptr);
         if (e != 0) {
             ++commit_fail_;
             if (e == EACCES) {
-                on_master_lost("첫 모드셋 TEST_ONLY");
+                on_master_lost("first modeset TEST_ONLY");
                 return false;
             }
             ++modeset_test_failures_;
-            fail("첫 모드셋 TEST_ONLY 실패 " + std::to_string(modeset_test_failures_) + "/" +
+            fail("first modeset TEST_ONLY failed " + std::to_string(modeset_test_failures_) + "/" +
                  std::to_string(kMaxModesetTestFailures) + ": " + errno_text(e) + " (" + conn_name_ + " " + mode_name_ +
                  " crtc " + std::to_string(crtc_id_) + " video plane " + std::to_string(vplane_->id) + " boxes plane " +
                  std::to_string(oplane_->id) + ")");
             if (modeset_test_failures_ >= kMaxModesetTestFailures) {
-                fatal_ = "kms: 첫 모드셋이 TEST_ONLY 에서 " + std::to_string(modeset_test_failures_) +
-                         "번 연속 거부됐다 (마지막: " + errno_text(e) + "). 이 커넥터·모드·평면 조합(" + conn_name_ + " " +
+                fatal_ = "kms: the first modeset was rejected by TEST_ONLY " + std::to_string(modeset_test_failures_) +
+                         " times in a row (last: " + errno_text(e) + "). The driver does not accept this connector·mode·plane combination (" + conn_name_ + " " +
                          mode_name_ + ", crtc " + std::to_string(crtc_id_) + ", plane " + std::to_string(vplane_->id) +
-                         "/" + std::to_string(oplane_->id) + ")을 드라이버가 받지 않는다 — 종료한다";
+                         "/" + std::to_string(oplane_->id) + ") — exiting";
                 std::fprintf(stderr, "[kms] %s\n", fatal_.c_str());
             }
             return false;
         }
         modeset_test_failures_ = 0;
     }
-    // 블로킹 모드셋에도 PAGE_FLIP_EVENT 를 붙인다 → 이벤트가 fd 에 쌓이고 dispatch() 에서 같은 흐름으로 처리된다.
-    // (B8/B10) 이 첫 커밋은 수십 ms 블로킹이고 그 flip 시각은 모드셋 완료 시각이다 — 측정에서 첫 N 프레임은 뺄 것.
+    // PAGE_FLIP_EVENT is attached even to the blocking modeset → the event queues on the fd and is handled in the same flow in dispatch().
+    // (B8/B10) This first commit blocks for tens of ms and its flip time is the modeset completion time — exclude the first N frames from measurements.
     const std::uint32_t flags = DRM_MODE_PAGE_FLIP_EVENT |
                                 (modeset ? DRM_MODE_ATOMIC_ALLOW_MODESET : DRM_MODE_ATOMIC_NONBLOCK);
     const int e = atomic_commit(fd_, req.p, flags, reinterpret_cast<void*>(static_cast<std::uintptr_t>(token)));
     if (e != 0) {
         ++commit_fail_;
         if (e == EACCES) {
-            on_master_lost(modeset ? "첫 모드셋 커밋" : "비차단 커밋");
+            on_master_lost(modeset ? "first modeset commit" : "non-blocking commit");
             return false;
         }
         if (e == EBUSY) ++busy_;
-        fail(std::string(modeset ? "첫 모드셋" : "비차단") + " atomic commit 실패 (token " + std::to_string(token) +
+        fail(std::string(modeset ? "first modeset" : "non-blocking") + " atomic commit failed (token " + std::to_string(token) +
              "): " + errno_text(e));
         return false;
     }
@@ -831,7 +831,7 @@ bool KmsScanout::dispatch(int timeout_ms) {
     if (pr > 0) {
         if (p.revents & (POLLERR | POLLHUP | POLLNVAL)) return false;
         drmEventContext ev{};
-        ev.version = 3;   // page_flip_handler2 (crtc_id 포함)
+        ev.version = 3;   // page_flip_handler2 (includes crtc_id)
         ev.page_flip_handler2 = &KmsScanout::on_flip;
         KmsScanout* prev = t_dispatching;
         t_dispatching = this;
@@ -853,14 +853,14 @@ void KmsScanout::check_flip_watchdog() {
     ++flip_timeouts_;
     if (flip_timeouts_ == 1)
         std::fprintf(stderr,
-                     "[kms] 경고: flip 이벤트가 %d ms 안에 오지 않았다 (token %llu) — 화면에 올라간 것으로 간주하고 "
-                     "계속한다(on_presented 없음, flip_timeouts 에 센다; 이후 같은 경고 생략)\n",
+                     "[kms] warning: flip event did not arrive within %d ms (token %llu) — treating it as on screen and "
+                     "continuing (no on_presented, counted in flip_timeouts; further identical warnings suppressed)\n",
                      kFlipTimeoutMs, static_cast<unsigned long long>(in_flight_.token));
     handle_flip(in_flight_.token, false, 0, 0);
 }
 
 void KmsScanout::handle_flip(std::uint64_t token, bool have_time, unsigned sec, unsigned usec) {
-    // 우리가 기다리는 커밋의 이벤트만 받는다. 워치독이 이미 승격한 커밋의 늦은 이벤트, 종료 커밋 등은 무시한다.
+    // Accept only events for the commit we are waiting on. Late events of commits already promoted by the watchdog, shutdown commits, etc. are ignored.
     if (!in_flight_.valid || in_flight_.token != token) return;
     if (have_time) ++flips_;
     const Shown now = in_flight_;
@@ -870,7 +870,7 @@ void KmsScanout::handle_flip(std::uint64_t token, bool have_time, unsigned sec, 
     on_screen_ = now;
     if (now.overlay >= 0) shown_overlay_ = now.overlay;
     if (!listener_) return;
-    // 순서 계약: frame_done → presented → 직전 영상 release → (박스가 바뀌었으면) 직전 박스 release
+    // Order contract: frame_done → presented → release previous video → (if boxes changed) release previous boxes
     listener_->on_frame_done();
     if (have_time) {
         const std::int64_t t_ns =
@@ -881,20 +881,20 @@ void KmsScanout::handle_flip(std::uint64_t token, bool have_time, unsigned sec, 
     if (now.overlay >= 0 && prev_overlay >= 0 && prev_overlay != now.overlay) listener_->on_overlay_released(prev_overlay);
 }
 
-// ── 종료 ──────────────────────────────────────────────────────────────────────────────────────
+// ── Shutdown ──────────────────────────────────────────────────────────────────────────────────
 void KmsScanout::shutdown(int timeout_ms) {
     if (shut_) return;
     shut_ = true;
     if (fd_ < 0) return;
-    // 1. 날아가 있는 flip 을 유한 시간 기다린다(그 커밋이 끝나야 종료 커밋이 EBUSY 가 안 된다).
+    // 1. Wait a bounded time for an in-flight flip (that commit must finish so the shutdown commit does not get EBUSY).
     const auto deadline = SteadyClock::now() + std::chrono::milliseconds(std::max(timeout_ms, 0));
     while (in_flight_.valid && SteadyClock::now() < deadline)
         if (!dispatch(10)) break;
-    // 2. 화면 되돌리기: 저장한 이전 상태 복원 → 실패하면 평면 두 장 끄기 → 그래도 실패하면 CRTC 까지 끄기.
+    // 2. Revert the screen: restore saved previous state → on failure turn off both planes → if that also fails, turn off the CRTC too.
     if (!modeset_done_) {
-        shutdown_result_ = "not-needed (모드셋 전)";
+        shutdown_result_ = "not-needed (before modeset)";
     } else if (!master_) {
-        shutdown_result_ = master_lost_ ? "skipped (master 상실 — 화면은 새 master 몫)" : "skipped (master 없음)";
+        shutdown_result_ = master_lost_ ? "skipped (master lost — screen is up to the new master)" : "skipped (no master)";
     } else {
         const int er = commit_restore();
         if (er == 0) {
@@ -909,11 +909,11 @@ void KmsScanout::shutdown(int timeout_ms) {
                                    ") -> crtc-off " + (ec == 0 ? std::string("ok") : "failed (" + errno_text(ec) + ")");
             }
         }
-        std::printf("[kms] 종료: %s\n", shutdown_result_.c_str());
+        std::printf("[kms] shutdown: %s\n", shutdown_result_.c_str());
         std::fflush(stdout);
     }
-    // 종료 커밋이 끝났으면(블로킹) HVS 는 더 이상 우리 버퍼를 읽지 않는다 → 남은 것을 전부 release 로 알린다.
-    // 늦게 온 flip 이벤트가 fd 에 남아 있어도 in_flight_ 를 비웠으므로 무시된다.
+    // If the shutdown commit finished (blocking), the HVS no longer reads our buffers → report all remaining ones as released.
+    // Even if a late flip event remains on the fd, it is ignored because in_flight_ was cleared.
     PlaneScanoutListener* l = listener_;
     const Shown a = on_screen_, b = in_flight_;
     const int ov_a = shown_overlay_, ov_b = in_flight_.valid ? in_flight_.overlay : -1;
@@ -926,7 +926,7 @@ void KmsScanout::shutdown(int timeout_ms) {
         if (ov_b >= 0 && ov_b != ov_a) l->on_overlay_released(ov_b);
     }
     listener_ = nullptr;
-    // 3. master 를 놓는다 → 다음 master(VT 복귀 시 labwc)가 화면을 다시 잡는다.
+    // 3. Release master → the next master (labwc on VT return) takes the screen again.
     if (master_) {
         drmDropMaster(fd_);
         master_ = false;
@@ -935,7 +935,7 @@ void KmsScanout::shutdown(int timeout_ms) {
 
 void KmsScanout::clear_video_cache() {
     if (fd_ < 0) return;
-    for (auto& [k, v] : video_) destroy_video_fb(v);   // 스캔아웃 중인 FB 를 RmFB 하면 커널이 그 평면을 끈다
+    for (auto& [k, v] : video_) destroy_video_fb(v);   // RmFB on an FB being scanned out makes the kernel turn that plane off
     video_.clear();
 }
 
@@ -964,7 +964,7 @@ std::string KmsScanout::describe() const {
                   master_ ? "yes" : "no", ts_monotonic_ ? "MONOTONIC" : "other");
     std::string s = buf;
     s += " modeset:";
-    if (modeset_extras_.empty()) s += " (색 속성 없음)";
+    if (modeset_extras_.empty()) s += " (no color properties)";
     for (const ModesetExtra& x : modeset_extras_) s += " " + x.text;
     return s;
 }

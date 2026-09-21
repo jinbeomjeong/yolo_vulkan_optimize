@@ -1,33 +1,33 @@
-// WaylandPlaneScanout: PlaneScanout 의 Wayland 구현 (--display-backend wayland-planes).
+// WaylandPlaneScanout: Wayland implementation of PlaneScanout (--display-backend wayland-planes).
 //
-//   부모 wl_surface (기존 WaylandWindow 의 xdg_toplevel, **전체화면 강제**)
-//     ← 디코더 DrmFrame(NV12, SAND128 modifier, Y/UV 별도 dma-buf, pitch 필드 = SAND 열 높이)을
-//       zwp_linux_buffer_params_v1 로 감싼 wl_buffer. labwc(wlroots)가 이것을 HVS 영상 평면에 직접 올린다.
-//   sync subsurface (위치 0,0, 입력 영역 비움)
-//     ← OverlayPlane 링 항목(AB24 LINEAR dma-buf)으로 만든 wl_buffer 3개. HVS 가 영상 위 평면으로 블렌딩한다.
-//   커밋 순서: subsurface commit(캐시됨, sync) → 부모 commit → 둘이 **원자적으로** 반영된다.
+//   parent wl_surface (the existing WaylandWindow's xdg_toplevel, **fullscreen forced**)
+//     ← wl_buffer wrapping a decoder DrmFrame (NV12, SAND128 modifier, separate Y/UV dma-bufs, pitch field = SAND column height)
+//       with zwp_linux_buffer_params_v1. labwc (wlroots) puts it directly on the HVS video plane.
+//   sync subsurface (position 0,0, empty input region)
+//     ← 3 wl_buffers made from OverlayPlane ring entries (AB24 LINEAR dma-buf). The HVS blends them as a plane above the video.
+//   Commit order: subsurface commit (cached, sync) → parent commit → both are applied **atomically**.
 //
-// 왜 전체화면을 강제하는가: 창 모드면 labwc 가 GPU(GL)로 합성한다(hvs_wl_probe 실측: V3D 6 ms/frame, 늦은
-// 프레임 67 — 07_results/display_vulkan_hdmi/notes/kms_vs_wayland.md). 이 백엔드의 존재 이유가 사라진다.
+// Why fullscreen is forced: in windowed mode labwc composites with the GPU (GL) (hvs_wl_probe measured: V3D 6 ms/frame, late
+// frames 67 — 07_results/display_vulkan_hdmi/notes/kms_vs_wayland.md). The reason for this backend to exist would disappear.
 //
-// ── 버퍼 ─────────────────────────────────────────────────────────────────────────────────────
-//   · 영상 wl_buffer 는 (Y, UV) dma-buf 의 (dev, inode) 쌍을 키로 캐시한다. 디코더 풀이 고정이라 풀 크기만큼만
-//     만들어진다(첫 몇 프레임에서만 생성 비용). 캐시는 **이 객체의 멤버**다(프로브의 전역 g_created 결함 수정).
-//   · 생성은 비동기 create + 요청별 컨텍스트(created/failed 이벤트) + **유한 대기**(kCreateTimeoutMs)다.
-//     컴포지터가 응답하지 않아도 무한히 기다리지 않는다(시간 초과 = 이 프레임 거부).
-//   · fd 소유권: zwp_linux_buffer_params_v1.add 에 넘긴 fd 는 libwayland 가 마샬링할 때 dup 해서 보낸다
-//     (connection.c wl_closure_marshal — WL_ARG_FD 는 wl_os_dupfd_cloexec). 우리 fd 는 그대로 우리 소유다.
-//   · busy 재사용 검사: 컴포지터가 아직 release 하지 않은 영상 wl_buffer 를 다시 붙이려 하면 붙이지 않고 거부한다
-//     (busy_reuse 에 센다 — 0 이어야 한다. 디코더는 우리가 keepalive 를 놓기 전에는 그 버퍼를 재사용하지 않는다).
+// ── Buffers ──────────────────────────────────────────────────────────────────────────────────
+//   · Video wl_buffers are cached keyed by the (dev, inode) pair of the (Y, UV) dma-bufs. The decoder pool is fixed, so only as many
+//     as the pool size are created (creation cost only in the first few frames). The cache is **a member of this object** (fixes the probe's global g_created defect).
+//   · Creation is async create + per-request context (created/failed events) + **bounded wait** (kCreateTimeoutMs).
+//     We do not wait forever even if the compositor does not respond (timeout = reject this frame).
+//   · fd ownership: fds passed to zwp_linux_buffer_params_v1.add are dup'ed by libwayland when marshalling
+//     (connection.c wl_closure_marshal — WL_ARG_FD uses wl_os_dupfd_cloexec). Our fds remain ours.
+//   · Busy-reuse check: if we try to re-attach a video wl_buffer the compositor has not released yet, we reject instead of attaching
+//     (counted in busy_reuse — must be 0. The decoder does not reuse that buffer until we drop the keepalive).
 //
-// ── 색 (wp_color_representation_v1, staging) ─────────────────────────────────────────────────
-//   BT.709 + range 를 요청한다. labwc 0.20.1 / wlroots 0.20.2 는 range 를 **뒤집어** HVS 에 싣는다(실측 —
-//   full 을 요청하면 COLOR_RANGE=limited 로 나간다: "fullhack"). 그래서 --display-color-range auto 는 full 을
-//   요청한다(= 실제 limited, 디코더 출력과 맞다). 실제 평면 값은 debugfs 로 확인한다(PlaneDisplay 스냅샷).
-//   관리자가 그 (coef, range) 조합을 광고하지 않았으면 **보내지 않는다** — 광고 안 한 조합은 프로토콜 오류
-//   (coefficients)로 연결이 끊긴다.
+// ── Color (wp_color_representation_v1, staging) ──────────────────────────────────────────────
+//   Requests BT.709 + range. labwc 0.20.1 / wlroots 0.20.2 **inverts** the range when loading it into the HVS (measured —
+//   requesting full goes out as COLOR_RANGE=limited: "fullhack"). So --display-color-range auto requests full
+//   (= actually limited, matching the decoder output). The actual plane values are checked via debugfs (PlaneDisplay snapshot).
+//   If the manager did not advertise that (coef, range) combination, **it is not sent** — an unadvertised combination causes a protocol error
+//   (coefficients) and the connection is dropped.
 //
-// 이벤트는 전부 WaylandWindow::poll() 로 dispatch 된다(같은 wl_display, 기본 큐). 스레드: 메인 스레드.
+// All events are dispatched via WaylandWindow::poll() (same wl_display, default queue). Thread: main thread.
 #pragma once
 
 #include <array>
@@ -63,8 +63,8 @@ class WaylandPlaneScanout final : public PlaneScanout {
 public:
     static constexpr int kCreateTimeoutMs = 1000;
 
-    // win 은 plane_globals=true, fullscreen=true 로 이미 열려 있어야 한다. 필수 전역(zwp_linux_dmabuf_v1 v2+,
-    // wl_subcompositor)이 없으면 std::runtime_error.
+    // win must already be open with plane_globals=true, fullscreen=true. If the required globals (zwp_linux_dmabuf_v1 v2+,
+    // wl_subcompositor) are missing, std::runtime_error.
     WaylandPlaneScanout(WaylandWindow& win, const WaylandPlaneScanoutOptions& opt);
     ~WaylandPlaneScanout() override;
     WaylandPlaneScanout(const WaylandPlaneScanout&) = delete;
@@ -92,8 +92,8 @@ private:
     struct VideoBuf {
         WaylandPlaneScanout* self = nullptr;
         wl_buffer* buf = nullptr;
-        bool busy = false;          // 컴포지터가 쥐고 있다 (attach 후 release 전)
-        std::uint64_t token = 0;    // 마지막으로 붙인 커밋
+        bool busy = false;          // held by the compositor (after attach, before release)
+        std::uint64_t token = 0;    // last commit it was attached to
         int w = 0, h = 0;
         std::uint64_t modifier = 0;
     };
@@ -108,7 +108,7 @@ private:
         wp_presentation_feedback* fb = nullptr;
         std::uint64_t token = 0;
     };
-    struct CreateReq {              // zwp_linux_buffer_params_v1 요청 하나의 결과 (스택 수명, 전역 없음)
+    struct CreateReq {              // result of one zwp_linux_buffer_params_v1 request (stack lifetime, no globals)
         bool done = false;
         bool failed = false;
         wl_buffer* buf = nullptr;
@@ -145,7 +145,7 @@ private:
     wl_surface* ov_surface_ = nullptr;
     wl_subsurface* ov_sub_ = nullptr;
     wp_viewport* viewport_ = nullptr;
-    int vp_buf_w_ = 0, vp_buf_h_ = 0;   // 뷰포트를 맞춘 버퍼 크기 (0 = 아직)
+    int vp_buf_w_ = 0, vp_buf_h_ = 0;   // buffer size the viewport was set for (0 = not yet)
     wp_color_representation_surface_v1* color_surf_ = nullptr;
     std::string color_desc_;
 

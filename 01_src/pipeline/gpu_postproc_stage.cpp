@@ -16,7 +16,7 @@ namespace {
 
 using Clock = std::chrono::steady_clock;
 
-// 비트 단위 비교 (개수·순서·class·anchor_key·score·좌표). float 는 == 가 아니라 비트로 본다.
+// Bitwise comparison (count, order, class, anchor_key, score, coordinates). Floats are compared by bits, not ==.
 bool same_bits(const std::vector<yvo::DetectionKeyed>& a, const std::vector<yvo::DetectionKeyed>& b) {
     if (a.size() != b.size()) return false;
     for (std::size_t i = 0; i < a.size(); ++i) {
@@ -30,15 +30,15 @@ bool same_bits(const std::vector<yvo::DetectionKeyed>& a, const std::vector<yvo:
     return true;
 }
 
-// dma-buf 실크기. `bind_slot()` 의 매핑 크기 계약은 **lseek 값**이다(전송 크기가 아니다).
+// Actual dma-buf size. The mapping-size contract of `bind_slot()` is the **lseek value** (not the transfer size).
 std::size_t dmabuf_size(int fd) {
     const off_t end = ::lseek(fd, 0, SEEK_END);
-    if (end <= 0) throw std::runtime_error("lseek(dma-buf, SEEK_END) 실패: fd " + std::to_string(fd));
+    if (end <= 0) throw std::runtime_error("lseek(dma-buf, SEEK_END) failed: fd " + std::to_string(fd));
     return static_cast<std::size_t>(end);
 }
 
-// 러너가 HEF 에서 읽어낸 메타 → 셰이더가 쓰는 기하·양자화 파라미터.
-// 텐서 번호 규약은 양쪽이 같다: cls(s) = 2s, box(s) = 2s+1.  **fixtures.json 을 읽지 않는다.**
+// Metadata the runner read from the HEF → geometry and quantization parameters used by the shader.
+// Both sides use the same tensor numbering: cls(s) = 2s, box(s) = 2s+1.  **Does not read fixtures.json.**
 yvo::vk::YoloTensorLayout layout_from_runner(const yvo::RawModelInfo& info) {
     yvo::vk::YoloTensorLayout L;
     L.num_classes = info.num_classes;
@@ -47,10 +47,10 @@ yvo::vk::YoloTensorLayout layout_from_runner(const yvo::RawModelInfo& info) {
         const yvo::RawTensorMeta& c = info.t[yvo::vk::yolo_cls_tensor(s)];
         const yvo::RawTensorMeta& b = info.t[yvo::vk::yolo_box_tensor(s)];
         if (c.features != info.num_classes || b.features != 4 * info.reg_max)
-            throw std::runtime_error("텐서 " + std::to_string(s) + " 의 features 가 cls/box 규약과 다르다: cls " +
+            throw std::runtime_error("tensor " + std::to_string(s) + " features do not match the cls/box convention: cls " +
                                      std::to_string(c.features) + ", box " + std::to_string(b.features));
         if (c.grid_h != b.grid_h || c.grid_w != b.grid_w || c.w_padded != b.w_padded || c.stride != b.stride)
-            throw std::runtime_error("스케일 " + std::to_string(s) + " 의 cls/box 기하가 어긋난다");
+            throw std::runtime_error("scale " + std::to_string(s) + " cls/box geometry mismatch");
         yvo::vk::YoloScaleSpec& d = L.s[s];
         d.grid_h = c.grid_h;
         d.grid_w = c.grid_w;
@@ -77,14 +77,14 @@ GpuPostprocStage::GpuPostprocStage(yvo::vk::VulkanContext& ctx, const GpuPostpro
     rc.verbose = cfg_.verbose;
     raw_ = std::make_unique<yvo::HailoRawRunner>(rc);
 
-    // 러너는 num_slots 를 min_queue 로 조용히 클램프한다. 슬롯 번호 공간은 SandLetterbox·SlotExchange 와
-    // 공유하므로 어긋나면 **여기서 멈춘다**(슬롯이 모자라면 GPU 슬롯이 NPU 에 바인딩되지 않는다).
+    // The runner silently clamps num_slots to min_queue. The slot number space is shared with SandLetterbox and SlotExchange,
+    // so on a mismatch we **stop here** (if slots are short, GPU slots are not bound to the NPU).
     if (raw_->num_slots() != cfg_.num_slots)
         throw std::runtime_error(
-            "HailoRawRunner 가 슬롯 수를 클램프했다: 요청 " + std::to_string(cfg_.num_slots) + ", 실제 " +
-            std::to_string(raw_->num_slots()) + " (HEF 스트림의 get_async_max_queue_size 최솟값 = " +
-            std::to_string(raw_->info().min_queue) + "). --slots 를 " + std::to_string(raw_->info().min_queue) +
-            " 이하로 낮춰라 — 슬롯 번호 공간이 SandLetterbox 와 어긋나면 안 된다");
+            "HailoRawRunner clamped the slot count: requested " + std::to_string(cfg_.num_slots) + ", actual " +
+            std::to_string(raw_->num_slots()) + " (minimum get_async_max_queue_size over HEF streams = " +
+            std::to_string(raw_->info().min_queue) + "). Lower --slots to " + std::to_string(raw_->info().min_queue) +
+            " or less — the slot number space must not diverge from SandLetterbox");
 
     yvo::vk::YoloPostprocConfig pc;
     pc.num_slots = cfg_.num_slots;
@@ -93,7 +93,7 @@ GpuPostprocStage::GpuPostprocStage(yvo::vk::VulkanContext& ctx, const GpuPostpro
     pc.local_size_y = cfg_.local_size_y;
     pc.score_thr = cfg_.score_thr;
     pc.input_alloc = cfg_.input_alloc;
-    pc.input_sync = yvo::vk::YoloInputSync::Foreign;   // Hailo PCIe DMA 가 쓴 외부 메모리다
+    pc.input_sync = yvo::vk::YoloInputSync::Foreign;   // external memory written by Hailo PCIe DMA
     pc.checksum_pipeline = false;
     pc.verbose = cfg_.verbose;
     pc.enable_nms = cfg_.nms != NmsBackend::Cpu;
@@ -127,32 +127,32 @@ void GpuPostprocStage::set_source_size(int w, int h) {
 }
 
 void GpuPostprocStage::bind_input_dmabuf(int slot, int fd) {
-    if (slot < 0 || slot >= cfg_.num_slots) throw std::runtime_error("bind_input_dmabuf: 슬롯 범위 밖");
+    if (slot < 0 || slot >= cfg_.num_slots) throw std::runtime_error("bind_input_dmabuf: slot out of range");
     int out_fd[yvo::vk::kYoloNumTensors];
     std::size_t out_sz[yvo::vk::kYoloNumTensors];
     for (int t = 0; t < yvo::vk::kYoloNumTensors; ++t) {
         out_fd[t] = pp_->raw_dmabuf_fd(slot, t);
         if (out_fd[t] < 0)
-            throw std::runtime_error("YoloPostproc 이 dma-buf 를 export 하지 않았다 (input_alloc 확인)");
+            throw std::runtime_error("YoloPostproc did not export a dma-buf (check input_alloc)");
         out_sz[t] = pp_->raw_dmabuf_size(slot, t);
     }
-    // 입력·출력 모두 **dma-buf 실크기**로 매핑한다. 전송 크기는 러너가 hw_frame_size 로 정한다.
+    // Both input and output are mapped at the **actual dma-buf size**. The transfer size is set by the runner from hw_frame_size.
     raw_->bind_slot(slot, fd, dmabuf_size(fd), out_fd, out_sz);
     bound_[static_cast<std::size_t>(slot)] = true;
 }
 
 void GpuPostprocStage::submit(const PreprocOutput& in, const Done& on_done) {
     const int slot = in.slot;
-    if (slot < 0 || slot >= cfg_.num_slots) throw std::runtime_error("GpuPostprocStage::submit: 슬롯 범위 밖");
+    if (slot < 0 || slot >= cfg_.num_slots) throw std::runtime_error("GpuPostprocStage::submit: slot out of range");
     if (!bound_[static_cast<std::size_t>(slot)])
-        throw std::runtime_error("슬롯 " + std::to_string(slot) + " 이 bind_input_dmabuf 되지 않았다");
+        throw std::runtime_error("slot " + std::to_string(slot) + " was not bind_input_dmabuf'd");
     if (src_w_ <= 0 || src_h_ <= 0)
-        throw std::runtime_error("set_source_size()를 먼저 불러야 한다 (좌표 클램프에 원본 크기가 필요하다)");
+        throw std::runtime_error("call set_source_size() first (coordinate clamping needs the source size)");
     done_ = on_done;
     pts_[static_cast<std::size_t>(slot)] = in.pts;
     lb_[static_cast<std::size_t>(slot)] = in.lb;
     raw_->submit(slot, in.pts, [this](yvo::RawInferResult&& r) {
-        // ⚠ HailoRT 콜백 스레드다. Vulkan 호출·재submit·GPU 메모리 읽기 전부 금지.
+        // ⚠ This is the HailoRT callback thread. No Vulkan calls, re-submits, or GPU memory reads.
         {
             std::lock_guard<std::mutex> lk(ready_mtx_);
             ready_.push_back(RawDone{r.slot, r.status, r.latency_ms, Clock::now()});
@@ -173,7 +173,7 @@ void GpuPostprocStage::push_ready_to_gpu() {
         status_[s] = d.status;
         t_done_[s] = d.t_done;
         if (d.status != HAILO_SUCCESS) {
-            // NPU 가 실패한 프레임은 원시 텐서가 신뢰할 수 없다. GPU 로 보내지 않고 바로 돌려준다.
+            // Raw tensors of a frame the NPU failed on are not trustworthy. Return it immediately without sending it to the GPU.
             yvo::InferResult r;
             r.slot = d.slot;
             r.pts = pts_[s];
@@ -195,7 +195,7 @@ void GpuPostprocStage::finish(int slot) {
     cand_.push_back(static_cast<double>(raw_n));
     if (pp_->overflow(slot)) ++overflow_frames_;
 
-    // CPU 억제 (Cpu 백엔드, GPU fallback, Verify 의 기준). last_nms_us_ 는 이 경로에서만 갱신한다.
+    // CPU suppression (Cpu backend, GPU fallback, Verify reference). last_nms_us_ is updated only on this path.
     auto cpu_nms = [&]() {
         std::vector<yvo::DetectionKeyed> c = pp_->read_candidates(slot);
         const auto n0 = Clock::now();
@@ -245,7 +245,7 @@ void GpuPostprocStage::pump() {
     while (!pp_q_.empty() && pp_->ready(pp_q_.front())) {
         const int slot = pp_q_.front();
         pp_q_.pop_front();
-        pp_->wait(slot);   // 이미 신호된 펜스다
+        pp_->wait(slot);   // fence is already signaled
         finish(slot);
     }
 }
@@ -255,13 +255,13 @@ bool GpuPostprocStage::drain_one() {
     if (pp_q_.empty()) return false;
     const int slot = pp_q_.front();
     pp_q_.pop_front();
-    pp_->wait(slot);   // 블로킹
+    pp_->wait(slot);   // blocking
     finish(slot);
     return true;
 }
 
-// 슬롯이 전부 NPU 에 있을 때의 대기. `SlotExchange` 의 condvar 는 메인 스레드만 깨울 수 있으므로
-// (pump() 안에서 Done 을 부른다) 여기서 기다리지 않으면 메인 스레드가 5 초 타임아웃까지 잠든다.
+// Wait for when all slots are on the NPU. Only the main thread can wake the `SlotExchange` condvar
+// (Done is called inside pump()), so without waiting here the main thread would sleep until the 5 s timeout.
 bool GpuPostprocStage::wait_completion(std::chrono::milliseconds timeout) {
     std::unique_lock<std::mutex> lk(ready_mtx_);
     if (!ready_.empty()) return true;
@@ -270,8 +270,8 @@ bool GpuPostprocStage::wait_completion(std::chrono::milliseconds timeout) {
 }
 
 void GpuPostprocStage::drain() {
-    raw_->drain();         // 비행 중인 NPU 작업의 내부 콜백까지 전부 반환
-    push_ready_to_gpu();   // 남은 완료분을 GPU 로
+    raw_->drain();         // returns all internal callbacks of in-flight NPU work
+    push_ready_to_gpu();   // remaining completions to the GPU
     while (!pp_q_.empty()) {
         const int slot = pp_q_.front();
         pp_q_.pop_front();

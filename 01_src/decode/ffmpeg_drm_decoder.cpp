@@ -17,8 +17,8 @@ namespace yvo {
 
 namespace {
 
-// get_format 콜백: DRM_PRIME(HW 디코드, dma-buf 출력)만 허용한다.
-// SW 포맷으로 조용히 떨어지면 파이프라인 전제가 깨지므로 NONE을 반환해 실패시킨다.
+// get_format callback: only DRM_PRIME (HW decode, dma-buf output) is allowed.
+// Silently falling back to a SW format would break the pipeline's assumptions, so return NONE to make it fail.
 AVPixelFormat pick_drm_prime(AVCodecContext* /*ctx*/, const AVPixelFormat* fmts) {
     for (const AVPixelFormat* p = fmts; *p != AV_PIX_FMT_NONE; ++p) {
         if (*p == AV_PIX_FMT_DRM_PRIME) return *p;
@@ -59,9 +59,9 @@ bool drm_descriptor_to_frame(const AVDRMFrameDescriptor& desc, int width, int he
     if (py.offset < 0 || puv.offset < 0 || py.pitch <= 0 || puv.pitch <= 0)
         return reject("negative offset or non-positive pitch");
 
-    // SAND 열 높이(행 수): modifier 파라미터가 0이 아니면 그 값(커널 DRM 관례, 모든 plane 공통).
-    // 0이면 rpi ffmpeg 관례대로 각 plane의 pitch 필드가 그 plane의 열 높이다.
-    // Pi 5 HEVC 실측: Y/UV 별도 객체, param=0, pitch Y=1088 / UV=544.
+    // SAND column height (rows): if the modifier parameter is nonzero, use that value (kernel DRM convention, common to all planes).
+    // If 0, per the rpi ffmpeg convention each plane's pitch field is that plane's column height.
+    // Measured on Pi 5 HEVC: separate Y/UV objects, param=0, pitch Y=1088 / UV=544.
     const std::uint64_t param_y = static_cast<std::uint64_t>(fourcc_mod_broadcom_param(oy.format_modifier));
     const std::uint64_t param_uv = static_cast<std::uint64_t>(fourcc_mod_broadcom_param(ouv.format_modifier));
     const std::uint64_t col_y = param_y ? param_y : static_cast<std::uint64_t>(py.pitch);
@@ -71,7 +71,7 @@ bool drm_descriptor_to_frame(const AVDRMFrameDescriptor& desc, int width, int he
     const std::uint64_t h = static_cast<std::uint64_t>(height);
     if (col_y < h || col_uv < h / 2) return reject("column height smaller than plane height");
 
-    // 각 plane에서 읽을 최대 바이트 위치가 객체 안에 있는지 확인
+    // Check that the maximum byte position read from each plane lies inside the object
     const std::uint64_t last_col = (w - 1) / 128;
     const std::uint64_t last_x = (w - 1) % 128;
     const std::uint64_t y_end = static_cast<std::uint64_t>(py.offset) + last_col * 128 * col_y + (h - 1) * 128 + last_x + 1;
@@ -129,7 +129,7 @@ std::string describe_drm_descriptor(const AVDRMFrameDescriptor& d) {
 FfmpegDrmDecoder::~FfmpegDrmDecoder() { close(); }
 
 void FfmpegDrmDecoder::close() {
-    if (codec_ && !eof_) avcodec_flush_buffers(codec_); // 스트림 중간 종료: 디코드 중인 프레임 정리
+    if (codec_ && !eof_) avcodec_flush_buffers(codec_); // stream closed mid-way: discard frames being decoded
     av_packet_free(&pkt_);
     avcodec_free_context(&codec_);
     av_buffer_unref(&hw_device_);
@@ -177,7 +177,7 @@ bool FfmpegDrmDecoder::open(const std::string& path, const Options& opt) {
     codec_->get_format = pick_drm_prime;
     codec_->extra_hw_frames = opt.extra_hw_frames;
     codec_->pkt_timebase = st->time_base;
-    // 라이브러리 기본값은 1스레드다. 프레임 스레딩을 켜면 HW 디코드 처리량이 크게 오른다(1스레드 266 → 4스레드 ~400 FPS).
+    // The library default is 1 thread. Enabling frame threading greatly raises HW decode throughput (1 thread 266 → 4 threads ~400 FPS).
     codec_->thread_count = opt.threads > 0 ? opt.threads : 0;
 
     ret = avcodec_open2(codec_, dec, nullptr);
@@ -209,7 +209,7 @@ std::optional<DrmFrame> FfmpegDrmDecoder::next() {
             fail_av("avcodec_receive_frame", ret);
             return std::nullopt;
         }
-        // 디코더가 입력을 더 원한다: 비디오 패킷 하나를 보낸다(끝이면 flush)
+        // The decoder wants more input: send one video packet (flush at the end)
         if (input_done_) {
             fail("decoder returned EAGAIN after flush");
             return std::nullopt;
@@ -255,7 +255,7 @@ std::optional<DrmFrame> FfmpegDrmDecoder::next() {
         return std::nullopt;
     }
     out.pts = frame_counter_++;
-    // AVFrame 소유권을 keepalive로 넘긴다. 마지막 참조가 풀릴 때 디코더 풀로 버퍼가 반납된다.
+    // Hand AVFrame ownership to keepalive. When the last reference is released, the buffer returns to the decoder pool.
     AVFrame* raw = frame.release();
     out.keepalive = std::shared_ptr<void>(raw, [](void* p) {
         auto* f = static_cast<AVFrame*>(p);

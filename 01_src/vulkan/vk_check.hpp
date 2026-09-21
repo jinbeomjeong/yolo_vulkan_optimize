@@ -1,4 +1,4 @@
-// VkResult 검사 헬퍼: 실패하면 호출 위치와 결과 코드 이름을 담은 예외를 던진다.
+// VkResult check helper: on failure, throws an exception carrying the call site and the result code name.
 #pragma once
 
 #include <stdexcept>

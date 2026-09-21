@@ -1,21 +1,21 @@
-// CPU 기준 letterbox 구현 (헤더 전용, OpenCV 불필요). GPU 전처리 결과 비교(GTest)의 기준으로 쓴다.
+// CPU reference letterbox implementation (header-only, no OpenCV needed). Used as the baseline for GPU preprocessing comparisons (GTest).
 //
-// 입력: 선형 NV12 (Y plane + 인터리브 UV plane), BT.709 limited range.
-// 출력: dst_w × dst_h × 3 packed RGB888 (HailoRT UINT8 NHWC 입력과 동일).
+// Input: linear NV12 (Y plane + interleaved UV plane), BT.709 limited range.
+// Output: dst_w × dst_h × 3 packed RGB888 (same as HailoRT UINT8 NHWC input).
 //
-// 수식 (GPU 셰이더도 같은 규칙을 따라야 한다):
-//   1) 콘텐츠 영역: new_w = int(src_w*scale + 0.5), new_h = int(src_h*scale + 0.5) (make_letterbox와 동일)
-//      dx ∈ [pad_x, pad_x+new_w), dy ∈ [pad_y, pad_y+new_h) 이외의 픽셀은 R=G=B=pad_value(114).
-//   2) 원본 샘플 위치(픽셀 중심 정렬, cv::resize INTER_LINEAR와 같은 half-pixel 규칙):
+// Formulas (the GPU shader must follow the same rules):
+//   1) Content area: new_w = int(src_w*scale + 0.5), new_h = int(src_h*scale + 0.5) (same as make_letterbox)
+//      Pixels outside dx ∈ [pad_x, pad_x+new_w), dy ∈ [pad_y, pad_y+new_h) are R=G=B=pad_value(114).
+//   2) Source sample position (pixel-center aligned, same half-pixel rule as cv::resize INTER_LINEAR):
 //        sx = (dx - pad_x + 0.5) / scale - 0.5,  sy = (dy - pad_y + 0.5) / scale - 0.5
-//   3) Y: (sx, sy)에서 bilinear. 좌표는 [0, w-1]×[0, h-1]로 클램프(가장자리 복제).
-//   4) UV: 크로마 위치 left(HEVC 기본, 영상 메타 chroma_location=left):
-//        수평은 루마 짝수 열과 같은 위치, 수직은 두 루마 행의 가운데.
-//        cx = sx / 2,  cy = (sy + 0.5) / 2 - 0.5, [0, w/2-1]×[0, h/2-1]로 클램프 후 U, V 각각 bilinear.
+//   3) Y: bilinear at (sx, sy). Coordinates clamped to [0, w-1]×[0, h-1] (edge replication).
+//   4) UV: chroma location left (HEVC default, video metadata chroma_location=left):
+//        horizontally at the same position as even luma columns, vertically midway between two luma rows.
+//        cx = sx / 2,  cy = (sy + 0.5) / 2 - 0.5, clamped to [0, w/2-1]×[0, h/2-1], then bilinear for U and V separately.
 //   5) BT.709 limited → RGB (float):
 //        Y' = (Y - 16) * 255/219,  U' = (U - 128) * 255/224,  V' = (V - 128) * 255/224
 //        R = Y' + 1.5748 V',  G = Y' - 0.187324 U' - 0.468124 V',  B = Y' + 1.8556 U'
-//      0~255로 클램프 후 반올림(+0.5 후 절삭).
+//      Clamp to 0~255, then round (add 0.5 and truncate).
 #pragma once
 
 #include <algorithm>
@@ -55,7 +55,7 @@ inline std::uint8_t to_u8(float v) {
 
 } // namespace detail
 
-// NV12(BT.709 limited) → letterbox RGB888. dst는 lb.dst_w*lb.dst_h*3 바이트.
+// NV12 (BT.709 limited) → letterbox RGB888. dst is lb.dst_w*lb.dst_h*3 bytes.
 inline void cpu_letterbox_nv12_bt709(const std::uint8_t* y_plane, std::size_t y_pitch, const std::uint8_t* uv_plane,
                                      std::size_t uv_pitch, int src_w, int src_h, const LetterboxParams& lb,
                                      std::uint8_t* dst) {
@@ -90,8 +90,8 @@ inline void cpu_letterbox_nv12_bt709(const std::uint8_t* y_plane, std::size_t y_
     }
 }
 
-// packed RGB888(NHWC) ↔ NHCW 전치. 두 버퍼는 겹치면 안 되고 크기는 w*h*3이다.
-// 색 변환 기준 구현은 cpu_letterbox_nv12_bt709() 하나뿐이고, NHCW 기준값은 그 결과를 전치해서 만든다.
+// packed RGB888 (NHWC) ↔ NHCW transpose. The two buffers must not overlap and their size is w*h*3.
+// The only color conversion reference is cpu_letterbox_nv12_bt709(); NHCW reference values are made by transposing its result.
 //   NHWC idx = (y * w + x) * 3 + c      NHCW idx = (y * 3 + c) * w + x
 inline void rgb_packed_to_nhcw(const std::uint8_t* src, int w, int h, std::uint8_t* dst) {
     for (int y = 0; y < h; ++y) {
@@ -107,7 +107,7 @@ inline void rgb_packed_to_nhcw(const std::uint8_t* src, int w, int h, std::uint8
     }
 }
 
-// NHCW → packed RGB888 (PNG 저장 등 시각화용 역변환)
+// NHCW → packed RGB888 (inverse transform for visualization, e.g. saving PNGs)
 inline void nhcw_to_rgb_packed(const std::uint8_t* src, int w, int h, std::uint8_t* dst) {
     for (int y = 0; y < h; ++y) {
         const std::uint8_t* r = src + static_cast<std::size_t>(y) * 3 * w;

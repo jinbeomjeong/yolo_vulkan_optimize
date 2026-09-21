@@ -1,12 +1,12 @@
-// yvo_display_pipeline_probe: 마일스톤 7 검증 도구.
+// yvo_display_pipeline_probe: milestone 7 verification tool.
 //
-// `DisplayPipeline` 만 단독으로 돌려서 `yvo_display_probe --probe convert` 의 스왑체인 구간 수치
-// (convert median 4.25 / overlay 0.151 / present 간격 16.661 / dropped 0)를 **DisplayPipeline 경유로**
-// 재현하는 것이 목적이다. NPU 도 전처리도 쓰지 않는다 — 디코더와 표시 경로뿐이다.
+// The goal is to run `DisplayPipeline` alone and reproduce the swapchain-section numbers of `yvo_display_probe --probe convert`
+// (convert median 4.25 / overlay 0.151 / present interval 16.661 / dropped 0) **via DisplayPipeline**.
+// It uses neither the NPU nor preprocessing — only the decoder and the display path.
 //
-// main.cpp 의 슬롯 규약을 그대로 흉내 낸다:
-//   retain(slot, frame) → (지연 흉내: NPU 지연만큼 늦게) show(slot, dets, hud) → pump() → display_done
-// display_done 콜백이 슬롯을 free 목록에 돌려주므로 2조건 반납의 **표시 쪽 절반**이 여기서 검증된다.
+// It mimics main.cpp's slot convention as is:
+//   retain(slot, frame) → (latency emulation: delayed by the NPU latency) show(slot, dets, hud) → pump() → display_done
+// The display_done callback returns the slot to the free list, so the **display half** of the two-condition release is verified here.
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -55,8 +55,8 @@ struct Args {
     int frames = 300;
     int slots = 4;
     int dets = 5;
-    int lag = 4;                 // show 를 몇 프레임 늦출 것인가 (NPU 지연 흉내)
-    int toggle_at = 0;           // N 프레임째에 fullscreen 을 토글해 **실행 중 리사이즈**를 강제한다
+    int lag = 4;                 // how many frames to delay show (NPU latency emulation)
+    int toggle_at = 0;           // toggle fullscreen at frame N to force a **resize during execution**
     bool validation = true;
     bool sync_validation = false;
     bool verbose = false;
@@ -130,11 +130,11 @@ int run(const Args& a) {
     cfg.src_w = dec.width();
     cfg.src_h = dec.height();
 
-    // ⚠ 순서: WaylandWindow → VulkanContext(enable_present) → DisplayPipeline
+    // ⚠ Order: WaylandWindow → VulkanContext(enable_present) → DisplayPipeline
     yvo::display::WaylandWindow win;
     const bool have_win = DisplayPipeline::open_window(win, cfg);
     if (!have_win && cfg.backend == yvo::display::DisplayBackendKind::Wayland) {
-        std::fprintf(stderr, "wayland 창 열기 실패: %s\n", win.error().c_str());
+        std::fprintf(stderr, "failed to open wayland window: %s\n", win.error().c_str());
         return 1;
     }
 
@@ -154,13 +154,13 @@ int run(const Args& a) {
                 disp.blit_mode() ? "blit fallback" : "compute -> storage image", disp.image_count(),
                 yvo::display::sync_name(cfg.sync), yvo::display::pace_name(cfg.pace), cfg.every);
 
-    // 슬롯 풀: display_done 콜백이 반납한다(main.cpp 2조건 반납의 표시 쪽 절반).
+    // Slot pool: the display_done callback returns slots (display half of main.cpp's two-condition release).
     std::deque<int> free_slots;
     for (int i = 0; i < a.slots; ++i) free_slots.push_back(i);
     disp.set_display_done_callback([&](int s) { free_slots.push_back(s); });
 
     const std::vector<yvo::Detection> dets = synth_dets(a.dets, dec.width(), dec.height());
-    std::deque<std::pair<int, long>> lagq;   // (slot, 프레임 번호) — lag 프레임 뒤에 show
+    std::deque<std::pair<int, long>> lagq;   // (slot, frame number) — show after lag frames
     long decoded = 0, shown = 0, dropped_show = 0;
     int held_max = 0;
     const auto t0 = Clock::now();
@@ -168,12 +168,12 @@ int run(const Args& a) {
     bool toggled = false;
     while (decoded < a.frames) {
         if (!disp.poll_window()) break;
-        // 실행 중 리사이즈: 컴포지터가 새 크기로 configure 하면 스왑체인이 재생성된다.
+        // Resize during execution: when the compositor configures a new size, the swapchain is recreated.
         if (have_win && a.toggle_at > 0 && !toggled && decoded >= a.toggle_at) {
             win.set_fullscreen(!cfg.fullscreen);
             toggled = true;
         }
-        // 슬롯 확보 (main.cpp 의 pump 루프와 같은 모양)
+        // Acquire a slot (same shape as main.cpp's pump loop)
         const auto deadline = Clock::now() + std::chrono::seconds(5);
         while (free_slots.empty()) {
             disp.pump();
@@ -195,7 +195,7 @@ int run(const Args& a) {
                 continue;
             }
             if (Clock::now() > deadline) {
-                std::fprintf(stderr, "[error] 슬롯 대기 타임아웃 (표시 슬롯이 돌아오지 않는다)\n");
+                std::fprintf(stderr, "[error] slot wait timeout (display slots are not coming back)\n");
                 return 1;
             }
         }
@@ -229,7 +229,7 @@ int run(const Args& a) {
         disp.pump();
         held_max = std::max(held_max, disp.frames_held());
     }
-    // 드레인
+    // Drain
     while (!lagq.empty()) {
         const int s = lagq.front().first;
         lagq.pop_front();
@@ -242,14 +242,14 @@ int run(const Args& a) {
 
     const Stats C = stats(disp.convert_ms()), T = stats(disp.convert_total_ms()), O = stats(disp.overlay_ms()),
                 I = stats(disp.present_interval_ms()), G = stats(disp.glass_ms());
-    std::printf("frames                  : 디코드 %ld, show 성공 %ld, show 드롭 %ld, %.0f ms → %.1f fps\n", decoded,
+    std::printf("frames                  : decoded %ld, show ok %ld, show dropped %ld, %.0f ms → %.1f fps\n", decoded,
                 shown, dropped_show, wall, static_cast<double>(shown) * 1000.0 / wall);
     std::printf("convert shader ms       : median=%.3f p90=%.3f max=%.3f (n=%zu)\n", C.median, C.p90, C.max, C.n);
     std::printf("convert total ms        : median=%.3f p90=%.3f (n=%zu)\n", T.median, T.p90, T.n);
-    std::printf("overlay shader ms       : median=%.3f p90=%.3f max=%.3f (n=%zu)  → 합 median=%.3f\n", O.median,
+    std::printf("overlay shader ms       : median=%.3f p90=%.3f max=%.3f (n=%zu)  → sum median=%.3f\n", O.median,
                 O.p90, O.max, O.n, C.median + O.median);
-    std::printf("present 간격 ms         : median=%.3f p90=%.3f (n=%zu)\n", I.median, I.p90, I.n);
-    std::printf("glass-to-glass ms       : median=%.3f p90=%.3f (n=%zu)  (retain → present_wait 반환)\n", G.median,
+    std::printf("present interval ms     : median=%.3f p90=%.3f (n=%zu)\n", I.median, I.p90, I.n);
+    std::printf("glass-to-glass ms       : median=%.3f p90=%.3f (n=%zu)  (retain → present_wait return)\n", G.median,
                 G.p90, G.n);
     std::printf("presented=%llu display_dropped=%llu recreates=%llu overlay_overflow=%llu frames_held_max=%d\n",
                 static_cast<unsigned long long>(disp.presented()),

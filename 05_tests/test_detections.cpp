@@ -1,14 +1,14 @@
-// 추론 결과 일치: CPU 전처리 → HailoRT vs GPU 전처리(ptr/dmabuf, NHWC/NHCW) → HailoRT
+// Inference result agreement: CPU preprocessing → HailoRT vs GPU preprocessing (ptr/dmabuf, NHWC/NHCW) → HailoRT
 //
-// 같은 DRM_PRIME 프레임을 네 경로로 NPU에 넣는다.
-//   CPU    : dma-buf mmap → desand_nv12 → cpu_letterbox_nv12_bt709 → 페이지 정렬 malloc 버퍼 → set_buffer
-//   GPU ptr: SandLetterbox(export_dmabuf=true) 출력의 host 매핑 포인터 → set_buffer
-//   GPU dmabuf: 같은 출력 메모리를 export한 dma-buf fd(map_dmabuf 사전 매핑) → set_dma_buffer
-//   GPU dmabuf NHCW: 셰이더가 NHCW로 직접 쓴 출력을 dma-buf로 → NHCW 러너(set_dma_buffer)
-// 앞 세 경로는 NHWC 러너 하나로 한 번에 돌리고, NHCW는 러너 설정이 달라 두 번째 패스로 따로 돌린다
-// (Hailo 장치가 하나뿐이라 러너를 동시에 두 개 만들 수 없다).
-// 기준: 같은 클래스·IoU >= 0.9로 매칭된 검출 수 / max(CPU 검출 수, GPU 검출 수) >= 0.95 (프레임 합계).
-// 프레임 수: 환경변수 YVO_DET_FRAMES(기본 100). 영상: YVO_TEST_VIDEO(기본 04_data/videos/video_h265.mp4).
+// Feeds the same DRM_PRIME frame to the NPU via four paths.
+//   CPU    : dma-buf mmap → desand_nv12 → cpu_letterbox_nv12_bt709 → page-aligned malloc buffer → set_buffer
+//   GPU ptr: host-mapped pointer of the SandLetterbox(export_dmabuf=true) output → set_buffer
+//   GPU dmabuf: dma-buf fd exported from the same output memory (pre-mapped with map_dmabuf) → set_dma_buffer
+//   GPU dmabuf NHCW: output written directly as NHCW by the shader, via dma-buf → NHCW runner (set_dma_buffer)
+// The first three paths run together on a single NHWC runner; NHCW needs a different runner config, so it runs separately in a second pass
+// (there is only one Hailo device, so two runners cannot exist at the same time).
+// Criterion: detections matched with same class and IoU >= 0.9 / max(CPU detections, GPU detections) >= 0.95 (summed over frames).
+// Frame count: env var YVO_DET_FRAMES (default 100). Video: YVO_TEST_VIDEO (default 04_data/videos/video_h265.mp4).
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
@@ -149,7 +149,7 @@ protected:
                     d.dmabuf_fd = export_fd;
                     submit(kGpuDmabuf, d);
                 }
-                runner->drain();  // CPU 버퍼·GPU 출력을 다음 프레임에서 덮어쓰기 전에 완료 대기
+                runner->drain();  // wait for completion before the next frame overwrites the CPU buffer / GPU output
                 ++frames_;
             }
             pre.clear_import_cache();
@@ -162,8 +162,8 @@ protected:
         if (setup_error_.empty() && dmabuf_ok_ && frames_ > 0) run_nhcw_pass(video);
     }
 
-    // 두 번째 패스: 셰이더가 NHCW로 직접 쓴 출력을 NHCW 러너에 dma-buf로 넣는다.
-    // 첫 패스의 러너를 완전히 해제한 뒤에 호출해야 한다(Hailo 장치 1개).
+    // Second pass: feed the output written directly as NHCW by the shader to the NHCW runner via dma-buf.
+    // Must be called after the first pass's runner is fully released (one Hailo device).
     static void run_nhcw_pass(const std::string& video) {
         int export_fd = -1;
         try {
@@ -173,7 +173,7 @@ protected:
             pcfg.export_dmabuf = ctx.dmabuf_export_supported();
             pcfg.out_layout = yvo::TensorLayout::Nhcw;
             if (!pcfg.export_dmabuf) {
-                nhcw_error_ = "dma-buf export 미지원";
+                nhcw_error_ = "dma-buf export not supported";
                 return;
             }
             yvo::vk::SandLetterbox pre(ctx, pcfg);
@@ -202,7 +202,7 @@ protected:
             for (long n = 0; n < frames_; ++n) {
                 auto f = dec.next();
                 if (!f) {
-                    nhcw_error_ = "프레임 부족: " + std::to_string(n) + " / " + std::to_string(frames_);
+                    nhcw_error_ = "not enough frames: " + std::to_string(n) + " / " + std::to_string(frames_);
                     break;
                 }
                 f->pts = n;
@@ -214,10 +214,10 @@ protected:
                 yvo::PreprocOutput gpu = pre.process(*f, 0);
                 f.reset();
                 if (gpu.layout != yvo::TensorLayout::Nhcw) {
-                    nhcw_error_ = "전처리 출력이 NHCW가 아니다";
+                    nhcw_error_ = "preprocessing output is not NHCW";
                     break;
                 }
-                // NHCW → packed로 되돌려 CPU 기준값과 비교(셰이더의 NHCW 배치 검증)
+                // Convert NHCW → packed back and compare with the CPU reference (verifies the shader's NHCW layout)
                 yvo::nhcw_to_rgb_packed(gpu.host_ptr, gpu.lb.dst_w, gpu.lb.dst_h, unpacked.data());
                 if (std::memcmp(unpacked.data(), cpu_buf.p, gpu.size) == 0) ++nhcw_identical_;
                 gpu.slot = kGpuDmabufNhcw;
@@ -228,7 +228,7 @@ protected:
                     if (r.status != HAILO_SUCCESS) ++infer_errors_;
                     results_[kGpuDmabufNhcw][static_cast<std::size_t>(n)] = std::move(r.detections);
                 });
-                runner->drain();  // GPU 출력을 다음 프레임에서 덮어쓰기 전에 완료 대기
+                runner->drain();  // wait for completion before the next frame overwrites the GPU output
             }
             pre.clear_import_cache();
             dec.close();
@@ -263,12 +263,12 @@ protected:
         }
         const long denom = std::max(total.ref, total.test);
         const double ratio = denom > 0 ? static_cast<double>(total.matched) / static_cast<double>(denom) : 1.0;
-        // NHCW 경로는 두 번째 패스에서 따로 센 bit-identical 수를 쓴다.
+        // The NHCW path uses the bit-identical count tallied separately in the second pass.
         const long identical = path == kGpuDmabufNhcw ? nhcw_identical_ : preproc_identical_;
         std::printf("[%s] frames %ld, detections cpu %ld / %s %ld, matched %ld, ratio %.4f, preproc bit-identical %ld/%ld\n",
                     kPathName[path], frames_, total.ref, kPathName[path], total.test, total.matched, ratio,
                     identical, frames_);
-        EXPECT_GT(total.ref, 0) << "CPU 경로 검출이 0개";
+        EXPECT_GT(total.ref, 0) << "CPU path has 0 detections";
         EXPECT_GE(ratio, kMinMatchRatio);
         EXPECT_EQ(infer_errors_, 0);
     }
@@ -286,12 +286,12 @@ protected:
 TEST_F(DetectionsTest, GpuPtrMatchesCpu) { check_path(kGpuPtr); }
 
 TEST_F(DetectionsTest, GpuDmabufMatchesCpu) {
-    if (!dmabuf_ok_) GTEST_SKIP() << "Vulkan dma-buf export 미지원";
+    if (!dmabuf_ok_) GTEST_SKIP() << "Vulkan dma-buf export not supported";
     check_path(kGpuDmabuf);
 }
 
 TEST_F(DetectionsTest, GpuDmabufNhcwMatchesCpu) {
-    if (!dmabuf_ok_) GTEST_SKIP() << "Vulkan dma-buf export 미지원";
+    if (!dmabuf_ok_) GTEST_SKIP() << "Vulkan dma-buf export not supported";
     ASSERT_TRUE(nhcw_error_.empty()) << nhcw_error_;
     check_path(kGpuDmabufNhcw);
 }

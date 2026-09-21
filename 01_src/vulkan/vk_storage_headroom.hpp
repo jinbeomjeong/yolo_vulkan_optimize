@@ -1,27 +1,27 @@
-// dma-buf import용 STORAGE_BUFFER 헤드룸 질의 (헤더 전용) — 계획서 부록 B.12
+// STORAGE_BUFFER headroom query for dma-buf import (header-only) — plan Appendix B.12
 //
-// 문제: V3DV는 스토리지 버퍼의 메모리 요구 크기에 TMU 선읽기용 여유를 더한다(실측 +256 B, 크기 무관).
-// import 메모리 크기는 dma-buf 크기로 고정이므로, dma-buf가 요청 크기에 딱 맞으면
-// `DmaBufImportCache::get()`이 VkBuffer 범위를 그만큼 **줄여** 대응한다 → 셰이더가 마지막 바이트를
-// 못 읽는다. P0(부록 B.17)에서 `conv71_178`(409,600 = 16384×25, 여유 0)이 정확히 이 상태였다:
+// Problem: V3DV adds slack for TMU prefetch to the storage buffer memory requirement size (measured +256 B, size-independent).
+// The import memory size is fixed to the dma-buf size, so if the dma-buf exactly fits the requested size,
+// `DmaBufImportCache::get()` copes by **shrinking** the VkBuffer range by that amount → the shader cannot read the last
+// bytes. In P0 (Appendix B.17), `conv71_178` (409,600 = 16384×25, slack 0) was exactly in this state:
 // `range 409,344 < hw 409,600`.
 //
-// 해법: dma-heap에서 잡을 때 **미리 헤드룸을 더해서** 잡는다.
-//   1) 더미 VkBuffer 생성 (size = requested, usage = STORAGE_BUFFER,
+// Solution: when allocating from the dma-heap, allocate **with the headroom added in advance**.
+//   1) create a dummy VkBuffer (size = requested, usage = STORAGE_BUFFER,
 //                          pNext = VkExternalMemoryBufferCreateInfo{DMA_BUF})
 //   2) vkGetBufferMemoryRequirements2() → req.size
-//   3) headroom = req.size - requested          (V3D 실측: 항상 256, 크기 무관)
-//   4) 더미 파괴
-// → 호출자가 `yvo::DmaHeapConfig::device_headroom`에 넣으면
-//   `DmaHeapPool::allocate()`가 `align_up(requested + device_headroom, align)`으로 잡는다.
+//   3) headroom = req.size - requested          (V3D measured: always 256, size-independent)
+//   4) destroy the dummy
+// → when the caller puts it into `yvo::DmaHeapConfig::device_headroom`,
+//   `DmaHeapPool::allocate()` allocates `align_up(requested + device_headroom, align)`.
 //
-// **상수 256을 박지 않는다** — 드라이버 의존이다. 질의 결과는 크기별로 memoize한다.
+// **Do not hard-code the constant 256** — it is driver-dependent. Query results are memoized per size.
 //
-// 과할당이 spec 위반이 되지 않는가: `VUID-VkMemoryDedicatedAllocateInfo-buffer-02965`는
-// "buffer가 VK_NULL_HANDLE이 아니면 allocationSize가 그 버퍼의 VkMemoryRequirements::size와 같아야 한다"고
-// 요구하지만, 이는 **전용 할당(VkMemoryDedicatedAllocateInfo)을 붙였을 때만** 적용된다.
-// P0 실측에서 V3D는 6/6 `requiresDedicatedAllocation = prefersDedicatedAllocation = 0`이라
-// `dmabuf_import.cpp`가 그 구조체를 붙이지 않는다 → 과할당이 걸리지 않는다.
+// Does over-allocation violate the spec: `VUID-VkMemoryDedicatedAllocateInfo-buffer-02965`
+// requires "if buffer is not VK_NULL_HANDLE, allocationSize must equal that buffer's VkMemoryRequirements::size",
+// but this applies **only when a dedicated allocation (VkMemoryDedicatedAllocateInfo) is attached**.
+// In P0 measurements V3D reported `requiresDedicatedAllocation = prefersDedicatedAllocation = 0` for 6/6, so
+// `dmabuf_import.cpp` does not attach that structure → the over-allocation does not trigger it.
 // (validusage.json, Vulkan 1.4.309 / commit 43d153dd)
 #pragma once
 
@@ -34,8 +34,8 @@
 
 namespace yvo::vk {
 
-// requested 바이트짜리 외부 메모리(dma-buf) STORAGE_BUFFER의 메모리 요구를 묻는다. 할당하지 않는다.
-// ded가 non-null이면 VkMemoryDedicatedRequirements도 함께 채운다.
+// Queries the memory requirements of an external-memory (dma-buf) STORAGE_BUFFER of requested bytes. Does not allocate.
+// If ded is non-null, VkMemoryDedicatedRequirements is filled in as well.
 inline VkMemoryRequirements query_dmabuf_storage_requirements(VkDevice dev, VkDeviceSize requested,
                                                               VkMemoryDedicatedRequirements* ded = nullptr) {
     VkExternalMemoryBufferCreateInfo ext{};
@@ -66,13 +66,13 @@ inline VkMemoryRequirements query_dmabuf_storage_requirements(VkDevice dev, VkDe
     return req2.memoryRequirements;
 }
 
-// 크기별 헤드룸 캐시. 같은 크기를 두 번 묻지 않는다(부록 B.12: "텐서마다 다시 묻지 않는다").
+// Per-size headroom cache. Never asks for the same size twice (Appendix B.12: "do not re-query per tensor").
 class StorageHeadroomQuery {
 public:
     explicit StorageHeadroomQuery(VkDevice dev) : dev_(dev) {}
 
-    // requested 바이트를 담을 dma-buf가 추가로 가져야 하는 바이트 수.
-    // 드라이버가 여유를 요구하지 않으면 0이다.
+    // Number of extra bytes a dma-buf holding requested bytes must have.
+    // 0 if the driver requires no slack.
     std::size_t headroom(std::size_t requested) {
         auto it = memo_.find(requested);
         if (it != memo_.end()) return it->second;
@@ -83,8 +83,8 @@ public:
         return h;
     }
 
-    // 여러 크기 중 최대 헤드룸. `DmaHeapConfig::device_headroom`은 풀 하나에 값 하나라,
-    // 여러 크기를 담는 풀에는 최대값을 넣는다. **과할당은 안전하다**(위 주석의 VUID-02965 설명 참고).
+    // Maximum headroom across several sizes. `DmaHeapConfig::device_headroom` is one value per pool, so
+    // a pool holding several sizes gets the maximum. **Over-allocation is safe** (see the VUID-02965 explanation in the comment above).
     template <typename It>
     std::size_t max_headroom(It first, It last) {
         std::size_t m = 0;

@@ -1,15 +1,15 @@
 #pragma once
-// GPU 후처리 픽스처(04_data/raw_tensors/)의 읽기·비교 — **테스트와 프로브의 단일 구현**.
+// Reading and comparison of the GPU postprocessing fixtures (04_data/raw_tensors/) — **the single implementation for tests and probes**.
 //
-// 쓰는 곳: 05_tests/test_postproc.cpp (PostprocFixture.* 게이트),
+// Used by: 05_tests/test_postproc.cpp (PostprocFixture.* gate),
 //          01_src/tools/vulkan/postproc_probe.cpp (--probe fixture/sweep/gpuab/live).
 //
-// 2026-09-21 이전에는 이 코드(JSON 파서 · 픽스처 로더 · G5 비교 · G6 정규형, 약 200행)가 두 파일에
-// 따로 있었고 **이미 갈라져 있었다**: 테스트 쪽 JSON 파서는 문자열 이스케이프를 처리하지 않았고
-// 스트림 name 필드와 max_score_err 가 없었으며, 반대로 프로브 쪽은 frames == 0 검사가 없었다.
-// 둘의 합집합을 여기 둔다. **게이트 판정(무엇을 합격으로 볼지)은 각 호출자에 남긴다.**
+// Before 2026-09-21 this code (JSON parser · fixture loader · G5 comparison · G6 canonical form, about 200 lines) existed separately in two files
+// and **had already diverged**: the test-side JSON parser did not handle string escapes
+// and lacked the stream name field and max_score_err, while conversely the probe side lacked the frames == 0 check.
+// The union of the two lives here. **Gate judgment (what counts as a pass) is left to each caller.**
 //
-// 헤더 전용이다. 의존은 core/·ref/ 와 vulkan/yolo_postproc.hpp 뿐이다.
+// Header-only. Its only dependencies are core/, ref/ and vulkan/yolo_postproc.hpp.
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -40,7 +40,7 @@ using yvo::vk::YoloTensorLayout;
 using yvo::vk::yolo_box_tensor;
 using yvo::vk::yolo_cls_tensor;
 
-// G5 좌표 허용 오차 [px] (계획서 §4.5). 테스트 게이트와 프로브 판정이 같은 값을 쓴다.
+// G5 coordinate tolerance [px] (plan §4.5). The test gate and the probe judgment use the same value.
 inline constexpr float kCoordTolPx = 0.25f;
 
 struct Json {
@@ -58,7 +58,7 @@ struct Json {
     }
     const Json& at(const std::string& k) const {
         const Json* p = find(k);
-        if (!p) throw std::runtime_error("fixtures.json: key 없음: " + k);
+        if (!p) throw std::runtime_error("fixtures.json: missing key: " + k);
         return *p;
     }
     double n(const std::string& k) const { return at(k).num; }
@@ -81,7 +81,7 @@ private:
         while (p_ < t_.size() && std::isspace(static_cast<unsigned char>(t_[p_]))) ++p_;
     }
     [[noreturn]] void fail(const char* what) const {
-        throw std::runtime_error(std::string("fixtures.json 파싱 실패(") + what + ") at " + std::to_string(p_));
+        throw std::runtime_error(std::string("fixtures.json parse failed(") + what + ") at " + std::to_string(p_));
     }
     void expect(char c) {
         ws();
@@ -198,11 +198,11 @@ private:
     std::size_t p_ = 0;
 };
 
-// ─────────────────────────────────────────────────────────────────── 픽스처
+// ─────────────────────────────────────────────────────────────────── fixtures
 
 struct FixtureStream {
-    std::string name;   // HailoRT 스트림 전체 이름
-    std::string file;   // 파일 접미사 (frame%03d_<file>.bin)
+    std::string name;   // full HailoRT stream name
+    std::string file;   // file suffix (frame%03d_<file>.bin)
     int scale_id = 0;
     bool is_cls = false;
     int grid_h = 0, grid_w = 0, w_padded = 0, features = 0, stride = 0;
@@ -217,13 +217,13 @@ struct FixtureSet {
     int frames = 0;
     int num_classes = 80;
     int reg_max = yvo::kDflRegMax;
-    std::vector<FixtureStream> streams;   // 6개
+    std::vector<FixtureStream> streams;   // 6 of them
 };
 
 inline FixtureSet load_fixtures(const std::string& dir) {
     const std::string path = dir + "/fixtures.json";
     std::ifstream in(path);
-    if (!in) throw std::runtime_error("픽스처 메타를 못 읽었다: " + path + " (먼저 yvo_hailo_raw_probe 를 돌려라)");
+    if (!in) throw std::runtime_error("could not read fixture metadata: " + path + " (run yvo_hailo_raw_probe first)");
     std::stringstream ss;
     ss << in.rdbuf();
     const Json root = JsonParser(ss.str()).parse();
@@ -259,8 +259,8 @@ inline FixtureSet load_fixtures(const std::string& dir) {
         t.qp_scale = s.f("qp_scale");
         fs.streams.push_back(std::move(t));
     }
-    if (fs.streams.size() != kYoloNumTensors) throw std::runtime_error("fixtures.json 의 streams 가 6개가 아니다");
-    if (fs.frames <= 0) throw std::runtime_error("fixtures.json 의 frames 가 0 이다");
+    if (fs.streams.size() != kYoloNumTensors) throw std::runtime_error("fixtures.json streams count is not 6");
+    if (fs.frames <= 0) throw std::runtime_error("fixtures.json frames is 0");
     return fs;
 }
 
@@ -288,17 +288,17 @@ inline YoloTensorLayout layout_from_fixtures(const FixtureSet& fs) {
         }
     }
     for (int i = 0; i < kYoloNumScales; ++i)
-        if (!seen_cls[i] || !seen_box[i]) throw std::runtime_error("스케일 " + std::to_string(i) + " 짝이 없다");
+        if (!seen_cls[i] || !seen_box[i]) throw std::runtime_error("scale " + std::to_string(i) + " has no pair");
     return L;
 }
 
-// 텐서 번호 0..5 ↔ fixtures.json 의 스트림. 번호 규약은 yolo_postproc.hpp 참고.
+// Tensor indices 0..5 ↔ streams in fixtures.json. See yolo_postproc.hpp for the index convention.
 inline std::vector<const FixtureStream*> tensor_order(const FixtureSet& fs) {
     std::vector<const FixtureStream*> v(kYoloNumTensors, nullptr);
     for (const FixtureStream& t : fs.streams)
         v[static_cast<std::size_t>(t.is_cls ? yolo_cls_tensor(t.scale_id) : yolo_box_tensor(t.scale_id))] = &t;
     for (const auto* p : v)
-        if (!p) throw std::runtime_error("텐서 번호 대응이 비었다");
+        if (!p) throw std::runtime_error("tensor index mapping is empty");
     return v;
 }
 
@@ -312,10 +312,10 @@ inline FrameTensors load_frame(const FixtureSet& fs, int frame) {
         std::snprintf(stem, sizeof(stem), "frame%03d_", frame);
         const std::string path = fs.dir + "/" + stem + order[static_cast<std::size_t>(i)]->file + ".bin";
         std::ifstream in(path, std::ios::binary | std::ios::ate);
-        if (!in) throw std::runtime_error("픽스처 파일을 못 읽었다: " + path);
+        if (!in) throw std::runtime_error("could not read fixture file: " + path);
         const auto n = static_cast<std::size_t>(in.tellg());
         if (n != order[static_cast<std::size_t>(i)]->bytes)
-            throw std::runtime_error("픽스처 크기가 메타와 다르다: " + path);
+            throw std::runtime_error("fixture size differs from metadata: " + path);
         out[static_cast<std::size_t>(i)].resize(n);
         in.seekg(0);
         in.read(reinterpret_cast<char*>(out[static_cast<std::size_t>(i)].data()), static_cast<std::streamsize>(n));
@@ -323,7 +323,7 @@ inline FrameTensors load_frame(const FixtureSet& fs, int frame) {
     return out;
 }
 
-// 호스트 포인터 6개로 CPU 기준 입력을 만든다(= make_raw_set 의 텐서 번호 판)
+// Builds the CPU reference input from 6 host pointers (= tensor-index version of make_raw_set)
 inline yvo::RawOutputSet make_raw_set(const YoloTensorLayout& L, const std::uint8_t* const ptr[kYoloNumTensors]) {
     yvo::RawOutputSet r;
     r.num_classes = L.num_classes;
@@ -333,7 +333,7 @@ inline yvo::RawOutputSet make_raw_set(const YoloTensorLayout& L, const std::uint
         s.cls = ptr[yolo_cls_tensor(i)];
         s.box = ptr[yolo_box_tensor(i)];
         s.grid_h = L.s[i].grid_h;
-        s.grid_w = L.s[i].grid_w;   // P5 는 유효 열(20)만. 열 20~23 은 패딩이다(부록 A.6)
+        s.grid_w = L.s[i].grid_w;   // P5 uses only the valid columns (20). Columns 20–23 are padding (Appendix A.6)
         s.w_padded = L.s[i].w_padded;
         s.stride = L.s[i].stride;
         s.cls_scale = L.s[i].cls_scale;
@@ -344,7 +344,7 @@ inline yvo::RawOutputSet make_raw_set(const YoloTensorLayout& L, const std::uint
     return r;
 }
 
-// ─────────────────────────────────────────────────────────────────── 비교 (G5 / G6)
+// ─────────────────────────────────────────────────────────────────── comparison (G5 / G6)
 
 struct Compare {
     std::size_t cpu = 0, gpu = 0;
@@ -390,7 +390,7 @@ inline Compare compare_candidates(const std::vector<DetectionKeyed>& cpu, const 
     return c;
 }
 
-// G6: `(score 내림차순, anchor_key 오름차순)` 전순서로 정렬해 바이트 단위로 비교할 수 있는 형태로 만든다.
+// G6: sort by the total order `(score descending, anchor_key ascending)` into a form that can be compared byte by byte.
 inline std::string canonical(const std::vector<DetectionKeyed>& v) {
     std::vector<DetectionKeyed> s = v;
     std::sort(s.begin(), s.end(), [](const DetectionKeyed& a, const DetectionKeyed& b) {

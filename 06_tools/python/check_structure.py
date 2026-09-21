@@ -1,29 +1,29 @@
 #!/usr/bin/env python3
-"""저장소 구조 규칙(06_tools/structure_rules.toml)을 검사한다.
+"""Check the repository structure rules (06_tools/structure_rules.toml).
 
-시스템 python3(3.11+, tomllib)로 돈다. 외부 의존성 없음.
+Runs on system python3 (3.11+, tomllib). No external dependencies.
 
-    python3 06_tools/python/check_structure.py                # 전체 검사. 오류가 있으면 exit 1
-    python3 06_tools/python/check_structure.py --strict       # 경고도 exit 1
-    python3 06_tools/python/check_structure.py --report-only  # 항상 exit 0 (전환기간용)
-    python3 06_tools/python/check_structure.py --changed      # git status 의 새 파일·미추적 파일만
+    python3 06_tools/python/check_structure.py                # full check. exit 1 on errors
+    python3 06_tools/python/check_structure.py --strict       # warnings also exit 1
+    python3 06_tools/python/check_structure.py --report-only  # always exit 0 (for transition periods)
+    python3 06_tools/python/check_structure.py --changed      # only new/untracked files from git status
     python3 06_tools/python/check_structure.py --explain 07_results/x/raw/a.log
-    python3 06_tools/python/check_structure.py --selftest     # classify_new_path 자체 시험
+    python3 06_tools/python/check_structure.py --selftest     # self-test of classify_new_path
 
-출력 한 줄 = `ID  경로  이유 → 올바른 위치 제안`.
+One output line = `ID  path  reason → suggested correct location`.
 
-검사 ID
-  T1 최상위 허용 항목            T2 루트 로그 잔재·덤프 추적     T3 ignore 대상인데 추적
-  R1 07_results 폴더 ↔ 색인 1:1   R2 07_results 루트 파일         R3 summary.md·env_bench.txt
-  R4 실험 폴더 직계 허용 항목     R5 유형별 필수 항목             R6 raw/ 형태
-  R7 raw/_session 내용            R8 runs/ 깊이                   R9 notes/·evidence/ 이름
-  R10 추적된 0바이트 hailort*.log
-  C1 01_src 직하 폴더             C2 시스템 include 폴더 이름 충돌  C3 .comp 위치·등록
-  C4 include 계층 DAG             C5 main() 위치                  C6 .cpp CMake 등록
-  C7 소스 안 경로 리터럴·자산 매크로  C8 CMake 금지 토큰            C9 벤치 셸 경로
-  C10 npu_guard BENCH_SCRIPTS     D1 STRUCTURE.md ↔ TOML           E1 쓰이지 않은 예외
+Check IDs
+  T1 allowed top-level items       T2 root log leftovers/tracked dumps  T3 tracked though ignored
+  R1 07_results folders ↔ index 1:1  R2 07_results root files     R3 summary.md, env_bench.txt
+  R4 allowed direct items of exp dir  R5 required items per type   R6 raw/ layout
+  R7 raw/_session contents         R8 runs/ depth                  R9 notes/, evidence/ names
+  R10 tracked 0-byte hailort*.log
+  C1 folders directly under 01_src  C2 name clash with system include dir  C3 .comp location/registration
+  C4 include layer DAG             C5 main() location              C6 .cpp CMake registration
+  C7 path literals in source, asset macros  C8 forbidden CMake tokens  C9 bench shell paths
+  C10 npu_guard BENCH_SCRIPTS      D1 STRUCTURE.md ↔ TOML           E1 unused exceptions
 
-공개 API (Write 훅이 import 한다)
+Public API (imported by the Write hook)
   load_rules() -> dict
   classify_new_path(relpath) -> None | (rule_id, why, suggestion)
 """
@@ -43,21 +43,21 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 RULES_PATH = ROOT / "06_tools" / "structure_rules.toml"
 
-ERROR = "오류"
-WARN = "경고"
+ERROR = "error"
+WARN = "warning"
 
 
-# ─── 규칙 로드와 글롭 ──────────────────────────────────────────────────────────
+# ─── Rule loading and globs ───────────────────────────────────────────────────
 @functools.lru_cache(maxsize=1)
 def load_rules() -> dict:
-    """structure_rules.toml 을 읽는다(프로세스당 한 번)."""
+    """Read structure_rules.toml (once per process)."""
     with RULES_PATH.open("rb") as f:
         return tomllib.load(f)
 
 
 @functools.lru_cache(maxsize=512)
 def _glob_re(pattern: str) -> re.Pattern:
-    """'*' 는 성분 하나, '**/' 는 0개 이상 성분, 끝의 '**' 는 나머지 전부."""
+    """'*' is one component, '**/' is zero or more components, a trailing '**' is everything remaining."""
     out = []
     i = 0
     while i < len(pattern):
@@ -87,7 +87,7 @@ def any_glob(path: str, patterns) -> bool:
     return any(glob_match(path, p) for p in patterns)
 
 
-# ─── 위반 기록 ─────────────────────────────────────────────────────────────────
+# ─── Violation records ─────────────────────────────────────────────────────────
 @dataclass(frozen=True)
 class Violation:
     rule: str
@@ -95,7 +95,7 @@ class Violation:
     why: str
     suggest: str = ""
     level: str = ERROR
-    token: str = ""   # 예외 waive 토큰(공백 구분, 여러 개 가능). 규칙 ID 로도 매칭된다
+    token: str = ""   # exception waive tokens (space-separated, may be several). Also matched by rule ID
 
     def line(self) -> str:
         s = f"{self.rule:<4} {self.path}  {self.why}"
@@ -126,7 +126,7 @@ class Exceptions:
 
 
 def _ancestor_matches(path: str, pattern: str) -> bool:
-    """path 자신 또는 그 조상 중 하나가 pattern(성분 글롭)과 일치하는가."""
+    """Does path itself or one of its ancestors match pattern (component glob)?"""
     parts = path.rstrip("/").split("/")
     for n in range(len(parts), 0, -1):
         if glob_match("/".join(parts[:n]), pattern):
@@ -134,14 +134,14 @@ def _ancestor_matches(path: str, pattern: str) -> bool:
     return False
 
 
-# ─── classify_new_path: 파일시스템을 거의 보지 않는 새 경로 판정 ───────────────────
+# ─── classify_new_path: judging a new path with barely any filesystem access ───────
 def _normalize_rel(relpath: str) -> str | None:
     p = relpath.replace("\\", "/")
     if os.path.isabs(p):
         try:
             p = str(Path(p).resolve().relative_to(ROOT))
         except ValueError:
-            return None   # 저장소 밖
+            return None   # outside the repository
     p = os.path.normpath(p).replace("\\", "/")
     if p.startswith("../") or p == "..":
         return None
@@ -149,10 +149,10 @@ def _normalize_rel(relpath: str) -> str | None:
 
 
 def classify_new_path(relpath: str) -> None | tuple[str, str, str]:
-    """아직 존재하지 않는 새 파일 경로 하나를 규칙표로만 판정한다.
+    """Judge a single, not-yet-existing new file path using the rule table only.
 
-    반환: 통과면 None, 위반이면 (규칙 ID, 이유, 올바른 위치 제안).
-    저장소 밖 경로·미추적 대역(build*, 03_models, 04_data, 11_logs, .git)은 None.
+    Returns: None if it passes, (rule ID, reason, suggested correct location) on violation.
+    Paths outside the repository and untracked bands (build*, 03_models, 04_data, 11_logs, .git) give None.
     """
     rules = load_rules()
     rel = _normalize_rel(relpath)
@@ -172,25 +172,25 @@ def _classify(rel: str, rules: dict, exc: Exceptions) -> Violation | None:
     if head in untracked or any_glob(head, top.get("untracked_globs", [])):
         return None
 
-    if len(parts) == 1:   # 루트 파일
+    if len(parts) == 1:   # root file
         if head in rules["junk"]["root_logs"]:
-            return Violation("T2", rel, "루트의 런타임 로그 잔재",
-                             "11_logs/<날짜>_<이름>.log 또는 07_results/<실험>/raw/_session/")
+            return Violation("T2", rel, "runtime log leftover in root",
+                             "11_logs/<date>_<name>.log or 07_results/<experiment>/raw/_session/")
         if head in top["tracked"]:
             return None
         ext = os.path.splitext(head)[1]
-        sug = rules.get("placement_root_suggest", {}).get(ext, "STRUCTURE.md §1 의 대역 중 하나")
-        return Violation("T1", rel, "루트에 허용 목록 밖 파일", sug)
+        sug = rules.get("placement_root_suggest", {}).get(ext, "one of the bands in STRUCTURE.md §1")
+        return Violation("T1", rel, "file in root not on the allow list", sug)
 
     if head not in top["tracked"]:
-        return Violation("T1", rel, f"허용 목록 밖 최상위 폴더 '{head}/'", "STRUCTURE.md §1 의 대역 중 하나")
+        return Violation("T1", rel, f"top-level folder '{head}/' not on the allow list", "one of the bands in STRUCTURE.md §1")
 
     if parts[-1].endswith(".comp") and head != "02_shaders":
-        return Violation("C3", rel, ".comp 는 02_shaders/ 에만 둔다", "02_shaders/" + parts[-1])
+        return Violation("C3", rel, ".comp belongs only in 02_shaders/", "02_shaders/" + parts[-1])
 
     base = os.path.basename(rel)
     if any_glob(base, rules["junk"]["dump_globs"]):
-        return Violation("T2", rel, "덤프 파일은 추적하지 않는다", "11_logs/ 또는 build/")
+        return Violation("T2", rel, "dump files are not tracked", "11_logs/ or build/")
 
     if head == rules["code"]["src_root"]:
         return _classify_src(rel, parts, rules)
@@ -205,13 +205,13 @@ def _classify_src(rel: str, parts: list[str], rules: dict) -> Violation | None:
     if len(parts) == 2:
         if parts[1] in code["root_files"]:
             return None
-        return Violation("C1", rel, "01_src 바로 아래에는 CMakeLists.txt 만 둔다", "01_src/<계층>/")
+        return Violation("C1", rel, "only CMakeLists.txt goes directly under 01_src", "01_src/<layer>/")
     d = parts[1]
     if d not in code["allowed_dirs"]:
         sug = code.get("suggest", {}).get(d, "01_src/{" + ",".join(code["allowed_dirs"]) + "}/")
-        return Violation("C1", rel, f"01_src 직하 허용 밖 폴더 '{d}/'", sug)
+        return Violation("C1", rel, f"folder not allowed directly under 01_src: '{d}/'", sug)
     if d in code["library_dirs"] and len(parts) > 3 and parts[2] in code["library_forbidden_subdirs"]:
-        return Violation("C1", rel, f"라이브러리 폴더 안의 '{parts[2]}/'",
+        return Violation("C1", rel, f"'{parts[2]}/' inside a library folder",
                          f"01_src/tools/{d}/" + "/".join(parts[3:]))
     return None
 
@@ -224,19 +224,19 @@ def _classify_placement(rel: str, rules: dict) -> Violation | None:
     if best is None:
         return None
     rest = rel[len(best["prefix"]):]
-    # 더 긴 prefix 를 가진 하위 규칙이 따로 있으면(06_tools/ vs 06_tools/bench/) 여기서 걸리지 않는다
+    # If a sub-rule with a longer prefix exists (06_tools/ vs 06_tools/bench/), it does not get caught here
     if any_glob(rest, best["allow"]):
         return None
     rid = "C9" if best["prefix"].startswith("06_tools/bench") else "T1"
-    return Violation(rid, rel, f"{best['prefix']} 에 허용되지 않는 파일 (허용: {', '.join(best['allow'])})",
-                     best.get("hint", "STRUCTURE.md 참조"))
+    return Violation(rid, rel, f"file not allowed in {best['prefix']} (allowed: {', '.join(best['allow'])})",
+                     best.get("hint", "see STRUCTURE.md"))
 
 
 def _suggest_exp_dir(name: str, rules: dict) -> str:
     for pat, sug in rules["results"].get("suggest_dirs", {}).items():
         if glob_match(name, pat):
             return sug
-    return "허용 폴더: " + ", ".join(rules["results"]["dirs"])
+    return "allowed folders: " + ", ".join(rules["results"]["dirs"])
 
 
 _RUN_LOG = re.compile(r"^(?P<cfg>.+?)_run(?P<n>\d+)\.log$")
@@ -253,7 +253,7 @@ def _suggest_raw_file(base: str, name: str, rules: dict) -> str:
     m = _NUM_LOG.match(name)
     if m:
         return f"{base}/raw/{m['cfg']}_run{m['n']}/stdout.log"
-    return f"{base}/raw/<설정>_run<N>/{name}"
+    return f"{base}/raw/<config>_run<N>/{name}"
 
 
 def _classify_results(rel: str, parts: list[str], rules: dict, exc: Exceptions,
@@ -262,7 +262,7 @@ def _classify_results(rel: str, parts: list[str], rules: dict, exc: Exceptions,
     if len(parts) == 2:
         if parts[1] in res["root_files"]:
             return None
-        return Violation("R2", rel, "07_results 루트에 허용 밖 파일", "07_results/<실험>/")
+        return Violation("R2", rel, "file not allowed in 07_results root", "07_results/<experiment>/")
     base = "/".join(parts[:2])
     v = _classify_exp_item(base, parts[2:], rules, in_run=False)
     if v is not None and exc.waives(v, mark=mark):
@@ -271,53 +271,53 @@ def _classify_results(rel: str, parts: list[str], rules: dict, exc: Exceptions,
 
 
 def _classify_exp_item(base: str, rest: list[str], rules: dict, in_run: bool) -> Violation | None:
-    """base = 실험(또는 runs/<회차>) 폴더, rest = 그 아래 경로 성분."""
+    """base = experiment (or runs/<round>) folder, rest = path components below it."""
     res = rules["results"]
     first = rest[0]
     anchor = f"{base}/{first}"
-    if len(rest) == 1:   # 직계 파일
+    if len(rest) == 1:   # direct file
         if any_glob(first, res["files"]):
             return None
         tok = "sweep_csv layout" if first.endswith(".csv") else "layout"
-        return Violation("R4", anchor, "실험 폴더 직계에 허용 밖 파일",
-                         "허용: " + ", ".join(res["files"]) + " — 그 밖은 evidence/ 또는 raw/", token=tok)
+        return Violation("R4", anchor, "file not allowed directly in experiment folder",
+                         "allowed: " + ", ".join(res["files"]) + " — anything else goes to evidence/ or raw/", token=tok)
     if first not in res["dirs"]:
-        return Violation("R4", anchor + "/", "실험 폴더 직계에 허용 밖 폴더",
+        return Violation("R4", anchor + "/", "folder not allowed directly in experiment folder",
                          f"{base}/{_suggest_exp_dir(first, rules)}", token="layout")
     if first == "raw":
         second = rest[1]
         if len(rest) == 2:
-            return Violation("R6", anchor + "/" + second, "raw/ 직계에 파일(실행 폴더에 넣는다)",
+            return Violation("R6", anchor + "/" + second, "file directly in raw/ (put it in a run folder)",
                              _suggest_raw_file(base, second, rules), token="layout")
         if second == res["session_dir"]:
             if len(rest) == 3 and rest[2] in res["session_files"]:
                 return None
             return Violation("R7", f"{anchor}/{second}/" + "/".join(rest[2:]),
-                             "_session/ 에 허용 밖 항목 (허용: " + ", ".join(res["session_files"]) + ")",
-                             f"{base}/evidence/ 또는 {base}/raw/<설정>_run<N>/", token="layout")
+                             "item not allowed in _session/ (allowed: " + ", ".join(res["session_files"]) + ")",
+                             f"{base}/evidence/ or {base}/raw/<config>_run<N>/", token="layout")
         if not re.match(res["run_dir_re"], second):
-            return Violation("R6", f"{anchor}/{second}/", "raw/ 아래 폴더 이름이 <설정>_run<N> 형식이 아님",
+            return Violation("R6", f"{anchor}/{second}/", "folder name under raw/ is not of the form <config>_run<N>",
                              f"{base}/raw/{second}_run1/", token="layout")
         if len(rest) > 3:
-            return Violation("R6", f"{anchor}/{second}/{rest[2]}/", "실행 폴더 안에 하위 폴더",
-                             f"{anchor}/{second}/ 에 평면으로", token="layout")
+            return Violation("R6", f"{anchor}/{second}/{rest[2]}/", "subfolder inside a run folder",
+                             f"flat in {anchor}/{second}/", token="layout")
         return None
     if first == "runs":
         if in_run:
-            return Violation("R8", anchor + "/", "runs/ 는 깊이 1 까지만", base.rsplit("/runs/", 1)[0] + "/runs/<회차>/",
+            return Violation("R8", anchor + "/", "runs/ goes only one level deep", base.rsplit("/runs/", 1)[0] + "/runs/<round>/",
                              token="layout")
         if len(rest) == 2:
-            return Violation("R8", anchor + "/" + rest[1], "runs/ 직계에 파일", f"{anchor}/<회차>/{rest[1]}",
+            return Violation("R8", anchor + "/" + rest[1], "file directly in runs/", f"{anchor}/<round>/{rest[1]}",
                              token="layout")
         return _classify_exp_item(f"{anchor}/{rest[1]}", rest[2:], rules, in_run=True)
     if first == "notes":
         sub = "/".join(rest[1:])
         if not any_glob(sub, res["notes_globs"]):
-            return Violation("R9", f"{anchor}/{sub}", "notes/ 에는 .md 만", f"{base}/evidence/", token="notes")
+            return Violation("R9", f"{anchor}/{sub}", "notes/ holds only .md", f"{base}/evidence/", token="notes")
     return None
 
 
-# ─── git 헬퍼 ──────────────────────────────────────────────────────────────────
+# ─── git helpers ──────────────────────────────────────────────────────────────
 def _git(*args: str) -> list[str]:
     out = subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, check=True).stdout
     return [p for p in out.decode("utf-8", "surrogateescape").split("\0") if p]
@@ -340,10 +340,10 @@ def _read(rel: str) -> str:
         return ""
 
 
-# ─── 소스 스캐너 ───────────────────────────────────────────────────────────────
+# ─── Source scanners ──────────────────────────────────────────────────────────
 def scan_cpp(text: str) -> tuple[str, list[tuple[int, str]]]:
-    """C/C++ 텍스트에서 (주석·문자열을 공백으로 지운 코드, [(행, 문자열 리터럴 내용)]) 을 만든다.
-    줄바꿈은 보존하므로 코드 텍스트의 행 번호가 원문과 같다."""
+    """From C/C++ text, build (code with comments/strings blanked out, [(line, string literal content)]).
+    Newlines are preserved, so line numbers in the code text match the original."""
     out: list[str] = []
     lits: list[tuple[int, str]] = []
     i, n, line = 0, len(text), 1
@@ -392,7 +392,7 @@ def scan_cpp(text: str) -> tuple[str, list[tuple[int, str]]]:
 
 
 def strip_cmake_comments(text: str) -> str:
-    """CMake '#' 주석 제거(따옴표 안은 보존). 행 수 보존."""
+    """Strip CMake '#' comments (preserving quoted text). Line count preserved."""
     lines = []
     for ln in text.splitlines():
         q = False
@@ -410,7 +410,7 @@ def strip_cmake_comments(text: str) -> str:
 INCLUDE_RE = re.compile(r'^\s*#\s*include\s*"([^"]+)"', re.M)
 
 
-# ─── 검사기 본체 ───────────────────────────────────────────────────────────────
+# ─── Checker body ─────────────────────────────────────────────────────────────
 class Checker:
     def __init__(self, rules: dict):
         self.rules = rules
@@ -433,32 +433,32 @@ class Checker:
         heads = sorted({p.split("/", 1)[0] for p in self.tracked})
         for h in heads:
             if h not in allowed_t:
-                self.add(Violation("T1", h, "허용 목록 밖 최상위 항목이 추적됨", "STRUCTURE.md §1"))
+                self.add(Violation("T1", h, "tracked top-level item not on the allow list", "STRUCTURE.md §1"))
         for h in sorted(os.listdir(ROOT)):
             if h in allowed_t or h in allowed_u or any_glob(h, top.get("untracked_globs", [])):
                 continue
             if h in junk["root_logs"] or any_glob(h, junk["dump_globs"]):
-                continue   # T2 가 따로 본다
-            self.add(Violation("T1", h, "허용 목록 밖 미추적 최상위 항목", "지우거나 STRUCTURE.md §1 대역으로", level=WARN))
+                continue   # T2 checks these separately
+            self.add(Violation("T1", h, "untracked top-level item not on the allow list", "delete it or move it to a STRUCTURE.md §1 band", level=WARN))
         tracked_set = set(self.tracked)
         for name in junk["root_logs"]:
             if name in tracked_set:
-                self.add(Violation("T2", name, "루트 런타임 로그가 추적됨", "git rm --cached 후 11_logs/"))
+                self.add(Violation("T2", name, "root runtime log is tracked", "git rm --cached, then 11_logs/"))
             elif (ROOT / name).exists():
-                self.add(Violation("T2", name, "루트에 런타임 로그 잔재",
-                                   "11_logs/<날짜>_<이름>.log 로 옮기거나 지운다", level=WARN))
+                self.add(Violation("T2", name, "runtime log leftover in root",
+                                   "move it to 11_logs/<date>_<name>.log or delete it", level=WARN))
         for p in self.tracked:
             if any_glob(os.path.basename(p), junk["dump_globs"]):
-                self.add(Violation("T2", p, "덤프 파일이 추적됨", "git rm --cached"))
+                self.add(Violation("T2", p, "dump file is tracked", "git rm --cached"))
         for h in os.listdir(ROOT):
             if (ROOT / h).is_file() and h not in tracked_set and any_glob(h, junk["dump_globs"]):
-                self.add(Violation("T2", h, "루트에 덤프 파일 잔재", "지우거나 11_logs/", level=WARN))
+                self.add(Violation("T2", h, "dump file leftover in root", "delete it or 11_logs/", level=WARN))
         for p in _git("ls-files", "-z", "-ci", "--exclude-standard"):
-            self.add(Violation("T3", p, ".gitignore 대상인데 추적됨", "git rm --cached 하거나 .gitignore 예외(!) 추가"))
+            self.add(Violation("T3", p, "tracked though matched by .gitignore", "git rm --cached, or add a .gitignore exception (!)"))
 
     # R ────────────────────────────────────────────────────────────────────────
     def parse_index(self) -> tuple[dict[str, str | None], bool, list[str]]:
-        """색인 표에서 {폴더: 유형 또는 None}, 유형 열 존재 여부, 중복 폴더 목록."""
+        """From the index table: {folder: type or None}, whether a type column exists, list of duplicate folders."""
         res = self.rules["results"]
         text = _read(res["index"])
         rows: dict[str, str | None] = {}
@@ -487,9 +487,9 @@ class Checker:
             if not folder or folder.startswith(".."):
                 continue
             typ = None
-            if "유형" in header:
+            if "유형" in header:  # matches the Korean "type" column header in 07_results/README.md
                 has_type = True
-                k = header.index("유형")
+                k = header.index("유형")  # matches the Korean "type" column header in 07_results/README.md
                 typ = cells[k].strip("` *") if k < len(cells) else None
             if folder in rows:
                 dups.append(folder)
@@ -506,14 +506,14 @@ class Checker:
         rows, has_type, dups = self.parse_index()
         for d in exp_dirs:
             if d not in rows:
-                self.add(Violation("R1", f"{root}/{d}/", "색인(07_results/README.md) 표에 행이 없음", "색인 표에 한 행 추가"))
+                self.add(Violation("R1", f"{root}/{d}/", "no row in the index (07_results/README.md) table", "add one row to the index table"))
         for d in rows:
             if d not in exp_dirs:
-                self.add(Violation("R1", f"{root}/{d}/", "색인 행이 가리키는 폴더가 없음", "색인 행 삭제 또는 경로 수정"))
+                self.add(Violation("R1", f"{root}/{d}/", "folder pointed to by index row does not exist", "delete the index row or fix the path"))
         for d in dups:
-            self.add(Violation("R1", f"{root}/{d}/", "색인 표에 행이 중복", "한 행으로 합친다"))
+            self.add(Violation("R1", f"{root}/{d}/", "duplicate rows in the index table", "merge into one row"))
 
-        # R2, R4, R6~R9 (파일 단위, 앵커로 중복 제거)
+        # R2, R4, R6~R9 (per file, deduplicated by anchor)
         seen: set[tuple[str, str]] = set()
         for p in files:
             v = _classify_results(p, p.split("/"), self.rules, self.exc, mark=True)
@@ -521,7 +521,7 @@ class Checker:
                 seen.add((v.rule, v.path))
                 self.out.append(v)
 
-        # R3: 실험 폴더와 runs/<회차>/
+        # R3: experiment folders and runs/<round>/
         fileset = set(files)
         dirset = {os.path.dirname(p) for p in files}
         dirset |= {"/".join(p.split("/")[:k]) for p in files for k in range(2, p.count("/") + 1)}
@@ -534,38 +534,38 @@ class Checker:
             for r in req:
                 if f"{unit}/{r}" not in fileset:
                     tok = "summary" if r == "summary.md" else "env_bench" if r == "env_bench.txt" else ""
-                    self.add(Violation("R3", unit + "/", f"필수 파일 {r} 없음", f"{unit}/{r} 작성", token=tok))
+                    self.add(Violation("R3", unit + "/", f"required file {r} missing", f"write {unit}/{r}", token=tok))
 
         # R5
         if not has_type:
-            self.add(Violation("R5", res["index"], "색인에 '유형' 열 없음 — 유형별 필수 항목(R5) 검사를 건너뜀",
-                               "색인 표에 유형(스윕/프로브/레거시) 열 추가", level=WARN))
+            self.add(Violation("R5", res["index"], "index has no type column — skipping the per-type required items (R5) check",
+                               "add a type (" + "/".join(res["type_required"]) + ") column to the index table", level=WARN))
         else:
             treq = res["type_required"]
             for d, typ in rows.items():
                 if d not in exp_dirs:
                     continue
                 if typ not in treq:
-                    self.add(Violation("R5", f"{root}/{d}/", f"알 수 없는 유형 '{typ}'",
-                                       "유형은 " + "/".join(treq), token="type"))
+                    self.add(Violation("R5", f"{root}/{d}/", f"unknown type '{typ}'",
+                                       "type must be " + "/".join(treq), token="type"))
                     continue
                 for r in treq[typ]:
                     ok = f"{root}/{d}/{r}".rstrip("/") in (dirset if r.endswith("/") else fileset)
                     if not ok:
-                        self.add(Violation("R5", f"{root}/{d}/", f"{typ}형 필수 항목 {r} 없음",
+                        self.add(Violation("R5", f"{root}/{d}/", f"required item {r} for type {typ} missing",
                                            f"{root}/{d}/{r}", token="type"))
 
-        # R7 경고: 세션 파일이 _session 밖에 있음 (bench_stdout.log)
-        # R9 경고: evidence/ 에 검증 로그 이름
+        # R7 warning: session file outside _session (bench_stdout.log)
+        # R9 warning: verification log name in evidence/
         for p in files:
             parts = p.split("/")
             name = parts[-1]
             if name == "bench_stdout.log" and not (len(parts) >= 3 and parts[-2] == res["session_dir"]):
-                self.add(Violation("R7", p, "세션 로그가 raw/_session/ 밖에 있음",
+                self.add(Violation("R7", p, "session log is outside raw/_session/",
                                    "/".join(parts[:2]) + f"/raw/{res['session_dir']}/{name}", level=WARN, token="layout"))
             if "evidence" in parts[2:-1] and any_glob(name, res["evidence_warn_globs"]):
                 ev = parts.index("evidence", 2)
-                self.add(Violation("R9", p, "검증 게이트 로그 이름이 evidence/ 에 있음",
+                self.add(Violation("R9", p, "verification-gate log name is in evidence/",
                                    "/".join(parts[:ev]) + "/verification/" + name, level=WARN, token="evidence_names"))
 
         # R10
@@ -573,8 +573,8 @@ class Checker:
             if p.startswith(root + "/") and glob_match(os.path.basename(p), "hailort*.log"):
                 try:
                     if (ROOT / p).stat().st_size == 0:
-                        self.add(Violation("R10", p, "추적된 hailort 로그가 0바이트(신뢰성 판정 근거가 비어 있음)",
-                                           "측정 기록과 대조", level=WARN))
+                        self.add(Violation("R10", p, "tracked hailort log is 0 bytes (the reliability evidence is empty)",
+                                           "cross-check with the measurement records", level=WARN))
                 except OSError:
                     pass
 
@@ -592,14 +592,14 @@ class Checker:
             if v is None:
                 continue
             parts = p.split("/")
-            key = "/".join(parts[:2]) if v.why.startswith("01_src 직하 허용 밖") else \
-                "/".join(parts[:3]) if "라이브러리 폴더 안의" in v.why else p
+            key = "/".join(parts[:2]) if v.why.startswith("folder not allowed directly under 01_src") else \
+                "/".join(parts[:3]) if "inside a library folder" in v.why else p
             if key in seen_dirs:
                 continue
             seen_dirs.add(key)
             anchor = key + "/" if key != p else p
             sug = v.suggest
-            if "라이브러리 폴더 안의" in v.why:
+            if "inside a library folder" in v.why:
                 sug = f"01_src/tools/{parts[1]}/"
             self.add(Violation("C1", anchor, v.why, sug))
 
@@ -615,8 +615,8 @@ class Checker:
                 pass
         for d in top_dirs:
             if d in sysnames and d not in code["system_name_ok"]:
-                self.add(Violation("C2", f"{src}/{d}/", f"시스템 include 폴더 {sysnames[d]}/{d}/ 와 이름 충돌",
-                                   code.get("suggest", {}).get(d, "다른 이름")))
+                self.add(Violation("C2", f"{src}/{d}/", f"name clashes with system include folder {sysnames[d]}/{d}/",
+                                   code.get("suggest", {}).get(d, "a different name")))
 
         # C3
         comps = [p for p in self.all_files if p.endswith(".comp")]
@@ -624,15 +624,15 @@ class Checker:
                                  if p.startswith("02_shaders/") and p.endswith("CMakeLists.txt"))
         for p in comps:
             if not p.startswith("02_shaders/"):
-                self.add(Violation("C3", p, ".comp 가 02_shaders/ 밖에 있음", "02_shaders/" + os.path.basename(p)))
+                self.add(Violation("C3", p, ".comp is outside 02_shaders/", "02_shaders/" + os.path.basename(p)))
                 continue
             relp = p[len("02_shaders/"):]
-            # 같은 폴더의 CMakeLists.txt 가 파일명만으로 등록하는 경우(02_shaders/diag/CMakeLists.txt)도 인정한다
+            # Also accept registration by bare filename in the same folder's CMakeLists.txt (02_shaders/diag/CMakeLists.txt)
             own_cmake = os.path.dirname(p) + "/CMakeLists.txt"
             own_text = strip_cmake_comments(_read(own_cmake)) if own_cmake in self.all_files else ""
             pat = lambda s: r"(?<![\w/.-])" + re.escape(s) + r"(?![\w.-])"
             if not (re.search(pat(relp), shader_cmake) or re.search(pat(os.path.basename(p)), own_text)):
-                self.add(Violation("C3", p, "02_shaders/ 의 CMakeLists.txt 에 등록되지 않음", f"yvo_add_shaders(... {relp})"))
+                self.add(Violation("C3", p, "not registered in a CMakeLists.txt under 02_shaders/", f"yvo_add_shaders(... {relp})"))
 
         # C4, C5, C7
         deps = code["include_deps"]
@@ -651,7 +651,7 @@ class Checker:
             codetext, lits = scan_cpp(text)
             # C4
             if layer in layers:
-                # library_exclude 파일(앱 본체 main.cpp 등)은 실행파일이라 tools 와 같은 규칙을 따른다
+                # library_exclude files (app main.cpp etc.) are executables, so they follow the same rules as tools
                 allowed = deps["tools"] if p in lib_excl else deps[layer]
                 for m in INCLUDE_RE.finditer(text):
                     inc = m.group(1)
@@ -660,40 +660,40 @@ class Checker:
                     if inc in file_exc.get(p, ()):
                         continue
                     if "../" in inc or inc.startswith("./"):
-                        self.add(Violation("C4", where, f'상대 include "{inc}" 금지', '"<계층>/<파일>" 형식'))
+                        self.add(Violation("C4", where, f'relative include "{inc}" is forbidden', '"<layer>/<file>" form'))
                         continue
                     if "/" not in inc:
                         if not any_glob(inc, unpref):
-                            self.add(Violation("C4", where, f'접두사 없는 include "{inc}"', '"<계층>/<파일>" 형식'))
+                            self.add(Violation("C4", where, f'unprefixed include "{inc}"', '"<layer>/<file>" form'))
                         continue
                     first = inc.split("/", 1)[0]
                     if first == layer:
                         continue
                     if first not in layers or first == tests:
-                        self.add(Violation("C4", where, f'include "{inc}" 의 계층 \'{first}\' 가 규칙표에 없음',
+                        self.add(Violation("C4", where, f'layer \'{first}\' of include "{inc}" is not in the rule table',
                                            code.get("suggest", {}).get(first, "STRUCTURE.md §2")))
                     elif "*" not in allowed and first not in allowed:
-                        self.add(Violation("C4", where, f"{layer} → {first} include 금지 (허용: {', '.join(allowed) or '없음'})",
-                                           "의존 방향을 바꾸거나 공통부를 core/ref 로"))
+                        self.add(Violation("C4", where, f"{layer} → {first} include forbidden (allowed: {', '.join(allowed) or 'none'})",
+                                           "reverse the dependency or move the shared part to core/ref"))
             # C5
             mains = [codetext.count("\n", 0, m.start()) + 1 for m in re.finditer(r"\bint\s+main\s*\(", codetext)]
             if mains:
                 ok = any_glob(p, code["main_allowed"])
                 if not ok:
-                    self.add(Violation("C5", f"{p}:{mains[0]}", "main() 은 01_src/tools/** 와 pipeline/main.cpp 에만",
-                                       f"01_src/tools/<도메인>/{parts[-1]}"))
+                    self.add(Violation("C5", f"{p}:{mains[0]}", "main() only in 01_src/tools/** and pipeline/main.cpp",
+                                       f"01_src/tools/<domain>/{parts[-1]}"))
                 elif len(mains) > 1:
-                    self.add(Violation("C5", f"{p}:{mains[1]}", "파일당 main() 1개", "도구를 나눈다"))
+                    self.add(Violation("C5", f"{p}:{mains[1]}", "one main() per file", "split the tool"))
             # C7
             for ln, lit in lits:
                 if re.match(r"0[3-7]_", lit):
-                    self.add(Violation("C7", f"{p}:{ln}", f'경로 리터럴 "{lit}" (CWD 의존)',
-                                       "yvo_assets 의 YVO_DEFAULT_*/YVO_REPO_ROOT 매크로"))
+                    self.add(Violation("C7", f"{p}:{ln}", f'path literal "{lit}" (CWD-dependent)',
+                                       "YVO_DEFAULT_*/YVO_REPO_ROOT macros from yvo_assets"))
             if layer in lib_dirs and p not in lib_excl:
                 for m in asset_re.finditer(codetext):
                     ln = codetext.count("\n", 0, m.start()) + 1
-                    self.add(Violation("C7", f"{p}:{ln}", f"라이브러리 폴더에서 {m.group(1)} 사용",
-                                       "호출자(도구·앱·테스트)가 경로를 넘긴다"))
+                    self.add(Violation("C7", f"{p}:{ln}", f"{m.group(1)} used in a library folder",
+                                       "the caller (tool/app/test) passes the path"))
 
         # C6
         cmake_files = [p for p in self.all_files if os.path.basename(p) == "CMakeLists.txt"
@@ -703,7 +703,7 @@ class Checker:
             if p.endswith(".cpp") and (p.startswith(src + "/") or p.startswith(tests + "/")):
                 b = os.path.basename(p)
                 if not re.search(r"(?<![\w.-])" + re.escape(b) + r"(?![\w.-])", cmake_text):
-                    self.add(Violation("C6", p, ".cpp 가 어느 CMakeLists.txt 에도 등록되지 않음",
+                    self.add(Violation("C6", p, ".cpp is not registered in any CMakeLists.txt",
                                        os.path.dirname(p) + "/CMakeLists.txt"))
 
         # C8
@@ -716,14 +716,14 @@ class Checker:
                 if outside:
                     for tok in cm["forbidden_outside_cmake_dir"]:
                         if tok in ln:
-                            self.add(Violation("C8", f"{p}:{i}", f"'{tok}' 는 cmake/ 밖에 쓰지 않는다",
+                            self.add(Violation("C8", f"{p}:{i}", f"'{tok}' is not used outside cmake/",
                                                "cmake/YvoTargets.cmake (yvo_target_defaults / yvo_opencv)"))
                 for tok in cm["forbidden_anywhere"]:
                     if tok in ln:
-                        self.add(Violation("C8", f"{p}:{i}", f"'{tok}' 금지 (폴더가 없으면 조용히 넘어간다)",
+                        self.add(Violation("C8", f"{p}:{i}", f"'{tok}' forbidden (silently skipped if the folder is missing)",
                                            "add_subdirectory() + if(TARGET)"))
                 if exists_re.search(ln):
-                    self.add(Violation("C8", f"{p}:{i}", "소스 폴더 대상 if(EXISTS) 금지", "if(TARGET <타깃>)"))
+                    self.add(Violation("C8", f"{p}:{i}", "if(EXISTS) on a source folder is forbidden", "if(TARGET <target>)"))
 
         # C9
         bench = self.rules["bench"]
@@ -732,9 +732,9 @@ class Checker:
             for i, ln in enumerate(_read(p).splitlines(), 1):
                 for tok in bench["forbidden"]:
                     if tok in ln:
-                        self.add(Violation("C9", f"{p}:{i}", f"'{tok}' 금지 (소스 배치에 묶인 바이너리 경로)", "$BIN_DIR/<실행파일>"))
+                        self.add(Violation("C9", f"{p}:{i}", f"'{tok}' forbidden (binary path tied to source layout)", "$BIN_DIR/<executable>"))
                 if p != bench["py_hailo_owner"] and re.match(r"^\s*(?:export\s+|readonly\s+|local\s+)?PY_HAILO=", ln):
-                    self.add(Violation("C9", f"{p}:{i}", "PY_HAILO 를 여기서 정의", f"{bench['py_hailo_owner']} 한 곳에서만"))
+                    self.add(Violation("C9", f"{p}:{i}", "PY_HAILO defined here", f"only in one place: {bench['py_hailo_owner']}"))
 
         # C10
         guard = bench["npu_guard"]
@@ -743,20 +743,20 @@ class Checker:
             try:
                 tree = ast.parse(gtext)
             except SyntaxError as e:
-                self.add(Violation("C10", guard, f"파싱 실패: {e}", "", level=WARN))
+                self.add(Violation("C10", guard, f"parse failed: {e}", "", level=WARN))
                 tree = None
             for node in ast.walk(tree) if tree else ():
                 if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "BENCH_SCRIPTS" for t in node.targets):
                     try:
                         val = ast.literal_eval(node.value)
                     except ValueError:
-                        break   # 글롭 등 동적 계산이면 목록이 자동으로 맞는다
+                        break   # dynamically computed (glob etc.), so the list matches automatically
                     want = {os.path.basename(p) for p in shs if os.path.dirname(p) == bench["dir"]}
                     have = set(val)
                     for x in sorted(want - have):
-                        self.add(Violation("C10", f"{guard}:{node.lineno}", f"BENCH_SCRIPTS 에 {x} 누락", "글롭으로 찾게 바꾸거나 추가"))
+                        self.add(Violation("C10", f"{guard}:{node.lineno}", f"{x} missing from BENCH_SCRIPTS", "switch to a glob or add it"))
                     for x in sorted(have - want):
-                        self.add(Violation("C10", f"{guard}:{node.lineno}", f"BENCH_SCRIPTS 의 {x} 가 06_tools/bench/ 에 없음", "목록에서 삭제"))
+                        self.add(Violation("C10", f"{guard}:{node.lineno}", f"{x} in BENCH_SCRIPTS is not in 06_tools/bench/", "remove it from the list"))
                     break
 
     # D ────────────────────────────────────────────────────────────────────────
@@ -764,27 +764,27 @@ class Checker:
         sm = self.rules["docs"]["structure_md"]
         text = _read(sm)
         if not text:
-            self.add(Violation("D1", sm, "STRUCTURE.md 없음 — TOML 과의 대조를 건너뜀", "STRUCTURE.md 작성(계획 2단계)", level=WARN))
+            self.add(Violation("D1", sm, "STRUCTURE.md missing — skipping comparison with the TOML", "write STRUCTURE.md (plan step 2)", level=WARN))
             return
-        items = _first_table_col0(text, "최상위")
+        items = _first_table_col0(text, "최상위")  # matches the Korean "top-level" heading (§1) in STRUCTURE.md
         top = self.rules["top_level"]
         want = set(top["tracked"]) | set(top["untracked"])
         if items is None:
-            self.add(Violation("D1", sm, "'최상위' 헤딩 아래 표를 찾지 못함", "§1 최상위 대역 표"))
+            self.add(Violation("D1", sm, "table under the top-level heading not found", "§1 top-level band table"))
             return
         for x in sorted(want - items):
-            self.add(Violation("D1", sm, f"표에 '{x}' 없음 (TOML top_level 에는 있음)", "표에 행 추가 또는 TOML 수정"))
+            self.add(Violation("D1", sm, f"'{x}' missing from the table (present in TOML top_level)", "add a table row or fix the TOML"))
         for x in sorted(items - want):
-            self.add(Violation("D1", sm, f"표의 '{x}' 가 TOML top_level 에 없음", "TOML 에 추가 또는 표에서 삭제"))
+            self.add(Violation("D1", sm, f"'{x}' in the table is not in TOML top_level", "add it to the TOML or remove it from the table"))
 
     # E ────────────────────────────────────────────────────────────────────────
     def check_exceptions(self) -> None:
         for idx, ex in enumerate(self.exc.items):
             if not ex.get("reason"):
-                self.out.append(Violation("E1", ex.get("path", "?"), "예외에 reason 이 없음", "reason 작성"))
+                self.out.append(Violation("E1", ex.get("path", "?"), "exception has no reason", "write a reason"))
             if idx not in self.exc.used:
                 self.out.append(Violation("E1", ex.get("path", "?"),
-                                          f"쓰이지 않은 예외 (waive={ex.get('waive')})", "삭제하거나 경로 확인", level=WARN))
+                                          f"unused exception (waive={ex.get('waive')})", "delete it or check the path", level=WARN))
 
     def run(self) -> list[Violation]:
         self.check_top()
@@ -796,7 +796,7 @@ class Checker:
 
 
 def _first_table_col0(text: str, heading_word: str) -> set[str] | None:
-    """heading_word 가 든 헤딩 아래 첫 표의 첫 열에서 백틱 항목을 모은다. 표가 없으면 None."""
+    """Collect backticked items from the first column of the first table under the heading containing heading_word. None if no table."""
     in_sec = False
     rows: list[list[str]] | None = None
     for ln in text.splitlines():
@@ -829,11 +829,11 @@ def _print(vs: list[Violation]) -> tuple[int, int]:
     errs = sorted((v for v in vs if v.level == ERROR), key=key)
     warns = sorted((v for v in vs if v.level == WARN), key=key)
     if errs:
-        print(f"== {ERROR} {len(errs)}건")
+        print(f"== {ERROR} {len(errs)}")
         for v in errs:
             print(v.line())
     if warns:
-        print(f"== {WARN} {len(warns)}건")
+        print(f"== {WARN} {len(warns)}")
         for v in warns:
             print(v.line())
     counts: dict[str, list[int]] = {}
@@ -842,12 +842,12 @@ def _print(vs: list[Violation]) -> tuple[int, int]:
         c[0 if v.level == ERROR else 1] += 1
     summary = ", ".join(f"{r} {c[0]}" + (f"+{c[1]}w" if c[1] else "")
                         for r, c in sorted(counts.items(), key=lambda kv: ORDER.index(kv[0]) if kv[0] in ORDER else 99))
-    print(f"---\n오류 {len(errs)}건, 경고 {len(warns)}건" + (f"  [{summary}]" if summary else ""))
+    print(f"---\nerrors {len(errs)}, warnings {len(warns)}" + (f"  [{summary}]" if summary else ""))
     return len(errs), len(warns)
 
 
 def changed_paths() -> list[str]:
-    """git status 로 새로 추가(A)·미추적(??)·이름변경 대상(R/C) 경로."""
+    """Paths newly added (A), untracked (??) or rename/copy targets (R/C) per git status."""
     out = []
     ents = _git("status", "--porcelain=v1", "-z", "-uall")
     i = 0
@@ -855,7 +855,7 @@ def changed_paths() -> list[str]:
         e = ents[i]
         st, path = e[:2], e[3:]
         if st[0] in "RC":
-            i += 1   # 다음 항목은 옛 경로
+            i += 1   # the next entry is the old path
         if st == "??" or st[0] in "ARC":
             out.append(path)
         i += 1
@@ -865,29 +865,29 @@ def changed_paths() -> list[str]:
 def explain(path: str) -> int:
     rules = load_rules()
     rel = _normalize_rel(path)
-    print(f"경로: {rel}")
+    print(f"path: {rel}")
     if rel is None:
-        print("저장소 밖 경로 — 검사 대상 아님")
+        print("path outside the repository — not checked")
         return 0
     exists = (ROOT / rel).exists()
-    print(f"존재: {'예' if exists else '아니오'}")
+    print(f"exists: {'yes' if exists else 'no'}")
     r = classify_new_path(rel)
-    print("새 파일 판정(classify_new_path): " + ("통과" if r is None else f"{r[0]}  {r[1]} → {r[2]}"))
+    print("new-file verdict (classify_new_path): " + ("pass" if r is None else f"{r[0]}  {r[1]} → {r[2]}"))
     exc = [e for e in rules.get("exception", []) if _ancestor_matches(rel, e["path"])]
     for e in exc:
-        print(f"적용 예외: {e['path']} waive={e['waive']} — {e['reason']}")
+        print(f"applied exception: {e['path']} waive={e['waive']} — {e['reason']}")
     hits = [v for v in Checker(rules).run() if v.path.rstrip("/").split(":")[0] == rel.rstrip("/")
             or v.path.startswith(rel.rstrip("/") + "/") or rel.startswith(v.path.rstrip("/") + "/")]
     if hits:
-        print("전체 검사에서 이 경로에 걸린 항목:")
+        print("items flagged for this path in the full check:")
         for v in hits:
             print(f"  [{v.level}] {v.line()}")
     else:
-        print("전체 검사에서 이 경로에 걸린 항목: 없음")
+        print("items flagged for this path in the full check: none")
     return 0
 
 
-# 자체 시험: (경로, 기대 규칙 ID 또는 None)
+# Self-test: (path, expected rule ID or None)
 SELFTEST_CASES = [
     ("newfile.txt", "T1"),
     ("notes.md", "T1"),
@@ -915,7 +915,7 @@ SELFTEST_CASES = [
     ("06_tools/python/README.md", "T1"),
     ("99_misc/x.md", "T1"),
     ("cmake/foo.txt", "T1"),
-    # 통과
+    # pass
     ("07_results/x/raw/c_run1/stdout.log", None),
     ("07_results/x/raw/_session/hailort.log", None),
     ("07_results/x/raw/_session/bench_stdout.log", None),
@@ -926,7 +926,7 @@ SELFTEST_CASES = [
     ("07_results/x/runs/r1/raw/b8_run2/stdout.log", None),
     ("07_results/x/runs/r1/env_bench.txt", None),
     ("07_results/x/notes/memo.md", None),
-    ("07_results/npu_benchmark/runs/gen2/benchmark_b1.csv", None),   # 예외 layout
+    ("07_results/npu_benchmark/runs/gen2/benchmark_b1.csv", None),   # exception: layout
     ("07_results/README.md", None),
     ("01_src/vulkan/foo.cpp", None),
     ("01_src/tools/vulkan/foo_probe.cpp", None),
@@ -956,19 +956,19 @@ def selftest() -> int:
         gid = got[0] if got else None
         ok = gid == want
         bad += not ok
-        detail = f"{got[1]} → {got[2]}" if got else "통과"
-        print(f"{'OK ' if ok else 'BAD'}  기대 {str(want):<5} 결과 {str(gid):<5} {path}  ({detail})")
-    print(f"---\n{len(SELFTEST_CASES)}건 중 실패 {bad}건")
+        detail = f"{got[1]} → {got[2]}" if got else "pass"
+        print(f"{'OK ' if ok else 'BAD'}  want {str(want):<5} got {str(gid):<5} {path}  ({detail})")
+    print(f"---\n{bad} failed out of {len(SELFTEST_CASES)}")
     return 1 if bad else 0
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description="저장소 구조 규칙 검사 (06_tools/structure_rules.toml)")
-    ap.add_argument("--strict", action="store_true", help="경고도 exit 1")
-    ap.add_argument("--report-only", action="store_true", help="항상 exit 0 (전환기간)")
-    ap.add_argument("--changed", action="store_true", help="git status 의 새·미추적 파일만 새 파일 규칙으로 검사")
-    ap.add_argument("--explain", metavar="PATH", help="한 경로의 판정을 설명")
-    ap.add_argument("--selftest", action="store_true", help="classify_new_path 자체 시험")
+    ap = argparse.ArgumentParser(description="Repository structure rule check (06_tools/structure_rules.toml)")
+    ap.add_argument("--strict", action="store_true", help="warnings also exit 1")
+    ap.add_argument("--report-only", action="store_true", help="always exit 0 (transition period)")
+    ap.add_argument("--changed", action="store_true", help="check only new/untracked files from git status with the new-file rules")
+    ap.add_argument("--explain", metavar="PATH", help="explain the verdict for one path")
+    ap.add_argument("--selftest", action="store_true", help="self-test of classify_new_path")
     a = ap.parse_args(argv)
 
     if a.selftest:
@@ -983,7 +983,7 @@ def main(argv: list[str] | None = None) -> int:
             r = classify_new_path(p)
             if r:
                 vs.append(Violation(r[0], p, r[1], r[2]))
-        print(f"검사한 새·미추적 경로 {len(changed_paths())}건")
+        print(f"checked {len(changed_paths())} new/untracked paths")
     else:
         vs = Checker(rules).run()
     n_err, n_warn = _print(vs)

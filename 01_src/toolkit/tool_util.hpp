@@ -1,14 +1,14 @@
 #pragma once
-// 진단 도구(01_src/tools/, pipeline/main.cpp)가 공유하는 작은 헬퍼.
+// Small helpers shared by diagnostic tools (01_src/tools/, pipeline/main.cpp).
 //
-// 2026-09-21 이전에는 아래 함수들이 도구마다 복사돼 있었다(동기화 장치 없음):
-//   soc_temperature()    pipeline/main.cpp ↔ tools/isp/isp_pipeline.cpp          (바이트 동일)
+// Before 2026-09-21, the functions below were copied into each tool (with nothing keeping them in sync):
+//   soc_temperature()    pipeline/main.cpp ↔ tools/isp/isp_pipeline.cpp          (byte-identical)
 //   fmt(), count_open_fds() tools/hailo/hailo_raw_probe.cpp ↔ tools/vulkan/postproc_probe.cpp
-//   Nv12Frame, read_nv12_frames() tools/hailo/hailo_selftest.cpp ↔ hailo_raw_probe.cpp (필드가 달랐다)
+//   Nv12Frame, read_nv12_frames() tools/hailo/hailo_selftest.cpp ↔ hailo_raw_probe.cpp (fields differed)
 //   cpu_ms()             pipeline/main.cpp · tools/decode/drm_dump.cpp · tools/isp/{isp_bench,isp_pipeline}.cpp ·
-//                        tools/vulkan/preproc_bench.cpp — 5벌. 파이프라인의 대표 지표(CPU ms/frame)를 재는 함수다
+//                        tools/vulkan/preproc_bench.cpp — 5 copies. This is the function that measures the pipeline's headline metric (CPU ms/frame)
 //
-// 라이브러리 코드는 이 헤더를 include 하지 않는다 — 도구 전용이다.
+// Library code does not include this header — it is for tools only.
 #include <cmath>
 #include <cstdarg>
 #include <cstddef>
@@ -26,7 +26,7 @@
 
 namespace yvo::tool {
 
-// 이 프로세스의 누적 CPU 시간(user + sys) [ms]. 두 시점의 차를 프레임 수로 나눈 것이 CPU ms/frame 이다.
+// Cumulative CPU time (user + sys) of this process [ms]. The difference between two points divided by the frame count is CPU ms/frame.
 inline double cpu_ms() {
     rusage ru{};
     getrusage(RUSAGE_SELF, &ru);
@@ -34,7 +34,7 @@ inline double cpu_ms() {
            static_cast<double>(ru.ru_utime.tv_usec + ru.ru_stime.tv_usec) / 1e3;
 }
 
-// SoC 온도 [°C]. 읽지 못하면 NaN.
+// SoC temperature [°C]. NaN if it cannot be read.
 inline double soc_temperature() {
     FILE* p = popen("vcgencmd measure_temp 2>/dev/null", "r");
     if (!p) return std::nan("");
@@ -56,7 +56,7 @@ inline std::string fmt(const char* f, ...) {
     return std::string(buf);
 }
 
-// 이 프로세스가 연 fd 수. fd 누수 계수에 쓴다.
+// Number of fds opened by this process. Used for counting fd leaks.
 inline long count_open_fds() {
     long n = 0;
     std::error_code ec;
@@ -71,12 +71,12 @@ struct Nv12Frame {
     std::vector<std::uint8_t> data;  // Y(w*h) + UV(w*h/2)
 };
 
-// ffmpeg 로 앞 n 프레임을 NV12 원시 바이트로 읽는다(CPU 디코드 — 진단 도구 전용).
+// Read the first n frames as raw NV12 bytes with ffmpeg (CPU decode — diagnostic tools only).
 inline std::vector<Nv12Frame> read_nv12_frames(const std::string& video, int n, int w, int h) {
     const std::string cmd = "ffmpeg -nostdin -v error -i '" + video + "' -frames:v " + std::to_string(n) +
                             " -f rawvideo -pix_fmt nv12 -";
     FILE* p = popen(cmd.c_str(), "r");
-    if (!p) throw std::runtime_error("popen(ffmpeg) 실패");
+    if (!p) throw std::runtime_error("popen(ffmpeg) failed");
     std::vector<Nv12Frame> out;
     const std::size_t fsz = static_cast<std::size_t>(w) * static_cast<std::size_t>(h) * 3 / 2;
     for (int i = 0; i < n; ++i) {

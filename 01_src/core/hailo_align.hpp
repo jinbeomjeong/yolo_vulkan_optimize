@@ -1,13 +1,13 @@
 #pragma once
-// HailoRT 비동기 전송 버퍼의 정렬 요구 — **저장소 전체의 단일 정의**.
+// Alignment requirement for HailoRT async transfer buffers — **the single definition for the whole repository**.
 //
-// HailoRT 의 vdma_stream.cpp:379 가 read_async() 에 16384 B 정렬을 요구한다. 4096 B 로 주면
-// "unaligned buffer ... causes performance degradation" 경고가 프레임×스트림마다 뜨고
-// 실측으로 FPS 가 48.5 → 51.7 로 3 FPS 차이가 났다.
+// HailoRT's vdma_stream.cpp:379 requires 16384 B alignment for read_async(). With 4096 B,
+// an "unaligned buffer ... causes performance degradation" warning fires per frame × stream, and
+// measured FPS differed by 3 FPS, 48.5 → 51.7.
 //
-// 2026-09-21 이전에는 이 값이 네 곳(vulkan/dmabuf_export.hpp, tools/hailo/p2_out_buffers.hpp,
-// tools/hailo/hailo_raw_probe.cpp, core/dma_heap_alloc.hpp 리터럴)에 따로 적혀 있었다.
-// 값은 같았지만 동기화 장치가 없었다. 헤더 전용이라 yvo_hailo ⊥ yvo_vulkan 격리를 깨지 않는다.
+// Before 2026-09-21 this value was written separately in four places (vulkan/dmabuf_export.hpp, tools/hailo/p2_out_buffers.hpp,
+// tools/hailo/hailo_raw_probe.cpp, a literal in core/dma_heap_alloc.hpp).
+// The values matched but nothing kept them in sync. Being header-only, it does not break the yvo_hailo ⊥ yvo_vulkan isolation.
 #include <cstddef>
 
 namespace yvo {

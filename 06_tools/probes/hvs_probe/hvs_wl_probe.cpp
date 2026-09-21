@@ -1,13 +1,13 @@
-// hvs_wl_probe: 디코더 SAND128 NV12 dma-buf 를 그대로 wl_buffer 로 감싸 labwc 에 넘기고,
-// labwc(wlroots)가 그것을 HVS 하드웨어 평면에 올리는지(direct scanout) GL 로 합성하는지 측정한다.
+// hvs_wl_probe: wraps the decoder's SAND128 NV12 dma-buf as-is in a wl_buffer and hands it to labwc,
+// and measures whether labwc (wlroots) puts it on an HVS hardware plane (direct scanout) or composites it with GL.
 //
-//   video surface  : fullscreen xdg_toplevel. zwp_linux_buffer_params_v1(NV12, SAND128, 평면별 offset/pitch)
-//   overlay        : ARGB 계열(AB24 = 메모리 R,G,B,A) wl_subsurface. dma-heap(CMA) dmabuf 링에 CPU 로 그린다.
-//   pacing         : wl_surface.frame 콜백(≈vblank) 마다 소스 30 fps 시간표를 보고 새 프레임을 commit
-//   측정           : wp_presentation 피드백(표시 시각, seq, ZERO_COPY 플래그), wl_buffer.release 까지의 보유 수,
-//                    V3D gpu_stats 큐별 사용률, 이 프로세스·labwc CPU 시간, debugfs state 스냅샷(평면 배치)
+//   video surface  : fullscreen xdg_toplevel. zwp_linux_buffer_params_v1(NV12, SAND128, per-plane offset/pitch)
+//   overlay        : ARGB family (AB24 = memory R,G,B,A) wl_subsurface. Drawn by the CPU into a dma-heap (CMA) dmabuf ring.
+//   pacing         : on each wl_surface.frame callback (≈vblank), commit a new frame per the source 30 fps schedule
+//   measure        : wp_presentation feedback (display time, seq, ZERO_COPY flag), buffers held until wl_buffer.release,
+//                    V3D gpu_stats per-queue utilization, CPU time of this process and labwc, debugfs state snapshots (plane placement)
 //
-// 파이프라인 본체와 무관한 독립 프로브다. NPU 를 쓰지 않고 detections.jsonl 을 재생한다.
+// Standalone probe unrelated to the pipeline itself. Does not use the NPU; replays detections.jsonl.
 #include <drm_fourcc.h>
 #include <fcntl.h>
 #include <xf86drm.h>
@@ -53,17 +53,17 @@ struct Args {
     bool overlay = false;
     bool fullscreen = true;
     int win_w = 1280, win_h = 720;
-    int vp_w = 0, vp_h = 0; // fullscreen 에서도 viewport destination 을 이 크기로 (0 = 안 씀)
+    int vp_w = 0, vp_h = 0; // viewport destination uses this size even in fullscreen (0 = unused)
     bool color_repr = false;
-    bool color_range_full = false; // wp_color_representation 에 보낼 range (기본 limited)
+    bool color_range_full = false; // range sent to wp_color_representation (default limited)
     int overlay_bufs = 3;
-    int sand_param = 0;      // modifier 파라미터(열 높이). 0 이면 pitch 필드가 열 높이(HVS6 커널 관례)
-    long pitch_y = -1;       // -1 = 디코더 descriptor 원값(열 높이)
+    int sand_param = 0;      // modifier parameter (column height). If 0, the pitch field is the column height (HVS6 kernel convention)
+    long pitch_y = -1;       // -1 = original decoder descriptor value (column height)
     long pitch_uv = -1;
-    int freeze_at = -1;      // 이 프레임을 표시한 뒤 freeze_ms 동안 멈추고 grim 으로 캡처
+    int freeze_at = -1;      // after presenting this frame, pause for freeze_ms and capture with grim
     int freeze_ms = 2500;
     std::string heap = "/dev/dma_heap/linux,cma";
-    std::string overlay_alloc = "heap"; // heap = dma-heap(CMA, 캐시 매핑) / dumb = card1 dumb buffer(WC 매핑) 를 PRIME export
+    std::string overlay_alloc = "heap"; // heap = dma-heap (CMA, cached mapping) / dumb = card1 dumb buffer (WC mapping), PRIME-exported
     bool verbose = false;
 };
 
@@ -109,11 +109,11 @@ bool parse_args(int argc, char** argv, Args& a) {
     return a.frames > 0;
 }
 
-// ── 프레임 기록 ────────────────────────────────────────────────────────────────────────────
+// ── Frame records ────────────────────────────────────────────────────────────────────────────
 struct FrameRec {
     std::int64_t pts = -1;
-    std::int64_t decoded_ns = 0;   // decoder.next() 반환 시각
-    std::int64_t commit_ns = 0;    // 부모 surface commit 시각
+    std::int64_t decoded_ns = 0;   // decoder.next() return time
+    std::int64_t commit_ns = 0;    // parent surface commit time
     std::int64_t presented_ns = 0; // wp_presentation.presented (clock = presentation clock_id)
     std::uint64_t seq = 0;
     std::uint32_t flags = 0;
@@ -121,8 +121,8 @@ struct FrameRec {
     bool discarded = false;
     bool got_feedback = false;
     int held_at_commit = 0;
-    double overlay_draw_ms = 0;    // CPU 그리기(지우기 + 그리기) 시간
-    double overlay_sync_ms = 0;    // DMA_BUF_SYNC START/END 포함 총 시간
+    double overlay_draw_ms = 0;    // CPU drawing (clear + draw) time
+    double overlay_sync_ms = 0;    // total time including DMA_BUF_SYNC START/END
     int overlay_buf = -1;
     int ndets = 0;
 };
@@ -144,9 +144,9 @@ struct OverlayBuf {
     int idx = -1;
     wl_buffer* buf = nullptr;
     bool busy = false;
-    std::uint8_t* ptr = nullptr; // CPU 매핑 (w*h*4 패킹)
-    int fd = -1;                 // dma-buf fd (heap: 풀 소유 / dumb: 이 구조체 소유)
-    bool needs_sync = false;     // heap(캐시 매핑)이면 DMA_BUF_SYNC 필요, dumb(WC 매핑)이면 불필요
+    std::uint8_t* ptr = nullptr; // CPU mapping (w*h*4 packed)
+    int fd = -1;                 // dma-buf fd (heap: owned by pool / dumb: owned by this struct)
+    bool needs_sync = false;     // heap (cached mapping) needs DMA_BUF_SYNC, dumb (WC mapping) does not
     std::uint32_t dumb_handle = 0;
     std::size_t map_len = 0;
 };
@@ -159,7 +159,7 @@ struct FeedbackCtx {
 
 struct App {
     Args args;
-    // 전역
+    // globals
     wl_display* display = nullptr;
     wl_registry* registry = nullptr;
     wl_compositor* compositor = nullptr;
@@ -170,11 +170,11 @@ struct App {
     wp_presentation* presentation = nullptr;
     clockid_t pres_clock = CLOCK_MONOTONIC;
     wp_viewporter* viewporter = nullptr;
-    wp_color_representation_manager_v1* color_repr_mgr = nullptr; // 선택된(BT.709 limited 를 지원하는) 관리자
+    wp_color_representation_manager_v1* color_repr_mgr = nullptr; // selected manager (the one supporting BT.709 limited)
     std::vector<std::string> globals;
     std::vector<std::string> crm_supported;
-    // labwc 0.20.1 은 wp_color_representation_manager_v1 전역을 **두 개** 광고한다(실측). 둘 다 bind 해서
-    // 지원 목록을 받은 뒤 BT.709 를 지원하는 쪽을 고른다.
+    // labwc 0.20.1 advertises **two** wp_color_representation_manager_v1 globals (measured). Bind both,
+    // receive their supported lists, then pick the one that supports BT.709.
     struct CrmCand {
         App* app = nullptr;
         std::size_t idx = 0;
@@ -195,50 +195,50 @@ struct App {
     int conf_w = 0, conf_h = 0;
     bool closed = false;
 
-    // dmabuf 피드백(표면별 scanout tranche)
+    // dmabuf feedback (per-surface scanout tranche)
     std::vector<std::pair<std::uint32_t, std::uint64_t>> fmt_table;
     std::uint32_t tranche_flags = 0;
     std::vector<std::uint16_t> tranche_idx;
     std::vector<std::string> feedback_log;
     bool feedback_done = false;
 
-    // 비디오
+    // video
     yvo::FfmpegDrmDecoder dec;
     std::map<std::pair<ino_t, ino_t>, std::unique_ptr<VideoBuf>> vbufs;
-    std::deque<yvo::DrmFrame> ahead; // 미리 디코드한 프레임(1개)
-    int held = 0;                    // 우리가 들고 있는 AVFrame 수(busy wl_buffer + ahead)
+    std::deque<yvo::DrmFrame> ahead; // pre-decoded frame (1)
+    int held = 0;                    // number of AVFrames we hold (busy wl_buffer + ahead)
     int held_max = 0;
     std::int64_t create_failed = 0;
     bool last_create_failed = false;
     bool create_done = false;
 
-    // 오버레이
+    // overlay
     std::unique_ptr<yvo::DmaHeapPool> ov_pool;
-    int card_fd = -1; // --overlay-alloc dumb 일 때 /dev/dri/card1
+    int card_fd = -1; // /dev/dri/card1 when --overlay-alloc dumb
     std::vector<std::unique_ptr<OverlayBuf>> ov_bufs;
     std::unique_ptr<OverlayPainter> painter;
     std::string ov_backend = "none";
     std::int64_t overlay_skips = 0;
     std::map<std::int64_t, std::vector<yvo::Detection>> dets;
 
-    // 페이싱·기록
+    // pacing / records
     std::vector<FrameRec> recs;
-    std::int64_t t_start = 0;         // 첫 프레임 commit 시각
+    std::int64_t t_start = 0;         // first frame commit time
     double frame_period_ns = 1e9 / 30.0;
-    int presented_video = 0;          // commit 한 비디오 프레임 수
+    int presented_video = 0;          // number of video frames committed
     std::int64_t callbacks = 0;
     std::int64_t idle_commits = 0;
     bool frozen = false;
     std::int64_t freeze_until = 0;
     bool finished = false;
 
-    // 측정 구간(정상 상태): 프레임 30 ~ 끝
+    // measurement window (steady state): frame 30 to end
     V3dStats v3d_a, v3d_b;
     std::int64_t meas_t0 = 0, meas_t1 = 0, cpu0 = 0, cpu1 = 0, lab0 = 0, lab1 = 0;
     int meas_f0 = 0, meas_f1 = 0;
     int labwc_pid = -1;
     std::vector<std::string> snapshots;
-    std::vector<FeedbackCtx*> live_feedback; // 아직 presented/discarded 를 못 받은 피드백 (종료 시 정리)
+    std::vector<FeedbackCtx*> live_feedback; // feedback not yet presented/discarded (cleaned up at exit)
 };
 
 void forget_feedback(FeedbackCtx* ctx) {
@@ -246,7 +246,7 @@ void forget_feedback(FeedbackCtx* ctx) {
     v.erase(std::remove(v.begin(), v.end(), ctx), v.end());
 }
 
-// ── 리스너 ─────────────────────────────────────────────────────────────────────────────────
+// ── Listeners ─────────────────────────────────────────────────────────────────────────────────
 void wm_ping(void*, xdg_wm_base* b, std::uint32_t serial) { xdg_wm_base_pong(b, serial); }
 const xdg_wm_base_listener kWmListener = {wm_ping};
 
@@ -315,7 +315,7 @@ void reg_global(void* data, wl_registry* r, std::uint32_t name, const char* ifac
 void reg_remove(void*, wl_registry*, std::uint32_t) {}
 const wl_registry_listener kRegListener = {reg_global, reg_remove};
 
-// dmabuf 표면 피드백 (v4)
+// dmabuf surface feedback (v4)
 void fb_done(void* data, zwp_linux_dmabuf_feedback_v1*) { static_cast<App*>(data)->feedback_done = true; }
 void fb_format_table(void* data, zwp_linux_dmabuf_feedback_v1*, std::int32_t fd, std::uint32_t size) {
     auto* app = static_cast<App*>(data);
@@ -386,7 +386,7 @@ void vbuf_release(void* data, wl_buffer*) {
     auto* vb = static_cast<VideoBuf*>(data);
     if (!vb->busy) return;
     vb->busy = false;
-    vb->keepalive.reset(); // AVFrame 반납 → 디코더 풀
+    vb->keepalive.reset(); // return AVFrame → decoder pool
     vb->release_count++;
     vb->app->held--;
 }
@@ -395,7 +395,7 @@ const wl_buffer_listener kVbufListener = {vbuf_release};
 void obuf_release(void* data, wl_buffer*) { static_cast<OverlayBuf*>(data)->busy = false; }
 const wl_buffer_listener kObufListener = {obuf_release};
 
-// zwp_linux_buffer_params_v1 (비동기 create)
+// zwp_linux_buffer_params_v1 (async create)
 void params_created(void* data, zwp_linux_buffer_params_v1*, wl_buffer*) {
     auto* app = static_cast<App*>(data);
     app->create_done = true;
@@ -407,14 +407,14 @@ void params_failed(void* data, zwp_linux_buffer_params_v1*) {
     app->last_create_failed = true;
 }
 
-wl_buffer* g_created = nullptr; // params.created 로 받은 wl_buffer (create_dmabuf_buffer 가 가져간다)
+wl_buffer* g_created = nullptr; // wl_buffer received via params.created (taken by create_dmabuf_buffer)
 void params_created_capture(void* data, zwp_linux_buffer_params_v1* p, wl_buffer* b) {
     g_created = b;
     params_created(data, p, b);
 }
 const zwp_linux_buffer_params_v1_listener kParamsListener = {params_created_capture, params_failed};
 
-// 동기적으로(roundtrip) dmabuf wl_buffer 를 만든다. 실패하면 nullptr.
+// Create a dmabuf wl_buffer synchronously (roundtrip). Returns nullptr on failure.
 wl_buffer* create_dmabuf_buffer(App& app, int w, int h, std::uint32_t fmt, std::uint32_t flags,
                                 const std::vector<std::tuple<int, std::uint32_t, std::uint32_t, std::uint64_t>>& planes) {
     zwp_linux_buffer_params_v1* p = zwp_linux_dmabuf_v1_create_params(app.dmabuf);
@@ -462,7 +462,7 @@ void pf_discarded(void* data, struct wp_presentation_feedback* f) {
 }
 const wp_presentation_feedback_listener kPfListener = {pf_sync_output, pf_presented, pf_discarded};
 
-// ── 비디오 ─────────────────────────────────────────────────────────────────────────────────
+// ── Video ─────────────────────────────────────────────────────────────────────────────────
 std::pair<ino_t, ino_t> buf_key(const yvo::DrmFrame& f) {
     struct stat sy{}, suv{};
     fstat(f.fd, &sy);
@@ -508,13 +508,13 @@ bool decode_ahead(App& app) {
     return true;
 }
 
-// ── 오버레이 ───────────────────────────────────────────────────────────────────────────────
+// ── Overlay ───────────────────────────────────────────────────────────────────────────────
 bool setup_overlay(App& app, int w, int h) {
     const std::size_t bytes = static_cast<std::size_t>(w) * static_cast<std::size_t>(h) * 4;
     try {
         if (app.args.overlay_alloc == "dumb") {
-            // card1(vc4) dumb buffer: 연속 메모리(CMA) + write-combined 매핑 → CPU 캐시 동기화가 필요 없다.
-            // DRM master 없이도 CREATE_DUMB/MAP_DUMB/PRIME export 가 된다.
+            // card1 (vc4) dumb buffer: contiguous memory (CMA) + write-combined mapping → no CPU cache sync needed.
+            // CREATE_DUMB/MAP_DUMB/PRIME export work without DRM master.
             app.card_fd = open("/dev/dri/card1", O_RDWR | O_CLOEXEC);
             if (app.card_fd < 0) throw std::runtime_error(std::string("open card1: ") + std::strerror(errno));
             for (int i = 0; i < app.args.overlay_bufs; ++i) {
@@ -525,7 +525,7 @@ bool setup_overlay(App& app, int w, int h) {
                 if (drmIoctl(app.card_fd, DRM_IOCTL_MODE_CREATE_DUMB, &c) != 0)
                     throw std::runtime_error(std::string("CREATE_DUMB: ") + std::strerror(errno));
                 if (c.pitch != static_cast<std::uint32_t>(w * 4))
-                    throw std::runtime_error("dumb pitch != w*4 (페인터는 패킹 버퍼를 가정한다)");
+                    throw std::runtime_error("dumb pitch != w*4 (the painter assumes a packed buffer)");
                 drm_mode_map_dumb m{};
                 m.handle = c.handle;
                 if (drmIoctl(app.card_fd, DRM_IOCTL_MODE_MAP_DUMB, &m) != 0)
@@ -569,7 +569,7 @@ bool setup_overlay(App& app, int w, int h) {
             ob->buf = create_dmabuf_buffer(app, w, h, DRM_FORMAT_ABGR8888, 0,
                                            {{ob->fd, 0u, static_cast<std::uint32_t>(w * 4), DRM_FORMAT_MOD_LINEAR}});
             if (!ob->buf) {
-                std::fprintf(stderr, "[overlay] dmabuf wl_buffer 생성 실패 (%s)\n", app.args.overlay_alloc.c_str());
+                std::fprintf(stderr, "[overlay] dmabuf wl_buffer creation failed (%s)\n", app.args.overlay_alloc.c_str());
                 return false;
             }
             wl_buffer_add_listener(ob->buf, &kObufListener, ob.get());
@@ -582,7 +582,7 @@ bool setup_overlay(App& app, int w, int h) {
     return true;
 }
 
-// 오버레이 버퍼 하나를 그려서 ov_surface 에 attach+commit (부모 commit 때 함께 적용 — sync subsurface)
+// Draw one overlay buffer and attach+commit it to ov_surface (applied with the parent commit — sync subsurface)
 void update_overlay(App& app, FrameRec& rec, double fps_now) {
     OverlayBuf* ob = nullptr;
     for (auto& b : app.ov_bufs)
@@ -646,17 +646,17 @@ void commit_video(App& app, std::int64_t now) {
     rec.decoded_ns = 0;
     VideoBuf* vb = video_buffer_for(app, f);
     if (!vb) {
-        std::fprintf(stderr, "[video] frame %lld: wl_buffer 생성 실패 (compositor 거부)\n", static_cast<long long>(f.pts));
+        std::fprintf(stderr, "[video] frame %lld: wl_buffer creation failed (compositor rejected)\n", static_cast<long long>(f.pts));
         app.held--;
         app.finished = true;
         return;
     }
     if (vb->busy) {
-        // 같은 dma-buf 가 아직 컴포지터에 있다 — 일어나면 안 된다(우리가 AVFrame 을 들고 있으므로).
+        // The same dma-buf is still in the compositor — must not happen (we hold the AVFrame).
         std::fprintf(stderr, "[video] BUG: busy buffer reuse at frame %lld\n", static_cast<long long>(f.pts));
     }
     if (app.args.freeze_at >= 0 && f.pts == app.args.freeze_at) {
-        // 색 비교용 CPU 기준 변환 (BT.709 limited → full RGB, display_convert.comp 와 같은 수식)
+        // CPU reference conversion for color comparison (BT.709 limited → full RGB, same formula as display_convert.comp)
         const auto rgb = sand_to_rgb(f);
         if (!rgb.empty())
             write_ppm(app.args.out_dir + "/" + app.args.label + "_ref_f" + std::to_string(f.pts) + ".ppm", rgb.data(),
@@ -664,7 +664,7 @@ void commit_video(App& app, std::int64_t now) {
     }
     vb->busy = true;
     vb->pts = f.pts;
-    vb->keepalive = std::move(f.keepalive); // release 때까지 보유 (held 는 ahead 에서 이미 셈)
+    vb->keepalive = std::move(f.keepalive); // held until release (held was already counted in ahead)
     app.recs.push_back(rec);
     FrameRec& r = app.recs.back();
     const double el = app.t_start ? static_cast<double>(now - app.t_start) / 1e9 : 0.0;
@@ -702,7 +702,7 @@ void on_tick(App& app) {
         app.finished = true;
         return;
     }
-    // 측정 구간 시작/끝, 스냅샷
+    // measurement window start/end, snapshots
     if (n == 30 && app.meas_t0 == 0) {
         app.meas_t0 = now;
         app.meas_f0 = n;
@@ -717,9 +717,9 @@ void on_tick(App& app) {
             return;
         }
         app.frozen = false;
-        app.t_start += (now - app.freeze_until) + app.args.freeze_ms * 1000000LL; // 시간표를 밀어 준다
+        app.t_start += (now - app.freeze_until) + app.args.freeze_ms * 1000000LL; // shift the schedule
     }
-    // 소스 30 fps 시간표: 프레임 n 은 t_start + n*33.3ms 에 표시되어야 한다. 반 vblank 앞당겨 commit.
+    // Source 30 fps schedule: frame n should be displayed at t_start + n*33.3ms. Commit half a vblank early.
     const bool due = (app.t_start == 0) ||
                      (static_cast<double>(now - app.t_start) + 8.0e6 >= static_cast<double>(n) * app.frame_period_ns);
     if (due && decode_ahead(app)) {
@@ -750,7 +750,7 @@ void frame_done(void* data, wl_callback* cb, std::uint32_t) {
 
 int main(int argc, char** argv) {
     App app;
-    std::setvbuf(stdout, nullptr, _IOLBF, 0); // 로그를 줄 단위로 (tee/리다이렉트 중 중단돼도 남도록)
+    std::setvbuf(stdout, nullptr, _IOLBF, 0); // line-buffered logging (so output survives interruption during tee/redirect)
     if (!parse_args(argc, argv, app.args)) {
         usage(argv[0]);
         return 2;
@@ -773,7 +773,7 @@ int main(int argc, char** argv) {
 
     app.display = wl_display_connect(nullptr);
     if (!app.display) {
-        std::fprintf(stderr, "wl_display_connect 실패 (WAYLAND_DISPLAY/XDG_RUNTIME_DIR 확인)\n");
+        std::fprintf(stderr, "wl_display_connect failed (check WAYLAND_DISPLAY/XDG_RUNTIME_DIR)\n");
         return 1;
     }
     app.registry = wl_display_get_registry(app.display);
@@ -787,7 +787,7 @@ int main(int argc, char** argv) {
                 app.dmabuf_ver, app.presentation ? "yes" : "no", app.viewporter ? "yes" : "no",
                 app.crm_cands.size(), app.subcompositor ? "yes" : "no");
     if (!app.compositor || !app.wm_base || !app.dmabuf) {
-        std::fprintf(stderr, "필수 전역(wl_compositor/xdg_wm_base/zwp_linux_dmabuf_v1) 없음\n");
+        std::fprintf(stderr, "required globals (wl_compositor/xdg_wm_base/zwp_linux_dmabuf_v1) missing\n");
         return 1;
     }
     for (auto& c : app.crm_cands) {
@@ -816,7 +816,7 @@ int main(int argc, char** argv) {
     xdg_toplevel_set_app_id(app.toplevel, "hvs_wl_probe");
     if (a.fullscreen) xdg_toplevel_set_fullscreen(app.toplevel, nullptr);
 
-    // dmabuf 표면 피드백
+    // dmabuf surface feedback
     zwp_linux_dmabuf_feedback_v1* feedback = nullptr;
     if (app.dmabuf_ver >= 4) {
         feedback = zwp_linux_dmabuf_v1_get_surface_feedback(app.dmabuf, app.surface);
@@ -824,7 +824,7 @@ int main(int argc, char** argv) {
     }
     if (a.color_repr) {
         if (!app.color_repr_mgr) {
-            std::printf("[color-repr] 요청했지만 labwc 가 wp_color_representation_manager_v1 을 광고하지 않는다 — 건너뜀\n");
+            std::printf("[color-repr] requested but labwc does not advertise wp_color_representation_manager_v1 — skipping\n");
         } else {
             app.color_repr = wp_color_representation_manager_v1_get_surface(app.color_repr_mgr, app.surface);
             wp_color_representation_surface_v1_set_coefficients_and_range(
@@ -833,7 +833,7 @@ int main(int argc, char** argv) {
                                    : WP_COLOR_REPRESENTATION_SURFACE_V1_RANGE_LIMITED);
             wp_color_representation_surface_v1_set_chroma_location(app.color_repr,
                                                                    WP_COLOR_REPRESENTATION_SURFACE_V1_CHROMA_LOCATION_TYPE_0);
-            std::printf("[color-repr] BT.709 %s, chroma type_0 설정\n", a.color_range_full ? "full" : "limited");
+            std::printf("[color-repr] BT.709 %s, chroma type_0 set\n", a.color_range_full ? "full" : "limited");
         }
     }
     wl_surface_commit(app.surface);
@@ -846,7 +846,7 @@ int main(int argc, char** argv) {
         out_w = a.fullscreen ? a.vp_w : a.win_w;
         out_h = a.fullscreen ? a.vp_h : a.win_h;
         if (!app.viewporter) {
-            std::fprintf(stderr, "wp_viewporter 없음 — 창 모드 스케일 불가\n");
+            std::fprintf(stderr, "wp_viewporter missing — cannot scale in windowed mode\n");
             return 1;
         }
         app.viewport = wp_viewporter_get_viewport(app.viewporter, app.surface);
@@ -858,7 +858,7 @@ int main(int argc, char** argv) {
 
     if (a.overlay) {
         if (!app.subcompositor) {
-            std::fprintf(stderr, "wl_subcompositor 없음\n");
+            std::fprintf(stderr, "wl_subcompositor missing\n");
             return 1;
         }
         app.ov_surface = wl_compositor_create_surface(app.compositor);
@@ -873,9 +873,9 @@ int main(int argc, char** argv) {
     }
 
     app.recs.reserve(static_cast<std::size_t>(a.frames) + 8);
-    // 첫 프레임
+    // first frame
     if (!decode_ahead(app)) {
-        std::fprintf(stderr, "첫 프레임 디코드 실패: %s\n", app.dec.error().c_str());
+        std::fprintf(stderr, "first frame decode failed: %s\n", app.dec.error().c_str());
         return 1;
     }
     {
@@ -891,7 +891,7 @@ int main(int argc, char** argv) {
     bool grabbed = false;
     while (!app.finished && !app.closed && !g_stop) {
         if (wl_display_dispatch(app.display) < 0) {
-            std::fprintf(stderr, "wl_display_dispatch 실패: %s\n", std::strerror(errno));
+            std::fprintf(stderr, "wl_display_dispatch failed: %s\n", std::strerror(errno));
             break;
         }
         if (app.frozen && !grabbed && now_ns() > app.freeze_until - a.freeze_ms * 1000000LL / 2) {
@@ -909,10 +909,10 @@ int main(int argc, char** argv) {
     app.v3d_b = read_v3d_stats();
     app.cpu1 = self_cpu_ns();
     app.lab1 = proc_cpu_ns(app.labwc_pid);
-    // 남은 피드백 수신
+    // receive remaining feedback
     for (int i = 0; i < 6; ++i) wl_display_roundtrip(app.display);
 
-    // ── 요약 ──
+    // ── summary ──
     const int nf = app.meas_f1 - app.meas_f0;
     const std::int64_t wall = app.meas_t1 - app.meas_t0;
     std::vector<double> intervals, latency, draw_ms, sync_ms, seq_gap;
@@ -1000,7 +1000,7 @@ int main(int argc, char** argv) {
         std::fclose(f);
     }
 
-    // 정리
+    // cleanup
     if (feedback) zwp_linux_dmabuf_feedback_v1_destroy(feedback);
     if (app.color_repr) wp_color_representation_surface_v1_destroy(app.color_repr);
     if (app.viewport) wp_viewport_destroy(app.viewport);

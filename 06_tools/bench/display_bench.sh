@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
-# M4 — HDMI 표시 통합 e2e 측정 (계획서 단계 4~5).
+# M4 — HDMI display-integrated e2e measurement (plan stages 4-5).
 #
-# 왜 op_point_bench.sh 를 쓰지 않는가:
-#   그 스크립트는 `RESULT_CSV` 22필드만 거둔다. 표시 지표(disp_convert, present 간격,
-#   glass-to-glass, held_frames_max …)는 `RESULT_CSV2` 줄의 **뒤에 덧붙인 14필드**에 있다.
-#   그래서 두 줄을 합쳐 한 행으로 만드는 이 스크립트를 따로 둔다. 냉각·환경 스냅샷·루프 구조는
-#   op_point_bench.sh 에서 그대로 복사했다(수정하지 않았다).
+# Why not use op_point_bench.sh:
+#   That script collects only the 22 `RESULT_CSV` fields. Display metrics (disp_convert, present interval,
+#   glass-to-glass, held_frames_max ...) are in the **14 fields appended at the end** of the `RESULT_CSV2` line.
+#   So this separate script joins the two lines into one row. Cool-down, environment snapshot and loop structure are
+#   copied verbatim from op_point_bench.sh (unmodified).
 #
-# ⚠ 측정은 반드시 --display-fullscreen 이다. 창 모드는 균일 스케일 경로로 넘어가
-#   에러도 경고도 없이 표시 변환이 2.6배 느려진다.
-# ⚠ 처리량 판정은 pace=asap, 지연·드롭 판정은 pace=source 로 축을 나눈다.
-#   pace=source 에서는 FPS 가 소스 30 으로 고정돼 "FPS ±2%" 판정이 무의미해진다.
+# ⚠ Measurements must use --display-fullscreen. Windowed mode falls onto the uniform-scale path and
+#   display conversion becomes 2.6x slower with no error or warning.
+# ⚠ Split the axes: throughput verdicts use pace=asap, latency/drop verdicts use pace=source.
+#   With pace=source FPS is pinned to the source 30, making the "FPS ±2%" verdict meaningless.
 #
-# 사용법:
+# Usage:
 #   bash 06_tools/bench/display_bench.sh
 #   RUNS=3 FRAMES=900 ONLY='disp_on' bash 06_tools/bench/display_bench.sh
 set -euo pipefail
 
 PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-# 공통 함수(온도·PCIe·냉각·hailort 경고 판정·벤치 락)는 lib/common.sh 하나로 모았다.
-# 예전에는 이 함수들이 7개 스크립트에 복붙돼 있었고 실제로 갈라져 있었다(pcie_link 의 Gen5 분기 등).
+# Common functions (temperature, PCIe, cool-down, hailort warning verdict, bench lock) live in lib/common.sh.
+# They used to be copy-pasted into 7 scripts and had actually diverged (e.g. pcie_link's Gen5 branch).
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 BIN="${BIN:-$BIN_DIR/yvo_pipeline}"
 VIDEO="${VIDEO:-$PROJ/04_data/videos/video_h265.mp4}"
@@ -35,7 +35,7 @@ APPEND="${APPEND:-0}"
 
 require_bin "$BIN" yvo_pipeline
 check_only_exit
-guard_out_dir   # OUT_DIR 이 비어 있지 않으면 FORCE=1 없이는 멈춘다(보관 결과 보호)
+guard_out_dir   # stop if OUT_DIR is not empty unless FORCE=1 (archived-result protection)
 bench_lock_acquire
 mkdir -p "$OUT_DIR/raw"
 
@@ -46,7 +46,7 @@ if [[ -z "${WAYLAND_DISPLAY:-}" ]]; then
 fi
 HAVE_WAYLAND=0; [[ -n "${WAYLAND_DISPLAY:-}" ]] && HAVE_WAYLAND=1
 
-# id|자유형 인자열. 운용점은 b2/s4 --postproc gpu 로 고정하고 표시 축만 움직인다.
+# id|free-form args. Operating point fixed at b2/s4 --postproc gpu; only the display axis varies.
 configs=(
   "reg_host_off |--mode dmabuf --layout nhcw --batch 2 --slots 4 --postproc host"
   "disp_off     |--mode dmabuf --layout nhcw --batch 2 --slots 4 --postproc gpu"
@@ -54,19 +54,19 @@ configs=(
   "disp_source  |--mode dmabuf --layout nhcw --batch 2 --slots 4 --postproc gpu --display on --display-fullscreen --display-pace source"
 )
 
-# ── 복사 끝 ──
+# ── end of copy ──
 
-# M5a — NPU 유휴 GPU 기준선. M4 **직전 같은 열 상태에서** 찍는다. 이게 없으면 M4 의 GPU 시간이
-# 경합 때문인지 코드 때문인지 구분할 수 없다. 냉각하지 않는다(의도적).
+# M5a — GPU baseline with the NPU idle. Taken **right before M4, in the same thermal state**. Without it, one can't tell
+# whether M4's GPU time is due to contention or code. No cool-down (intentional).
 if [[ "${SKIP_M5A:-0}" != "1" ]] && (( HAVE_WAYLAND )); then
   PROBE="$BIN_DIR/yvo_display_probe"
   if [[ -x "$PROBE" ]]; then
-    echo "[M5a] NPU 유휴 GPU 기준선 (yvo_display_probe --probe convert, fullscreen, overlay 5개)"
-    # 실행 1회 = 폴더 1개(STRUCTURE.md §3): raw/m5a_run1/{stdout.log(전문), m5a_baseline.txt(발췌)}
-    # 2026-09-22 이전에는 raw/m5a/m5a.log 와 루트의 m5a_baseline.txt 였다.
+    echo "[M5a] GPU baseline with NPU idle (yvo_display_probe --probe convert, fullscreen, 5 overlays)"
+    # One run = one folder (STRUCTURE.md §3): raw/m5a_run1/{stdout.log (full), m5a_baseline.txt (excerpt)}
+    # Before 2026-09-22 these were raw/m5a/m5a.log and m5a_baseline.txt at the root.
     m5a_dir="$OUT_DIR/raw/m5a_run1"
     mkdir -p "$m5a_dir"
-    # ⚠ --video 는 절대경로로 넘긴다. 프로브를 raw/m5a_run1 에서 돌리므로 기본 상대경로가 깨진다.
+    # ⚠ Pass --video as an absolute path. The probe runs in raw/m5a_run1, which breaks the default relative path.
     (cd "$m5a_dir" && "$PROBE" --probe convert --video "$VIDEO" --frames 300 --display-fullscreen \
         --with-overlay --overlay-dets 5 > stdout.log 2>&1) || true
     grep -E "display path|on-screen shader|on-screen overlay|present_wait|presented" \
@@ -85,20 +85,20 @@ fi
   echo "bin md5: $(md5sum "$BIN" | cut -d' ' -f1)"
   echo "video: $VIDEO frames: ${FRAMES:-all} runs: $RUNS"
   if (( HAVE_WAYLAND )); then echo "wayland: $XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
-  else echo "wayland: 없음 — --display 가 든 설정은 건너뛴다"; fi
+  else echo "wayland: none — configs with --display are skipped"; fi
 } > "$OUT_DIR/env_bench.txt"
 cat "$OUT_DIR/env_bench.txt"
 
 RAW="$OUT_DIR/results_raw.csv"
-# RESULT_CSV 22필드 + RESULT_CSV2 의 label 뒤 33필드 + 스크립트 4필드 = 59열
-#   RESULT_CSV2 = 후처리 8필드(ok 는 RESULT_CSV 의 ok 와 중복이라 아래 awk 가 뺀다) + 표시 14필드 + GPU NMS 5필드
-#                 + 평면 스캔아웃 6필드(wayland-planes / kms 외에는 "-". main.cpp 의 RESULT_CSV2 주석)
-#   ⚠ 그 줄을 cut -f3- 로 통째로 붙이므로 main.cpp 가 필드를 덧붙이면 이 헤더도 같이 고쳐야 한다.
-#   NMS 5필드가 없는 옛 헤더(07_results/display_e2e/, 48열)와도, 스캔아웃 6필드가 없는 53열 헤더와도
-#   APPEND=1 로 섞을 수 없다.
+# 22 RESULT_CSV fields + 33 RESULT_CSV2 fields after label + 4 script fields = 59 columns
+#   RESULT_CSV2 = 8 postproc fields (ok duplicates RESULT_CSV's ok, so the awk below drops it) + 14 display + 5 GPU NMS fields
+#                 + 6 plane-scanout fields ("-" except for wayland-planes / kms; see the RESULT_CSV2 comment in main.cpp)
+#   ⚠ That line is appended wholesale via cut -f3-, so if main.cpp appends fields this header must change too.
+#   It cannot be mixed via APPEND=1 with the old header lacking the 5 NMS fields (07_results/display_e2e/, 48 columns)
+#   nor with the 53-column header lacking the 6 scanout fields.
 CSV_HEADER="label,mode,layout,batch,slots,frames,wall_s,fps,cpu_ms_per_frame,decode_ms_mean,gpu_ms_mean,gpu_ms_p90,npu_ms_mean,npu_ms_p90,e2e_ms_mean,e2e_ms_p90,detections,hailo_t0,hailo_t1,soc_t0,soc_t1,ok,postproc,alloc,gpu_post_mean,gpu_post_p90,cpu_nms_us_mean,cand_mean,cand_max,cand_overflow,display,sync,pace,disp_convert_mean,disp_convert_p90,disp_overlay_mean,present_interval_median,e2e_glass_mean,e2e_glass_p90,presented,display_dropped,recreates,held_frames_max,slot_timeout_count,nms,gpu_nms_mean,gpu_nms_p90,nms_fallback,nms_verify_mismatch,scanout_zero_copy,plane_color_ok,hvs_underrun_delta,overlay_skipped,frame_cb_timeouts,zero_copy_feedback,run,cool_wait_s,hailort_warnings,hailort_errors"
 if [[ "$APPEND" == "1" && -f "$RAW" ]]; then
-  head -1 "$RAW" | grep -qx "$CSV_HEADER" || { echo "APPEND=1인데 기존 $RAW 헤더가 다르다" >&2; exit 1; }
+  head -1 "$RAW" | grep -qx "$CSV_HEADER" || { echo "APPEND=1 but the existing $RAW header differs" >&2; exit 1; }
 else
   echo "$CSV_HEADER" > "$RAW"
 fi
@@ -113,14 +113,14 @@ for ((r = 1; r <= RUNS; r++)); do
     id="${id// /}"
     echo "$id" | grep -Eq "$ONLY" || continue
     if [[ "$args" == *"--display on"* ]] && (( ! HAVE_WAYLAND )); then
-      echo "[skip] $id — Wayland 없음"; continue
+      echo "[skip] $id — no Wayland"; continue
     fi
     COOL_WAITED=0
     t_now=$(hailo_temp)
     if (( prev_warn > 0 )); then
-      cool_down "hailort.log 경고 ${prev_warn}건"
+      cool_down "hailort.log warnings: ${prev_warn}"
     elif awk -v t="$t_now" -v h="$HOT_C" 'BEGIN{exit !(t!="nan" && t>h)}'; then
-      cool_down "칩 온도 ${t_now} C > ${HOT_C} C"
+      cool_down "chip temp ${t_now} C > ${HOT_C} C"
     fi
     run_dir="$OUT_DIR/raw/${id}_run${r}"
     rm -rf "$run_dir"; mkdir -p "$run_dir"
@@ -138,14 +138,14 @@ for ((r = 1; r <= RUNS; r++)); do
     fi
     prev_warn=$nwarn
     l1=$(grep '^RESULT_CSV,' "$run_dir/stdout.log" | sed 's/^RESULT_CSV,//' || true)
-    # RESULT_CSV2 는 label 로 시작하므로 첫 필드를 버리고 이어 붙인다.
+    # RESULT_CSV2 starts with label, so drop the first field and append.
     l2=$(grep '^RESULT_CSV2,' "$run_dir/stdout.log" | cut -d, -f3- || true)
     if [[ -z "$l1" || -z "$l2" ]]; then
-      echo "  실패 rc=$rc (stdout.log 참조)"; tail -5 "$run_dir/stdout.log"
+      echo "  failed rc=$rc (see stdout.log)"; tail -5 "$run_dir/stdout.log"
       continue
     fi
-    # l2 의 9번째 필드(ok)는 l1 의 ok 와 중복이라 뺀다.
-    #   l2 = postproc,alloc,gpu_post_mean,gpu_post_p90,cpu_nms_us_mean,cand_mean,cand_max,cand_overflow,[ok],표시 14개
+    # l2's 9th field (ok) duplicates l1's ok, so drop it.
+    #   l2 = postproc,alloc,gpu_post_mean,gpu_post_p90,cpu_nms_us_mean,cand_mean,cand_max,cand_overflow,[ok],14 display fields
     l2=$(awk -F, 'BEGIN{OFS=","}{ out=""; for(i=1;i<=NF;i++){ if(i==9) continue;
                                    out = (out=="" ? $i : out OFS $i) } print out }' <<<"$l2")
     echo "$l1,$l2,$r,$COOL_WAITED,$nwarn,$nerr" >> "$RAW"
@@ -158,7 +158,7 @@ import csv, statistics, sys
 
 rows = list(csv.DictReader(open(sys.argv[1])))
 if not rows:
-    print("행이 없다"); sys.exit(0)
+    print("no rows"); sys.exit(0)
 
 NON_NUM = {"label", "mode", "layout", "run", "postproc", "alloc", "display", "sync", "pace"}
 def numeric(key):
@@ -207,6 +207,6 @@ EOF
 {
   echo "# after $(date -Is)"
   echo "soc temp: $(soc_temp) C, hailo temp: $(hailo_temp) C"
-  echo "bin md5 (측정 후): $(md5sum "$BIN" | cut -d' ' -f1)"
+  echo "bin md5 (after measurement): $(md5sum "$BIN" | cut -d' ' -f1)"
   vcgencmd get_throttled 2>/dev/null || true
 } >> "$OUT_DIR/env_bench.txt"

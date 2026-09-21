@@ -1,21 +1,21 @@
-// DisplayBackend / OffscreenBackend: DisplayPipeline 이 보는 "표시 대상 이미지 공급자" 추상화.
+// DisplayBackend / OffscreenBackend: the "display target image provider" abstraction seen by DisplayPipeline.
 //
-// 왜 추상화하는가:
-//   `DisplayPipeline` 의 프레임 루프(acquire → begin → 배리어 → convert → overlay → 배리어 →
-//   submit → present → 펜스 폴링)는 화면이 있든 없든 **완전히 같다**. 다른 것은 이미지를 어디서
-//   받고 결과를 어디로 보내느냐뿐이다. 그래서 그 둘만 가상 함수로 뽑고 루프는 하나만 둔다.
-//     · `SwapchainBackend` (display_pipeline.cpp 내부) — `VulkanSwapchain` 어댑터. 실제 HDMI 경로.
-//     · `OffscreenBackend`  (이 파일)                  — Wayland 가 없을 때의 헤드리스 폴백.
+// Why abstract it:
+//   `DisplayPipeline`'s frame loop (acquire → begin → barrier → convert → overlay → barrier →
+//   submit → present → fence polling) is **exactly the same** whether or not there is a screen. The only differences are where
+//   the image comes from and where the result goes. So only those two are pulled out as virtual functions and there is a single loop.
+//     · `SwapchainBackend` (inside display_pipeline.cpp) — `VulkanSwapchain` adapter. The real HDMI path.
+//     · `OffscreenBackend`  (this file)                  — headless fallback when there is no Wayland.
 //
-// OffscreenBackend 가 하는 일:
-//   스왑체인 이미지 대신 **자체 R8G8B8A8_UNORM STORAGE 이미지 N장 + 펜스 N개**를 돌린다.
-//   세마포어는 만들지 않는다 — `DisplayConvert::end_and_submit` 이 VK_NULL_HANDLE 을 받으면
-//   waitSemaphoreInfoCount/signalSemaphoreInfoCount 를 0 으로 둔다(display_convert.cpp 확인).
-//   present 는 아무 데도 보내지 않고 presented_ 만 센다. 따라서 present_wait 도 없다
-//   (`present_wait_available()==false` → glass-to-glass 통계가 비어 있는 것이 정상이다).
-//   이미지 레이아웃은 스왑체인과 같은 UNDEFINED → GENERAL → (PRESENT_SRC 대신) GENERAL 유지다.
-//   PRESENT_SRC 로 보내면 안 된다 — 스왑체인이 아닌 이미지에는 그 레이아웃을 쓸 이유가 없고,
-//   다음 프레임의 acquire 전환이 어차피 UNDEFINED 에서 시작한다.
+// What OffscreenBackend does:
+//   Instead of swapchain images it cycles **its own N R8G8B8A8_UNORM STORAGE images + N fences**.
+//   It creates no semaphores — when `DisplayConvert::end_and_submit` receives VK_NULL_HANDLE it
+//   sets waitSemaphoreInfoCount/signalSemaphoreInfoCount to 0 (verified in display_convert.cpp).
+//   present sends nothing anywhere and only counts presented_. Hence there is no present_wait either
+//   (`present_wait_available()==false` → empty glass-to-glass statistics are normal).
+//   The image layout is the same as the swapchain, UNDEFINED → GENERAL → GENERAL kept (instead of PRESENT_SRC).
+//   It must not be sent to PRESENT_SRC — there is no reason to use that layout for a non-swapchain image,
+//   and the next frame's acquire transition starts from UNDEFINED anyway.
 #pragma once
 
 #include <cstdint>
@@ -31,12 +31,12 @@ class VulkanContext;
 
 namespace yvo::display {
 
-// DisplayPipeline 이 쓰는 최소 표면. VulkanSwapchain 의 부분집합과 이름·의미를 맞춰 두었다.
+// The minimal surface used by DisplayPipeline. Names and meanings match a subset of VulkanSwapchain.
 class DisplayBackend {
 public:
     virtual ~DisplayBackend() = default;
 
-    // 절대 블로킹하지 않는다. 쓸 이미지가 없으면 false (표시 드롭).
+    // Never blocks. false if there is no image to write to (display drop).
     virtual bool acquire(SwapchainFrame* out) = 0;
     virtual void record_acquire_transition(VkCommandBuffer cb, const SwapchainFrame& f) const = 0;
     virtual void record_present_transition(VkCommandBuffer cb, const SwapchainFrame& f) const = 0;

@@ -1,8 +1,8 @@
-// hvs_probe 공통 도구 (헤더 전용). 본체(yvo_pipeline)는 이 파일을 쓰지 않는다.
-//   - 시간·CPU 측정, V3D gpu_stats 읽기, 다른 프로세스(labwc) CPU 시간
-//   - debugfs DRM state 스냅샷과 평면 배치 해석
-//   - detections.jsonl 재생(프레임별 검출)
-//   - SAND128 NV12 → RGB CPU 기준 변환(색 비교용), PPM 쓰기
+// hvs_probe common utilities (header-only). The main body (yvo_pipeline) does not use this file.
+//   - time/CPU measurement, reading V3D gpu_stats, CPU time of another process (labwc)
+//   - debugfs DRM state snapshots and plane placement interpretation
+//   - detections.jsonl replay (per-frame detections)
+//   - SAND128 NV12 → RGB CPU reference conversion (for color comparison), PPM writing
 #pragma once
 
 #include <dirent.h>
@@ -36,7 +36,7 @@ inline std::int64_t now_ns(clockid_t clk = CLOCK_MONOTONIC) {
 
 inline double ms(std::int64_t ns) { return static_cast<double>(ns) / 1e6; }
 
-// 이 프로세스의 CPU 시간(user+sys, 모든 스레드)
+// CPU time of this process (user+sys, all threads)
 inline std::int64_t self_cpu_ns() { return now_ns(CLOCK_PROCESS_CPUTIME_ID); }
 
 inline std::string read_text(const std::string& path) {
@@ -54,8 +54,8 @@ inline bool write_text(const std::string& path, const std::string& s) {
     return std::fclose(f) == 0 && ok;
 }
 
-// ── V3D 누적 통계 (/sys/class/drm/renderD128/device/gpu_stats) ──────────────────────────────
-// 형식: "queue timestamp jobs runtime" (runtime 은 ns 누적, 시스템 전체 = 모든 프로세스 합)
+// ── V3D cumulative stats (/sys/class/drm/renderD128/device/gpu_stats) ──────────────────────────────
+// format: "queue timestamp jobs runtime" (runtime is cumulative ns, system-wide = sum over all processes)
 struct V3dQueue {
     std::uint64_t jobs = 0;
     std::uint64_t runtime_ns = 0;
@@ -72,13 +72,13 @@ inline V3dStats read_v3d_stats(const std::string& path = kV3dStatsPath) {
         std::istringstream ls(line);
         std::string q;
         unsigned long long ts = 0, jobs = 0, rt = 0;
-        if (!(ls >> q >> ts >> jobs >> rt)) continue; // 머리줄은 숫자가 아니라 건너뛴다
+        if (!(ls >> q >> ts >> jobs >> rt)) continue; // the header line is not numeric, so it is skipped
         s[q] = V3dQueue{jobs, rt};
     }
     return s;
 }
 
-// 구간 [a, b] 동안 큐별 사용률(%)과 job 수를 한 줄로
+// Per-queue utilization (%) and job count over interval [a, b], as one line
 inline std::string v3d_delta_str(const V3dStats& a, const V3dStats& b, std::int64_t wall_ns, double frames,
                                  double* render_ms_per_frame = nullptr, double* csd_ms_per_frame = nullptr) {
     std::string out;
@@ -98,7 +98,7 @@ inline std::string v3d_delta_str(const V3dStats& a, const V3dStats& b, std::int6
     return out;
 }
 
-// ── 다른 프로세스의 CPU 시간 ────────────────────────────────────────────────────────────────
+// ── CPU time of another process ────────────────────────────────────────────────────────────────
 inline int find_pid_by_comm(const std::string& comm) {
     DIR* d = opendir("/proc");
     if (!d) return -1;
@@ -117,7 +117,7 @@ inline int find_pid_by_comm(const std::string& comm) {
     return found;
 }
 
-// /proc/<pid>/stat 의 utime+stime(ns). 실패하면 -1.
+// utime+stime (ns) from /proc/<pid>/stat. Returns -1 on failure.
 inline std::int64_t proc_cpu_ns(int pid) {
     if (pid <= 0) return -1;
     const std::string s = read_text("/proc/" + std::to_string(pid) + "/stat");
@@ -126,14 +126,14 @@ inline std::int64_t proc_cpu_ns(int pid) {
     std::istringstream in(s.substr(rp + 2));
     std::string tok;
     unsigned long long ut = 0, st = 0;
-    // ')' 다음 필드는 3번(state)부터. utime=14, stime=15 → 3..13 을 건너뛴다(11개)
+    // fields after ')' start at #3 (state). utime=14, stime=15 → skip 3..13 (11 fields)
     for (int i = 3; i <= 13; ++i) in >> tok;
     in >> ut >> st;
     const long hz = sysconf(_SC_CLK_TCK);
     return static_cast<std::int64_t>((ut + st) * (1000000000ULL / static_cast<unsigned long long>(hz > 0 ? hz : 100)));
 }
 
-// ── debugfs state 해석 ─────────────────────────────────────────────────────────────────────
+// ── debugfs state parsing ─────────────────────────────────────────────────────────────────────
 struct PlaneState {
     std::string header;   // "plane[83]: plane-2"
     int plane_id = 0;
@@ -192,7 +192,7 @@ inline std::string describe_planes(const std::vector<PlaneState>& ps) {
     return s;
 }
 
-// 평면 배치 판정: NV12 fb 가 올라간 평면이 있으면 direct scanout(HVS 가 YUV 를 읽는다)
+// Plane placement verdict: if any plane has an NV12 fb, it is direct scanout (HVS reads YUV)
 struct PlacementVerdict {
     int nv12_planes = 0;
     int argb_planes = 0;
@@ -215,8 +215,8 @@ inline PlacementVerdict judge_placement(const std::vector<PlaneState>& ps) {
     return v;
 }
 
-// ── detections.jsonl 재생 ──────────────────────────────────────────────────────────────────
-// 형식: {"frame":N,"detections":[{"class":c,"name":"..","score":s,"box":[x1,y1,x2,y2]},...]}
+// ── detections.jsonl replay ──────────────────────────────────────────────────────────────────
+// format: {"frame":N,"detections":[{"class":c,"name":"..","score":s,"box":[x1,y1,x2,y2]},...]}
 inline std::map<std::int64_t, std::vector<yvo::Detection>> load_detections(const std::string& path, std::size_t* total) {
     std::map<std::int64_t, std::vector<yvo::Detection>> out;
     std::ifstream f(path);
@@ -246,7 +246,7 @@ inline std::map<std::int64_t, std::vector<yvo::Detection>> load_detections(const
     return out;
 }
 
-// ── 통계 요약 한 줄 ────────────────────────────────────────────────────────────────────────
+// ── one-line stats summary ────────────────────────────────────────────────────────────────────────
 struct Summary {
     double mean = 0, median = 0, p90 = 0, p99 = 0, min = 0, max = 0;
     std::size_t n = 0;
@@ -282,10 +282,10 @@ inline std::string summary_str(const Summary& s) {
     return b;
 }
 
-// ── SAND128 NV12 → RGB CPU 기준 변환 (색 비교용) ──────────────────────────────────────────────
-// display_convert.comp 1:1 경로와 같은 수식: BT.709 limited → full, 크로마 left-sited
-// (가로: 짝수 dx 는 그 열, 홀수 dx 는 좌우 평균 / 세로: cy = (dy+0.5)/2-0.5 선형 보간).
-// dma-buf 를 읽기 전용으로 매핑한다(DMA_BUF_SYNC READ 로 감싼다). 실패하면 빈 벡터.
+// ── SAND128 NV12 → RGB CPU reference conversion (for color comparison) ──────────────────────────────────────────────
+// same formula as the display_convert.comp 1:1 path: BT.709 limited → full, chroma left-sited
+// (horizontal: even dx uses that column, odd dx averages left/right / vertical: cy = (dy+0.5)/2-0.5 linear interpolation).
+// Maps the dma-buf read-only (wrapped in DMA_BUF_SYNC READ). Returns an empty vector on failure.
 inline std::vector<std::uint8_t> sand_to_rgb(const yvo::DrmFrame& f) {
     std::vector<std::uint8_t> rgb;
     const std::size_t ysz = f.size;

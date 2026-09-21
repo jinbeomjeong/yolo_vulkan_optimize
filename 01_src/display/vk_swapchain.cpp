@@ -1,5 +1,5 @@
-// vulkan_wayland.h 는 이 .cpp 에서만 포함한다(헤더는 wl_display* 를 void* 로만 다룬다).
-// yvo_display 는 이미 PkgConfig::YVO_WAYLAND 에 의존하므로 새 의존성이 생기지 않는다.
+// vulkan_wayland.h is included only in this .cpp (the header handles wl_display* only as void*).
+// yvo_display already depends on PkgConfig::YVO_WAYLAND, so no new dependency is introduced.
 #define VK_USE_PLATFORM_WAYLAND_KHR 1
 #include <vulkan/vulkan.h>
 
@@ -24,8 +24,8 @@ constexpr VkImageUsageFlags kStorageUsage =
     VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 constexpr VkImageUsageFlags kBlitUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-// acquire 세마포어의 wait 스테이지. 레이아웃 전환(barrier)이 세마포어 대기 뒤에 확실히 오도록
-// ALL_COMMANDS 로 둔다 — V3D 에서 비용은 무시할 수 있고, 동기화 검증에서 모호함이 남지 않는다.
+// Wait stage for the acquire semaphore. ALL_COMMANDS so the layout transition (barrier) is guaranteed to come
+// after the semaphore wait — the cost on V3D is negligible, and no ambiguity remains for synchronization validation.
 constexpr VkPipelineStageFlags2 kAcquireWaitStage = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 
 void image_barrier(VkCommandBuffer cb, VkImage img, VkImageLayout old_layout, VkImageLayout new_layout,
@@ -89,10 +89,10 @@ const char* color_space_name(VkColorSpaceKHR c) {
 
 VulkanSwapchain::VulkanSwapchain(yvo::vk::VulkanContext& ctx, const SwapchainOptions& opt) : ctx_(ctx), opt_(opt) {
     if (!ctx_.present_enabled())
-        throw std::runtime_error("VulkanSwapchain: VulkanContext present가 켜져 있지 않다 (" +
+        throw std::runtime_error("VulkanSwapchain: VulkanContext present is not enabled (" +
                                  ctx_.present_unavailable_reason() + ")");
     if (opt_.wayland_display == nullptr || opt_.wayland_surface == nullptr)
-        throw std::invalid_argument("VulkanSwapchain: wayland_display/wayland_surface가 필요하다");
+        throw std::invalid_argument("VulkanSwapchain: wayland_display/wayland_surface is required");
     load_entry_points();
     try {
         query_surface();
@@ -106,7 +106,7 @@ VulkanSwapchain::VulkanSwapchain(yvo::vk::VulkanContext& ctx, const SwapchainOpt
 VulkanSwapchain::~VulkanSwapchain() {
     VkDevice dev = ctx_.device();
     if (dev != VK_NULL_HANDLE) {
-        // 종료 경로에서만 vkDeviceWaitIdle 을 쓴다(프레임 루프에서는 절대 쓰지 않는다).
+        // vkDeviceWaitIdle is used only on the shutdown path (never in the frame loop).
         vkDeviceWaitIdle(dev);
         destroy_instance(cur_);
         for (Instance& in : retired_) destroy_instance(in);
@@ -137,7 +137,7 @@ void VulkanSwapchain::query_surface() {
         vkGetInstanceProcAddr(inst, "vkCreateWaylandSurfaceKHR"));
     auto p_support = reinterpret_cast<PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR>(
         vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceWaylandPresentationSupportKHR"));
-    if (!p_create) throw std::runtime_error("VulkanSwapchain: vkCreateWaylandSurfaceKHR 진입점을 얻지 못했다");
+    if (!p_create) throw std::runtime_error("VulkanSwapchain: failed to get the vkCreateWaylandSurfaceKHR entry point");
 
     VkWaylandSurfaceCreateInfoKHR sci{};
     sci.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
@@ -166,7 +166,7 @@ void VulkanSwapchain::query_surface() {
     for (VkPresentModeKHR m : info_.present_modes)
         if (m == VK_PRESENT_MODE_FIFO_KHR) info_.fifo_available = true;
 
-    // present mode 별 minImageCount (VK_EXT_surface_maintenance1 + VK_KHR_get_surface_capabilities2)
+    // minImageCount per present mode (VK_EXT_surface_maintenance1 + VK_KHR_get_surface_capabilities2)
     if (ctx_.has_surface_maintenance1() && p_get_caps2_) {
         for (VkPresentModeKHR m : info_.present_modes) {
             VkSurfacePresentModeEXT pm{};
@@ -184,7 +184,7 @@ void VulkanSwapchain::query_surface() {
         }
     }
 
-    // ★ supportedUsageFlags 가 STORAGE 를 보고해도 포맷별 optimalTilingFeatures 는 별개 질의다.
+    // ★ Even if supportedUsageFlags reports STORAGE, per-format optimalTilingFeatures is a separate query.
     VkPhysicalDeviceImageFormatInfo2 ifi{};
     ifi.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2;
     ifi.format = kFormat;
@@ -201,7 +201,7 @@ void VulkanSwapchain::query_surface() {
     info_.blit_src_supported = (fp.optimalTilingFeatures & VK_FORMAT_FEATURE_BLIT_SRC_BIT) != 0;
     info_.blit_dst_supported = (fp.optimalTilingFeatures & VK_FORMAT_FEATURE_BLIT_DST_BIT) != 0;
 
-    // blit 폴백 판정: 강제(--display-blit) 또는 STORAGE 불가.
+    // Blit fallback decision: forced (--display-blit) or STORAGE not possible.
     const bool storage_ok = info_.usage_storage && info_.storage_image_result == VK_SUCCESS;
     blit_ = opt_.force_blit || !storage_ok;
     blit_use_copy_ = !(info_.blit_src_supported && info_.blit_dst_supported);
@@ -215,8 +215,8 @@ void VulkanSwapchain::query_surface() {
 std::uint32_t VulkanSwapchain::choose_image_count(VkPresentModeKHR mode) const {
     std::uint32_t mn = info_.caps.minImageCount;
     std::uint32_t mx = info_.caps.maxImageCount;
-    // 모드별 minImageCount 는 **opt_.lean_images 일 때만** 쓴다 — 헤더의 경고 참고
-    // (검증 레이어가 VUID-...-presentMode-02839 로 기본 caps 값을 강제한다).
+    // Per-mode minImageCount is used **only when opt_.lean_images** — see the warning in the header
+    // (the validation layer enforces the default caps value via VUID-...-presentMode-02839).
     if (opt_.lean_images && ctx_.has_swapchain_maintenance1()) {
         for (const SurfaceModeCount& c : info_.mode_counts)
             if (c.mode == mode) {
@@ -232,24 +232,24 @@ std::uint32_t VulkanSwapchain::choose_image_count(VkPresentModeKHR mode) const {
 
 void VulkanSwapchain::create(int width, int height) {
     if (!info_.format_available)
-        throw std::runtime_error("VulkanSwapchain: R8G8B8A8_UNORM + SRGB_NONLINEAR 를 surface 가 지원하지 않는다");
+        throw std::runtime_error("VulkanSwapchain: surface does not support R8G8B8A8_UNORM + SRGB_NONLINEAR");
     bool mode_ok = false;
     for (VkPresentModeKHR m : info_.present_modes)
         if (m == opt_.present_mode) mode_ok = true;
     if (!mode_ok)
         throw std::runtime_error(std::string("VulkanSwapchain: present mode ") + present_mode_name(opt_.present_mode) +
-                                " 를 surface 가 지원하지 않는다");
+                                " is not supported by the surface");
 
     VkDevice dev = ctx_.device();
-    // 창 크기가 바뀌면 min/maxImageExtent 도 바뀔 수 있으므로 caps 를 다시 읽는다.
+    // If the window size changes, min/maxImageExtent may change too, so re-read caps.
     YVO_VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(ctx_.physical_device(), surface_, &info_.caps));
-    // 획득해 둔 이미지와 반납 대기 목록은 구 스왑체인과 함께 버린다(그 이미지들은 구 스왑체인의 것이다).
+    // Acquired images and the pending-release list are dropped along with the old swapchain (those images belong to it).
     stash_ = SwapchainFrame{};
     pending_release_.clear();
 
     Instance in;
     in.mode = opt_.present_mode;
-    // currentExtent == 0xFFFFFFFF → 우리가 정한다. min/max 로 클램프.
+    // currentExtent == 0xFFFFFFFF → we decide. Clamp to min/max.
     const VkExtent2D mn = info_.caps.minImageExtent, mx = info_.caps.maxImageExtent;
     in.extent.width = std::clamp(static_cast<std::uint32_t>(std::max(width, 1)), mn.width, mx.width);
     in.extent.height = std::clamp(static_cast<std::uint32_t>(std::max(height, 1)), mn.height, mx.height);
@@ -267,8 +267,8 @@ void VulkanSwapchain::create(int width, int height) {
 
     VkSwapchainCreateInfoKHR ci{};
     ci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    // 모드별(축소된) minImageCount 를 쓰려면 이 구조체가 체인에 있어야 한다(VK_EXT_swapchain_maintenance1).
-    // lean_images 가 아니면 붙이지 않는다 — 붙일 이유가 없고 present mode 변경도 쓰지 않는다.
+    // To use the per-mode (reduced) minImageCount this struct must be in the chain (VK_EXT_swapchain_maintenance1).
+    // Not attached unless lean_images — there is no reason to, and present mode changes are not used either.
     if (opt_.lean_images && ctx_.has_swapchain_maintenance1()) ci.pNext = &pmci;
     ci.surface = surface_;
     ci.minImageCount = want_images;
@@ -313,14 +313,14 @@ void VulkanSwapchain::create(int width, int height) {
         throw;
     }
 
-    // 구 스왑체인은 **자기 present 펜스들이 모두 signaled 될 때** 폐기한다(vkDeviceWaitIdle 없음).
+    // The old swapchain is destroyed **when all its present fences are signaled** (no vkDeviceWaitIdle).
     if (cur_.handle != VK_NULL_HANDLE) {
         retired_.push_back(cur_);
         cur_ = Instance{};
         ++recreates_;
-        // 안전망: 재생성이 폭주해도 핸들이 무한히 쌓이지 않게 한다.
+        // Safety net: keep handles from piling up indefinitely even if recreation runs away.
         if (retired_.size() > 8) {
-            std::fprintf(stderr, "[swapchain] 구 스왑체인이 %zu개 쌓였다 — 한 번 idle 로 정리한다\n",
+            std::fprintf(stderr, "[swapchain] %zu old swapchains piled up — cleaning up once with idle\n",
                          retired_.size());
             vkDeviceWaitIdle(dev);
             for (Instance& old : retired_) destroy_instance(old);
@@ -460,16 +460,16 @@ bool VulkanSwapchain::acquire(SwapchainFrame* out) {
     if (!created()) return false;
     collect_retired();
     flush_pending_releases();
-    // 재생성이 예약된 상태에서는 획득하지 않는다. 특히 present 가 OUT_OF_DATE 로 실패하면
-    // 그 프레임의 render-finished 세마포어가 **signaled 상태로 남는다** — 같은 슬롯을 다시 쓰면
-    // 이미 signaled 인 binary 세마포어를 또 신호하게 되어 불법이다.
-    // 세마포어는 스왑체인 인스턴스가 소유하므로 create() 가 새로 만들면서 문제가 사라진다.
+    // Do not acquire while recreation is scheduled. In particular, if present fails with OUT_OF_DATE,
+    // that frame's render-finished semaphore **remains signaled** — reusing the same slot would
+    // signal an already-signaled binary semaphore again, which is illegal.
+    // Semaphores are owned by the swapchain instance, so the problem goes away when create() makes new ones.
     if (needs_recreate_) {
         ++dropped_;
         return false;
     }
 
-    // swapchain_maintenance1 이 없을 때의 안전망: 지난번 획득해 두고 안 그린 이미지를 먼저 쓴다.
+    // Safety net when swapchain_maintenance1 is absent: use the image acquired last time but not drawn first.
     if (stash_.valid) {
         *out = stash_;
         stash_ = SwapchainFrame{};
@@ -480,7 +480,7 @@ bool VulkanSwapchain::acquire(SwapchainFrame* out) {
     const std::uint32_t n = static_cast<std::uint32_t>(cur_.sync.size());
     const std::uint32_t i = next_sync_ % n;
     SyncSet& s = cur_.sync[i];
-    // ★ 슬롯이 아직 사용 중이면 **기다리지 않고 이 프레임 표시를 버린다.**
+    // ★ If the slot is still in use, **drop this frame's display without waiting.**
     if (s.in_flight) {
         if (vkGetFenceStatus(dev, s.submit) != VK_SUCCESS ||
             (s.present_fenced && vkGetFenceStatus(dev, s.present) != VK_SUCCESS)) {
@@ -505,7 +505,7 @@ bool VulkanSwapchain::acquire(SwapchainFrame* out) {
         return false;
     }
     if (r == VK_SUBOPTIMAL_KHR) {
-        needs_recreate_ = true; // 이미지는 획득됐다 — 이번 프레임은 그리고 present 뒤에 재생성한다
+        needs_recreate_ = true; // the image was acquired — draw this frame and recreate after present
     } else if (r != VK_SUCCESS) {
         throw yvo::vk::VulkanError("vkAcquireNextImageKHR", r);
     }
@@ -533,8 +533,8 @@ void VulkanSwapchain::discard(const SwapchainFrame& f) {
     ++dropped_;
     SyncSet& s = cur_.sync[f.sync_index];
     if (p_release_images_) {
-        // acquire 세마포어는 이미 signaled 다. 아무 일도 하지 않는 빈 제출로 그것을 **소비**한다 —
-        // 그래야 세마포어 상태가 모호하지 않고 다음 acquire 에서 재사용할 수 있다.
+        // The acquire semaphore is already signaled. **Consume** it with an empty submit that does nothing —
+        // so the semaphore state is unambiguous and it can be reused on the next acquire.
         VkSemaphoreSubmitInfo wi{};
         wi.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
         wi.semaphore = f.wait_semaphore;
@@ -546,19 +546,19 @@ void VulkanSwapchain::discard(const SwapchainFrame& f) {
         YVO_VK_CHECK(vkQueueSubmit2(ctx_.queue(), 1, &si, s.submit));
         s.in_flight = true;
         s.present_fenced = false;
-        // ★ vkReleaseSwapchainImagesEXT 를 여기서 바로 부르면 안 된다:
-        //   VUID-VkReleaseSwapchainImagesInfoEXT-pImageIndices-07786 이 "이미지의 모든 사용이 **실행을
-        //   완료**해야 한다"고 요구하는데 위 제출은 아직 진행 중이다(동기화 검증이 실제로 잡았다:
+        // ★ Do not call vkReleaseSwapchainImagesEXT right here:
+        //   VUID-VkReleaseSwapchainImagesInfoEXT-pImageIndices-07786 requires "all uses of the image must have **completed
+        //   execution**", but the submit above is still in progress (synchronization validation actually caught it:
         //   "One or more of the images in this swapchain is still in use").
-        //   호스트를 블로킹하지 않기 위해 **펜스가 신호되면 반납하도록 미뤄 둔다**(collect_retired 가 처리).
+        //   To avoid blocking the host, **defer the release until the fence is signaled** (handled by collect_retired).
         pending_release_.push_back({f.image_index, s.submit});
         return;
     }
-    // 확장이 없으면 되돌릴 수단이 없다 → 다음 acquire 가 이 이미지를 그대로 쓴다.
+    // Without the extension there is no way to return it → the next acquire uses this image as-is.
     stash_ = f;
 }
 
-// 펜스가 신호된 discard 이미지를 스왑체인에 반납한다. 블로킹하지 않는다.
+// Returns discard images whose fence has been signaled to the swapchain. Does not block.
 void VulkanSwapchain::flush_pending_releases() {
     if (pending_release_.empty() || !p_release_images_) return;
     VkDevice dev = ctx_.device();
@@ -584,19 +584,19 @@ void VulkanSwapchain::flush_pending_releases() {
 }
 
 void VulkanSwapchain::record_acquire_transition(VkCommandBuffer cb, const SwapchainFrame& f) const {
-    // 스왑체인 이미지는 acquire 직후 내용이 정의돼 있지 않아도 되고 셰이더가 전 픽셀을 덮어쓰므로
-    // oldLayout = UNDEFINED 가 항상 유효하고 가장 싸다(타일러 load 가 없다).
+    // Swapchain image contents may be undefined right after acquire and the shader overwrites every pixel, so
+    // oldLayout = UNDEFINED is always valid and cheapest (no tiler load).
     //
-    // srcStageMask 가 경로마다 다른 이유:
-    //  · storage 모드: 이 스왑체인 이미지의 직전 사용자는 **프레젠테이션 엔진**이고, acquire 세마포어가
-    //    그것이 끝났음을 보장한다 → 커맨드 버퍼 안에서 추가 의존성이 필요 없다(NONE).
-    //  · blit 모드: 대상은 우리가 만든 **자체 이미지**이고 프레젠테이션 엔진이 건드리지 않는다. 직전 사용자는
-    //    같은 이미지 인덱스를 썼던 **이전 프레임의 vkCmdBlitImage 읽기**다. acquire 는 sync 슬롯 단위로
-    //    펜스를 확인하지만 이미지 인덱스는 프레젠테이션 엔진이 고르므로 둘이 대응하지 않는다
-    //    → 레이아웃 전환(쓰기)이 그 읽기와 WRITE_AFTER_READ 로 충돌한다(동기화 검증이 실제로 잡았다).
-    //    배리어의 첫 동기화 범위는 **submission order 로 앞선 모든 커맨드**를 포함하므로, srcStageMask 에
-    //    BLIT|COPY 를 넣으면 이전 제출의 blit 읽기까지 덮인다. 읽기가 원인이라 실행 의존성만으로 충분해서
-    //    srcAccessMask 는 NONE 으로 둔다.
+    // Why srcStageMask differs per path:
+    //  · storage mode: the previous user of this swapchain image is the **presentation engine**, and the acquire semaphore
+    //    guarantees it has finished → no additional dependency is needed inside the command buffer (NONE).
+    //  · blit mode: the target is **our own image**, which the presentation engine never touches. The previous user is
+    //    the **vkCmdBlitImage read of an earlier frame** that used the same image index. acquire checks fences per sync slot,
+    //    but the image index is chosen by the presentation engine, so the two do not correspond
+    //    → the layout transition (a write) conflicts with that read as WRITE_AFTER_READ (synchronization validation actually caught it).
+    //    The barrier's first synchronization scope includes **all commands earlier in submission order**, so putting
+    //    BLIT|COPY in srcStageMask also covers the blit read of the previous submit. Since the cause is a read, an execution dependency alone suffices, so
+    //    srcAccessMask is left as NONE.
     const VkPipelineStageFlags2 src =
         blit_ ? (VK_PIPELINE_STAGE_2_BLIT_BIT | VK_PIPELINE_STAGE_2_COPY_BIT) : VK_PIPELINE_STAGE_2_NONE;
     image_barrier(cb, f.target_image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, src, VK_ACCESS_2_NONE,
@@ -610,7 +610,7 @@ void VulkanSwapchain::record_present_transition(VkCommandBuffer cb, const Swapch
                       VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE);
         return;
     }
-    // blit 폴백: 자체 이미지(GENERAL) → 스왑체인 이미지(TRANSFER_DST) → PRESENT_SRC
+    // Blit fallback: own image (GENERAL) → swapchain image (TRANSFER_DST) → PRESENT_SRC
     image_barrier(cb, f.target_image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                   VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
                   VK_PIPELINE_STAGE_2_BLIT_BIT | VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
@@ -678,7 +678,7 @@ VkResult VulkanSwapchain::present(const SwapchainFrame& f) {
         if (r == VK_SUBOPTIMAL_KHR) needs_recreate_ = true;
     } else if (r == VK_ERROR_OUT_OF_DATE_KHR) {
         needs_recreate_ = true;
-        s.present_fenced = false; // present 가 실행되지 않았으므로 펜스도 신호되지 않는다
+        s.present_fenced = false; // present was not executed, so the fence will not be signaled either
     } else {
         throw yvo::vk::VulkanError("vkQueuePresentKHR", r);
     }

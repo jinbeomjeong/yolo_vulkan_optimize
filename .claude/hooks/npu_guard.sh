@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# PreToolUse(Bash) 훅: Hailo NPU 배타 접근과 측정 보호.
+# PreToolUse(Bash) hook: exclusive Hailo NPU access and measurement protection.
 #
-# 이 보드에는 Hailo-8 이 하나뿐인데 CLAUDE.md 는 병렬 서브에이전트를 권장한다. 그래서
-#   (1) NPU 를 여는 명령이 겹치면 HAILO_DEVICE_IN_USE 가 나고,
-#   (2) 벤치마크가 도는 중에 빌드·테스트가 끼어들면 CPU 시간 측정이 조용히 오염된다.
-# (2) 가 더 비싸다. 20 분짜리 측정을 끝내고 나서야 값이 이상한 걸 알게 되기 때문이다.
+# This board has only one Hailo-8, yet CLAUDE.md encourages parallel subagents. So
+#   (1) overlapping commands that open the NPU fail with HAILO_DEVICE_IN_USE, and
+#   (2) a build or test sneaking in while a benchmark runs silently pollutes CPU-time measurements.
+# (2) is more expensive: you only notice the odd values after finishing a 20-minute measurement.
 #
-# 이 래퍼는 값싼 선별만 하고, 판단은 npu_guard.py 가 한다. 훅은 모든 Bash 호출에 붙으므로
-# 대부분의 명령이 python 을 띄우지 않고 빠져나가야 한다.
+# This wrapper only does cheap screening; npu_guard.py makes the decision. The hook is attached to every
+# Bash call, so most commands must exit without spawning python.
 #
-# 우회: 명령 앞에 YVO_HOOK_OFF=1 을 붙인다.
+# Bypass: prefix the command with YVO_HOOK_OFF=1.
 set -uo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -17,7 +17,7 @@ proj="${CLAUDE_PROJECT_DIR:-$(cd "$here/../.." && pwd)}"
 
 input=$(cat)
 
-# 아래 낱말이 하나도 없으면 JSON 파싱 없이 즉시 통과한다.
+# If none of the words below appear, pass immediately without JSON parsing.
 if ! grep -qE 'yvo_pipeline|yvo_hailo_selftest|yvo_hailo_raw_probe|yvo_isp_pipeline|yvo_postproc_probe|test_detections|test_postproc|hailortcli|ctest|_bench\.sh|hailo_platform|--build|ninja|perf' <<<"$input"; then
     exit 0
 fi

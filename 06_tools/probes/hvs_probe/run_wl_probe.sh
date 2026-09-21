@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# hvs_wl_probe 변형 전체를 labwc 위에서 순서대로 돌린다 (데스크톱 세션 안에서, sudo 불필요).
-#   결과: docs/hvs_review/evidence/wayland/<label>.log, <label>_frames.csv, <label>_state_f*.txt
-# V3D 사용량은 시스템 전체 값(gpu_stats)이므로, 다른 V3D/NPU 작업(yvo_pipeline 등)이 돌고 있으면 끝날 때까지 기다린다.
+# Run all hvs_wl_probe variants in order on top of labwc (inside the desktop session, no sudo needed).
+#   results: docs/hvs_review/evidence/wayland/<label>.log, <label>_frames.csv, <label>_state_f*.txt
+# V3D usage is system-wide (gpu_stats), so wait until other V3D/NPU jobs (yvo_pipeline etc.) finish.
 set -u
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
@@ -14,7 +14,7 @@ mkdir -p "$OUT"
 
 wait_quiet() {
     while pgrep -f 'bin/yvo_pipeline|build/yvo_pipeline' >/dev/null; do
-        echo "[wait] 다른 yvo_pipeline 실행 중 — 대기"; sleep 10
+        echo "[wait] another yvo_pipeline is running — waiting"; sleep 10
     done
 }
 
@@ -28,8 +28,8 @@ run() {
     sleep 2
 }
 
-# 색: labwc 0.20.1 + wlroots 0.20.2+rpt3 는 COLOR_RANGE 를 뒤집어 쓴다(보고서 §3). "_lim" 은 정직한 요청,
-#     "_fullhack" 은 range=full 로 요청해 커널에 limited 가 들어가게 만든 우회다.
+# color: labwc 0.20.1 + wlroots 0.20.2+rpt3 inverts COLOR_RANGE when writing (report §3). "_lim" is the honest request,
+#     "_fullhack" is the workaround that requests range=full so that limited reaches the kernel.
 run wl_fs_video_default      --overlay off
 run wl_fs_video_lim          --overlay off --color-repr on --color-range limited
 run wl_fs_video_fullhack     --overlay off --color-repr on --color-range full

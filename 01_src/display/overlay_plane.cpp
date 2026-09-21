@@ -13,7 +13,7 @@ namespace yvo::display {
 
 namespace {
 
-constexpr std::uint32_t kFillQueries = 2;   // [0] fill 전 [1] fill 후
+constexpr std::uint32_t kFillQueries = 2;   // [0] before fill [1] after fill
 
 std::uint32_t align_up_u32(std::uint32_t v, std::uint32_t a) { return a <= 1 ? v : (v + a - 1) / a * a; }
 
@@ -41,7 +41,7 @@ OverlayPlane::OverlayPlane(yvo::vk::VulkanContext& ctx, const OverlayPlaneConfig
     if (cfg_.pitch_align == 0 || (cfg_.pitch_align & 3u) != 0)
         throw std::invalid_argument("OverlayPlane: pitch_align must be a positive multiple of 4");
     if (cfg_.timestamps && !ctx_.timestamps_supported()) cfg_.timestamps = false;
-    // Auto = Erase: 1080p 전체 fill 이 2.80 ms 로 기준 0.3 ms 를 넘는다(헤더 설명, OverlayPlane.ClearCost).
+    // Auto = Erase: a full 1080p fill is 2.80 ms, over the 0.3 ms target (see header, OverlayPlane.ClearCost).
     clear_mode_ = cfg_.clear == OverlayClearMode::Full ? OverlayClearMode::Full : OverlayClearMode::Erase;
     foreign_qf_ = ctx_.external_queue_family();
     affine_ = make_overlay_affine(cfg_.src_w, cfg_.src_h, cfg_.width, cfg_.height);
@@ -71,7 +71,7 @@ void OverlayPlane::create() {
     pitch_px_ = pitch / 4u;
     const std::size_t size = static_cast<std::size_t>(pitch) * h;
 
-    // 버퍼: STORAGE(셰이더가 쓴다) + TRANSFER_DST(vkCmdFillBuffer). 호스트 매핑은 쓰지 않는다(소비자는 fd).
+    // Buffer: STORAGE (the shader writes) + TRANSFER_DST (vkCmdFillBuffer). No host mapping is used (the consumer uses the fd).
     yvo::vk::DmaBufExporterConfig ecfg;
     ecfg.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     ecfg.align = 4096;
@@ -80,7 +80,7 @@ void OverlayPlane::create() {
 
     OverlayConfig ocfg = cfg_.overlay;
     ocfg.target = OverlayTarget::Buffer;
-    ocfg.num_slots = 2 * cfg_.ring;   // 항목마다 그리기/직전 내용 슬롯 두 개
+    ocfg.num_slots = 2 * cfg_.ring;   // two slots per entry: draw / previous content
     ocfg.timestamps = cfg_.timestamps;
     ov_ = std::make_unique<OverlayRenderer>(ctx_, ocfg);
 
@@ -124,7 +124,7 @@ void OverlayPlane::create() {
     }
 }
 
-// 생성 직후 한 번: 모든 항목을 (0,0,0,0) 으로 채우고 FOREIGN 으로 release 한다(블로킹, 초기화 때만).
+// Once right after creation: fill every entry with (0,0,0,0) and release to FOREIGN (blocking, initialization only).
 void OverlayPlane::initial_clear() {
     VkDevice dev = ctx_.device();
     for (Entry& e : entries_) {
@@ -168,18 +168,18 @@ void OverlayPlane::initial_clear() {
 void OverlayPlane::destroy() {
     VkDevice dev = ctx_.device();
     if (dev == VK_NULL_HANDLE) return;
-    vkDeviceWaitIdle(dev); // 종료 시에만
+    vkDeviceWaitIdle(dev); // only at shutdown
     for (Entry& e : entries_) {
         if (e.fence) vkDestroyFence(dev, e.fence, nullptr);
         e.fence = VK_NULL_HANDLE;
     }
-    entries_.clear();   // 커맨드 버퍼는 풀과 함께 해제된다
+    entries_.clear();   // command buffers are freed together with the pool
     if (fill_query_) vkDestroyQueryPool(dev, fill_query_, nullptr);
     fill_query_ = VK_NULL_HANDLE;
     if (pool_) vkDestroyCommandPool(dev, pool_, nullptr);
     pool_ = VK_NULL_HANDLE;
     ov_.reset();
-    exporter_.reset();  // 버퍼·메모리·fd 해제 (소비자는 dup_fd 로 받은 자기 fd 를 따로 닫는다)
+    exporter_.reset();  // frees buffer, memory and fd (the consumer closes its own fd obtained via dup_fd separately)
 }
 
 OverlayPlane::Entry& OverlayPlane::entry(int idx) {
@@ -195,7 +195,7 @@ const OverlayPlane::Entry& OverlayPlane::entry(int idx) const {
 const OverlayPlaneBuffer& OverlayPlane::buffer(int idx) const { return entry(idx).desc; }
 
 int OverlayPlane::dup_fd(int idx) const {
-    entry(idx); // 범위 검사
+    entry(idx); // range check
     return exporter_->dup_fd(idx);
 }
 
@@ -207,7 +207,7 @@ int OverlayPlane::acquire() {
     for (int i = 0; i < static_cast<int>(entries_.size()); ++i) {
         Entry& e = entries_[static_cast<std::size_t>(i)];
         if (e.state != State::Free) continue;
-        if (e.submitted && !ready(i)) continue;   // Free 인데 GPU 가 아직 쓰는 중(드롭 직후) — 건너뛴다
+        if (e.submitted && !ready(i)) continue;   // Free but the GPU is still using it (right after a drop) — skip
         if (best < 0 || e.seq < entries_[static_cast<std::size_t>(best)].seq) best = i;
     }
     if (best >= 0) {
@@ -224,7 +224,7 @@ int OverlayPlane::draw(int idx, const std::vector<Detection>& dets, std::string_
     if (e.submitted) throw std::logic_error("OverlayPlane::draw: entry already has a pending submit");
 
     VkDevice dev = ctx_.device();
-    const int prev_slot = e.draw_slot;                         // 직전 내용을 가진 슬롯
+    const int prev_slot = e.draw_slot;                         // slot holding the previous content
     const int slot = (e.draw_slot % 2 == 0) ? e.draw_slot + 1 : e.draw_slot - 1;
     const int n = ov_->set_frame(slot, dets, hud);
     if (ov_->overflow(slot)) ++overflows_;
@@ -238,8 +238,8 @@ int OverlayPlane::draw(int idx, const std::vector<Detection>& dets, std::string_
     const bool full = clear_mode_ == OverlayClearMode::Full;
     const bool do_erase = !full && e.has_prev;
 
-    // ① 외부(스캔아웃) → 우리 큐 소유권 acquire. 버퍼 내용은 보존된다(Erase 모드가 이것에 의존한다).
-    //    acquire 쪽 src 스코프는 무시되므로 NONE. dst 는 이어지는 fill(전송 쓰기) / 셰이더 쓰기.
+    // ① External (scanout) → our queue ownership acquire. Buffer contents are preserved (Erase mode relies on this).
+    //    The src scope on the acquire side is ignored, so NONE. dst is the following fill (transfer write) / shader write.
     if (e.released_foreign) {
         VkBufferMemoryBarrier2 acq{};
         acq.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
@@ -264,7 +264,7 @@ int OverlayPlane::draw(int idx, const std::vector<Detection>& dets, std::string_
     e.pending_fill = false;
     e.pending_erase = false;
     if (full) {
-        // ② Full: 전체 0 → (WAW) → 오버레이
+        // ② Full: whole 0 → (WAW) → overlay
         const auto q = static_cast<std::uint32_t>(idx) * kFillQueries;
         if (fill_query_) {
             vkCmdResetQueryPool(e.cmd, fill_query_, q, kFillQueries);
@@ -291,8 +291,8 @@ int OverlayPlane::draw(int idx, const std::vector<Detection>& dets, std::string_
         e.pending_fill = true;
         ov_->record_buffer(slot, e.cmd, e.buffer, 0, range, ext, pitch_px_, affine_, false, false);
     } else {
-        // ② Erase: 직전 내용(prev_slot 의 DetBuf, 직전 affine)을 (0,0,0,0) 으로 다시 그린다
-        //    → 전역 WAW 배리어(record_buffer 의 barrier_prior_compute_write) → 새 오버레이
+        // ② Erase: redraw the previous content (prev_slot's DetBuf, previous affine) with (0,0,0,0)
+        //    → global WAW barrier (record_buffer's barrier_prior_compute_write) → new overlay
         if (do_erase) {
             ov_->record_buffer(prev_slot, e.cmd, e.buffer, 0, range, ext, pitch_px_, e.prev_affine, false, true);
             e.pending_erase = true;
@@ -300,7 +300,7 @@ int OverlayPlane::draw(int idx, const std::vector<Detection>& dets, std::string_
         ov_->record_buffer(slot, e.cmd, e.buffer, 0, range, ext, pitch_px_, affine_, do_erase, false);
     }
 
-    // ③ 우리 큐 → 외부(스캔아웃) release. dst 스코프는 release 에서 무시되므로 NONE.
+    // ③ Our queue → external (scanout) release. The dst scope is ignored on release, so NONE.
     VkBufferMemoryBarrier2 rel{};
     rel.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
     rel.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
@@ -353,7 +353,7 @@ void OverlayPlane::collect(Entry& e, int idx) {
         if (r == VK_SUCCESS) last_clear_ms_ = ts_ms(ctx_, ts[0], ts[1]);
         else if (r != VK_NOT_READY) YVO_VK_CHECK(r);
     }
-    if (!e.pending_erase && !e.pending_fill) last_clear_ms_ = 0.0;   // 첫 프레임(지울 것 없음)
+    if (!e.pending_erase && !e.pending_fill) last_clear_ms_ = 0.0;   // first frame (nothing to erase)
     ov_->collect(e.draw_slot);
     last_overlay_ms_ = ov_->last_shader_ms();
     e.pending_erase = e.pending_fill = false;
@@ -379,7 +379,7 @@ void OverlayPlane::wait(int idx) {
 void OverlayPlane::mark_held(int idx) {
     Entry& e = entry(idx);
     if (e.state != State::Claimed) throw std::logic_error("OverlayPlane::mark_held: entry not claimed");
-    // 소비자에게 넘기기 전에 GPU 쓰기가 끝나 있어야 한다(암묵적 dma-buf 펜스에 기대지 않는다).
+    // The GPU write must be finished before handing over to the consumer (does not rely on implicit dma-buf fences).
     if (e.submitted && !ready(idx)) throw std::logic_error("OverlayPlane::mark_held: GPU work not finished");
     e.state = State::Held;
 }

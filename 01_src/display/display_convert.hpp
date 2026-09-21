@@ -1,18 +1,18 @@
-// DisplayConvert: 디코더 SAND128 NV12 dma-buf → 표시용 RGBA storage image (02_shaders/display_convert.comp)
+// DisplayConvert: decoder SAND128 NV12 dma-buf → RGBA storage image for display (02_shaders/display_convert.comp)
 //
-// 계획서 §5.3 안 (I): **변환을 present 시점에 하고 스왑체인 이미지에 직접 쓴다** → 링 버퍼도 copy 도 없다.
-// 실행 경로는 SandLetterbox 의 템플릿(슬롯·배리어·spec constant·timestamp)을 그대로 따르되,
-// 출력이 VkBuffer 가 아니라 **스왑체인이 준 VkImageView(rgba8 storage image)** 라는 점만 다르다.
-// SandLetterbox 자체는 튜닝된 2.13 ms 경로라 손대지 않는다 — 이 클래스는 새로 썼다.
+// plan §5.3 option (I): **convert at present time and write directly into the swapchain image** → no ring buffer and no copy.
+// The execution path follows SandLetterbox's template (slots, barriers, spec constants, timestamps) as is,
+// except that the output is **a VkImageView given by the swapchain (rgba8 storage image)** rather than a VkBuffer.
+// SandLetterbox itself is the tuned 2.13 ms path and is left untouched — this class was written from scratch.
 //
-// 슬롯 규약: 슬롯 번호는 **VulkanSwapchain 이 준 SwapchainFrame::sync_index** 를 그대로 쓴다.
-//   begin(slot) → [스왑체인 acquire 전환] → record(slot, ...) → [스왑체인 present 전환] →
-//   end_and_submit(slot, wait, signal, fence) → (펜스 완료 후) finish(slot)
-//   finish() 에서 import pin 을 풀고 DrmFrame keepalive 를 놓는다(디코더 풀로 반납).
+// Slot convention: the slot number is **SwapchainFrame::sync_index given by VulkanSwapchain**, used as is.
+//   begin(slot) → [swapchain acquire transition] → record(slot, ...) → [swapchain present transition] →
+//   end_and_submit(slot, wait, signal, fence) → (after the fence completes) finish(slot)
+//   finish() releases the import pin and drops the DrmFrame keepalive (returned to the decoder pool).
 //
-// 동기화: 입력 dma-buf 는 external_qf(FOREIGN_EXT) 소유이므로 커맨드 버퍼 앞뒤에 acquire/release 배리어를
-//   sand_letterbox.cpp:363-387 / :401-445 패턴 그대로 넣는다(전처리와 표시 둘 다 **읽기만** 한다).
-//   출력 이미지의 레이아웃 전환은 VulkanSwapchain 이 기록한다(UNDEFINED → GENERAL → PRESENT_SRC).
+// Synchronization: the input dma-buf is owned by external_qf (FOREIGN_EXT), so acquire/release barriers are placed before and after the command buffer
+//   exactly following the sand_letterbox.cpp:363-387 / :401-445 pattern (both preprocessing and display **only read** it).
+//   The output image layout transitions are recorded by VulkanSwapchain (UNDEFINED → GENERAL → PRESENT_SRC).
 #pragma once
 
 #include <cstddef>
@@ -31,34 +31,34 @@ class VulkanContext;
 namespace yvo::display {
 
 struct DisplayConvertConfig {
-    int num_slots = 3;                 // 인플라이트 수 (= 스왑체인 이미지 개수)
-    // 워크그룹 크기. x 는 **4픽셀 묶음** 단위다. x*y <= 256 (V3D maxComputeWorkGroupInvocations).
-    // 기본 3x85 = 255 invocation, 즉 **12 x 85 픽셀의 세로로 긴 타일**이다.
-    // 실측 근거 (yvo_display_probe --probe convert --sweep, 1920x1080 1:1, 오프스크린 200프레임, V3D 7.1.
-    //   3회 인터리브 반복으로 DVFS 드리프트를 배제했다 — 재현성 ±0.02 ms):
+    int num_slots = 3;                 // number in flight (= number of swapchain images)
+    // Workgroup size. x is in units of **4-pixel groups**. x*y <= 256 (V3D maxComputeWorkGroupInvocations).
+    // Default 3x85 = 255 invocations, i.e. a **tall 12 x 85 pixel tile**.
+    // Measurement basis (yvo_display_probe --probe convert --sweep, 1920x1080 1:1, offscreen 200 frames, V3D 7.1.
+    //   DVFS drift was excluded by 3 interleaved repetitions — reproducibility ±0.02 ms):
     //   8x8(64)   15.01 | 4x16(64)  13.12 | 16x8(128) 10.07 | 8x16(128)  9.94 | 3x48(144)  7.74
     //   16x16(256) 7.74 | 8x32(256)  7.78 | 32x8(256)  7.80 | 128x2(256) 8.09 | 64x4(256)  8.05
     //   2x64(128)  7.59 | 3x64(192)  6.70 | 5x36(180)  6.63 | 1x256(256) 6.78 | 4x64(256)  6.62
     //   7x36(252)  6.14 | 6x42(252)  6.15 | 5x51(255)  5.84 | 3x72(216)  5.59 | 2x108(216) 5.28
-    //   2x128(256) 6.21 | 3x84(252)  4.55 | **3x85(255) 4.23  ← 채택**
-    // 두 가지가 같이 작용한다:
-    //   ① invocation 이 클수록 좋다는 sand_letterbox 의 규율은 그대로다(64 inv 는 15 ms, 256 inv 는 4~8 ms).
-    //   ② 같은 invocation 수 안에서는 **세로로 긴 타일이 결정적으로 빠르다** — 64x16 px 7.74 → 12x85 px 4.23,
-    //      1.83배. 읽기(SAND 열은 가로 128 B)만 보면 좁은 타일이 캐시 라인을 낭비하므로 불리해야 하는데도
-    //      더 빠르다 → 병목은 **타일 배치(UIF)된 RGBA 이미지 쓰기** 쪽이고 세로로 긴 영역이 이미지 타일에
-    //      더 잘 맞는 것으로 본다. **이 해석은 미확정 가설이고, 수치만이 근거다.**
-    // 해상도가 바뀌면 최적값도 바뀔 수 있다. spec constant 이므로 --probe convert --sweep 으로 다시 잰다.
+    //   2x128(256) 6.21 | 3x84(252)  4.55 | **3x85(255) 4.23  ← chosen**
+    // Two effects act together:
+    //   ① sand_letterbox's rule that more invocations are better still holds (64 inv is 15 ms, 256 inv is 4~8 ms).
+    //   ② Within the same invocation count, **tall tiles are decisively faster** — 64x16 px 7.74 → 12x85 px 4.23,
+    //      1.83x. Looking only at reads (SAND columns are 128 B wide), narrow tiles waste cache lines and should be worse, yet
+    //      they are faster → the bottleneck is on the **tiled (UIF) RGBA image write** side, and tall regions are
+    //      believed to fit the image tiles better. **This interpretation is an unconfirmed hypothesis; only the numbers are evidence.**
+    // The optimum may change if the resolution changes. It is a spec constant, so re-measure with --probe convert --sweep.
     std::uint32_t local_size_x = 3;
     std::uint32_t local_size_y = 85;
-    // 출력 크기가 원본과 다르면 true(이때만 bilinear + 열 LUT). 호스트가 판단해 넘긴다.
+    // true if the output size differs from the source (only then bilinear + column LUT). The host decides and passes it.
     bool uniform_scale = false;
     bool timestamps = true;
-    std::uint8_t pad_value = 0;        // 균일 스케일에서 letterbox 여백 색 (표시에서는 검정)
-    int max_dst_w = 1920;              // 열 LUT 상한. 재생성으로 창이 커져도 이 값을 넘지 않아야 한다.
+    std::uint8_t pad_value = 0;        // letterbox margin color for uniform scale (black for display)
+    int max_dst_w = 1920;              // column LUT upper bound. Must not be exceeded even if the window grows on recreate.
     std::size_t import_cache_entries = 64;
 };
 
-// 셰이더 push constant (std430, 02_shaders/display_convert.comp 의 Params 와 같은 순서·크기)
+// Shader push constant (std430, same order and size as Params in 02_shaders/display_convert.comp)
 struct DisplayConvertPush {
     std::uint32_t y_offset;
     std::uint32_t y_col_stride;
@@ -84,25 +84,25 @@ public:
     DisplayConvert(const DisplayConvert&) = delete;
     DisplayConvert& operator=(const DisplayConvert&) = delete;
 
-    // 커맨드 버퍼를 리셋·시작하고 query pool 을 리셋한다. 반환된 cb 에 스왑체인 배리어를 함께 기록한다.
+    // Resets and begins the command buffer and resets the query pool. Record the swapchain barriers into the returned cb as well.
     VkCommandBuffer begin(int slot);
-    // 입력 dma-buf import(캐시) + 디스크립터 갱신 + 배리어 + 디스패치 기록.
+    // Input dma-buf import (cached) + descriptor update + barriers + dispatch recording.
     void record(int slot, const DrmFrame& frame, VkImageView dst_view, VkExtent2D dst_extent);
-    // 커맨드 버퍼를 닫고 제출한다. wait/signal 은 스왑체인 세마포어, fence 는 스왑체인 submit 펜스다.
+    // Closes and submits the command buffer. wait/signal are the swapchain semaphores, fence is the swapchain submit fence.
     void end_and_submit(int slot, VkSemaphore wait, VkSemaphore signal, VkFence fence);
 
     bool pending(int slot) const { return slots_.at(static_cast<std::size_t>(slot)).pending; }
-    bool ready(int slot) const;      // 펜스가 끝났는가 (대기하지 않는다)
-    // 펜스를 기다린 뒤 timestamp 를 읽고 import pin·keepalive 를 놓는다.
+    bool ready(int slot) const;      // has the fence finished (does not wait)
+    // Waits for the fence, then reads timestamps and releases the import pin and keepalive.
     void finish(int slot, std::uint64_t timeout_ns = UINT64_MAX);
 
-    // 마지막 finish() 의 GPU 시간(ms). 측정 불가면 < 0.
-    double last_shader_ms() const { return last_shader_ms_; }   // 디스패치 구간만 (2.13 ms 와 같은 기준)
-    double last_total_ms() const { return last_total_ms_; }     // 커맨드 버퍼 전체 (blit 폴백 비용 포함)
+    // GPU time (ms) of the last finish(). < 0 if not measurable.
+    double last_shader_ms() const { return last_shader_ms_; }   // dispatch interval only (same basis as 2.13 ms)
+    double last_total_ms() const { return last_total_ms_; }     // whole command buffer (including blit fallback cost)
 
     int num_slots() const { return static_cast<int>(slots_.size()); }
     const DisplayConvertConfig& config() const { return cfg_; }
-    void set_uniform_scale(bool on);   // 창 크기가 바뀌어 경로가 달라질 때 (파이프라인을 다시 만든다)
+    void set_uniform_scale(bool on);   // when the window size changes and the path changes (recreates the pipeline)
     void clear_import_cache();
     const yvo::vk::DmaBufImportCache& import_cache() const { return cache_; }
 
@@ -110,7 +110,7 @@ private:
     struct Slot {
         VkCommandBuffer cmd = VK_NULL_HANDLE;
         VkDescriptorSet set = VK_NULL_HANDLE;
-        VkFence fence = VK_NULL_HANDLE;   // 소유하지 않는다(스왑체인 소유). 제출 시 받아 둔다.
+        VkFence fence = VK_NULL_HANDLE;   // not owned (owned by the swapchain). Stored at submit time.
         bool pending = false;
         bool recording = false;
         DrmFrame frame;

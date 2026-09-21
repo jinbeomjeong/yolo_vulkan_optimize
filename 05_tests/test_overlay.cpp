@@ -1,31 +1,31 @@
-// GPU 오버레이(overlay_boxes.comp) vs CPU 기준(overlay_reference.hpp) — **비트 일치** 판정
+// GPU overlay (overlay_boxes.comp) vs CPU reference (overlay_reference.hpp) — **bit-exact** verdict
 //
-// 계획서 §7 의 표를 따른다. NPU·디스플레이 **불필요**(오프스크린 R8G8B8A8_UNORM 이미지)라
-// ctest 에서 그대로 돌아간다.
+// Follows the table in plan §7. NPU and display are **not needed** (offscreen R8G8B8A8_UNORM image), so
+// it runs as is under ctest.
 //
-//   OverlayGeometry     1920x1080(실제 경로와 같은 해상도), 텍스트 끔, 선 두께 1/2/3.
-//                       경계 접촉·면적 0·일부/전부 화면 밖·class 0/79·검출 80개. **max 오차 0**
-//   OverlayText         라벨 + HUD. text_scale 1 과 2. **max 오차 0**
-//                       (OpenCV 를 오라클로 쓰지 않는다 — 같은 kGlyph8x16 표를 쓰는 CPU 기준이 오라클이다)
-//   OverlayDeterminism  비겹침 입력 10회 반복 **완전 동일**
-//   OverlayPlane        HVS 오버레이 평면용 dma-buf 링(overlay_plane.hpp, overlay_boxes 의 버퍼 변형).
-//                       export fd 를 mmap(DMA_BUF_IOCTL_SYNC)으로 읽어 CPU 기준과 **비트 비교**(박스 밖 = (0,0,0,0)),
-//                       링 항목 재사용 시 잔상 0 (Full·Erase 두 지우기 방식), pitch·크기·링 상태 검사, 지우기 GPU 시간.
-//   DrmState            평면 스캔아웃(wayland-planes) 검증용 debugfs state 파서(display/drm_state.hpp). GPU 불필요.
-//                       실측 state 발췌(hvs_wl_probe fullhack f225, labwc 데스크톱 fbcon/XR24)를 문자열 리터럴로 고정한다.
-//   KmsScanout          --display-backend kms 전송층(display/kms_scanout.hpp). card1 이 없으면 skip.
-//                       **master 를 절대 가져가지 않고 화면을 바꾸지 않는다**: 데스크톱(labwc)이 master 일 때만 돈다.
-//                       아무도 master 가 아니면(= open 이 master 를 자동으로 받는 상황) 모드셋 시도 없이 skip.
-//                       장치·커넥터·CRTC·평면 탐색(NV12 SAND128 / AB24 LINEAR), 박스·영상 AddFB2, master 없는 commit 이
-//                       멈추지 않고 명확한 오류로 끝나는지, KmsMasterError 메시지에 master 소유자가 들어가는지.
-//   OverlayVsOpenCV     (게이트 아님) draw_and_save() 와 640x640 에서 느슨한 기하 비교.
-//                       FONT_HERSHEY_SIMPLEX 는 다른 메트릭의 벡터 폰트라 비트 일치는 원리적으로 불가능하다.
+//   OverlayGeometry     1920x1080 (same resolution as the real path), text off, line width 1/2/3.
+//                       Edge contact, zero area, partly/fully off-screen, class 0/79, 80 detections. **max error 0**
+//   OverlayText         Labels + HUD. text_scale 1 and 2. **max error 0**
+//                       (OpenCV is not used as the oracle — the CPU reference using the same kGlyph8x16 table is the oracle)
+//   OverlayDeterminism  Non-overlapping input repeated 10 times is **fully identical**
+//   OverlayPlane        dma-buf ring for the HVS overlay plane (overlay_plane.hpp, buffer variant of overlay_boxes).
+//                       Reads the export fd via mmap (DMA_BUF_IOCTL_SYNC) and **bit-compares** with the CPU reference (outside boxes = (0,0,0,0)),
+//                       zero ghosting on ring entry reuse (both Full and Erase clear modes), pitch/size/ring state checks, clear GPU time.
+//   DrmState            debugfs state parser (display/drm_state.hpp) for verifying plane scanout (wayland-planes). No GPU needed.
+//                       Pins measured state excerpts (hvs_wl_probe fullhack f225, labwc desktop fbcon/XR24) as string literals.
+//   KmsScanout          --display-backend kms transport layer (display/kms_scanout.hpp). Skipped if card1 is absent.
+//                       **Never takes master and never changes the screen**: runs only when the desktop (labwc) is master.
+//                       If nobody is master (= open would automatically receive master), skip without attempting a modeset.
+//                       Device/connector/CRTC/plane discovery (NV12 SAND128 / AB24 LINEAR), box and video AddFB2, whether a commit without master
+//                       ends with a clear error instead of hanging, and whether the KmsMasterError message contains the master owner.
+//   OverlayVsOpenCV     (not a gate) loose geometric comparison with draw_and_save() at 640x640.
+//                       FONT_HERSHEY_SIMPLEX is a vector font with different metrics, so bit-exactness is impossible in principle.
 //
-// 겹치는 박스의 교차 픽셀은 **순서 의존**이다(워크그룹 실행 순서가 정의되지 않음. 계획서 §7, §9).
-// 따라서 모든 테스트 입력은 **서로 겹치지 않게** 만들고, HUD 영역(4,4)~(4+8*s*len, 4+16*s)도 비워 둔다
-// (GPU 는 워크그룹 0 이 HUD 와 검출 0 을 함께 그리므로 HUD 와 겹치는 박스도 순서 의존이다).
+// Intersection pixels of overlapping boxes are **order-dependent** (workgroup execution order is undefined. plan §7, §9).
+// Therefore all test inputs are built **not to overlap each other**, and the HUD region (4,4)~(4+8*s*len, 4+16*s) is left empty too
+// (on the GPU, workgroup 0 draws the HUD together with detection 0, so boxes overlapping the HUD are order-dependent as well).
 //
-// 실패하면 build/05_tests/overlay_diff/ 에 GPU·CPU·차이 이미지를 저장한다(test_preproc 의 관례).
+// On failure, GPU / CPU / diff images are saved to build/05_tests/overlay_diff/ (test_preproc's convention).
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -76,7 +76,7 @@ using yvo::display::overlay_cpu_render;
 
 constexpr std::array<std::uint8_t, 4> kBg{32, 32, 32, 255};
 
-// 프로세스 전체에서 VulkanContext 하나만 쓴다(장치 생성이 가장 비싸다).
+// Use a single VulkanContext for the whole process (device creation is the most expensive part).
 yvo::vk::VulkanContext& ctx() {
     static std::unique_ptr<yvo::vk::VulkanContext> c = [] {
         yvo::vk::VulkanContextOptions o;
@@ -87,11 +87,11 @@ yvo::vk::VulkanContext& ctx() {
     return *c;
 }
 
-// ── 오프스크린 렌더 하네스 ────────────────────────────────────────────────────────────────────
-// STORAGE|TRANSFER_SRC|TRANSFER_DST 이미지 + 리드백 버퍼. 배경을 vkCmdClearColorImage 로 정확히
-// 채운 뒤 오버레이 디스패치를 기록한다(스왑체인 경로와 같은 포맷·같은 GENERAL 레이아웃).
-// 이미지·되읽기 버퍼·배리어는 testkit/offscreen_target.hpp 의 OffscreenTarget 을 쓴다
-// (2026-09-21 이전에는 이 하네스가 display_probe 의 OffscreenTarget 과 같은 코드를 따로 갖고 있었다).
+// ── Offscreen render harness ────────────────────────────────────────────────────────────────────
+// STORAGE|TRANSFER_SRC|TRANSFER_DST image + readback buffer. Fills the background exactly with vkCmdClearColorImage
+// and then records the overlay dispatch (same format and same GENERAL layout as the swapchain path).
+// The image, readback buffer and barriers use OffscreenTarget from testkit/offscreen_target.hpp
+// (before 2026-09-21 this harness had its own copy of the same code as display_probe's OffscreenTarget).
 class OverlayHarness {
 public:
     OverlayHarness(int w, int h)
@@ -119,7 +119,7 @@ public:
     OverlayHarness(const OverlayHarness&) = delete;
     OverlayHarness& operator=(const OverlayHarness&) = delete;
 
-    // 배경을 kBg 로 채운 뒤 오버레이를 그리고 RGBA 를 돌려준다.
+    // Fill the background with kBg, draw the overlay, and return RGBA.
     std::vector<std::uint8_t> render(OverlayRenderer& ov, int slot) {
         using yvo::display::barrier_image;
         VkDevice dev = ctx().device();
@@ -141,7 +141,7 @@ public:
                       VK_PIPELINE_STAGE_2_CLEAR_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
                       VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT);
 
-        // 앞선 컴퓨트 쓰기가 없으므로(클리어 배리어가 이미 있다) barrier_prior_compute_write = false
+        // No preceding compute write (the clear barrier is already there), so barrier_prior_compute_write = false
         ov.record(slot, cmd_, t_.view, {t_.w, t_.h}, affine_, false);
         t_.record_readback(cmd_);
         YVO_VK_CHECK(vkEndCommandBuffer(cmd_));
@@ -181,14 +181,14 @@ std::vector<std::uint8_t> background(int w, int h) {
 struct Diff {
     int max_err = 0;
     long long diff_px = 0;
-    long long changed_gpu = 0;   // 배경과 달라진 GPU 픽셀 수
+    long long changed_gpu = 0;   // number of GPU pixels that differ from the background
     long long changed_cpu = 0;
     int first_x = -1, first_y = -1;
     int gpu[4]{}, cpu[4]{};
 };
 
 Diff compare(const std::vector<std::uint8_t>& g, const std::vector<std::uint8_t>& c, int w, int h,
-             const std::array<std::uint8_t, 4>& bg = kBg) {  // bg: 배경 (OverlayPlane 은 투명 (0,0,0,0))
+             const std::array<std::uint8_t, 4>& bg = kBg) {  // bg: background (OverlayPlane uses transparent (0,0,0,0))
     Diff d;
     for (int y = 0; y < h; ++y) {
         for (int x = 0; x < w; ++x) {
@@ -223,7 +223,7 @@ Diff compare(const std::vector<std::uint8_t>& g, const std::vector<std::uint8_t>
     return d;
 }
 
-// 실패 시 저장 (test_preproc 의 preproc_diff/ 관례). OpenCV 가 없으면 PPM 으로 떨어진다.
+// Save on failure (test_preproc's preproc_diff/ convention). Falls back to PPM without OpenCV.
 void save_diff(const std::string& tag, const std::vector<std::uint8_t>& g, const std::vector<std::uint8_t>& c,
                int w, int h) {
     const std::filesystem::path dir = "overlay_diff";
@@ -276,33 +276,33 @@ Detection det(int cls, float score, float x1, float y1, float x2, float y2) {
     return d;
 }
 
-// 경계 케이스 모음. **서로 겹치지 않는다**(겹치면 교차 픽셀이 순서 의존이 된다).
+// Collection of edge cases. **They do not overlap each other** (overlap makes intersection pixels order-dependent).
 std::vector<Detection> boundary_cases() {
     return {
-        det(0, 0.90f, 0, 0, 100, 100),                 // 좌상 화면 경계에 접함
-        det(79, 0.12f, 1819, 979, 1919, 1079),         // 우하 경계에 접함 (마지막 픽셀 포함)
-        det(1, 0.50f, 0, 300, 40, 400),                // 왼쪽 경계
-        det(2, 1.00f, 1879, 300, 1919, 400),           // 오른쪽 경계, score 1.00
-        det(3, 0.00f, 300, 0, 400, 30),                // 위쪽 경계, score 0.00 (라벨이 위에 못 들어감)
-        det(4, 0.33f, 300, 1049, 400, 1079),           // 아래쪽 경계
-        det(5, 0.44f, 500, 200, 500, 200),             // 면적 0 (1 px 점)
-        det(6, 0.55f, 600, 200, 600, 300),             // 폭 0 (세로 1 px 선)
-        det(7, 0.66f, 700, 200, 800, 200),             // 높이 0 (가로 1 px 선)
-        det(8, 0.77f, -50, 500, 50, 600),              // 일부 화면 밖 (왼쪽)
-        det(9, 0.88f, 1890, 700, 2000, 800),           // 일부 화면 밖 (오른쪽)
-        det(10, 0.99f, 900, -40, 1000, 60),            // 일부 화면 밖 (위)
-        det(11, 0.20f, 900, 1040, 1000, 1140),         // 일부 화면 밖 (아래)
-        det(12, 0.30f, -500, -500, -400, -400),        // 전부 화면 밖
-        det(13, 0.40f, 2000, 1200, 2100, 1300),        // 전부 화면 밖
-        det(14, 0.51f, 1100.5f, 200.5f, 1200.49f, 300.51f), // R1 반올림 경계 (.5 는 올림)
-        det(15, 0.49f, 1300.4f, 200.6f, 1400.6f, 300.4f),   // R1 반올림
-        det(16, 0.61f, 1500, 200, 1400, 300),          // x1 > x2 (뒤집힌 입력 → min/max 정규화)
+        det(0, 0.90f, 0, 0, 100, 100),                 // touches the top-left screen edge
+        det(79, 0.12f, 1819, 979, 1919, 1079),         // touches the bottom-right edge (includes the last pixel)
+        det(1, 0.50f, 0, 300, 40, 400),                // left edge
+        det(2, 1.00f, 1879, 300, 1919, 400),           // right edge, score 1.00
+        det(3, 0.00f, 300, 0, 400, 30),                // top edge, score 0.00 (label does not fit above)
+        det(4, 0.33f, 300, 1049, 400, 1079),           // bottom edge
+        det(5, 0.44f, 500, 200, 500, 200),             // zero area (1 px dot)
+        det(6, 0.55f, 600, 200, 600, 300),             // zero width (vertical 1 px line)
+        det(7, 0.66f, 700, 200, 800, 200),             // zero height (horizontal 1 px line)
+        det(8, 0.77f, -50, 500, 50, 600),              // partly off-screen (left)
+        det(9, 0.88f, 1890, 700, 2000, 800),           // partly off-screen (right)
+        det(10, 0.99f, 900, -40, 1000, 60),            // partly off-screen (top)
+        det(11, 0.20f, 900, 1040, 1000, 1140),         // partly off-screen (bottom)
+        det(12, 0.30f, -500, -500, -400, -400),        // fully off-screen
+        det(13, 0.40f, 2000, 1200, 2100, 1300),        // fully off-screen
+        det(14, 0.51f, 1100.5f, 200.5f, 1200.49f, 300.51f), // R1 rounding boundary (.5 rounds up)
+        det(15, 0.49f, 1300.4f, 200.6f, 1400.6f, 300.4f),   // R1 rounding
+        det(16, 0.61f, 1500, 200, 1400, 300),          // x1 > x2 (flipped input → min/max normalization)
         det(17, 0.71f, 600, 500, 700, 450),            // y1 > y2
     };
 }
 
-// 겹치지 않는 격자 n개 (검출 80개 상한 시험용). **테두리끼리 겹치지 않는다.**
-// 라벨(텍스트)은 이웃 열의 라벨과 가로로 겹칠 수 있으므로 이 입력은 draw_text = false 로만 쓴다.
+// Non-overlapping grid of n boxes (for testing the 80-detection cap). **Borders do not overlap each other.**
+// Labels (text) can overlap horizontally with labels in the neighboring column, so this input is used only with draw_text = false.
 std::vector<Detection> grid_cases(int n, int w, int h) {
     std::vector<Detection> v;
     const int cols = 10;
@@ -316,18 +316,18 @@ std::vector<Detection> grid_cases(int n, int w, int h) {
     return v;
 }
 
-// 텍스트까지 켜도 **아무것도 겹치지 않는** 입력 (HUD 영역 y < 36 도 피한다).
-// 라벨은 박스 위 16*s(최대 32) px 에 그려지므로 y1 >= 200 으로 여유를 둔다.
+// Input where **nothing overlaps** even with text on (also avoids the HUD region y < 36).
+// Labels are drawn 16*s (up to 32) px above the box, so y1 >= 200 leaves margin.
 std::vector<Detection> separated_text_cases() {
     return {
         det(0, 0.87f, 100, 200, 400, 500),      // person 0.87
-        det(9, 0.05f, 600, 200, 900, 500),      // traffic light 0.05 (가장 긴 이름)
+        det(9, 0.05f, 600, 200, 900, 500),      // traffic light 0.05 (longest name)
         det(79, 1.00f, 1100, 200, 1400, 500),   // toothbrush 1.00
         det(2, 0.50f, 100, 700, 400, 1000),     // car 0.50
-        det(5, 0.995f, 600, 700, 900, 1000),    // bus 1.00 (반올림)
-        det(3, 0.004f, 1100, 700, 1400, 1000),  // motorcycle 0.00 (반올림)
-        det(7, 0.62f, 1500, 20, 1700, 120),     // 위쪽 공간 부족 → 라벨이 박스 안쪽으로
-        det(1, 0.42f, 1750, 700, 1919, 800),    // 오른쪽으로 라벨이 넘침 → 화면 클리핑
+        det(5, 0.995f, 600, 700, 900, 1000),    // bus 1.00 (rounding)
+        det(3, 0.004f, 1100, 700, 1400, 1000),  // motorcycle 0.00 (rounding)
+        det(7, 0.62f, 1500, 20, 1700, 120),     // not enough space above → label goes inside the box
+        det(1, 0.42f, 1750, 700, 1919, 800),    // label overflows to the right → screen clipping
     };
 }
 
@@ -355,20 +355,20 @@ void expect_exact(const std::string& tag, const RunResult& r, int w, int h) {
     if (r.diff.max_err != 0 || r.diff.diff_px != 0) {
         save_diff(tag, r.gpu, r.cpu, w, h);
         std::fprintf(stderr,
-                     "[%s] max_err=%d diff_px=%lld  첫 불일치 (%d,%d) GPU(%d,%d,%d,%d) CPU(%d,%d,%d,%d)\n",
+                     "[%s] max_err=%d diff_px=%lld  first mismatch (%d,%d) GPU(%d,%d,%d,%d) CPU(%d,%d,%d,%d)\n",
                      tag.c_str(), r.diff.max_err, r.diff.diff_px, r.diff.first_x, r.diff.first_y, r.diff.gpu[0],
                      r.diff.gpu[1], r.diff.gpu[2], r.diff.gpu[3], r.diff.cpu[0], r.diff.cpu[1], r.diff.cpu[2],
                      r.diff.cpu[3]);
     }
-    EXPECT_EQ(r.diff.max_err, 0) << tag << ": GPU 와 CPU 기준이 비트 일치해야 한다";
+    EXPECT_EQ(r.diff.max_err, 0) << tag << ": GPU and CPU reference must be bit-exact";
     EXPECT_EQ(r.diff.diff_px, 0) << tag;
-    EXPECT_GT(r.diff.changed_gpu, 0) << tag << ": 아무것도 그리지 않았다";
+    EXPECT_GT(r.diff.changed_gpu, 0) << tag << ": nothing was drawn";
     EXPECT_EQ(r.diff.changed_gpu, r.diff.changed_cpu) << tag;
 }
 
-// ─────────────────────────── OverlayGeometry (1920x1080, 텍스트 끔) ───────────────────────────
+// ─────────────────────────── OverlayGeometry (1920x1080, text off) ───────────────────────────
 
-class OverlayGeometry : public ::testing::TestWithParam<int> {}; // 선 두께 1/2/3
+class OverlayGeometry : public ::testing::TestWithParam<int> {}; // line width 1/2/3
 
 TEST_P(OverlayGeometry, BoundaryCasesMatchCpu) {
     OverlayHarness hz(1920, 1080);
@@ -378,7 +378,7 @@ TEST_P(OverlayGeometry, BoundaryCasesMatchCpu) {
     cfg.line_width = GetParam();
     const RunResult r = run_case(hz, cfg, boundary_cases(), "");
     expect_exact("geometry_boundary_lw" + std::to_string(GetParam()), r, 1920, 1080);
-    std::printf("[geometry lw=%d] 변경 픽셀 %lld (GPU) / %lld (CPU)\n", GetParam(), r.diff.changed_gpu,
+    std::printf("[geometry lw=%d] changed pixels %lld (GPU) / %lld (CPU)\n", GetParam(), r.diff.changed_gpu,
                 r.diff.changed_cpu);
 }
 
@@ -395,7 +395,7 @@ TEST_P(OverlayGeometry, EightyDetectionsMatchCpu) {
 INSTANTIATE_TEST_SUITE_P(LineWidth, OverlayGeometry, ::testing::Values(1, 2, 3),
                          [](const ::testing::TestParamInfo<int>& i) { return "lw" + std::to_string(i.param); });
 
-// 상한 초과: 81개를 주면 80개만 그리고 overflow 가 선다
+// Over the cap: given 81, only 80 are drawn and overflow is set
 TEST(OverlayOverflow, TruncatesAndFlags) {
     OverlayHarness hz(1920, 1080);
     OverlayConfig cfg;
@@ -417,7 +417,7 @@ TEST(OverlayOverflow, TruncatesAndFlags) {
     EXPECT_EQ(d.diff_px, 0);
 }
 
-// ─────────────────────────── OverlayText (라벨 + HUD) ───────────────────────────
+// ─────────────────────────── OverlayText (labels + HUD) ───────────────────────────
 
 class OverlayText : public ::testing::TestWithParam<int> {}; // text_scale 1/2
 
@@ -430,10 +430,10 @@ TEST_P(OverlayText, LabelsAndHudMatchCpu) {
     cfg.line_width = 2;
     const RunResult r = run_case(hz, cfg, separated_text_cases(), "FPS 51.6 DET 8 GPU 4.23ms");
     expect_exact("text_s" + std::to_string(GetParam()), r, 1920, 1080);
-    std::printf("[text s=%d] 변경 픽셀 %lld\n", GetParam(), r.diff.changed_gpu);
+    std::printf("[text s=%d] changed pixels %lld\n", GetParam(), r.diff.changed_gpu);
 }
 
-// 검출 0개 + HUD 만: dispatch.x = max(count,1) = 1 이라 HUD 가 나와야 한다
+// 0 detections + HUD only: dispatch.x = max(count,1) = 1, so the HUD must appear
 TEST_P(OverlayText, HudOnlyWithNoDetections) {
     OverlayHarness hz(640, 480);
     OverlayConfig cfg;
@@ -444,7 +444,7 @@ TEST_P(OverlayText, HudOnlyWithNoDetections) {
     expect_exact("hud_only_s" + std::to_string(GetParam()), r, 640, 480);
 }
 
-// ASCII 32~126 전 범위 + 표현 불가 문자(규약 1: 공백으로 접는다)
+// Full ASCII 32~126 range + unrepresentable characters (rule 1: fold to space)
 TEST_P(OverlayText, FullAsciiRangeInHud) {
     OverlayHarness hz(1920, 1080);
     OverlayConfig cfg;
@@ -453,8 +453,8 @@ TEST_P(OverlayText, FullAsciiRangeInHud) {
     cfg.text_scale = GetParam();
     std::string hud;
     for (int c = 32; c <= 126; ++c) hud.push_back(static_cast<char>(c));
-    hud.push_back(static_cast<char>(9));   // tab: 범위 밖 → 공백
-    hud.push_back(static_cast<char>(200)); // 비 ASCII → 공백
+    hud.push_back(static_cast<char>(9));   // tab: out of range → space
+    hud.push_back(static_cast<char>(200)); // non-ASCII → space
     const RunResult r = run_case(hz, cfg, {}, hud);
     expect_exact("ascii_s" + std::to_string(GetParam()), r, 1920, 1080);
 }
@@ -462,7 +462,7 @@ TEST_P(OverlayText, FullAsciiRangeInHud) {
 INSTANTIATE_TEST_SUITE_P(TextScale, OverlayText, ::testing::Values(1, 2),
                          [](const ::testing::TestParamInfo<int>& i) { return "s" + std::to_string(i.param); });
 
-// ─────────────────────────── affine: 캔버스가 원본보다 작을 때 ───────────────────────────
+// ─────────────────────────── affine: when the canvas is smaller than the source ───────────────────────────
 
 TEST(OverlayAffineScale, UniformScaleMatchesCpu) {
     OverlayHarness hz(1280, 720);
@@ -472,7 +472,7 @@ TEST(OverlayAffineScale, UniformScaleMatchesCpu) {
     cfg.text_scale = 1;
     cfg.line_width = 2;
     OverlayRenderer ov(ctx(), cfg);
-    // 원본 1920x1080 좌표 → 1280x720 캔버스 (균일 스케일 2/3, 패딩 0)
+    // source 1920x1080 coordinates → 1280x720 canvas (uniform scale 2/3, padding 0)
     const OverlayAffine a = make_overlay_affine(1920, 1080, 1280, 720);
     EXPECT_NEAR(a.sx, 2.0f / 3.0f, 1e-6f);
     hz.set_affine(a);
@@ -488,15 +488,15 @@ TEST(OverlayAffineScale, UniformScaleMatchesCpu) {
     EXPECT_GT(d.changed_gpu, 0);
 }
 
-// ─────────────────────────── OverlayDeterminism (비겹침 10회) ───────────────────────────
+// ─────────────────────────── OverlayDeterminism (non-overlapping, 10 runs) ───────────────────────────
 
-// 입력은 **비겹침**으로 한정한다(계획서 §7). 겹치는 박스의 교차 픽셀은 워크그룹 실행 순서에 의존하므로
-// 결정성을 요구할 수 없다 — 허용 한계로 문서화된 사항이다(overlay_reference.hpp R8).
+// Input is restricted to **non-overlapping** (plan §7). Intersection pixels of overlapping boxes depend on workgroup execution order, so
+// determinism cannot be required — this is a documented limitation (overlay_reference.hpp R8).
 void determinism_case(const std::vector<Detection>& dets, const std::string& hud, bool draw_text,
                       const char* tag) {
     OverlayHarness hz(1920, 1080);
     OverlayConfig cfg;
-    cfg.num_slots = 2; // 슬롯을 번갈아 써도 같은 결과여야 한다
+    cfg.num_slots = 2; // alternating slots must give the same result
     cfg.draw_text = draw_text;
     cfg.text_scale = 2;
     cfg.line_width = 2;
@@ -511,7 +511,7 @@ void determinism_case(const std::vector<Detection>& dets, const std::string& hud
         if (i == 0)
             first = out;
         else
-            ASSERT_EQ(out, first) << tag << ": 반복 " << i << " 에서 결과가 달라졌다";
+            ASSERT_EQ(out, first) << tag << ": result changed at repeat " << i << "";
     }
     std::vector<std::uint8_t> cpu = background(1920, 1080);
     overlay_cpu_render(cpu.data(), 1920, 1080, dets, hud, a, ov.style(), 80);
@@ -522,30 +522,30 @@ void determinism_case(const std::vector<Detection>& dets, const std::string& hud
     EXPECT_GT(d.changed_gpu, 0) << tag;
 }
 
-// 테두리만: 격자 40개(테두리 비겹침)
+// Borders only: 40-box grid (borders non-overlapping)
 TEST(OverlayDeterminism, TenRepeatsIdenticalBoxes) {
     determinism_case(grid_cases(40, 1920, 1080), "", false, "boxes40");
 }
 
-// 라벨 + HUD 까지: 아무것도 겹치지 않는 8개
+// Up to labels + HUD: 8 boxes with nothing overlapping
 TEST(OverlayDeterminism, TenRepeatsIdenticalWithText) {
     determinism_case(separated_text_cases(), "deterministic", true, "text8");
 }
 
-// ─────────────────────────── OverlayVsOpenCV (참고용, 게이트 아님) ───────────────────────────
+// ─────────────────────────── OverlayVsOpenCV (reference only, not a gate) ───────────────────────────
 #ifdef YVO_HAVE_OPENCV
-// draw_and_save()(main.cpp:220-240)와 같은 방식으로 OpenCV 가 그린 640x640 캔버스와 비교한다.
-// **비트 일치는 원리적으로 불가능하다**: FONT_HERSHEY_SIMPLEX 는 다른 메트릭의 벡터 폰트이고
-// cv::rectangle 의 픽셀 중심 규약이 다르다. 계획서 §7 의 느슨한 기하 기준만 본다.
+// Compares with a 640x640 canvas drawn by OpenCV in the same way as draw_and_save() (main.cpp:220-240).
+// **Bit-exactness is impossible in principle**: FONT_HERSHEY_SIMPLEX is a vector font with different metrics, and
+// cv::rectangle uses a different pixel-center convention. Only the loose geometric criteria of plan §7 are checked.
 TEST(OverlayVsOpenCV, GeometryWithinOnePixel) {
     const int W = 640, H = 640;
     OverlayHarness hz(W, H);
     OverlayConfig cfg;
     cfg.num_slots = 1;
-    cfg.draw_text = false; // 폰트가 다르므로 테두리만 비교한다
-    cfg.line_width = 1;    // draw_and_save() 와 같은 두께
+    cfg.draw_text = false; // fonts differ, so compare borders only
+    cfg.line_width = 1;    // same thickness as draw_and_save()
     OverlayRenderer ov(ctx(), cfg);
-    const OverlayAffine a{}; // 이미 640 캔버스 좌표로 준다
+    const OverlayAffine a{}; // already given in 640-canvas coordinates
     hz.set_affine(a);
     const std::vector<Detection> dets = {det(0, 0.9f, 50, 60, 200, 300), det(7, 0.4f, 300, 100, 500, 400),
                                          det(20, 0.6f, 100, 400, 250, 600)};
@@ -560,7 +560,7 @@ TEST(OverlayVsOpenCV, GeometryWithinOnePixel) {
                       cv::Scalar(rgbc[2], rgbc[1], rgbc[0]), 1);
     }
 
-    // ① 변경 마스크 IoU ≥ 0.6  ② 어떤 박스에서도 20 px 넘게 떨어진 변경 픽셀 없음
+    // ① changed-mask IoU ≥ 0.6  ② no changed pixel more than 20 px away from every box
     long long inter = 0, uni = 0, far_px = 0;
     for (int y = 0; y < H; ++y) {
         for (int x = 0; x < W; ++x) {
@@ -585,7 +585,7 @@ TEST(OverlayVsOpenCV, GeometryWithinOnePixel) {
     EXPECT_GE(iou, 0.6);
     EXPECT_EQ(far_px, 0);
 
-    // ③ 각 박스의 4변 ±1 px 안에 비배경 픽셀이 있는가
+    // ③ is there a non-background pixel within ±1 px of each of the box's 4 edges
     auto nonbg = [&](int x, int y) {
         if (x < 0 || y < 0 || x >= W || y >= H) return false;
         const std::size_t o = (static_cast<std::size_t>(y) * W + static_cast<std::size_t>(x)) * 4;
@@ -602,13 +602,13 @@ TEST(OverlayVsOpenCV, GeometryWithinOnePixel) {
             left = left || nonbg(x1 + k, my);
             right = right || nonbg(x2 + k, my);
         }
-        EXPECT_TRUE(top && bot && left && right) << "class " << d.class_id << " 의 4변이 ±1 px 안에 없다";
+        EXPECT_TRUE(top && bot && left && right) << "class " << d.class_id << ": 4 edges are not within ±1 px";
     }
 }
 #endif
 
 
-// ─────────────────────────── OverlayPlane (dma-buf 박스 평면) ───────────────────────────
+// ─────────────────────────── OverlayPlane (dma-buf box plane) ───────────────────────────
 
 using yvo::display::OverlayClearMode;
 using yvo::display::OverlayPlane;
@@ -617,8 +617,8 @@ using yvo::display::OverlayPlaneConfig;
 
 constexpr std::array<std::uint8_t, 4> kClear{0, 0, 0, 0};
 
-// export fd 를 mmap 으로 읽는다(소비자와 같은 경로). pitch 를 벗겨 w*h*4 로 돌려주고,
-// pad_nonzero 에는 행 끝 패딩 바이트 중 0 이 아닌 수를 센다.
+// Reads the export fd via mmap (same path as the consumer). Strips the pitch and returns w*h*4, and
+// pad_nonzero counts the nonzero bytes among the row-end padding bytes.
 std::vector<std::uint8_t> read_plane(const OverlayPlaneBuffer& b, long long* pad_nonzero = nullptr) {
     void* m = ::mmap(nullptr, b.size, PROT_READ, MAP_SHARED, b.fd, 0);
     if (m == MAP_FAILED) {
@@ -658,11 +658,11 @@ OverlayPlaneConfig plane_cfg(int w, int h, OverlayClearMode mode, bool text, int
     return c;
 }
 
-// 한 프레임: acquire → draw → wait → mmap 읽기 → CPU 기준(투명 배경)과 비교 → release
+// One frame: acquire → draw → wait → mmap read → compare with CPU reference (transparent background) → release
 RunResult plane_frame(OverlayPlane& pl, const std::vector<Detection>& dets, const std::string& hud, int* used_idx,
                       long long* pad_nonzero = nullptr) {
     const int idx = pl.acquire();
-    EXPECT_GE(idx, 0) << "Free 항목이 없다";
+    EXPECT_GE(idx, 0) << "no Free entry";
     if (used_idx) *used_idx = idx;
     RunResult r;
     if (idx < 0) return r;
@@ -681,20 +681,20 @@ RunResult plane_frame(OverlayPlane& pl, const std::vector<Detection>& dets, cons
 void expect_plane_exact(const std::string& tag, const RunResult& r, int w, int h, bool expect_drawn = true) {
     if (r.diff.max_err != 0 || r.diff.diff_px != 0) {
         save_diff(tag, r.gpu, r.cpu, w, h);
-        std::fprintf(stderr, "[%s] max_err=%d diff_px=%lld 첫 불일치 (%d,%d) GPU(%d,%d,%d,%d) CPU(%d,%d,%d,%d)\n",
+        std::fprintf(stderr, "[%s] max_err=%d diff_px=%lld first mismatch (%d,%d) GPU(%d,%d,%d,%d) CPU(%d,%d,%d,%d)\n",
                      tag.c_str(), r.diff.max_err, r.diff.diff_px, r.diff.first_x, r.diff.first_y, r.diff.gpu[0],
                      r.diff.gpu[1], r.diff.gpu[2], r.diff.gpu[3], r.diff.cpu[0], r.diff.cpu[1], r.diff.cpu[2],
                      r.diff.cpu[3]);
     }
-    EXPECT_EQ(r.diff.max_err, 0) << tag << ": dma-buf 내용이 CPU 기준(투명 배경)과 비트 일치해야 한다";
+    EXPECT_EQ(r.diff.max_err, 0) << tag << ": dma-buf contents must be bit-exact with the CPU reference (transparent background)";
     EXPECT_EQ(r.diff.diff_px, 0) << tag;
     EXPECT_EQ(r.diff.changed_gpu, r.diff.changed_cpu) << tag;
     if (expect_drawn) {
-        EXPECT_GT(r.diff.changed_gpu, 0) << tag << ": 아무것도 그리지 않았다";
+        EXPECT_GT(r.diff.changed_gpu, 0) << tag << ": nothing was drawn";
     }
 }
 
-// (c) 기술자: AB24 / LINEAR / pitch 64 B 정렬 / 크기
+// (c) Descriptor: AB24 / LINEAR / pitch 64 B alignment / size
 TEST(OverlayPlane, BufferDescriptor) {
     OverlayPlane pl(ctx(), plane_cfg(1920, 1080, OverlayClearMode::Auto, true));
     ASSERT_EQ(pl.ring_size(), 3);
@@ -710,7 +710,7 @@ TEST(OverlayPlane, BufferDescriptor) {
         EXPECT_EQ(b.width, 1920u);
         EXPECT_EQ(b.height, 1080u);
         EXPECT_EQ(b.pitch % 64u, 0u);
-        EXPECT_EQ(b.pitch, 1920u * 4u);     // 7680 은 이미 64 배수 → 패딩 없음
+        EXPECT_EQ(b.pitch, 1920u * 4u);     // 7680 is already a multiple of 64 → no padding
         EXPECT_EQ(b.size, static_cast<std::size_t>(b.pitch) * b.height);
         EXPECT_GE(b.dmabuf_size, b.size);
         const int fd2 = pl.dup_fd(i);
@@ -718,28 +718,28 @@ TEST(OverlayPlane, BufferDescriptor) {
         EXPECT_NE(fd2, b.fd);
         if (fd2 >= 0) ::close(fd2);
     }
-    // 생성 직후 전 항목이 투명이어야 한다(초기 fill)
+    // Right after creation every entry must be transparent (initial fill)
     long long pad = -1;
     const std::vector<std::uint8_t> v = read_plane(pl.buffer(2), &pad);
     EXPECT_TRUE(std::all_of(v.begin(), v.end(), [](std::uint8_t x) { return x == 0; }));
 }
 
-// (c) 64 배수가 아닌 폭: pitch 패딩이 생기고, 셰이더는 패딩 바이트를 건드리지 않는다
+// (c) Width not a multiple of 64: pitch padding appears, and the shader does not touch the padding bytes
 TEST(OverlayPlane, PaddedPitchMatchesCpu) {
     OverlayPlane pl(ctx(), plane_cfg(1000, 600, OverlayClearMode::Auto, true));
     const OverlayPlaneBuffer& b = pl.buffer(0);
     EXPECT_EQ(b.pitch, 4032u);   // align_up(4000, 64)
     const std::vector<Detection> d = {det(0, 0.9f, 10, 100, 300, 400), det(5, 0.5f, 700, 100, 999, 599),
-                                      det(9, 0.7f, 950, 300, 1200, 350)};   // 오른쪽 화면 밖으로 넘침
+                                      det(9, 0.7f, 950, 300, 1200, 350)};   // overflows off the right of the screen
     long long pad = -1;
     const RunResult r = plane_frame(pl, d, "HUD pad", nullptr, &pad);
     expect_plane_exact("plane_pitch_pad", r, 1000, 600);
-    EXPECT_EQ(pad, 0) << "행 끝 패딩 바이트에 쓰면 안 된다";
+    EXPECT_EQ(pad, 0) << "must not write to the row-end padding bytes";
 }
 
 class OverlayPlaneMode : public ::testing::TestWithParam<OverlayClearMode> {};
 
-// (a) 첫 프레임: 경계 케이스(텍스트 끔)와 라벨+HUD(텍스트 켬)
+// (a) First frame: edge cases (text off) and labels+HUD (text on)
 TEST_P(OverlayPlaneMode, DrawMatchesCpu) {
     {
         OverlayPlane pl(ctx(), plane_cfg(1920, 1080, GetParam(), false));
@@ -752,12 +752,12 @@ TEST_P(OverlayPlaneMode, DrawMatchesCpu) {
     }
 }
 
-// (b) 재사용: ring=1 로 같은 항목을 계속 재사용하며 서로 다른 검출·HUD 를 그린다 → 매 프레임 잔상 0.
-//     ring=3 로 9 프레임을 돌려도 같다(항목마다 직전 내용이 다르다).
+// (b) Reuse: with ring=1, keep reusing the same entry while drawing different detections/HUD → zero ghosting every frame.
+//     Same with ring=3 over 9 frames (each entry's previous contents differ).
 TEST_P(OverlayPlaneMode, ReuseLeavesNoGhost) {
     const std::vector<Detection> a = separated_text_cases();
     const std::vector<Detection> b = {det(20, 0.31f, 200, 250, 700, 650), det(40, 0.93f, 1000, 600, 1800, 1000)};
-    std::vector<Detection> c;   // 이동한 박스 (a 를 오른쪽 아래로 37,23 px)
+    std::vector<Detection> c;   // moved boxes (a shifted right-down by 37,23 px)
     for (Detection d : a) {
         d.x1 += 37;
         d.x2 += 37;
@@ -776,7 +776,7 @@ TEST_P(OverlayPlaneMode, ReuseLeavesNoGhost) {
             expect_plane_exact("plane_reuse_r" + std::to_string(ring) + "_f" + std::to_string(i), r, 1920, 1080,
                                drawn);
             if (!drawn) {
-                EXPECT_EQ(r.diff.changed_gpu, 0) << "빈 프레임은 완전 투명이어야 한다";
+                EXPECT_EQ(r.diff.changed_gpu, 0) << "an empty frame must be fully transparent";
             }
         }
     }
@@ -787,28 +787,28 @@ INSTANTIATE_TEST_SUITE_P(Clear, OverlayPlaneMode, ::testing::Values(OverlayClear
                              return std::string(yvo::display::clear_mode_name(i.param));
                          });
 
-// 링 상태: GPU 완료 + 소비자 해제(wl_buffer.release)까지 기다려야 재사용된다
+// Ring state: reused only after GPU completion + consumer release (wl_buffer.release)
 TEST(OverlayPlane, RingStateMachine) {
     OverlayPlane pl(ctx(), plane_cfg(640, 360, OverlayClearMode::Auto, true));
     const int i0 = pl.acquire(), i1 = pl.acquire(), i2 = pl.acquire();
     ASSERT_GE(i0, 0);
     ASSERT_GE(i1, 0);
     ASSERT_GE(i2, 0);
-    EXPECT_EQ(pl.acquire(), -1) << "모두 Claimed 이면 -1";
+    EXPECT_EQ(pl.acquire(), -1) << "-1 when all are Claimed";
     const std::vector<Detection> d = {det(1, 0.5f, 10, 60, 100, 200)};
     pl.draw(i0, d, "x");
-    EXPECT_THROW(pl.draw(i0, d, "x"), std::logic_error) << "제출이 걸린 항목에 다시 draw";
+    EXPECT_THROW(pl.draw(i0, d, "x"), std::logic_error) << "draw again on an entry with a pending submit";
     pl.wait(i0);
     EXPECT_TRUE(pl.ready(i0));
-    pl.mark_held(i0);                    // 소비자에게 넘김 (wl_surface.commit)
+    pl.mark_held(i0);                    // handed to the consumer (wl_surface.commit)
     EXPECT_TRUE(pl.held(i0));
-    pl.release(i1);                      // 표시하지 않기로 한 항목 (드롭)
+    pl.release(i1);                      // entry decided not to be displayed (drop)
     pl.release(i2);
-    // Held 인 i0 은 나오지 않는다
+    // i0, which is Held, does not come out
     const int a = pl.acquire(), b = pl.acquire();
     EXPECT_NE(a, i0);
     EXPECT_NE(b, i0);
-    EXPECT_EQ(pl.acquire(), -1) << "Held 항목은 release 전까지 재사용하지 않는다";
+    EXPECT_EQ(pl.acquire(), -1) << "Held entries are not reused until release";
     pl.release(i0);                      // wl_buffer.release
     EXPECT_EQ(pl.acquire(), i0);
     EXPECT_THROW(pl.mark_held(-1), std::out_of_range);
@@ -818,10 +818,10 @@ TEST(OverlayPlane, RingStateMachine) {
     EXPECT_THROW(pl.release(i0), std::logic_error);
 }
 
-// 지우기 비용: 1920x1080 에서 Full(vkCmdFillBuffer 전체) 과 Erase(직전 검출만 다시 그려 0 쓰기)의 GPU 시간.
-// 게이트는 아니고(측정은 07_results 규약이 따로 있다) 선택 근거를 로그로 남긴다.
+// Clear cost: GPU time at 1920x1080 of Full (vkCmdFillBuffer over everything) vs Erase (redraw only the previous detections writing 0).
+// Not a gate (measurement has its own 07_results conventions); leaves the rationale for the choice in the log.
 TEST(OverlayPlane, ClearCost) {
-    if (!ctx().timestamps_supported()) GTEST_SKIP() << "timestamp 미지원";
+    if (!ctx().timestamps_supported()) GTEST_SKIP() << "timestamp not supported";
     auto median = [](std::vector<double> v) {
         std::sort(v.begin(), v.end());
         return v.empty() ? -1.0 : v[v.size() / 2];
@@ -837,7 +837,7 @@ TEST(OverlayPlane, ClearCost) {
                 pl.draw(idx, d, "FPS 30.0 clear cost");
                 pl.wait(idx);
                 pl.release(idx);
-                if (f >= 10) {   // 워밍업 + 모든 항목이 한 번씩 그려진 뒤
+                if (f >= 10) {   // after warm-up + every entry drawn once
                     clr.push_back(pl.last_clear_ms());
                     ovl.push_back(pl.last_overlay_ms());
                 }
@@ -850,11 +850,11 @@ TEST(OverlayPlane, ClearCost) {
     }
 }
 
-// ── DrmState: debugfs /sys/kernel/debug/dri/1/state 파서 (display/drm_state.hpp) ─────────────────
-// 픽스처는 실측 state 의 발췌다(평면 블록 구조·들여쓰기·obj 블록의 "size=<바이트>" 줄을 그대로 둔다).
-//   kStatePlanesOk : hvs_wl_probe --overlay on fullhack f225 (2026-09-22, labwc 0.20.1) — NV12 SAND 영상 plane[83]
-//                    zpos 0 + AB24 박스 plane[107] zpos 1 + labwc 커서 AR24 plane[657] zpos 2, 비활성 평면 1개.
-//   kStateDesktop  : 데스크톱(labwc XR24 fb 하나) — 영상 평면 없음 = GL 합성 / 표시 안 됨.
+// ── DrmState: debugfs /sys/kernel/debug/dri/1/state parser (display/drm_state.hpp) ─────────────────
+// Fixtures are excerpts of measured state (plane block structure, indentation and the obj block's "size=<bytes>" line are kept as is).
+//   kStatePlanesOk : hvs_wl_probe --overlay on fullhack f225 (2026-09-22, labwc 0.20.1) — NV12 SAND video plane[83]
+//                    zpos 0 + AB24 box plane[107] zpos 1 + labwc cursor AR24 plane[657] zpos 2, 1 inactive plane.
+//   kStateDesktop  : desktop (a single labwc XR24 fb) — no video plane = GL composition / not displayed.
 constexpr const char* kStatePlanesOk = R"(plane[48]: plane-0
 	crtc=(null)
 	fb=0
@@ -963,14 +963,14 @@ std::string replace_all(std::string s, const std::string& from, const std::strin
 
 TEST(DrmState, ParsesActivePlanesOnly) {
     const auto planes = yvo::display::parse_drm_active_planes(kStatePlanesOk);
-    ASSERT_EQ(planes.size(), 3u);   // plane[48] 은 crtc=(null) 이라 빠진다
+    ASSERT_EQ(planes.size(), 3u);   // plane[48] has crtc=(null) and is excluded
     EXPECT_EQ(planes[0].id, 83);
     EXPECT_EQ(planes[0].name, "plane-2");
     EXPECT_EQ(planes[0].crtc, "crtc-2");
     EXPECT_EQ(planes[0].alloc, "labwc");
     EXPECT_EQ(planes[0].fourcc, 0x3231564eu);
     EXPECT_EQ(planes[0].modifier, 0x0700000000000004ull);
-    EXPECT_EQ(planes[0].size, "1920x1080");   // obj 블록의 size=2097152 가 아니다
+    EXPECT_EQ(planes[0].size, "1920x1080");   // not the obj block's size=2097152
     EXPECT_EQ(planes[0].zpos, 0);
     EXPECT_EQ(planes[1].id, 107);
     EXPECT_EQ(planes[1].fourcc, 0x34324241u);
@@ -980,14 +980,14 @@ TEST(DrmState, ParsesActivePlanesOnly) {
     EXPECT_EQ(planes[2].size, "64x64");
     EXPECT_TRUE(yvo::display::is_nv12_sand128(planes[0]));
     EXPECT_TRUE(yvo::display::is_ab24_linear(planes[1]));
-    EXPECT_FALSE(yvo::display::is_ab24_linear(planes[2]));   // 커서는 AR24
+    EXPECT_FALSE(yvo::display::is_ab24_linear(planes[2]));   // the cursor is AR24
 }
 
 TEST(DrmState, VideoPlaneWithBoxesAboveIsZeroCopyAndColorOk) {
     const auto v = yvo::display::judge_plane_scanout(yvo::display::parse_drm_active_planes(kStatePlanesOk));
     EXPECT_TRUE(v.video_on_plane);
     EXPECT_EQ(v.video_plane, 83);
-    EXPECT_EQ(v.overlay_plane, 107);   // 커서(zpos 2)가 아니라 영상 바로 위 AB24
+    EXPECT_EQ(v.overlay_plane, 107);   // the AB24 right above the video, not the cursor (zpos 2)
     EXPECT_TRUE(v.overlay_above);
     EXPECT_TRUE(v.encoding_bt709);
     EXPECT_TRUE(v.range_limited);
@@ -996,18 +996,18 @@ TEST(DrmState, VideoPlaneWithBoxesAboveIsZeroCopyAndColorOk) {
 }
 
 TEST(DrmState, SandModifierWithColumnHeightParamStillSand128) {
-    // 열 높이를 modifier 파라미터로 싣는 경우(DRM_FORMAT_MOD_BROADCOM_SAND128_COL_HEIGHT(1088))도 SAND128 이다.
+    // Carrying the column height as a modifier parameter (DRM_FORMAT_MOD_BROADCOM_SAND128_COL_HEIGHT(1088)) is also SAND128.
     const std::string st = replace_all(kStatePlanesOk, "modifier=0x700000000000004", "modifier=0x700000000044004");
     const auto v = yvo::display::judge_plane_scanout(yvo::display::parse_drm_active_planes(st));
     EXPECT_TRUE(v.video_on_plane);
-    // SAND256(종류 5)은 아니다
+    // SAND256 (kind 5) is not
     const std::string st2 = replace_all(kStatePlanesOk, "modifier=0x700000000000004", "modifier=0x700000000000005");
     EXPECT_FALSE(yvo::display::judge_plane_scanout(yvo::display::parse_drm_active_planes(st2)).video_on_plane);
 }
 
 TEST(DrmState, FullRangeOrBt601IsColorNotOk) {
-    // 영상 평면(plane[83])의 range 만 full 로 바꾼다 — 첫 번째 "limited" 는 plane[48](비활성) 것이므로
-    // plane[83] 블록 안의 줄을 찾아 바꾼다.
+    // Change only the video plane's (plane[83]) range to full — the first "limited" belongs to plane[48] (inactive), so
+    // find and replace the line inside the plane[83] block.
     std::string st = kStatePlanesOk;
     const auto b = st.find("plane[83]");
     const auto r = st.find("color-range=YCbCr limited range", b);
@@ -1016,7 +1016,7 @@ TEST(DrmState, FullRangeOrBt601IsColorNotOk) {
     EXPECT_TRUE(v.video_on_plane);
     EXPECT_FALSE(v.range_limited);
     EXPECT_FALSE(v.color_ok());
-    EXPECT_TRUE(v.zero_copy(true));   // 배치는 여전히 zero-copy 다
+    EXPECT_TRUE(v.zero_copy(true));   // the placement is still zero-copy
 
     std::string st601 = kStatePlanesOk;
     const auto e = st601.find("color-encoding=ITU-R BT.709 YCbCr", st601.find("plane[83]"));
@@ -1028,14 +1028,14 @@ TEST(DrmState, FullRangeOrBt601IsColorNotOk) {
 
 TEST(DrmState, BoxesBelowVideoAreNotAbove) {
     std::string st = kStatePlanesOk;
-    // 영상 zpos 0 → 3: 박스(zpos 1)가 영상 아래로 간다
+    // video zpos 0 → 3: the box (zpos 1) goes below the video
     const auto v83 = st.find("normalized-zpos=0", st.find("plane[83]"));
     st.replace(v83, std::string("normalized-zpos=0").size(), "normalized-zpos=3");
     const auto v = yvo::display::judge_plane_scanout(yvo::display::parse_drm_active_planes(st));
     EXPECT_TRUE(v.video_on_plane);
     EXPECT_FALSE(v.overlay_above);
-    EXPECT_FALSE(v.zero_copy(true));   // 박스를 커밋했는데 영상 위에 없다
-    EXPECT_TRUE(v.zero_copy(false));   // 박스를 커밋하지 않았다면 영상만 본다
+    EXPECT_FALSE(v.zero_copy(true));   // the box was committed but is not above the video
+    EXPECT_TRUE(v.zero_copy(false));   // if the box was not committed, only the video is checked
 }
 
 TEST(DrmState, DesktopIsNotZeroCopy) {
@@ -1063,23 +1063,23 @@ TEST(DrmState, HvsUnderrunCounter) {
     EXPECT_EQ(yvo::display::parse_hvs_underrun("n/a"), -1);
 }
 
-// ── KmsScanout (--display-backend kms 전송층) ─────────────────────────────────────────────────
-// 안전 규칙: master 를 가져가거나 화면을 바꾸는 호출을 하지 않는다. 모든 KmsScanout 은 acquire_master=false 로 만들고
-// (master 획득 경로를 보는 MasterErrorNamesHolder 만 예외 — 다른 프로세스가 master 일 때만 돈다, 그때 drmSetMaster 는
-// 커널이 거부한다), commit 은 master 가 없어 ioctl 전에 거부된다.
+// ── KmsScanout (--display-backend kms transport layer) ─────────────────────────────────────────────────
+// Safety rule: never make calls that take master or change the screen. Every KmsScanout is created with acquire_master=false
+// (the only exception is MasterErrorNamesHolder, which exercises the master acquisition path — it runs only when another process is master, and then drmSetMaster is
+// rejected by the kernel), and commits are rejected before the ioctl because there is no master.
 using yvo::display::KmsScanout;
 using yvo::display::KmsScanoutOptions;
 
 constexpr const char* kCard = "/dev/dri/card1";
 
-// 다른 프로세스가 master 일 때만 true. 아니면 skip 사유를 채운다.
+// true only when another process is master. Otherwise fills in the skip reason.
 bool kms_guard(std::string* why) {
     switch (KmsScanout::probe_master(kCard)) {
     case KmsScanout::MasterProbe::Unavailable:
-        *why = std::string(kCard) + " 을 열 수 없다(장치 없음·권한)";
+        *why = std::string(kCard) + " cannot be opened (no device / permission)";
         return false;
     case KmsScanout::MasterProbe::NoMaster:
-        *why = "아무도 DRM master 가 아니다(데스크톱이 비활성 VT?) — 화면을 바꿀 위험이 있어 skip";
+        *why = "nobody is DRM master (desktop on an inactive VT?) — skip, risk of changing the screen";
         return false;
     case KmsScanout::MasterProbe::OtherMaster: return true;
     }
@@ -1094,7 +1094,7 @@ KmsScanoutOptions kms_test_opts() {
     return o;
 }
 
-// 디코더 첫 프레임 (NV12 SAND128 dma-buf)
+// First decoder frame (NV12 SAND128 dma-buf)
 struct KmsTestFrame {
     yvo::FfmpegDrmDecoder dec;
     std::optional<yvo::DrmFrame> f;
@@ -1130,7 +1130,7 @@ TEST(KmsScanout, DiscoversConnectorCrtcAndPlanes) {
     const std::string d = k.describe();
     std::printf("[kms] %s\n", d.c_str());
     EXPECT_NE(d.find("color=BT.709/limited"), std::string::npos) << d;   // auto = limited
-    EXPECT_NE(d.find(" modeset:"), std::string::npos) << d;             // 모드셋 때 넣을 색 속성(B11)
+    EXPECT_NE(d.find(" modeset:"), std::string::npos) << d;             // color properties to set at modeset (B11)
 }
 
 TEST(KmsScanout, UnknownConnectorIsClearError) {
@@ -1140,7 +1140,7 @@ TEST(KmsScanout, UnknownConnectorIsClearError) {
     o.connector = "HDMI-A-99";
     try {
         KmsScanout k(o);
-        FAIL() << "없는 커넥터인데 예외가 없다";
+        FAIL() << "no exception for a nonexistent connector";
     } catch (const std::runtime_error& ex) {
         std::printf("[kms] %s\n", ex.what());
         EXPECT_NE(std::string(ex.what()).find("HDMI-A-99"), std::string::npos);
@@ -1160,9 +1160,9 @@ TEST(KmsScanout, OverlayBuffersAddFB2) {
         EXPECT_NE(fbs.back(), 0u) << "#" << i;
     }
     std::sort(fbs.begin(), fbs.end());
-    EXPECT_EQ(std::unique(fbs.begin(), fbs.end()), fbs.end()) << "FB id 가 겹친다";
+    EXPECT_EQ(std::unique(fbs.begin(), fbs.end()), fbs.end()) << "FB ids collide";
     EXPECT_EQ(k.overlay_fb(pl.ring_size()), 0u);
-    ASSERT_NO_THROW(k.register_overlay(pl));   // 다시 등록해도 이전 FB 를 정리하고 새로 만든다
+    ASSERT_NO_THROW(k.register_overlay(pl));   // re-registering cleans up the previous FBs and creates new ones
     EXPECT_NE(k.overlay_fb(0), 0u);
 }
 
@@ -1170,11 +1170,11 @@ TEST(KmsScanout, VideoFbFromDecoderFrame) {
     std::string why;
     if (!kms_guard(&why)) GTEST_SKIP() << why;
     KmsTestFrame tf;
-    if (!tf.open()) GTEST_SKIP() << "HEVC 디코더/영상 없음: " << YVO_DEFAULT_VIDEO;
+    if (!tf.open()) GTEST_SKIP() << "no HEVC decoder/video: " << YVO_DEFAULT_VIDEO;
     KmsScanout k(kms_test_opts());
     const std::uint32_t fb = k.video_fb_for(*tf.f);
     ASSERT_NE(fb, 0u) << k.last_error();
-    EXPECT_EQ(k.video_fb_for(*tf.f), fb);   // (dev, ino) 캐시
+    EXPECT_EQ(k.video_fb_for(*tf.f), fb);   // (dev, ino) cache
     EXPECT_EQ(k.video_fb_count(), 1u);
     k.clear_video_cache();
     EXPECT_EQ(k.video_fb_count(), 0u);
@@ -1188,7 +1188,7 @@ TEST(KmsScanout, CommitWithoutMasterFailsFastWithoutTouchingScreen) {
     std::string why;
     if (!kms_guard(&why)) GTEST_SKIP() << why;
     KmsTestFrame tf;
-    if (!tf.open()) GTEST_SKIP() << "HEVC 디코더/영상 없음: " << YVO_DEFAULT_VIDEO;
+    if (!tf.open()) GTEST_SKIP() << "no HEVC decoder/video: " << YVO_DEFAULT_VIDEO;
     KmsScanout k(kms_test_opts());
     const VkExtent2D e = k.output_extent();
     OverlayPlane pl(ctx(), plane_cfg(static_cast<int>(e.width), static_cast<int>(e.height), OverlayClearMode::Auto, true));
@@ -1197,9 +1197,9 @@ TEST(KmsScanout, CommitWithoutMasterFailsFastWithoutTouchingScreen) {
     EXPECT_FALSE(k.commit(*tf.f, 1, 0));
     EXPECT_FALSE(k.commit(*tf.f, 2, -1));
     EXPECT_TRUE(k.dispatch(0));
-    EXPECT_TRUE(k.dispatch(20));      // 이벤트가 없으니 20 ms 뒤 그냥 돌아온다
+    EXPECT_TRUE(k.dispatch(20));      // no events, so it just returns after 20 ms
     k.shutdown(100);
-    EXPECT_FALSE(k.commit(*tf.f, 3, 0));   // 종료 뒤 커밋은 거부
+    EXPECT_FALSE(k.commit(*tf.f, 3, 0));   // commit after shutdown is rejected
     const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
     std::printf("[kms] no-master commit error: %s (%.1f ms)\n", k.last_error().c_str(), ms);
     EXPECT_NE(k.last_error().find("master"), std::string::npos) << k.last_error();
@@ -1207,12 +1207,12 @@ TEST(KmsScanout, CommitWithoutMasterFailsFastWithoutTouchingScreen) {
     EXPECT_LT(ms, 1000.0);
 }
 
-// PlaneDisplay 전체 흐름: master 가 없어 모든 커밋이 거부돼도 display_done 이 서고 drain 이 유한 시간에 끝난다.
+// Full PlaneDisplay flow: even if every commit is rejected for lack of master, display_done is set and drain finishes in finite time.
 TEST(KmsScanout, PlaneDisplayWithoutMasterDropsAndDrains) {
     std::string why;
     if (!kms_guard(&why)) GTEST_SKIP() << why;
     KmsTestFrame tf;
-    if (!tf.open()) GTEST_SKIP() << "HEVC 디코더/영상 없음: " << YVO_DEFAULT_VIDEO;
+    if (!tf.open()) GTEST_SKIP() << "no HEVC decoder/video: " << YVO_DEFAULT_VIDEO;
     yvo::display::DisplayPipelineConfig cfg;
     cfg.backend = yvo::display::DisplayBackendKind::Kms;
     cfg.pace = yvo::display::DisplayPace::None;
@@ -1241,7 +1241,7 @@ TEST(KmsScanout, PlaneDisplayWithoutMasterDropsAndDrains) {
     EXPECT_LT(ms, 3000.0);
 }
 
-// 종료 복원(A1)의 저장 단계: master 없이 현재 KMS 상태를 읽어 직렬화한다(복원 커밋 자체는 master 가 필요해 실표시에서 본다).
+// Save step of shutdown restore (A1): read and serialize the current KMS state without master (the restore commit itself needs master and is checked on a real display).
 TEST(KmsScanout, CapturesCurrentStateWithoutMaster) {
     std::string why;
     if (!kms_guard(&why)) GTEST_SKIP() << why;
@@ -1258,10 +1258,10 @@ TEST(KmsScanout, CapturesCurrentStateWithoutMaster) {
     for (const std::string& key : {crtc + "MODE_ID=", crtc + "ACTIVE=", conn + "CRTC_ID=", vp + "FB_ID=",
                                    vp + "CRTC_ID=", vp + "SRC_W=", vp + "CRTC_W=", op + "FB_ID=", op + "CRTC_ID="})
         EXPECT_NE(t.find(key), std::string::npos) << key;
-    // immutable 속성(type, IN_FORMATS)은 복원 대상이 아니다
+    // immutable properties (type, IN_FORMATS) are not restore targets
     EXPECT_EQ(t.find(".type="), std::string::npos);
     EXPECT_EQ(t.find(".IN_FORMATS="), std::string::npos);
-    // 저장한 평면은 우리 두 평면이거나 지금 우리 CRTC 에 붙은 평면이다
+    // saved planes are either our two planes or planes currently attached to our CRTC
     std::map<std::uint32_t, std::uint64_t> plane_crtc;
     for (const auto& sp : k.saved_state())
         if (sp.kind == "plane" && sp.name == "CRTC_ID") plane_crtc[sp.obj] = sp.value;
@@ -1269,7 +1269,7 @@ TEST(KmsScanout, CapturesCurrentStateWithoutMaster) {
         if (id != k.video_plane_id() && id != k.overlay_plane_id()) {
             EXPECT_EQ(c, k.crtc_id()) << "plane " << id;
         }
-    // 모드셋 전 종료: 복원 커밋 없이 끝난다(화면·master 그대로)
+    // shutdown before modeset: ends without a restore commit (screen and master unchanged)
     k.shutdown(0);
     EXPECT_EQ(k.shutdown_result().rfind("not-needed", 0), 0u) << k.shutdown_result();
     bool has_line = false;
@@ -1283,8 +1283,8 @@ TEST(KmsScanout, CapturesCurrentStateWithoutMaster) {
     EXPECT_EQ(KmsScanout::probe_master(kCard), KmsScanout::MasterProbe::OtherMaster);
 }
 
-// main 이 쓰는 경로: acquire_master=true 인데 다른 프로세스가 master → KmsMasterError(종료 코드 2), 소유자 이름 포함.
-// 커널은 master 가 있는 동안 drmSetMaster 를 거부하므로 화면·master 는 그대로다.
+// Path used by main: acquire_master=true but another process is master → KmsMasterError (exit code 2), including the owner name.
+// The kernel rejects drmSetMaster while a master exists, so the screen and master stay unchanged.
 TEST(KmsScanout, MasterErrorNamesHolder) {
     std::string why;
     if (!kms_guard(&why)) GTEST_SKIP() << why;
@@ -1293,24 +1293,24 @@ TEST(KmsScanout, MasterErrorNamesHolder) {
     const auto t0 = std::chrono::steady_clock::now();
     try {
         KmsScanout k(o);
-        // 여기 오면 경쟁 조건(가드와 생성 사이에 master 가 비었다)이다. 첫 커밋 전이라 화면은 그대로고,
-        // 소멸자가 master 를 놓는다.
-        ADD_FAILURE() << "다른 프로세스가 master 인데 master 를 얻었다";
+        // Reaching here is a race (master became free between the guard and construction). It is before the first commit, so the screen is unchanged,
+        // and the destructor releases master.
+        ADD_FAILURE() << "acquired master even though another process is master";
     } catch (const yvo::display::KmsMasterError& ex) {
         const std::string m = ex.what();
         std::printf("[kms] %s\n", m.c_str());
         EXPECT_NE(m.find("master"), std::string::npos);
         const std::string holders = KmsScanout::find_master_holders(yvo::display::kDefaultDriDebugDir);
-        if (!holders.empty() && holders != "(없음)") {
+        if (!holders.empty() && holders != "(none)") {
             EXPECT_NE(m.find(holders), std::string::npos) << holders;
         }
     }
     const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
     EXPECT_LT(ms, 1000.0);
-    EXPECT_EQ(KmsScanout::probe_master(kCard), KmsScanout::MasterProbe::OtherMaster);   // master 는 그대로
+    EXPECT_EQ(KmsScanout::probe_master(kCard), KmsScanout::MasterProbe::OtherMaster);   // master unchanged
 }
 
-// 검증 레이어 카운터 (켜져 있을 때만 의미가 있다)
+// Validation layer counters (meaningful only when enabled)
 TEST(OverlayValidation, NoErrors) {
     std::printf("[validation] errors=%llu warnings=%llu layer=%s\n",
                 static_cast<unsigned long long>(ctx().validation_errors()),

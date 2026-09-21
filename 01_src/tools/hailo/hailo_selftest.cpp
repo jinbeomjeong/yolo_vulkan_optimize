@@ -1,10 +1,10 @@
-// yvo_hailo_selftest: CPU letterbox(NV12 BT.709) → HailoRunner(run_async) 검증 도구
+// yvo_hailo_selftest: CPU letterbox (NV12 BT.709) → HailoRunner (run_async) verification tool
 //
-// 1) ffmpeg CLI로 영상의 앞 N프레임을 NV12 raw로 읽는다.
-// 2) cpu_letterbox_nv12_bt709로 640x640 RGB를 만들고 러너로 추론한다.
-// 3) 검출 결과(클래스, 점수, 원본 좌표)를 출력하고, 첫 프레임에 박스를 그려 PNG로 저장한다.
-// 4) 처리량: 슬롯 버퍼를 돌려 쓰며 --bench-frames개를 run_async로 연속 제출해 FPS와 지연을 잰다.
-//    이어서 1프레임씩 순차 제출(큐 깊이 1)로 단일 프레임 지연을 잰다.
+// 1) Read the first N frames of the video as NV12 raw via the ffmpeg CLI.
+// 2) Build 640x640 RGB with cpu_letterbox_nv12_bt709 and run inference with the runner.
+// 3) Print detections (class, score, source coordinates) and draw boxes on the first frame, saving it as PNG.
+// 4) Throughput: cycle through slot buffers and submit --bench-frames frames back-to-back via run_async to measure FPS and latency.
+//    Then submit one frame at a time sequentially (queue depth 1) to measure single-frame latency.
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -38,21 +38,21 @@ namespace {
 using yvo::tool::Nv12Frame;
 using yvo::tool::read_nv12_frames;
 
-// COCO 라벨은 core/coco_labels.hpp 에 하나로 모았다(중복 정의 제거).
+// COCO labels are consolidated in core/coco_labels.hpp (duplicate definitions removed).
 using yvo::kCoco;
 
 struct Options {
     std::string video = YVO_DEFAULT_VIDEO;
     std::string hef = YVO_DEFAULT_HEF;
     std::string out_dir = YVO_REPO_ROOT "/build/out/yvo_hailo_selftest";
-    int frames = 8;          // 검출 확인용 프레임 수
-    int bench_frames = 300;  // 연속 제출 측정 프레임 수
+    int frames = 8;          // Number of frames for detection check
+    int bench_frames = 300;  // Number of frames for back-to-back submission measurement
     int warmup = 30;
-    int seq_frames = 50;     // 순차(큐 깊이 1) 지연 측정 프레임 수
+    int seq_frames = 50;     // Number of frames for sequential (queue depth 1) latency measurement
     int batch = 1;
-    int slots = 0;           // 0이면 max(kNumSlots, 2*batch)
+    int slots = 0;           // 0 = max(kNumSlots, 2*batch)
     float score = -1.0f;
-    yvo::TensorLayout layout = yvo::TensorLayout::Nhwc;  // 러너에 넘길 입력 텐서 레이아웃
+    yvo::TensorLayout layout = yvo::TensorLayout::Nhwc;  // Input tensor layout passed to the runner
 };
 
 std::shared_ptr<std::uint8_t> alloc_aligned(std::size_t size) {
@@ -62,7 +62,7 @@ std::shared_ptr<std::uint8_t> alloc_aligned(std::size_t size) {
     return std::shared_ptr<std::uint8_t>(p, [](std::uint8_t* q) { std::free(q); });
 }
 
-// 사용 가능한 슬롯 풀 (콜백 스레드가 반납)
+// Pool of available slots (returned by the callback thread)
 class SlotPool {
 public:
     explicit SlotPool(int n) {
@@ -142,7 +142,7 @@ int main(int argc, char** argv) {
         constexpr int kSrcW = 1920, kSrcH = 1080;
         const auto t_read0 = std::chrono::steady_clock::now();
         auto frames = read_nv12_frames(o.video, o.frames, kSrcW, kSrcH);
-        if (frames.empty()) throw std::runtime_error("프레임을 읽지 못함: " + o.video);
+        if (frames.empty()) throw std::runtime_error("failed to read frames: " + o.video);
         const double read_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_read0).count();
 
         yvo::HailoRunnerConfig cfg;
@@ -151,7 +151,7 @@ int main(int argc, char** argv) {
         cfg.num_slots = o.slots;
         cfg.score_threshold = o.score;
         cfg.input_layout = o.layout;
-        // 이 도구는 malloc(페이지 정렬) 호스트 버퍼를 쓰므로 NHCW에서도 host_ptr 제출을 시도한다.
+        // This tool uses malloc (page-aligned) host buffers, so it attempts host_ptr submission even with NHCW.
         cfg.allow_host_ptr_nhcw = true;
         cfg.src_width = kSrcW;
         cfg.src_height = kSrcH;
@@ -167,11 +167,11 @@ int main(int argc, char** argv) {
         const auto lb = yvo::make_letterbox(kSrcW, kSrcH, runner.input_width(), runner.input_height());
         std::printf("[info] letterbox scale=%.6f pad_x=%d pad_y=%d\n", lb.scale, lb.pad_x, lb.pad_y);
 
-        // 슬롯별 입력 버퍼 (페이지 정렬)
+        // Per-slot input buffers (page-aligned)
         std::vector<std::shared_ptr<std::uint8_t>> in_bufs;
         for (int s = 0; s < o.slots; ++s) in_bufs.push_back(alloc_aligned(runner.input_frame_size()));
 
-        // ---- 1) 검출 확인 ----
+        // ---- 1) Detection check ----
         std::vector<std::vector<std::uint8_t>> lb_frames(frames.size());
         double lb_ms_total = 0.0;
         for (std::size_t i = 0; i < frames.size(); ++i) {
@@ -182,9 +182,9 @@ int main(int argc, char** argv) {
             yvo::cpu_letterbox_nv12_bt709(y, kSrcW, uv, kSrcW, kSrcW, kSrcH, lb, lb_frames[i].data());
             lb_ms_total += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
         }
-        std::printf("[info] cpu letterbox: %.2f ms/frame (참고용, 스칼라 기준 구현)\n", lb_ms_total / frames.size());
+        std::printf("[info] cpu letterbox: %.2f ms/frame (reference only, scalar reference implementation)\n", lb_ms_total / frames.size());
 
-        // 러너에 넣을 텐서. NHCW면 packed RGB888을 전치한다(lb_frames는 PNG 덤프용으로 packed 유지).
+        // Tensor fed to the runner. With NHCW, transpose packed RGB888 (lb_frames stays packed for the PNG dump).
         std::vector<std::vector<std::uint8_t>> nhcw_frames;
         if (o.layout == yvo::TensorLayout::Nhcw) {
             double t_ms = 0.0;
@@ -196,7 +196,7 @@ int main(int argc, char** argv) {
                                         nhcw_frames[i].data());
                 t_ms += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
             }
-            std::printf("[info] nhcw 전치: %.2f ms/frame (CPU 기준 구현)\n", t_ms / lb_frames.size());
+            std::printf("[info] nhcw transpose: %.2f ms/frame (CPU reference implementation)\n", t_ms / lb_frames.size());
         }
         const auto& net_frames = (o.layout == yvo::TensorLayout::Nhcw) ? nhcw_frames : lb_frames;
 
@@ -244,7 +244,7 @@ int main(int argc, char** argv) {
             }
         }
 
-        // PNG 저장: 첫 프레임 원본 + 박스, letterbox 입력
+        // Save PNG: first source frame + boxes, letterbox input
         std::filesystem::create_directories(o.out_dir);
         {
             cv::Mat nv12(kSrcH * 3 / 2, kSrcW, CV_8UC1, frames[0].data.data());
@@ -269,8 +269,8 @@ int main(int argc, char** argv) {
             std::printf("[info] saved %s, %s\n", p1.c_str(), p2.c_str());
         }
 
-        // ---- 2) 연속 제출 처리량 ----
-        // 슬롯 버퍼에 서로 다른 letterbox 프레임을 미리 채워 두고 재사용한다(전처리 비용 제외, NPU 경로만 측정).
+        // ---- 2) Back-to-back submission throughput ----
+        // Pre-fill slot buffers with different letterbox frames and reuse them (excludes preprocessing cost, measures only the NPU path).
         for (int s = 0; s < o.slots; ++s)
             std::memcpy(in_bufs[s].get(), net_frames[s % net_frames.size()].data(), runner.input_frame_size());
 
@@ -306,7 +306,7 @@ int main(int argc, char** argv) {
                     layout_str(o.layout), o.batch, o.slots, o.bench_frames, o.bench_frames / bench_s, percentile(lat_meas, 0.5),
                     percentile(lat_meas, 0.9), percentile(lat_meas, 1.0), errors.load(), temp_after_stream);
 
-        // ---- 3) 순차 제출(큐 깊이 1) 단일 프레임 지연 ----
+        // ---- 3) Sequential submission (queue depth 1) single-frame latency ----
         if (o.seq_frames > 0) {
             std::vector<double> seq_lat;
             for (int i = 0; i < o.seq_frames + 5; ++i) {
@@ -322,7 +322,7 @@ int main(int argc, char** argv) {
                 runner.drain();
                 if (i >= 5) seq_lat.push_back(l);
             }
-            std::printf("[seq] batch=%d frames=%d latency(ms) median=%.2f p90=%.2f (batch>1이면 스케줄러 타임아웃 영향 가능)\n",
+            std::printf("[seq] batch=%d frames=%d latency(ms) median=%.2f p90=%.2f (batch>1 may be affected by scheduler timeout)\n",
                         o.batch, o.seq_frames, percentile(seq_lat, 0.5), percentile(seq_lat, 0.9));
         }
         std::printf("[info] chip temp end %.1f C\n", runner.chip_temperature());

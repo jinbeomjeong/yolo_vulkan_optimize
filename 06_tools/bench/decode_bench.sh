@@ -1,46 +1,46 @@
 #!/usr/bin/env bash
-# 영상 디코드 벤치마크: H.264 SW vs H.265 HW/SW, S1(디코드만) / S2(디코드 + 640x640 RGB letterbox)
+# Video decode benchmark: H.264 SW vs H.265 HW/SW, S1 (decode only) / S2 (decode + 640x640 RGB letterbox)
 #
-# 사용법:
-#   bash 06_tools/bench/decode_bench.sh                 # 전체 매트릭스, 조합당 3회
-#   RUNS=1 bash 06_tools/bench/decode_bench.sh          # 반복 횟수 변경
-#   ONLY='A_t0' bash 06_tools/bench/decode_bench.sh     # combo id에 대한 grep -E 패턴으로 일부만 실행
-#   COOL_C=65 COOL_MAX_S=120 bash ...             # 실행 전 냉각 대기 조건
-#   OUT_DIR=/path bash 06_tools/bench/decode_bench.sh   # 출력 디렉터리 변경(비어 있지 않으면 FORCE=1 필요)
-#   ONLY='^h265_E_' bash 06_tools/bench/decode_bench.sh # ffmpeg HW HEVC 디코드 → 파이프 → GStreamer 조합(E)만 실행
+# Usage:
+#   bash 06_tools/bench/decode_bench.sh                 # full matrix, 3 runs per combo
+#   RUNS=1 bash 06_tools/bench/decode_bench.sh          # change repetition count
+#   ONLY='A_t0' bash 06_tools/bench/decode_bench.sh     # run a subset via a grep -E pattern on combo id
+#   COOL_C=65 COOL_MAX_S=120 bash ...             # pre-run cool-down conditions
+#   OUT_DIR=/path bash 06_tools/bench/decode_bench.sh   # change output dir (FORCE=1 needed if not empty)
+#   ONLY='^h265_E_' bash 06_tools/bench/decode_bench.sh # run only the ffmpeg HW HEVC decode -> pipe -> GStreamer combos (E)
 #
-# 출력: $OUT_DIR/raw/<combo>_run<N>/run.log (gst-launch -v 로그 중 caps/에러/마지막 줄만 뽑은 발췌라 run.log),
-#       $OUT_DIR/results_raw.csv (실행별), $OUT_DIR/results.csv (조합별 중앙값·편차),
-#       $OUT_DIR/env_bench.txt (측정 전 스냅샷 + 끝에 "# after" 스냅샷을 덧붙인다)
-#   레이아웃 규약은 STRUCTURE.md §3. 2026-09-22 이전 결과는 raw/<combo>_run<N>.log 평면 파일,
-#   env_before.txt·env_after.txt 였다(보관본은 raw/<combo>_run<N>/run.log(R1), env/(2026-09-21 표준화)로 옮겨져 있다).
+# Output: $OUT_DIR/raw/<combo>_run<N>/run.log (named run.log since it is an excerpt of caps/error/last lines of the gst-launch -v log),
+#       $OUT_DIR/results_raw.csv (per run), $OUT_DIR/results.csv (per-combo median/spread),
+#       $OUT_DIR/env_bench.txt (pre-measurement snapshot + an "# after" snapshot appended at the end)
+#   Layout convention is STRUCTURE.md §3. Results before 2026-09-22 were flat raw/<combo>_run<N>.log files and
+#   env_before.txt/env_after.txt (archives were moved to raw/<combo>_run<N>/run.log (R1) and env/ (2026-09-21 standardization)).
 #
-# 측정 방식:
-# - /usr/bin/time 이 설치되어 있지 않아, 동일한 정보(wait4 rusage: user, sys, maxrss)를
-#   파이썬 래퍼가 os.wait4()로 직접 얻는다(= GNU time -v 와 같은 커널 값).
-# - 프레임 수: sink를 silent=false 로 두고 gst-launch -v 가 출력하는 last-message(chain) 줄을
-#   파이썬이 파이프로 읽어 센다. gst 프로세스 rusage에는 파이썬 쪽 CPU가 포함되지 않는다.
-# - 파이프 조합(E, pipeline 필드가 "FFPIPE "로 시작): `bash -c "set -o pipefail; ffmpeg ... | gst-launch-1.0 -v ..."`
-#   를 자식으로 실행하고 bash를 os.wait4()로 기다린다. bash가 파이프라인의 두 프로세스를 wait하므로
-#   커널이 그 rusage를 bash에 누적해, wait4가 돌려주는 user/sys = bash + ffmpeg + gst-launch 합계가 된다.
-#   max_rss_mb는 합계가 아니라 세 프로세스 중 최대값(커널 cmaxrss 규칙)이다. 실측으로 확인함.
-#   종료 코드는 pipefail로 두 프로세스 중 하나라도 실패하면 0이 아니다.
-#   ffmpeg는 -fps_mode passthrough를 준다. 없으면 rawvideo 출력의 CFR 처리로 프레임 1개가 복제된다(dup=1 → 1817).
+# Measurement method:
+# - /usr/bin/time is not installed, so the same information (wait4 rusage: user, sys, maxrss)
+#   is obtained directly by a Python wrapper via os.wait4() (= same kernel values as GNU time -v).
+# - Frame count: with the sink at silent=false, the last-message(chain) lines printed by gst-launch -v
+#   are read over a pipe and counted by Python. The gst process rusage excludes Python-side CPU.
+# - Pipe combos (E, pipeline field starts with "FFPIPE "): `bash -c "set -o pipefail; ffmpeg ... | gst-launch-1.0 -v ..."`
+#   is run as a child and bash is awaited with os.wait4(). Since bash waits on both pipeline processes,
+#   the kernel accumulates their rusage into bash, so user/sys from wait4 = bash + ffmpeg + gst-launch total.
+#   max_rss_mb is not a sum but the max of the three processes (kernel cmaxrss rule). Verified empirically.
+#   With pipefail, the exit code is non-zero if either process fails.
+#   ffmpeg gets -fps_mode passthrough. Without it, CFR handling of rawvideo output duplicates one frame (dup=1 -> 1817).
 set -euo pipefail
 
 PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-# 공통 함수(온도·PCIe·냉각·hailort 경고 판정·벤치 락)는 lib/common.sh 하나로 모았다.
-# 예전에는 이 함수들이 7개 스크립트에 복붙돼 있었고 실제로 갈라져 있었다(pcie_link 의 Gen5 분기 등).
+# Common functions (temperature, PCIe, cool-down, hailort warning verdict, bench lock) live in lib/common.sh.
+# They used to be copy-pasted into 7 scripts and had actually diverged (e.g. pcie_link's Gen5 branch).
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 VID="$PROJ/04_data/videos"
 OUT_DIR="${OUT_DIR:-$PROJ/07_results/decode_benchmark}"
 RUNS="${RUNS:-3}"
 ONLY="${ONLY:-.}"
 PY=/usr/bin/python3
-COOL_C="${COOL_C:-65}"        # 각 실행 전 대기 목표 온도(°C)
+COOL_C="${COOL_C:-65}"        # target temperature before each run (°C)
 COOL_MAX_S="${COOL_MAX_S:-120}"
 check_only_exit
-guard_out_dir   # OUT_DIR 이 비어 있지 않으면 FORCE=1 없이는 멈춘다(보관 결과 보호)
+guard_out_dir   # stop if OUT_DIR is not empty unless FORCE=1 (archived-result protection)
 bench_lock_acquire
 mkdir -p "$OUT_DIR/raw"
 
@@ -53,8 +53,8 @@ NURB=3000
 
 S2CAPS='video/x-raw,format=RGB,width=640,height=640,pixel-aspect-ratio=1/1'
 
-# combo_id|video|expected_frames|pipeline (sink 부분 포함)
-# SINK_FS: fakesink(계획서 기준), SINK_FVS: fakevideosink(VideoMeta 지원, HW 보조 측정)
+# combo_id|video|expected_frames|pipeline (including the sink part)
+# SINK_FS: fakesink (per the plan), SINK_FVS: fakevideosink (VideoMeta support, auxiliary HW measurement)
 SINK_FS='fakesink name=sink sync=false silent=false'
 SINK_FVS='fakevideosink name=sink sync=false silent=false'
 
@@ -77,7 +77,7 @@ for nt in 1 4; do
   add "h264_B_openh264_S2_nt${nt}" "$H264" $N264 "$src264 ! openh264dec ! videoconvertscale n-threads=$nt add-borders=true ! $S2CAPS ! $SINK_FS"
 done
 
-# --- H.265 1080p: C v4l2slh265dec (HW, 출력 NV12_128C8 SAND를 videoconvertscale가 직접 받음), D avdec_h265
+# --- H.265 1080p: C v4l2slh265dec (HW, output NV12_128C8 SAND taken directly by videoconvertscale), D avdec_h265
 add "h265_C_hw_S1"          "$H265" $N265 "$src265 ! v4l2slh265dec ! $SINK_FS"
 add "h265_C_hw_S1_fvsink"   "$H265" $N265 "$src265 ! v4l2slh265dec ! $SINK_FVS"
 for nt in 1 4; do
@@ -88,17 +88,17 @@ for nt in 1 4; do
   add "h265_D_t0_S2_nt${nt}" "$H265" $N265 "$src265 ! avdec_h265 max-threads=0 ! videoconvertscale n-threads=$nt add-borders=true ! $S2CAPS ! $SINK_FS"
 done
 
-# --- urban_street 720p, 앞 3000프레임(sink num-buffers)
+# --- urban_street 720p, first 3000 frames (sink num-buffers)
 add "urban_A_t0_S1" "$URBAN" $NURB "$srcurb ! avdec_h264 max-threads=0 ! $SINK_FS num-buffers=$NURB"
 for nt in 1 4; do
   add "urban_A_t0_S2_nt${nt}" "$URBAN" $NURB "$srcurb ! avdec_h264 max-threads=0 ! videoconvertscale n-threads=$nt add-borders=true ! $S2CAPS ! $SINK_FS num-buffers=$NURB"
 done
 
-# --- 참고: GStreamer 밖에서 HW HEVC 디코더 자체 처리량(ffmpeg -hwaccel drm, 프레임을 CPU로 내리지 않음)
+# --- Reference: raw HW HEVC decoder throughput outside GStreamer (ffmpeg -hwaccel drm, frames not downloaded to CPU)
 add "h265_Cref_ffmpeg_drm_S1" "$H265" $N265 "FFMPEG"
 
-# --- H.265 1080p: E ffmpeg HW 디코드(-hwaccel drm) → I420 rawvideo 파이프 → gst-launch(fdsrc)
-#     "FFPIPE " 뒤는 gst 쪽 파이프라인. CPU는 ffmpeg + gst-launch 합산(측정 방식 참조).
+# --- H.265 1080p: E ffmpeg HW decode (-hwaccel drm) -> I420 rawvideo pipe -> gst-launch (fdsrc)
+#     After "FFPIPE " is the gst-side pipeline. CPU is ffmpeg + gst-launch summed (see measurement method).
 ffsrc="FFPIPE fdsrc fd=0 blocksize=3110400 ! rawvideoparse width=1920 height=1080 format=i420 framerate=30/1"
 add "h265_E_ffpipe_S1"     "$H265" $N265 "$ffsrc ! $SINK_FS"
 add "h265_E_ffpipe_S2_nt4" "$H265" $N265 "$ffsrc ! videoconvertscale n-threads=4 add-borders=true ! $S2CAPS ! $SINK_FS"
@@ -120,7 +120,7 @@ env_snapshot() {
   }
 }
 
-# measure 스킬 §5: 새 측정은 env_bench.txt 하나에 스냅샷을 쓴다.
+# measure skill §5: new measurements write snapshots to a single env_bench.txt.
 env_snapshot > "$OUT_DIR/env_bench.txt"
 
 RAW_CSV="$OUT_DIR/results_raw.csv"
@@ -130,13 +130,13 @@ for c in "${combos[@]}"; do
   IFS='|' read -r id video expected pipe <<< "$c"
   echo "$id" | grep -qE "$ONLY" || continue
   for r in $(seq 1 "$RUNS"); do
-    # 발열 영향을 줄이기 위해 SoC 온도가 COOL_C 이하가 될 때까지 대기.
-    # 예전에는 여기에 자체 루프가 있었는데 온도를 못 읽으면 `|| echo 0` 으로 0 이 되어
-    # **식지 않았는데도 즉시 통과**했고, 대기 시간도 기록하지 않았다(measure 스킬 §2 위반).
+    # Wait until the SoC temperature is at or below COOL_C to reduce thermal effects.
+    # There used to be an inline loop here; if the temperature couldn't be read, `|| echo 0` made it 0, so it
+    # **passed immediately without cooling** and didn't record the wait time (violating measure skill §2).
     cool_down "$id run$r" soc
     run_dir="$OUT_DIR/raw/${id}_run${r}"
     mkdir -p "$run_dir"
-    log="$run_dir/run.log"   # 발췌 로그(전문이 아니다)라 stdout.log 가 아니라 run.log
+    log="$run_dir/run.log"   # excerpt log (not the full output), hence run.log rather than stdout.log
     "$PY" - "$id" "$r" "$expected" "$log" "$video" "$pipe" >> "$RAW_CSV" <<'PYEOF'
 import os, re, shlex, subprocess, sys, time
 cid, run, expected, log, video, pipe = sys.argv[1:7]
@@ -144,7 +144,7 @@ expected = int(expected)
 if pipe == "FFMPEG":
     cmd = ["ffmpeg", "-hide_banner", "-nostdin", "-hwaccel", "drm", "-i", video, "-f", "null", "-"]
 elif pipe.startswith("FFPIPE "):
-    # bash가 두 프로세스를 wait하므로 bash의 wait4 rusage에 ffmpeg + gst-launch CPU가 합산된다
+    # bash waits on both processes, so bash's wait4 rusage sums ffmpeg + gst-launch CPU
     gst = pipe[len("FFPIPE "):]
     cmd = ["bash", "-c",
            "set -o pipefail; ffmpeg -hide_banner -loglevel error -nostdin -hwaccel drm -i " + shlex.quote(video)
@@ -154,7 +154,7 @@ else:
 t0 = time.monotonic()
 p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1 << 16)
 frames = 0
-keep = []          # caps·에러·요약 줄만 로그에 남긴다
+keep = []          # keep only caps/error/summary lines in the log
 tail = []
 for raw in p.stdout:
     line = raw.decode("utf-8", "replace").rstrip("\n")
@@ -197,7 +197,7 @@ done
 
 { echo; echo "# after"; env_snapshot; } >> "$OUT_DIR/env_bench.txt"
 
-# 조합별 중앙값 요약
+# Per-combo median summary
 "$PY" - "$RAW_CSV" "$OUT_DIR/results.csv" <<'PYEOF'
 import csv, statistics, sys
 rows = list(csv.DictReader(open(sys.argv[1])))

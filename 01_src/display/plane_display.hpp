@@ -1,45 +1,45 @@
-// PlaneDisplay: HVS 두 평면 스캔아웃 표시 (DisplaySink 의 두 번째 구현).
+// PlaneDisplay: HVS two-plane scanout display (second implementation of DisplaySink).
 //
-//   영상 : 디코더 NV12 SAND128 dma-buf 를 **그대로** HVS 영상 평면에 올린다(V3D 변환 0).
-//   박스 : OverlayPlane 이 GPU(overlay_boxes_buf.spv)로 그린 AB24 LINEAR dma-buf 를 영상 위 평면에 올린다.
-//   HVS 가 스캔아웃 중에 YUV→RGB 변환과 블렌딩을 한다. 계획서 atomic-munching-kite §2.
+//   Video: puts the decoder NV12 SAND128 dma-buf **as-is** onto the HVS video plane (0 V3D conversion).
+//   Boxes: puts the AB24 LINEAR dma-buf drawn by OverlayPlane on the GPU (overlay_boxes_buf.spv) onto the plane above the video.
+//   The HVS does the YUV→RGB conversion and blending during scanout. Plan atomic-munching-kite §2.
 //
-// 전송(WaylandPlaneScanout = Wayland linux-dmabuf / KmsScanout = KMS atomic)은 `PlaneScanout` 인터페이스 뒤에 있다. 이 클래스는 전송과
-// 무관한 공통부 — 프레임 수명, 박스 링, 커밋 게이트(페이싱), 통계, debugfs 검증 — 를 맡는다.
+// Transport (WaylandPlaneScanout = Wayland linux-dmabuf / KmsScanout = KMS atomic) sits behind the `PlaneScanout` interface. This class handles the
+// transport-independent common part — frame lifetime, box ring, commit gate (pacing), statistics, debugfs verification.
 //
-// ── 프레임 수명 (display_done 을 언제 세우는가) ─────────────────────────────────────────────────
-//   retain(slot)  : 디코드 직후 keepalive 를 붙든다 (glass-to-glass 시작점)
-//   show(slot)    : retained → pending (아직 커밋하지 않음). 박스를 그린다(acquire → draw, 비차단).
-//   커밋          : pending → committed (전송층이 스캔아웃에 쥔다). 전송층 token 으로 구분한다.
-//   release       : 전송층이 그 버퍼를 놓았다(wl_buffer.release / 다음 flip) → keepalive 를 놓고 display_done(slot).
-//   DisplayPipeline 은 submit 펜스에서 display_done 을 세웠지만, 여기서는 **HVS 가 그 버퍼를 스캔아웃하는 동안**
-//   디코더가 같은 버퍼에 다음 프레임을 쓰면 안 되므로 release 까지 쥔다(1~2 vsync 더 길다).
-//   보유 상한: pending kMaxPending(2) + committed(미해제) kMaxCommitted(3: 화면 1 + 다음 flip 대기 1 + release 지연 1).
-//   pending 은 vblank 마다 하나씩 커밋되는 FIFO 다. 넘치면 **가장 오래된** pending 을 버린다(드롭).
+// ── Frame lifetime (when is display_done raised) ─────────────────────────────────────────────────
+//   retain(slot)  : holds the keepalive right after decode (glass-to-glass start point)
+//   show(slot)    : retained → pending (not committed yet). Draws the boxes (acquire → draw, non-blocking).
+//   commit        : pending → committed (the transport holds it for scanout). Identified by the transport token.
+//   release       : the transport released that buffer (wl_buffer.release / next flip) → release keepalive and display_done(slot).
+//   DisplayPipeline raised display_done on the submit fence, but here the decoder must not write the next frame into the same buffer
+//   **while the HVS is scanning that buffer out**, so it is held until release (1~2 vsync longer).
+//   Holding limit: pending kMaxPending(2) + committed (unreleased) kMaxCommitted(3: 1 on screen + 1 waiting for next flip + 1 release delay).
+//   pending is a FIFO committed one per vblank. On overflow the **oldest** pending is discarded (drop).
 //
-// ── 페이싱 (절대 영원히 막히지 않는다) ──────────────────────────────────────────────────────────
-//   pace(source/asap) 의미는 DisplayPipeline 과 같다(pace_deadline). pace=source 면 커밋 간격도 소스 간격 - 8 ms
-//   이상으로 벌린다(matched + batch 의 몰림을 고르게 편다). 그 위에 vblank 게이트가 하나 더 있다:
-//   커밋마다 frame 콜백(wl_surface.frame / page flip)을 요청하고, 그것이 오기 전에는 다음 커밋을 미룬다.
-//   **콜백이 kFrameCallbackTimeout 안에 안 오면 그냥 커밋한다**(frame_cb_timeouts 에 센다). 커밋은 비차단
-//   요청이라 컴포지터가 멈춰 있어도 이 프로세스는 멈추지 않는다. pump()/show() 는 어떤 경우에도 블로킹하지 않고,
-//   drain() 만 유한 시간(kDrainTimeoutMs) 기다린다.
-//   (기존 Vulkan 경로의 결함 — 컴포지터가 frame 콜백을 주지 않으면 FIFO vkQueuePresentKHR 가 Mesa WSI 안에서
-//    무기한 대기해 SIGTERM 도 안 먹는다 — 의 원인은 드라이버 안 무한 대기이고, 이 경로에는 그런 호출이 없다.)
+// ── Pacing (never blocks forever) ──────────────────────────────────────────────────────────
+//   The meaning of pace(source/asap) is the same as DisplayPipeline (pace_deadline). With pace=source the commit interval is also
+//   widened to at least source interval - 8 ms (evens out the bunching of matched + batch). On top of that there is one more vblank gate:
+//   each commit requests a frame callback (wl_surface.frame / page flip), and the next commit is deferred until it arrives.
+//   **If the callback does not arrive within kFrameCallbackTimeout, it just commits** (counted in frame_cb_timeouts). A commit is a non-blocking
+//   request, so this process does not stall even if the compositor is stalled. pump()/show() never block in any case,
+//   and only drain() waits for a bounded time (kDrainTimeoutMs).
+//   (The defect of the existing Vulkan path — when the compositor gives no frame callback, FIFO vkQueuePresentKHR waits indefinitely
+//    inside Mesa WSI and even SIGTERM does not work — is caused by an unbounded wait inside the driver; this path has no such call.)
 //
-// ── 박스 ────────────────────────────────────────────────────────────────────────────────────────
-//   show() 에서 OverlayPlane::acquire → draw(비차단 submit). 커밋은 ready() 가 true 가 된 뒤에만 한다
-//   (dma-buf 암묵적 펜스에 기대지 않는다). acquire 가 -1 이면(링 3개가 전부 GPU/컴포지터 보유) 박스 갱신을
-//   건너뛰고 직전 박스를 유지한다(overlay_skipped). 박스 wl_buffer.release → OverlayPlane::release.
+// ── Boxes ────────────────────────────────────────────────────────────────────────────────────────
+//   In show(), OverlayPlane::acquire → draw (non-blocking submit). It commits only after ready() becomes true
+//   (does not rely on dma-buf implicit fences). If acquire returns -1 (all 3 ring entries held by GPU/compositor), the box update is
+//   skipped and the previous boxes are kept (overlay_skipped). Box wl_buffer.release → OverlayPlane::release.
 //
-// ── 통계 ────────────────────────────────────────────────────────────────────────────────────────
-//   presented       : 전송층이 표시했다고 알린 프레임 수(Wayland: wp_presentation.presented, 없으면 커밋 수)
-//   display_dropped : every 로 건너뜀 + pending 넘침 + 전송층 거부 + 종료 때 못 낸 것
-//   overlay_ms      : OverlayPlane 의 last_overlay_ms + last_clear_ms (V3D timestamp)
-//   present_interval_ms / glass_ms : presented 시각(CLOCK_MONOTONIC) 기준. glass = retain() → presented.
-//   convert_ms      : 없다(변환이 HVS 에서 일어난다) — 빈 값.
+// ── Statistics ────────────────────────────────────────────────────────────────────────────────────────
+//   presented       : number of frames the transport reported as presented (Wayland: wp_presentation.presented, else commit count)
+//   display_dropped : skipped by every + pending overflow + rejected by transport + not shown at shutdown
+//   overlay_ms      : OverlayPlane's last_overlay_ms + last_clear_ms (V3D timestamp)
+//   present_interval_ms / glass_ms : based on presented time (CLOCK_MONOTONIC). glass = retain() → presented.
+//   convert_ms      : none (conversion happens in the HVS) — empty value.
 //
-// 스레드: 전부 메인 스레드.
+// Threads: all on the main thread.
 #pragma once
 
 #include <chrono>
@@ -56,7 +56,7 @@
 #include <vulkan/vulkan.h>
 
 #include "core/frame_types.hpp"
-#include "display/display_pipeline.hpp"   // DisplayPipelineConfig 와 enum 들
+#include "display/display_pipeline.hpp"   // DisplayPipelineConfig and the enums
 #include "display/display_sink.hpp"
 #include "display/drm_state.hpp"
 #include "display/overlay_plane.hpp"
@@ -67,47 +67,47 @@ class VulkanContext;
 
 namespace yvo::display {
 
-// 전송층 → PlaneDisplay 이벤트. 전부 PlaneScanout::dispatch() 안에서(메인 스레드) 온다.
+// Transport → PlaneDisplay events. All arrive inside PlaneScanout::dispatch() (main thread).
 class PlaneScanoutListener {
 public:
     virtual ~PlaneScanoutListener() = default;
-    virtual void on_video_released(std::uint64_t token) = 0;          // 그 커밋의 영상 버퍼를 놓았다
-    virtual void on_overlay_released(int overlay_idx) = 0;            // 박스 링 항목을 놓았다
-    virtual void on_frame_done() = 0;                                 // 다음 커밋을 해도 된다 (vblank)
-    // 표시됐다. t_ns = CLOCK_MONOTONIC 기준 ns (clock_monotonic=false 면 다른 시계라 glass 에 쓰지 않는다).
+    virtual void on_video_released(std::uint64_t token) = 0;          // released the video buffer of that commit
+    virtual void on_overlay_released(int overlay_idx) = 0;            // released a box ring entry
+    virtual void on_frame_done() = 0;                                 // the next commit may be made (vblank)
+    // Presented. t_ns = ns on CLOCK_MONOTONIC (if clock_monotonic=false it is a different clock and not used for glass).
     virtual void on_presented(std::uint64_t token, std::int64_t t_ns, bool clock_monotonic, bool zero_copy) = 0;
-    virtual void on_discarded(std::uint64_t token) = 0;               // 화면에 나가지 않고 대체됐다
+    virtual void on_discarded(std::uint64_t token) = 0;               // replaced without reaching the screen
 };
 
-// 평면 스캔아웃 전송층 (구현: WaylandPlaneScanout, KmsScanout)
+// Plane scanout transport (implementations: WaylandPlaneScanout, KmsScanout)
 class PlaneScanout {
 public:
     virtual ~PlaneScanout() = default;
-    virtual const char* name() const = 0;                 // backend_name() 값
+    virtual const char* name() const = 0;                 // backend_name() value
     virtual void set_listener(PlaneScanoutListener* l) = 0;
-    virtual VkExtent2D output_extent() const = 0;         // 박스 평면 크기(= 화면 크기)
-    // OverlayPlane 을 만든 뒤 한 번: 링 항목을 전송층 버퍼(wl_buffer / FB)로 등록한다.
+    virtual VkExtent2D output_extent() const = 0;         // box plane size (= screen size)
+    // Once after creating the OverlayPlane: registers the ring entries as transport buffers (wl_buffer / FB).
     virtual void register_overlay(const OverlayPlane& ov) = 0;
-    // 한 프레임 커밋. overlay_idx = -1 이면 박스 평면은 그대로 둔다.
-    // false = 전송층이 이 프레임을 받지 않았다(버퍼 생성 실패·busy 재사용) — 호출자가 드롭으로 처리한다.
+    // Commits one frame. If overlay_idx = -1 the box plane is left as-is.
+    // false = the transport did not accept this frame (buffer creation failure, busy reuse) — the caller treats it as a drop.
     virtual bool commit(const DrmFrame& video, std::uint64_t token, int overlay_idx) = 0;
-    // 이벤트 처리. timeout_ms 까지만 기다린다(0 = 비차단). false = 연결이 끊겼거나 프로토콜 오류.
+    // Event handling. Waits at most timeout_ms (0 = non-blocking). false = connection lost or protocol error.
     virtual bool dispatch(int timeout_ms) = 0;
-    virtual bool quit_requested() const = 0;              // 종료 키
-    virtual bool should_close() const = 0;                // 창 닫힘·연결 끊김
-    // 종료: 화면에서 내리고 남은 release 를 timeout_ms 까지 기다린다. 반환 후 오는 release 는 없다.
+    virtual bool quit_requested() const = 0;              // quit key
+    virtual bool should_close() const = 0;                // window closed / connection lost
+    // Shutdown: takes it off the screen and waits up to timeout_ms for remaining releases. No release arrives after return.
     virtual void shutdown(int timeout_ms) = 0;
-    // 영상 버퍼 캐시를 비운다(디코더를 닫기 전에). shutdown 뒤에 부른다.
+    // Empties the video buffer cache (before closing the decoder). Call after shutdown.
     virtual void clear_video_cache() = 0;
-    virtual std::string describe() const = 0;             // 시작 줄 (평면·색 요청)
+    virtual std::string describe() const = 0;             // startup line (planes, color request)
     virtual std::uint64_t busy_reuse() const { return 0; }
-    // 표시 시각 피드백(on_presented)을 주는가. false 면 PlaneDisplay 가 커밋 수를 presented 로 센다.
+    // Whether it gives presentation time feedback (on_presented). If false, PlaneDisplay counts commits as presented.
     virtual bool reports_presentation() const = 0;
-    // 박스를 커밋했을 때 debugfs 에서 영상 위 AB24 평면을 기대하는가.
+    // Whether an AB24 plane above the video is expected in debugfs when boxes were committed.
     virtual bool expects_debugfs_overlay() const { return true; }
-    // 요약에 덧붙일 전송층 고유 줄 (예: kms 의 flip_timeouts·master_lost·종료 복원 결과). 기본 없음.
+    // Transport-specific lines to append to the summary (e.g. kms flip_timeouts, master_lost, shutdown restore result). None by default.
     virtual std::vector<std::string> report_lines() const { return {}; }
-    // 복구 불가 오류 (should_close 가 true 가 된 이유). "" = 없음. 호출자는 실행을 실패로 처리한다.
+    // Unrecoverable error (the reason should_close became true). "" = none. The caller treats the run as failed.
     virtual std::string fatal_error() const { return {}; }
 };
 
@@ -115,17 +115,17 @@ class PlaneDisplay final : public DisplaySink, private PlaneScanoutListener {
 public:
     using Clock = DisplaySink::Clock;
 
-    static constexpr int kMaxCommitted = 3;          // 커밋했지만 아직 release 되지 않은 프레임 상한
-    // matched + batch 2 에서는 검출이 두 장씩 한꺼번에 나온다(flush_results 가 연달아 show). pending 이 1 이면
-    // 두 번째가 첫 번째를 밀어내 source 페이싱에서도 ~9% 가 드롭됐다(실측 300 프레임 중 26). 2 면 다음 두 vblank 에
-    // 차례로 나간다.
+    static constexpr int kMaxCommitted = 3;          // upper bound of frames committed but not yet released
+    // With matched + batch 2, detections come out two at a time (flush_results calls show back-to-back). With pending 1
+    // the second pushed out the first and ~9% were dropped even with source pacing (measured 26 of 300 frames). With 2 they go out
+    // in turn on the next two vblanks.
     static constexpr int kMaxPending = 2;
-    // latest 모드에서 슬롯 밖으로 더 쥘 수 있는 프레임 수(main.cpp 의 디코더 보유 계산이 쓴다)
+    // Number of frames that may additionally be held outside the slots in latest mode (used by main.cpp's decoder holding calculation)
     static constexpr int kExtraHeldBeyondSlots = kMaxCommitted + kMaxPending;
     static constexpr int kOverlayRing = 3;
     static constexpr auto kFrameCallbackTimeout = std::chrono::milliseconds(50);   // ≈ 3 vblank @60 Hz
     static constexpr int kDrainTimeoutMs = 500;
-    static constexpr std::uint64_t kSnapshotAfterPresented = 60;   // 시작 후 debugfs 를 읽을 시점
+    static constexpr std::uint64_t kSnapshotAfterPresented = 60;   // when to read debugfs after start
 
     PlaneDisplay(yvo::vk::VulkanContext& ctx, std::unique_ptr<PlaneScanout> scanout, const DisplayPipelineConfig& cfg);
     ~PlaneDisplay() override;
@@ -159,10 +159,10 @@ private:
         Clock::time_point t{};
         bool valid = false;
     };
-    struct Item {                 // pending 또는 committed 프레임
+    struct Item {                 // a pending or committed frame
         DrmFrame frame;
-        int pipe = -1;            // -1 = 호출자가 스스로 display_done 을 세운다(latest)
-        int overlay = -1;         // 이 프레임과 함께 올릴 박스 링 항목 (-1 = 직전 박스 유지)
+        int pipe = -1;            // -1 = the caller raises display_done itself (latest)
+        int overlay = -1;         // box ring entry to put up with this frame (-1 = keep previous boxes)
         bool overlay_stat = false;
         Clock::time_point t_retain{};
         std::uint64_t token = 0;
@@ -176,9 +176,9 @@ private:
     void on_discarded(std::uint64_t token) override;
 
     void try_commit(bool force);
-    void drop_item(Item& it);          // pending 을 버린다: 박스 반납 + keepalive 해제 + display_done
-    void finish_item(Item& it);        // release 됐다: keepalive 해제 + display_done
-    bool overlay_ready(Item& it);      // 박스 GPU 완료(비차단) + 통계 1회
+    void drop_item(Item& it);          // discards a pending: return boxes + release keepalive + display_done
+    void finish_item(Item& it);        // released: release keepalive + display_done
+    bool overlay_ready(Item& it);      // box GPU completion (non-blocking) + stats once
     void snapshot(const char* tag, DrmStateSnapshot* out);
 
     yvo::vk::VulkanContext& ctx_;
@@ -188,14 +188,14 @@ private:
     std::function<void(int)> done_cb_;
 
     std::vector<Retained> retained_;
-    // 아직 커밋하지 않은 프레임 (표시 순서, 최대 kMaxPending). 넘치면 가장 오래된 것을 버린다.
+    // Frames not yet committed (display order, at most kMaxPending). On overflow the oldest is discarded.
     std::deque<Item> pending_;
-    std::unordered_map<std::uint64_t, Item> committed_;   // token → 커밋된 프레임 (release 대기)
-    std::unordered_map<std::uint64_t, Clock::time_point> await_present_;   // token → t_retain (피드백 대기)
+    std::unordered_map<std::uint64_t, Item> committed_;   // token → committed frame (waiting for release)
+    std::unordered_map<std::uint64_t, Clock::time_point> await_present_;   // token → t_retain (waiting for feedback)
     std::uint64_t next_token_ = 1;
 
     bool frame_cb_pending_ = false;
-    Clock::duration min_commit_interval_{0};   // pace=source: 소스 간격 - 8 ms (반 vblank). 0 = 게이트 없음
+    Clock::duration min_commit_interval_{0};   // pace=source: source interval - 8 ms (half a vblank). 0 = no gate
     Clock::time_point last_commit_{};
     bool overlay_ever_committed_ = false;
 

@@ -1,32 +1,32 @@
-// yvo_postproc_probe: GPU pass 1(`02_shaders/yolo_decode.comp`) 검증 프로브. 계획서 §6.2 P3.
+// yvo_postproc_probe: verification probe for GPU pass 1 (`02_shaders/yolo_decode.comp`). Plan §6.2 P3.
 //
-// ── 모드 ──────────────────────────────────────────────────────────────────────────────────────
-//  --probe fixture (기본, **NPU 불필요**)
-//      P1 이 덤프한 `04_data/raw_tensors/*.bin` 을 GPU 버퍼에 memcpy 하고 pass 1 을 돌려
-//      `cpu_yolov8_candidates()` 와 비교한다. **셰이더 버그를 여기서 다 잡는다(빠른 루프).**
-//      P3-① (G5: 후보 개수 동일 / 점수 비트 일치 / 좌표 < 0.25 px)
-//      P3-⑥ (pass 1 GPU timestamp 중앙값, **연속 스트림** N 프레임 — 기본 300)
-//      G6  (같은 픽스처 10회 반복에서 후보 집합이 `(score, anchor_key)` 전순서로 완전 동일)
-//      바이트 합(kChecksum 파이프라인) 대조도 여기서 함께 한다.
-//  --probe sweep (NPU 불필요)
-//      local_size_x × local_size_y 스윕. 계획서의 "측정해서 고른다" 규율.
-//  --probe live (**NPU 독점**)
-//      `DmaBufExporter` 로 6 텐서 × 슬롯을 할당·export → HailoRT 가 D2H 로 매핑 → 원시 출력을
-//      직접 받아 pass 1 에 먹인다. P3-② (셰이더 계산 바이트 합 == CPU 계산 합).
-//  --probe heapimport (**NPU 불필요**, 부록 B 1단계 = P0 관문)
-//      /dev/dma_heap 에서 6텐서를 잡아 `DmaBufImportCache::get()` 으로 Vulkan 에 import 하고,
-//      memoryTypeBits / req.size / dedicated 플래그 / range 를 기록한 뒤 CPU↔GPU 바이트 합 왕복을 본다.
-//      **V3DV 가 dma-heap fd 를 import 하는가**가 부록 B 전체의 관문이다(B.14 S1).
-//  --probe stale (**NPU 독점**)
-//      **같은 슬롯 버퍼**(num_slots=1)에 프레임 A, B 를 연속으로 받아 각각 pass 1 을 돌린다.
-//      `--stale-barrier {on,off,both}` 로 FOREIGN_EXT→컴퓨트 acquire 배리어를 켜고/끄고 둘 다 실행한다.
-//      P3-③ (배리어 있을 때 A/B 각각 정확) + P3-④ (배리어 없을 때 틀리는지 기록)
+// ── Modes ─────────────────────────────────────────────────────────────────────────────────────
+//  --probe fixture (default, **no NPU needed**)
+//      memcpy the `04_data/raw_tensors/*.bin` dumped by P1 into GPU buffers, run pass 1, and
+//      compare against `cpu_yolov8_candidates()`. **All shader bugs are caught here (fast loop).**
+//      P3-① (G5: identical candidate count / bit-exact scores / coordinates < 0.25 px)
+//      P3-⑥ (median pass 1 GPU timestamp, **continuous stream** of N frames — default 300)
+//      G6  (over 10 repeats of the same fixture, the candidate set is fully identical under the total order `(score, anchor_key)`)
+//      The byte-sum (kChecksum pipeline) cross-check is also done here.
+//  --probe sweep (no NPU needed)
+//      local_size_x × local_size_y sweep. The plan's "measure and pick" discipline.
+//  --probe live (**exclusive NPU**)
+//      Allocate/export 6 tensors × slots with `DmaBufExporter` → HailoRT maps them D2H → receive the raw output
+//      directly and feed it to pass 1. P3-② (byte sum computed by shader == sum computed by CPU).
+//  --probe heapimport (**no NPU needed**, Appendix B step 1 = P0 gate)
+//      Take 6 tensors from /dev/dma_heap, import them into Vulkan via `DmaBufImportCache::get()`,
+//      record memoryTypeBits / req.size / dedicated flags / range, then check a CPU↔GPU byte-sum round trip.
+//      **Whether V3DV imports a dma-heap fd** is the gate for all of Appendix B (B.14 S1).
+//  --probe stale (**exclusive NPU**)
+//      Receive frames A and B back to back into **the same slot buffer** (num_slots=1) and run pass 1 on each.
+//      `--stale-barrier {on,off,both}` turns the FOREIGN_EXT→compute acquire barrier on / off / runs both.
+//      P3-③ (A/B each correct with the barrier) + P3-④ (record whether it goes wrong without the barrier)
 //
-// ── 크기 계약 (부록 A.13) ─────────────────────────────────────────────────────────────────────
-//   `dma_map_dmabuf(fd, size, D2H)` → **dmabuf_size** (버퍼 전체를 덮는 쪽이 안전하다)
-//   `read_async(fd, size, cb)` / `hailo_dma_buffer_t.size` → **hw_frame_size 뿐이다**
-//   ⚠ `infer_async` 에 틀린 크기를 넘기면 `HAILO_SUCCESS` 를 돌려주고 **콜백을 하나도 호출하지 않는다.**
-//     그래서 프레임 완료 대기에 **반드시 시한**을 두고 초과를 치명적 오류로 올린다.
+// ── Size contract (Appendix A.13) ─────────────────────────────────────────────────────────────
+//   `dma_map_dmabuf(fd, size, D2H)` → **dmabuf_size** (covering the whole buffer is the safe side)
+//   `read_async(fd, size, cb)` / `hailo_dma_buffer_t.size` → **hw_frame_size only**
+//   ⚠ If `infer_async` is given a wrong size it returns `HAILO_SUCCESS` and **never invokes a single callback.**
+//     So waiting for frame completion **must have a deadline**, and exceeding it is raised as a fatal error.
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -100,9 +100,9 @@ using yvo::vk::yolo_cls_tensor;
 
 constexpr int kSrcW = 1920;
 constexpr int kSrcH = 1080;
-constexpr float kHefScoreThreshold = 0.2f;   // HEF 의 YOLOV8 post-process 설정
+constexpr float kHefScoreThreshold = 0.2f;   // YOLOV8 post-process setting of the HEF
 
-// ─────────────────────────────────────────────────────────────────── 출력 (stdout + 파일)
+// ─────────────────────────────────────────────────────────────────── output (stdout + file)
 
 class Tee {
 public:
@@ -123,21 +123,21 @@ private:
     std::ofstream f_;
 };
 
-// 셸 한 줄 실행 결과 캡처. 정의는 heapimport 절에 있다(gpuab 가 온도·스로틀 기록에 먼저 쓴다).
+// Capture the output of a one-line shell command. Defined in the heapimport section (gpuab uses it first to record temperature/throttling).
 std::string run_capture(const char* cmd);
 
-// 빈 표본은 NaN("값 없음")으로 찍는다 — 0 과 구분하려고. 보간 자체는 toolkit/stats.hpp 하나뿐이다.
+// Empty samples are printed as NaN ("no value") — to distinguish them from 0. The interpolation itself lives only in toolkit/stats.hpp.
 double percentile(std::vector<double> v, double q) {
     return v.empty() ? std::nan("") : yvo::percentile(std::move(v), q);
 }
 
-// ─────────────────────────────────────────────────────────── 최소 JSON 리더 (fixtures.json 전용)
+// ─────────────────────────────────────────────────────────── minimal JSON reader (fixtures.json only)
 //
-// nlohmann_json 은 이 시스템에서 conda prefix 에만 있어 tool 하나를 위해 conda include 경로를
-// 끌어오게 된다(다른 시스템 헤더를 가릴 위험). 스키마가 고정돼 있으므로 필요한 만큼만 직접 읽는다.
-// 픽스처 읽기·비교는 testkit/postproc_fixture.hpp 하나뿐이다(테스트와 공유).
+// On this system nlohmann_json exists only in the conda prefix, so a single tool would pull in the conda include path
+// (risk of shadowing other system headers). The schema is fixed, so we read only what we need by hand.
+// Fixture reading and comparison live only in testkit/postproc_fixture.hpp (shared with the tests).
 
-// 셰이더가 도는 **유효 영역**(h < grid_h, c < features, w < grid_w)의 바이트 합. kChecksum 과 같은 범위다.
+// Byte sum of the **valid region** the shader runs over (h < grid_h, c < features, w < grid_w). Same range as kChecksum.
 std::uint32_t cpu_valid_sum(const std::uint8_t* p, int grid_h, int features, int grid_w, int w_padded) {
     std::uint32_t sum = 0;
     for (int h = 0; h < grid_h; ++h)
@@ -148,13 +148,13 @@ std::uint32_t cpu_valid_sum(const std::uint8_t* p, int grid_h, int features, int
     return sum;
 }
 
-// ─────────────────────────────────────────────────────────────────── 옵션
+// ─────────────────────────────────────────────────────────────────── options
 
 struct Options {
     std::string probe = "fixture";
     std::string fixture_dir = YVO_FIXTURE_DIR;
     std::string out_dir = YVO_REPO_ROOT "/build/out/yvo_postproc_probe";
-    std::string out_file;                 // 비면 probe 이름으로 정한다
+    std::string out_file;                 // if empty, derived from the probe name
     std::string hef = YVO_DEFAULT_HEF;
     std::string video = YVO_DEFAULT_VIDEO;
     int perf_frames = 300;                // P3-⑥ (>= 200)
@@ -162,22 +162,22 @@ struct Options {
     int repeats = 10;                     // G6
     int live_frames = 20;
     int slots = 5;
-    std::uint32_t lx = 10, ly = 6;   // YoloPostprocConfig 의 실측 기본값과 같게 둔다
+    std::uint32_t lx = 10, ly = 6;   // kept equal to the measured defaults of YoloPostprocConfig
     int max_dets = 4096;
     std::string stale_barrier = "both";
-    std::string heap;                     // heapimport: dma-heap 경로. 비면 vidbuf_cached → system 폴백
-    bool no_headroom = false;             // heapimport: B.12 헤드룸을 끈다(강제 검증이 실제로 터지는지 보는 음성 대조)
-    // 부록 B 4·5단계: 원시 출력 버퍼의 할당 경로.
-    //   plain = 오늘의 기본 경로 (fixture/gpuab → Plain, live/stale/v3 → ExportDmaBuf)
-    //   heap  = ImportHeap (dma-heap 할당 + Vulkan import)
+    std::string heap;                     // heapimport: dma-heap path. If empty, vidbuf_cached → system fallback
+    bool no_headroom = false;             // heapimport: disables the B.12 headroom (negative control to see that the enforced check really fires)
+    // Appendix B steps 4·5: allocation path of the raw output buffers.
+    //   plain = today's default path (fixture/gpuab → Plain, live/stale/v3 → ExportDmaBuf)
+    //   heap  = ImportHeap (dma-heap allocation + Vulkan import)
     std::string alloc = "plain";
-    std::string heap_sync = "on";         // on | off | both — ImportHeap 의 DMA_BUF_IOCTL_SYNC (B.10 R2/R3)
-    int rounds = 3;                       // gpuab: plain↔heap 인터리브 라운드 수
-    int v3_window = 4096;                 // v3: line-dirty/stale-read 가 쓰는 텐서당 창 크기(B)
-    bool out_dir_set = false;             // --out-dir 을 명시했는가 (probe 별 기본 경로 결정)
+    std::string heap_sync = "on";         // on | off | both — DMA_BUF_IOCTL_SYNC of ImportHeap (B.10 R2/R3)
+    int rounds = 3;                       // gpuab: number of plain↔heap interleaved rounds
+    int v3_window = 4096;                 // v3: per-tensor window size (B) used by line-dirty/stale-read
+    bool out_dir_set = false;             // whether --out-dir was given explicitly (decides the per-probe default path)
     std::string api = "read_async";       // live: read_async | infer_async
     std::uint16_t batch = 1;
-    int timeout_ms = 10000;               // 프레임 완료 시한 (부록 A.13 의 영구 정지 방지)
+    int timeout_ms = 10000;               // frame completion deadline (prevents the permanent hang of Appendix A.13)
     bool validation = false;
     bool sync_validation = false;
     bool verbose = false;
@@ -185,29 +185,29 @@ struct Options {
 
 void usage() {
     std::puts(
-        "yvo_postproc_probe --probe {fixture|sweep|live|stale|heapimport|gpuab|v3} [옵션]\n"
-        "  --fixture-dir DIR      픽스처 디렉터리 (기본 <저장소>/04_data/raw_tensors = YVO_FIXTURE_DIR)\n"
-        "  --out-dir DIR          증거 파일 디렉터리 (기본 <저장소>/build/out/yvo_postproc_probe)\n"
-        "  --out-file NAME        증거 파일 이름 (기본 p3_<probe>.txt)\n"
-        "  --perf-frames N        연속 스트림 측정 프레임 수 (기본 300, P3-⑥ 는 >= 200)\n"
-        "  --warmup N             측정 전 워밍업 (기본 30)\n"
-        "  --repeats N            G6 결정성 반복 (기본 10)\n"
-        "  --slots N              YoloPostproc 슬롯 수 (기본 5)\n"
-        "  --local N,M            local_size_x,local_size_y (기본 10,6)\n"
-        "  --max-dets N           후보 상한 (기본 4096)\n"
-        "  --live-frames N        live 모드 프레임 수 (기본 20)\n"
-        "  --api NAME             live: read_async | infer_async (기본 read_async)\n"
-        "  --batch N              live: HEF batch_size (기본 1)\n"
-        "  --timeout-ms N         프레임 완료 시한 (기본 10000)\n"
-        "  --stale-barrier X      on | off | both (기본 both)\n"
-        "  --alloc X              plain | heap  원시 출력 할당 경로 (기본 plain, 부록 B 4단계)\n"
-        "  --heap-sync X          on | off | both  ImportHeap 의 DMA_BUF_IOCTL_SYNC (기본 on)\n"
-        "  --rounds N             gpuab: plain↔heap 인터리브 라운드 (기본 3)\n"
-        "  --v3-window N          v3: line-dirty/stale-read 의 텐서당 창 크기 B (기본 4096)\n"
-        "  --heap PATH            heapimport: dma-heap 노드 (기본 vidbuf_cached → system 폴백)\n"
-        "  --no-headroom          heapimport: B.12 헤드룸을 0 으로 (음성 대조 — conv71_178 이 예외로 터져야 정상)\n"
-        "  --validation           검증 레이어를 컨텍스트에서 명시 활성화\n"
-        "  --sync-validation      synchronization validation (--validation 과 함께)\n"
+        "yvo_postproc_probe --probe {fixture|sweep|live|stale|heapimport|gpuab|v3} [options]\n"
+        "  --fixture-dir DIR      fixture directory (default <repo>/04_data/raw_tensors = YVO_FIXTURE_DIR)\n"
+        "  --out-dir DIR          evidence file directory (default <repo>/build/out/yvo_postproc_probe)\n"
+        "  --out-file NAME        evidence file name (default p3_<probe>.txt)\n"
+        "  --perf-frames N        frames for continuous-stream measurement (default 300, P3-⑥ needs >= 200)\n"
+        "  --warmup N             warm-up before measurement (default 30)\n"
+        "  --repeats N            G6 determinism repeats (default 10)\n"
+        "  --slots N              YoloPostproc slot count (default 5)\n"
+        "  --local N,M            local_size_x,local_size_y (default 10,6)\n"
+        "  --max-dets N           candidate cap (default 4096)\n"
+        "  --live-frames N        frame count in live mode (default 20)\n"
+        "  --api NAME             live: read_async | infer_async (default read_async)\n"
+        "  --batch N              live: HEF batch_size (default 1)\n"
+        "  --timeout-ms N         frame completion deadline (default 10000)\n"
+        "  --stale-barrier X      on | off | both (default both)\n"
+        "  --alloc X              plain | heap  raw output allocation path (default plain, Appendix B step 4)\n"
+        "  --heap-sync X          on | off | both  DMA_BUF_IOCTL_SYNC of ImportHeap (default on)\n"
+        "  --rounds N             gpuab: plain↔heap interleaved rounds (default 3)\n"
+        "  --v3-window N          v3: per-tensor window size B for line-dirty/stale-read (default 4096)\n"
+        "  --heap PATH            heapimport: dma-heap node (default vidbuf_cached → system fallback)\n"
+        "  --no-headroom          heapimport: set the B.12 headroom to 0 (negative control — conv71_178 is expected to throw)\n"
+        "  --validation           explicitly enable the validation layer in the context\n"
+        "  --sync-validation      synchronization validation (together with --validation)\n"
         "  --verbose\n");
 }
 
@@ -227,8 +227,8 @@ FixtureRig load_rig(const Options& o) {
     return r;
 }
 
-// ── 부록 B.10 규약 헬퍼 ───────────────────────────────────────────────────────────────────────
-// R2(CPU 읽기) 구간을 RAII 로 연다. ImportHeap + heap_sync 가 아니면 아무것도 하지 않는다.
+// ── Appendix B.10 protocol helpers ────────────────────────────────────────────────────────────
+// Opens an R2 (CPU read) section via RAII. Does nothing unless ImportHeap + heap_sync.
 class RawRead {
 public:
     RawRead(YoloPostproc& pp, int slot) : pp_(pp), slot_(slot) {
@@ -248,8 +248,8 @@ private:
     int slot_;
 };
 
-// **설정과 무관하게** 강제로 sync 를 건다. V3(0xA5 하네스)가 기준 스냅샷을 뜰 때 쓴다 —
-// `--heap-sync off` 셀에서도 기준만은 정확해야 하기 때문이다.
+// Forces a sync **regardless of settings**. Used when V3 (the 0xA5 harness) takes the reference snapshot —
+// because the reference must be correct even in the `--heap-sync off` cell.
 void forced_sync(YoloPostproc& pp, int slot, yvo::DmaSyncDir dir, bool start) {
     for (int t = 0; t < kYoloNumTensors; ++t) {
         const int fd = pp.raw_dmabuf_fd(slot, t);
@@ -260,9 +260,9 @@ void forced_sync(YoloPostproc& pp, int slot, yvo::DmaSyncDir dir, bool start) {
     }
 }
 
-// 프레임 데이터를 슬롯 버퍼에 채운다(슬롯당 프레임 하나를 상주시켜 연속 스트림 측정을 깨끗하게 만든다).
-// **부록 B.10 R3**: 캐시 매핑을 더럽히는 CPU 쓰기는 START|WRITE … END|WRITE 로 감싼다.
-// 감싸지 않으면 더러운 캐시 라인이 나중에 evict 되어 **장치가 쓴 데이터를 덮어쓴다**(B.6(c) 결함 유형).
+// Fill the slot buffers with frame data (keeping one frame resident per slot makes the continuous-stream measurement clean).
+// **Appendix B.10 R3**: CPU writes that dirty the cached mapping are wrapped in START|WRITE … END|WRITE.
+// Without it, dirty cache lines are evicted later and **overwrite the data written by the device** (B.6(c) defect type).
 void fill_slot(YoloPostproc& pp, int slot, const FrameTensors& f) {
     pp.raw_cpu_sync_begin(slot, yvo::DmaSyncDir::Write);
     for (int t = 0; t < kYoloNumTensors; ++t)
@@ -271,18 +271,18 @@ void fill_slot(YoloPostproc& pp, int slot, const FrameTensors& f) {
     pp.raw_cpu_sync_end(slot, yvo::DmaSyncDir::Write);
 }
 
-// --alloc 문자열 → YoloInputAlloc. plain 의 의미는 프로브마다 다르다(fixture=Plain, live=ExportDmaBuf).
+// --alloc string → YoloInputAlloc. The meaning of plain differs per probe (fixture=Plain, live=ExportDmaBuf).
 YoloInputAlloc alloc_of(const std::string& a, YoloInputAlloc plain_means) {
     if (a == "heap") return YoloInputAlloc::ImportHeap;
     if (a == "plain") return plain_means;
-    throw std::runtime_error("--alloc 은 plain | heap 이다: " + a);
+    throw std::runtime_error("--alloc must be plain | heap: " + a);
 }
 
 std::vector<bool> heap_sync_cells(const std::string& v) {
     if (v == "on") return {true};
     if (v == "off") return {false};
     if (v == "both") return {true, false};
-    throw std::runtime_error("--heap-sync 는 on | off | both 이다: " + v);
+    throw std::runtime_error("--heap-sync must be on | off | both: " + v);
 }
 
 int run_fixture(const Options& o, Tee& log) {
@@ -321,7 +321,7 @@ int run_fixture(const Options& o, Tee& log) {
     const int nslots = pp.num_slots();
     for (int s = 0; s < nslots; ++s) fill_slot(pp, s, rig.frames[static_cast<std::size_t>(s)]);
 
-    // ── P3-① : G5 (프레임별 CPU 기준 비교) ───────────────────────────────────────────────────
+    // ── P3-① : G5 (per-frame comparison against the CPU reference) ───────────────────────────
     log("");
     log("== P3-(1) G5: GPU pass 1 vs cpu_yolov8_candidates() ==");
     log("frame  cpu  gpu  matched  onlyCPU  onlyGPU  score_bit_mismatch  max_coord_err_px  overflow");
@@ -337,7 +337,7 @@ int run_fixture(const Options& o, Tee& log) {
         for (int t = 0; t < kYoloNumTensors; ++t) ptr[t] = pp.raw_host_ptr(s, t);
         std::vector<DetectionKeyed> cpu;
         {
-            const RawRead rr(pp, s);   // R2: CPU 가 캐시 매핑을 읽는 구간
+            const RawRead rr(pp, s);   // R2: section where the CPU reads the cached mapping
             cpu = yvo::cpu_yolov8_candidates(make_raw_set(rig.layout, ptr), kHefScoreThreshold, rig.fs.lb,
                                              rig.fs.src_w, rig.fs.src_h);
         }
@@ -350,29 +350,29 @@ int run_fixture(const Options& o, Tee& log) {
         total_gpu += c.gpu;
         canon_ref[static_cast<std::size_t>(s)] = canonical(gpu);
     }
-    log(fmt("[G5] %s  후보 합계 cpu=%zu gpu=%zu  좌표 최대오차 %.6f px (기준 < %.2f)",
+    log(fmt("[G5] %s  total candidates cpu=%zu gpu=%zu  max coordinate error %.6f px (limit < %.2f)",
             g5_ok ? "PASS" : "FAIL", total_cpu, total_gpu, static_cast<double>(worst_coord),
             static_cast<double>(kCoordTolPx)));
 
-    // ── G6 : 결정성 ──────────────────────────────────────────────────────────────────────────
+    // ── G6 : determinism ─────────────────────────────────────────────────────────────────────
     log("");
-    log(fmt("== G6: 같은 픽스처 %d회 반복, (score, anchor_key) 전순서 정렬 후 완전 동일 ==", o.repeats));
+    log(fmt("== G6: same fixture repeated %d times, fully identical after sorting by total order (score, anchor_key) ==", o.repeats));
     bool g6_ok = true;
     for (int rep = 1; rep < o.repeats; ++rep) {
         for (int s = 0; s < nslots; ++s) {
             pp.submit(s, rig.fs.lb, rig.fs.src_w, rig.fs.src_h);
             pp.wait(s);
             if (canonical(pp.read_candidates(s)) != canon_ref[static_cast<std::size_t>(s)]) {
-                log(fmt("[G6] FAIL: rep=%d slot=%d 결과가 1회차와 다르다", rep, s));
+                log(fmt("[G6] FAIL: rep=%d slot=%d result differs from the first run", rep, s));
                 g6_ok = false;
             }
         }
     }
-    log(fmt("[G6] %s (%d회 x %d프레임)", g6_ok ? "PASS" : "FAIL", o.repeats, nslots));
+    log(fmt("[G6] %s (%d runs x %d frames)", g6_ok ? "PASS" : "FAIL", o.repeats, nslots));
 
-    // ── 바이트 합 (kChecksum 파이프라인) ────────────────────────────────────────────────────
+    // ── byte sum (kChecksum pipeline) ───────────────────────────────────────────────────────
     log("");
-    log("== 바이트 합: 셰이더(kChecksum) vs CPU (유효 영역만, P5 열 20~23 제외) ==");
+    log("== byte sum: shader (kChecksum) vs CPU (valid region only, excluding P5 columns 20~23) ==");
     log("slot tensor      shader_sum         cpu_sum  match");
     bool sum_ok = true;
     const auto order = tensor_order(rig.fs);
@@ -394,10 +394,10 @@ int run_fixture(const Options& o, Tee& log) {
     }
     log(fmt("[checksum] %s", sum_ok ? "PASS" : "FAIL"));
 
-    // ── 하이브리드(§4.4 A) 호스트 쪽 비용: 후보 읽기 + greedy NMS ──────────────────────────
+    // ── hybrid (§4.4 A) host-side cost: candidate read + greedy NMS ──────────────────────────
     log("");
-    log("== 하이브리드(계획서 §4.4 A): GPU 후보 → 호스트 read + cpu_nms_greedy_by_class ==");
-    log("frame  cand  read_us  nms_us  final_dets  cpu_ref_dets  일치");
+    log("== hybrid (plan §4.4 A): GPU candidates → host read + cpu_nms_greedy_by_class ==");
+    log("frame  cand  read_us  nms_us  final_dets  cpu_ref_dets  match");
     bool hyb_ok = true;
     for (int s = 0; s < nslots; ++s) {
         pp.submit(s, rig.fs.lb, rig.fs.src_w, rig.fs.src_h);
@@ -406,7 +406,7 @@ int run_fixture(const Options& o, Tee& log) {
         auto cand = pp.read_candidates(s);
         const auto t1 = std::chrono::steady_clock::now();
         const std::size_t n_before = cand.size();
-        yvo::cpu_nms_greedy_by_class(cand, 0.7f, 100);   // HEF 설정: IoU 0.7, 클래스당 100
+        yvo::cpu_nms_greedy_by_class(cand, 0.7f, 100);   // HEF settings: IoU 0.7, 100 per class
         const auto t2 = std::chrono::steady_clock::now();
         const std::uint8_t* ptr[kYoloNumTensors];
         for (int t = 0; t < kYoloNumTensors; ++t) ptr[t] = pp.raw_host_ptr(s, t);
@@ -423,12 +423,12 @@ int run_fixture(const Options& o, Tee& log) {
                 std::chrono::duration<double, std::micro>(t2 - t1).count(), cand.size(), ref.size(),
                 eq ? "ok" : "MISMATCH"));
     }
-    log(fmt("[hybrid] 최종 검출 수 %s (계획서 §4.4 의 '5~20 µs' 주장을 위 read_us+nms_us 로 대조한다)",
+    log(fmt("[hybrid] final detection count %s (checks the plan §4.4 claim of '5~20 µs' against read_us+nms_us above)",
             hyb_ok ? "PASS" : "FAIL"));
 
-    // ── P3-⑥ : 연속 스트림 pass 1 GPU 시간 ──────────────────────────────────────────────────
+    // ── P3-⑥ : continuous-stream pass 1 GPU time ────────────────────────────────────────────
     log("");
-    log(fmt("== P3-(6) pass 1 GPU timestamp, 연속 스트림 %d프레임 (워밍업 %d) ==", o.perf_frames, o.warmup));
+    log(fmt("== P3-(6) pass 1 GPU timestamp, continuous stream of %d frames (warm-up %d) ==", o.perf_frames, o.warmup));
     std::vector<double> pass1, total;
     for (int i = 0; i < o.warmup + o.perf_frames; ++i) {
         const int s = i % nslots;
@@ -443,9 +443,9 @@ int run_fixture(const Options& o, Tee& log) {
             percentile(pass1, 0.9), *std::min_element(pass1.begin(), pass1.end()),
             *std::max_element(pass1.begin(), pass1.end()), pass1.size()));
     log(fmt("cmdbuf_ms median %.4f  p90 %.4f", percentile(total, 0.5), percentile(total, 0.9)));
-    log(fmt("[§4.7 추정 0.4~0.9 ms] 실측 중앙값 %.4f ms → %s", percentile(pass1, 0.5),
-            (percentile(pass1, 0.5) >= 0.4 && percentile(pass1, 0.5) <= 0.9) ? "추정 범위 안"
-                                                                            : "추정 범위 밖(보고에 명시)"));
+    log(fmt("[§4.7 estimate 0.4~0.9 ms] measured median %.4f ms → %s", percentile(pass1, 0.5),
+            (percentile(pass1, 0.5) >= 0.4 && percentile(pass1, 0.5) <= 0.9) ? "within estimated range"
+                                                                            : "outside estimated range (state it in the report)"));
 
     log("");
     log(fmt("[validation] errors=%llu warnings=%llu",
@@ -462,11 +462,11 @@ int run_sweep(const Options& o, Tee& log) {
     co.verbose = o.verbose;
     yvo::vk::VulkanContext ctx(co);
     const std::uint32_t maxinv = ctx.properties().limits.maxComputeWorkGroupInvocations;
-    log(fmt("[sweep] maxComputeWorkGroupInvocations=%u, 프레임 %d, 반복 %d (인터리브 3회)", maxinv,
+    log(fmt("[sweep] maxComputeWorkGroupInvocations=%u, frames %d, repeats %d (3 interleaved rounds)", maxinv,
             o.perf_frames, 3));
     log("local_x local_y  inv   pass1_median_ms  p90     cand/frame");
 
-    // x 는 워드 열이라 20(P3)/10(P4)/5(P5) 가 상한이다. y 와 함께 invocation 수를 256 이하로 유지한다.
+    // x is the word column, so 20(P3)/10(P4)/5(P5) is the upper bound. Together with y, keep the invocation count at 256 or less.
     const std::vector<std::pair<std::uint32_t, std::uint32_t>> combos{
         {5, 4},   {5, 8},   {5, 12},  {5, 48},  {8, 4},   {8, 8},   {10, 2},  {10, 4},
         {10, 6},  {10, 8},  {10, 12}, {10, 16}, {10, 24}, {12, 5},  {16, 2},  {16, 4},
@@ -483,7 +483,7 @@ int run_sweep(const Options& o, Tee& log) {
             c.second <= ctx.properties().limits.maxComputeWorkGroupSize[1])
             rows.push_back(Row{c.first, c.second, {}, 0});
 
-    for (int round = 0; round < 3; ++round) {   // 인터리브: DVFS 드리프트를 배제한다
+    for (int round = 0; round < 3; ++round) {   // interleaving: rules out DVFS drift
         for (Row& r : rows) {
             YoloPostprocConfig pc;
             pc.num_slots = std::max(1, std::min(o.slots, rig.fs.frames));
@@ -514,18 +514,18 @@ int run_sweep(const Options& o, Tee& log) {
 }
 
 
-// ───────────────────────────────────────── gpuab (부록 B 4단계: GPU 읽기 A/B, **NPU 불필요**)
+// ───────────────────────────────────────── gpuab (Appendix B step 4: GPU read A/B, **no NPU needed**)
 //
-// 같은 실행 안에서 `plain`(Vulkan 메모리)과 `heap`(dma-heap + Vulkan import) 을 **인터리브**로 돌려
-// pass 1 GPU 시간을 비교한다. 판정은 **절대 ms 가 아니라 같은 실행 안의 비율**이다 —
-// DVFS·온도 드리프트에 둔감하다(부록 B.13 합격 밴드).
-//   heap ≤ plain ×1.05  → A: 손해 없음 (GPU 가 읽는 버퍼도 heap 후보)
-//   ×1.05 ~ ×1.30       → B: 부분 손해 (heap 은 "CPU 가 크게 읽는 버퍼" 전용)
-//   > ×1.30             → C: 손해 (S3. GPU 접근 버퍼에 쓰지 않는다)
-// **정확성(G5)을 같은 실행에서 동시에 판정한다.** 여기서 틀리면 성능 숫자는 볼 필요도 없다(S2).
+// Within the same run, `plain` (Vulkan memory) and `heap` (dma-heap + Vulkan import) are run **interleaved**
+// to compare pass 1 GPU time. The verdict is **not absolute ms but the ratio within the same run** —
+// insensitive to DVFS/temperature drift (Appendix B.13 acceptance bands).
+//   heap ≤ plain ×1.05  → A: no penalty (buffers read by the GPU are also heap candidates)
+//   ×1.05 ~ ×1.30       → B: partial penalty (heap only for "buffers the CPU reads heavily")
+//   > ×1.30             → C: penalty (S3. not used for GPU-accessed buffers)
+// **Correctness (G5) is judged in the same run at the same time.** If it fails here, the performance numbers are not worth looking at (S2).
 //
-// `cpu_read_1.22MB` 도 같이 잰다(plain/heap/malloc 3자, 같은 실행·인터리브) — B.18 에서
-// heap 이 0.396 → 0.292 ms 로 개선된 원인이 미확인이라 조건을 통일해 다시 확정한다.
+// `cpu_read_1.22MB` is measured as well (plain/heap/malloc three-way, same run, interleaved) — in B.18
+// the cause of heap improving 0.396 → 0.292 ms is unconfirmed, so the conditions are unified to settle it again.
 
 struct AbMode {
     const char* name = "";
@@ -533,18 +533,18 @@ struct AbMode {
     std::unique_ptr<YoloPostproc> pp;
     std::vector<double> pass1;
     std::vector<double> cmdbuf;
-    std::vector<double> round_median;   // 라운드별 중앙값 (비율 계산용)
+    std::vector<double> round_median;   // per-round median (for the ratio computation)
     std::vector<double> cpu_read_ms;
     bool g5_ok = false;
     std::size_t g5_cpu = 0, g5_gpu = 0;
     float g5_coord = 0.0f;
     std::size_t g5_score_bits = 0;
     bool sum_ok = false;
-    std::string canon;                  // 후보 집합 정준형 (plain↔heap 교차 대조용)
+    std::string canon;                  // canonical form of the candidate set (for plain↔heap cross-check)
 };
 
-// 한 모드의 G5 + 바이트 합 검증. 같은 픽스처 프레임을 쓰므로 plain 과 heap 의 결과는
-// **비트 단위로 같아야 한다** — 메모리 타입은 가시성·순서 문제이지 값 문제가 아니다(B.7).
+// G5 + byte-sum verification for one mode. The same fixture frames are used, so the plain and heap results
+// **must be bit-identical** — memory type is a visibility/ordering issue, not a value issue (B.7).
 void ab_correctness(AbMode& m, FixtureRig& rig, const std::vector<const FixtureStream*>& order, Tee& log) {
     YoloPostproc& pp = *m.pp;
     const int nslots = pp.num_slots();
@@ -575,7 +575,7 @@ void ab_correctness(AbMode& m, FixtureRig& rig, const std::vector<const FixtureS
                 m.name, s, c.cpu, c.gpu, c.matched, c.only_cpu, c.only_gpu, c.score_bit_mismatch,
                 static_cast<double>(c.max_coord_err), pp.overflow(s)));
 
-        // 바이트 합(kChecksum): 셰이더가 실제로 읽은 바이트 == CPU 가 매핑으로 보는 바이트
+        // byte sum (kChecksum): bytes the shader actually read == bytes the CPU sees through the mapping
         pp.submit(s, rig.fs.lb, rig.fs.src_w, rig.fs.src_h, /*checksum=*/true);
         pp.wait(s);
         std::uint32_t shader[kYoloNumTensors];
@@ -587,7 +587,7 @@ void ab_correctness(AbMode& m, FixtureRig& rig, const std::vector<const FixtureS
                 cpu_valid_sum(pp.raw_host_ptr(s, t), mm.grid_h, mm.features, mm.grid_w, mm.w_padded);
             if (cs != shader[t]) {
                 m.sum_ok = false;
-                log(fmt("  [%s] slot %d tensor %d 바이트 합 불일치: shader %u != cpu %u", m.name, s, t,
+                log(fmt("  [%s] slot %d tensor %d byte sum mismatch: shader %u != cpu %u", m.name, s, t,
                         shader[t], cs));
             }
         }
@@ -595,8 +595,8 @@ void ab_correctness(AbMode& m, FixtureRig& rig, const std::vector<const FixtureS
     m.canon = canon_all;
 }
 
-// 6 텐서 전체를 CPU 가 순차 memcpy 로 읽는 시간(ms). sync 비용을 **포함**한다
-// (hailo_raw_probe 의 read_all_ms 와 같은 방법 — P2-⑥ 와 비교 가능하게 맞췄다).
+// Time (ms) for the CPU to read all 6 tensors with sequential memcpy. **Includes** the sync cost
+// (same method as read_all_ms of hailo_raw_probe — aligned so it is comparable with P2-⑥).
 double cpu_read_all_ms(YoloPostproc& pp, int slot, std::uint8_t* dst) {
     const auto t0 = std::chrono::steady_clock::now();
     pp.raw_cpu_sync_begin(slot, yvo::DmaSyncDir::Read);
@@ -613,7 +613,7 @@ double cpu_read_all_ms(YoloPostproc& pp, int slot, std::uint8_t* dst) {
 int run_gpuab(const Options& o, Tee& log) {
     FixtureRig rig = load_rig(o);
     const auto order = tensor_order(rig.fs);
-    log(fmt("[gpuab] dir=%s frames=%d  인터리브 %d라운드 x (워밍업 %d + 측정 %d)", o.fixture_dir.c_str(),
+    log(fmt("[gpuab] dir=%s frames=%d  interleaved %d rounds x (warm-up %d + measure %d)", o.fixture_dir.c_str(),
             rig.fs.frames, o.rounds, o.warmup, o.perf_frames));
     log(fmt("[env] SoC %s  throttled %s", run_capture("vcgencmd measure_temp").c_str(),
             run_capture("vcgencmd get_throttled").c_str()));
@@ -626,7 +626,7 @@ int run_gpuab(const Options& o, Tee& log) {
     log(fmt("[vk] device=%s timestamps=%d period=%.3f ns", ctx.device_name(),
             ctx.timestamps_supported() ? 1 : 0, static_cast<double>(ctx.timestamp_period())));
 
-    // fd 누수 기준선: VulkanContext 가 연 fd 는 세지 않는다(컨텍스트는 이 블록보다 오래 산다).
+    // fd leak baseline: fds opened by VulkanContext are not counted (the context outlives this block).
     const long fd_base = count_open_fds();
 
     std::array<AbMode, 2> modes{};
@@ -653,28 +653,28 @@ int run_gpuab(const Options& o, Tee& log) {
                 static_cast<std::size_t>(m.pp->raw_size(0))));
     }
 
-    // ── ① 정확성 (G5 + 바이트 합) — 성능보다 먼저 판정한다 ─────────────────────────────────
+    // ── ① correctness (G5 + byte sum) — judged before performance ─────────────────────────────
     log("");
-    log("== ① G5 정확성 (같은 실행, 같은 픽스처) ==");
+    log("== ① G5 correctness (same run, same fixture) ==");
     for (AbMode& m : modes) ab_correctness(m, rig, order, log);
     const bool cross_same = modes[0].canon == modes[1].canon;
     for (const AbMode& m : modes)
-        log(fmt("[G5 %s] %s  후보 cpu=%zu gpu=%zu  좌표 최대오차 %.6f px (기준 < %.2f)  점수 비트 불일치 %zu  "
-                "바이트합 %s",
+        log(fmt("[G5 %s] %s  candidates cpu=%zu gpu=%zu  max coordinate error %.6f px (limit < %.2f)  score bit mismatches %zu  "
+                "byte sum %s",
                 m.name, m.g5_ok ? "PASS" : "FAIL", m.g5_cpu, m.g5_gpu, static_cast<double>(m.g5_coord),
-                static_cast<double>(kCoordTolPx), m.g5_score_bits, m.sum_ok ? "일치" : "불일치"));
-    log(fmt("[교차] plain 과 heap 의 후보 집합이 바이트 단위로 동일한가: %s",
-            cross_same ? "예 (메모리 타입은 값 문제가 아니다 — B.7)" : "**아니오 — 하드 스톱(S2)**"));
+                static_cast<double>(kCoordTolPx), m.g5_score_bits, m.sum_ok ? "match" : "mismatch"));
+    log(fmt("[cross] are the plain and heap candidate sets byte-identical: %s",
+            cross_same ? "yes (memory type is not a value issue — B.7)" : "**no — hard stop (S2)**"));
     const bool acc_ok = modes[0].g5_ok && modes[1].g5_ok && modes[0].sum_ok && modes[1].sum_ok && cross_same;
     if (!acc_ok) {
-        log("[S2] 정확성 실패 — 성능 수치를 보지 않는다. 5단계 sync 규약으로 고친 뒤 재측정한다.");
+        log("[S2] correctness failure — performance numbers are not examined. Fix with the step-5 sync protocol and re-measure.");
         log("[RESULT] gpuab FAIL");
         return 1;
     }
 
-    // ── ② 성능: plain ↔ heap 인터리브 ────────────────────────────────────────────────────────
+    // ── ② performance: plain ↔ heap interleaved ──────────────────────────────────────────────
     log("");
-    log(fmt("== ② pass 1 GPU timestamp — plain ↔ heap 인터리브 %d라운드 (연속 스트림) ==", o.rounds));
+    log(fmt("== ② pass 1 GPU timestamp — plain ↔ heap interleaved %d rounds (continuous stream) ==", o.rounds));
     log("round  plain_median_ms  heap_median_ms  heap/plain");
     for (int round = 0; round < o.rounds; ++round) {
         for (AbMode& m : modes) {
@@ -703,27 +703,27 @@ int run_gpuab(const Options& o, Tee& log) {
                 *std::max_element(m.pass1.begin(), m.pass1.end()), m.pass1.size(),
                 percentile(m.cmdbuf, 0.5)));
 
-    // 라운드별 비율의 중앙값을 쓴다(라운드 안에서는 온도 조건이 거의 같다)
+    // Use the median of per-round ratios (temperature conditions are nearly the same within a round)
     std::vector<double> ratios;
     for (int r = 0; r < o.rounds; ++r) ratios.push_back(modes[1].round_median[r] / modes[0].round_median[r]);
     const double ratio = percentile(ratios, 0.5);
     const double ratio_all = percentile(modes[1].pass1, 0.5) / percentile(modes[0].pass1, 0.5);
-    const char* band = ratio <= 1.05 ? "A: 손해 없음 — GPU 가 읽는 버퍼도 heap 후보"
-                                     : (ratio <= 1.30 ? "B: 부분 손해 — heap 은 'CPU 가 크게 읽는 버퍼' 전용"
-                                                      : "C: 손해(S3) — GPU 접근 버퍼에 쓰지 않는다");
-    log(fmt("[비율] 라운드별 heap/plain 중앙값 = %.4f (전체 중앙값 기준 %.4f)", ratio, ratio_all));
-    log(fmt("[밴드 판정] %s", band));
+    const char* band = ratio <= 1.05 ? "A: no penalty — buffers read by the GPU are also heap candidates"
+                                     : (ratio <= 1.30 ? "B: partial penalty — heap only for 'buffers the CPU reads heavily'"
+                                                      : "C: penalty (S3) — not used for GPU-accessed buffers");
+    log(fmt("[ratio] per-round heap/plain median = %.4f (%.4f based on overall medians)", ratio, ratio_all));
+    log(fmt("[band verdict] %s", band));
 
-    // ── ③ cpu_read_1.22MB: plain / heap / malloc 3자, 같은 실행 인터리브 ────────────────────
+    // ── ③ cpu_read_1.22MB: plain / heap / malloc three-way, same-run interleaved ────────────
     log("");
-    log(fmt("== ③ cpu_read_1.22MB — plain / heap / malloc 3자 인터리브 %d라운드 x %d회 ==", o.rounds,
+    log(fmt("== ③ cpu_read_1.22MB — plain / heap / malloc three-way interleaved %d rounds x %d times ==", o.rounds,
             o.repeats));
     std::size_t total_bytes = 0;
     for (int t = 0; t < kYoloNumTensors; ++t) total_bytes += modes[0].pp->raw_size(t);
     std::vector<std::uint8_t> dst(total_bytes), mal_src(total_bytes);
     for (std::size_t i = 0; i < mal_src.size(); ++i) mal_src[i] = static_cast<std::uint8_t>(i * 131u);
     std::vector<double> malloc_ms;
-    for (int i = 0; i < 3; ++i) {   // 워밍업
+    for (int i = 0; i < 3; ++i) {   // warm-up
         for (AbMode& m : modes) cpu_read_all_ms(*m.pp, 0, dst.data());
         std::memcpy(dst.data(), mal_src.data(), total_bytes);
     }
@@ -735,36 +735,36 @@ int run_gpuab(const Options& o, Tee& log) {
             malloc_ms.push_back(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0)
                                     .count());
         }
-    log(fmt("총 읽기 바이트 = %zu B (6 텐서 hw_frame_size 합)", total_bytes));
-    log("alloc    median_ms   p90_ms    min_ms    GB/s(median)  비고");
+    log(fmt("total bytes read = %zu B (sum of hw_frame_size of 6 tensors)", total_bytes));
+    log("alloc    median_ms   p90_ms    min_ms    GB/s(median)  note");
     auto rowline = [&](const char* nm, const std::vector<double>& v, const char* note) {
         const double med = percentile(v, 0.5);
         log(fmt("%-7s  %9.3f  %8.3f  %8.3f  %12.3f  %s", nm, med, percentile(v, 0.9),
                 *std::min_element(v.begin(), v.end()),
                 static_cast<double>(total_bytes) / (med * 1e-3) / 1e9, note));
     };
-    rowline("malloc", malloc_ms, "호스트 malloc (기준)");
-    rowline("heap", modes[1].cpu_read_ms, "dma-heap 캐시 매핑, DMA_BUF_IOCTL_SYNC 포함");
-    rowline("plain", modes[0].cpu_read_ms, "V3D HOST_COHERENT (캐시 없음)");
-    log(fmt("[cpu_read] heap/plain = %.3f배 (P2 실측 0.396/0.826 = 0.48배와 대조)",
+    rowline("malloc", malloc_ms, "host malloc (reference)");
+    rowline("heap", modes[1].cpu_read_ms, "dma-heap cached mapping, including DMA_BUF_IOCTL_SYNC");
+    rowline("plain", modes[0].cpu_read_ms, "V3D HOST_COHERENT (uncached)");
+    log(fmt("[cpu_read] heap/plain = %.3fx (compare with P2 measured 0.396/0.826 = 0.48x)",
             percentile(modes[1].cpu_read_ms, 0.5) / percentile(modes[0].cpu_read_ms, 0.5)));
-    log("⚠ malloc 행은 **낙관적 기준**이다: src·dst 가 둘 다 malloc 이고 같은 버퍼를 반복해서 읽으므로");
-    log("  L2/SLC 에 남는다. P2 의 malloc 0.244 ms 는 HailoRT 가 출력을 받은 버퍼를 읽은 것이라 조건이 다르다.");
-    log("  **판정에 쓰는 것은 heap 과 plain 의 비교다** — 이 둘은 같은 실행·같은 방법·같은 크기다.");
-    log("  heap 행의 sync 비용(START|READ + END|READ x 6텐서)은 시간에 포함돼 있다(부록 B.10 R6).");
+    log("⚠ the malloc row is an **optimistic reference**: src and dst are both malloc and the same buffer is read repeatedly, so it");
+    log("  stays in L2/SLC. P2's malloc 0.244 ms read the buffer HailoRT received the output into, so the conditions differ.");
+    log("  **What the verdict uses is the heap vs plain comparison** — these two share the same run, method and size.");
+    log("  The sync cost of the heap row (START|READ + END|READ x 6 tensors) is included in the time (Appendix B.10 R6).");
 
     log("");
     log(fmt("[validation] errors=%llu warnings=%llu",
             static_cast<unsigned long long>(ctx.validation_errors()),
             static_cast<unsigned long long>(ctx.validation_warnings())));
-    // 파괴 순서를 명시한다(import 캐시 → 힙 풀은 YoloPostproc::destroy() 가 처리한다)
+    // Make the destruction order explicit (import cache → heap pool is handled by YoloPostproc::destroy())
     for (AbMode& m : modes) m.pp.reset();
     const long fd_after = count_open_fds();
-    log(fmt("[fd] 기준선 %ld → 해제 후 %ld → 누수 %ld  (heap 슬롯 %d x 텐서 %d dma-buf + import dup fd)",
+    log(fmt("[fd] baseline %ld → after release %ld → leak %ld  (heap slots %d x tensors %d dma-buf + import dup fd)",
             fd_base, fd_after, fd_after - fd_base, std::max(1, std::min(o.slots, rig.fs.frames)),
             kYoloNumTensors));
     const bool pass = acc_ok && ctx.validation_errors() == 0 && fd_after == fd_base;
-    log(fmt("[RESULT] gpuab %s  (밴드 %c)", pass ? "PASS" : "FAIL",
+    log(fmt("[RESULT] gpuab %s  (band %c)", pass ? "PASS" : "FAIL",
             ratio <= 1.05 ? 'A' : (ratio <= 1.30 ? 'B' : 'C')));
     return pass ? 0 : 1;
 }
@@ -776,12 +776,12 @@ int run_gpuab(const Options& o, Tee& log) {
 std::string status_name(hailo_status s) { return std::to_string(static_cast<int>(s)); }
 
 void hcheck(hailo_status s, const char* where) {
-    if (s != HAILO_SUCCESS) throw std::runtime_error(std::string(where) + " 실패: status " + status_name(s));
+    if (s != HAILO_SUCCESS) throw std::runtime_error(std::string(where) + " failed: status " + status_name(s));
 }
 
 template <typename T>
 T unwrap(hailort::Expected<T>&& e, const char* where) {
-    if (!e) throw std::runtime_error(std::string(where) + " 실패: status " + status_name(e.status()));
+    if (!e) throw std::runtime_error(std::string(where) + " failed: status " + status_name(e.status()));
     return e.release();
 }
 
@@ -790,7 +790,7 @@ std::vector<std::vector<std::uint8_t>> make_nhcw_inputs(const std::string& video
     const std::string cmd = "ffmpeg -nostdin -v error -i '" + video + "' -frames:v " + std::to_string(n) +
                             " -f rawvideo -pix_fmt nv12 -";
     FILE* p = popen(cmd.c_str(), "r");
-    if (!p) throw std::runtime_error("popen(ffmpeg) 실패");
+    if (!p) throw std::runtime_error("popen(ffmpeg) failed");
     const std::size_t fsz = static_cast<std::size_t>(kSrcW) * kSrcH * 3 / 2;
     std::vector<std::uint8_t> nv12(fsz), packed(static_cast<std::size_t>(lb.dst_w) * lb.dst_h * 3);
     std::vector<std::vector<std::uint8_t>> out;
@@ -803,12 +803,12 @@ std::vector<std::vector<std::uint8_t>> make_nhcw_inputs(const std::string& video
         out.push_back(std::move(nhcw));
     }
     pclose(p);
-    if (out.empty()) throw std::runtime_error("영상에서 프레임을 못 읽었다: " + video);
+    if (out.empty()) throw std::runtime_error("could not read frames from the video: " + video);
     return out;
 }
 
-// YoloPostproc 의 dma-buf 로 원시 출력을 받는 최소 세션.
-// hailo_raw_probe.cpp 의 RawSession 과 같은 규율을 따른다(프레임 완료에 **시한**을 둔다 — 부록 A.13).
+// Minimal session that receives raw output into YoloPostproc's dma-bufs.
+// Follows the same discipline as RawSession in hailo_raw_probe.cpp (frame completion has a **deadline** — Appendix A.13).
 class LiveSession {
 public:
     LiveSession(const std::string& hef_path, YoloPostproc& pp, const std::vector<std::string>& tensor_stream_name,
@@ -825,31 +825,31 @@ public:
             for (auto& sp : kv.second.stream_params_by_name) sp.second.flags = HAILO_STREAM_FLAGS_ASYNC;
         }
         auto ngs = unwrap(vdevice_->configure(*hef_, params), "VDevice::configure");
-        if (ngs.size() != 1) throw std::runtime_error("network group 이 1개가 아니다");
+        if (ngs.size() != 1) throw std::runtime_error("network group count is not 1");
         ng_ = ngs[0];
 
         auto ins = ng_->get_input_streams();
-        if (ins.size() != 1) throw std::runtime_error("입력 스트림이 1개가 아니다");
+        if (ins.size() != 1) throw std::runtime_error("input stream count is not 1");
         input_ = &ins[0].get();
         in_size_ = input_->get_frame_size();
         in_name_ = input_->name();
 
-        // 텐서 번호 0..5 ↔ OutputStream 대응. 이름은 호출자가 fixtures.json 에서 가져온다.
+        // Tensor index 0..5 ↔ OutputStream mapping. The names come from fixtures.json via the caller.
         auto outs = ng_->get_output_streams();
         for (int t = 0; t < kYoloNumTensors; ++t) {
             hailort::OutputStream* found = nullptr;
             for (auto& r : outs)
                 if (r.get().name() == tensor_stream_name[static_cast<std::size_t>(t)]) found = &r.get();
             if (!found)
-                throw std::runtime_error("출력 스트림을 못 찾았다: " + tensor_stream_name[static_cast<std::size_t>(t)]);
+                throw std::runtime_error("output stream not found: " + tensor_stream_name[static_cast<std::size_t>(t)]);
             out_[t] = found;
             hw_size_[t] = found->get_frame_size();
             if (hw_size_[t] != pp_.raw_size(t))
-                throw std::runtime_error("hw_frame_size 가 픽스처 메타와 다르다: " + found->name() + " " +
+                throw std::runtime_error("hw_frame_size differs from the fixture metadata: " + found->name() + " " +
                                          std::to_string(hw_size_[t]) + " vs " + std::to_string(pp_.raw_size(t)));
         }
 
-        // dma-buf 매핑: **dmabuf_size** 로 매핑한다(부록 A.13). 프로세스 수명 동안 한 번만.
+        // dma-buf mapping: map with **dmabuf_size** (Appendix A.13). Only once for the lifetime of the process.
         const auto t0 = std::chrono::steady_clock::now();
         for (int s = 0; s < pp_.num_slots(); ++s)
             for (int t = 0; t < kYoloNumTensors; ++t) {
@@ -857,12 +857,12 @@ public:
                 const std::size_t sz = pp_.raw_dmabuf_size(s, t) ? pp_.raw_dmabuf_size(s, t) : hw_size_[t];
                 const auto st = vdevice_->dma_map_dmabuf(fd, sz, HAILO_DMA_BUFFER_DIRECTION_D2H);
                 ++map_calls_;
-                if (st != HAILO_SUCCESS) throw std::runtime_error("dma_map_dmabuf 실패: status " + status_name(st));
+                if (st != HAILO_SUCCESS) throw std::runtime_error("dma_map_dmabuf failed: status " + status_name(st));
                 mapped_.push_back({fd, sz});
             }
         map_ms_ = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
         in_buf_.assign(static_cast<std::size_t>(pp_.num_slots()) * in_size_, 0);
-        if (verbose) std::fprintf(stderr, "[LiveSession] dma_map_dmabuf %ld회 %.3f ms\n", map_calls_, map_ms_);
+        if (verbose) std::fprintf(stderr, "[LiveSession] dma_map_dmabuf %ld calls %.3f ms\n", map_calls_, map_ms_);
     }
 
     ~LiveSession() {
@@ -878,9 +878,9 @@ public:
     long map_calls() const { return map_calls_; }
     double map_ms() const { return map_ms_; }
 
-    // 프레임 1장을 슬롯 slot 의 dma-buf 로 받는다. **시한 안에 못 끝내면 예외**(부록 A.13).
+    // Receive one frame into the dma-buf of slot `slot`. **Throws if not done within the deadline** (Appendix A.13).
     void run_frame(int slot, const std::vector<std::uint8_t>& nhcw, int timeout_ms) {
-        if (nhcw.size() != in_size_) throw std::runtime_error("입력 프레임 크기가 다르다");
+        if (nhcw.size() != in_size_) throw std::runtime_error("input frame size differs");
         std::uint8_t* in = in_buf_.data() + static_cast<std::size_t>(slot) * in_size_;
         std::memcpy(in, nhcw.data(), in_size_);
         remaining_.store(kYoloNumTensors + 1);
@@ -892,10 +892,10 @@ public:
         std::unique_lock<std::mutex> lk(m_);
         if (!cv_.wait_for(lk, std::chrono::milliseconds(timeout_ms), [&] { return remaining_.load() == 0; }))
             throw std::runtime_error(
-                "프레임 완료 시한 초과 — 콜백이 오지 않았다(부록 A.13: 크기 계약 위반 시 infer_async 가 "
-                "HAILO_SUCCESS 를 돌려주고 조용히 멈춘다)");
+                "frame completion deadline exceeded — no callback arrived (Appendix A.13: on a size contract violation infer_async "
+                "returns HAILO_SUCCESS and silently stalls)");
         if (status_.load() != HAILO_SUCCESS)
-            throw std::runtime_error("콜백 status 오류: " + status_name(status_.load()));
+            throw std::runtime_error("callback status error: " + status_name(status_.load()));
     }
 
 private:
@@ -915,7 +915,7 @@ private:
     void issue_infer_async(int slot, std::uint8_t* in) {
         hailort::NamedBuffersCallbacks named;
         {
-            hailort::BufferRepresentation br{};   // union 이다: buffer_type 을 먼저 세팅한다
+            hailort::BufferRepresentation br{};   // it is a union: set buffer_type first
             br.buffer_type = hailort::BufferType::VIEW;
             br.view = hailort::MemoryView(in, in_size_);
             named.emplace(in_name_, std::make_pair(br, [this](hailo_status st) { note(st); }));
@@ -923,7 +923,7 @@ private:
         for (int t = 0; t < kYoloNumTensors; ++t) {
             hailort::BufferRepresentation br{};
             br.buffer_type = hailort::BufferType::DMA_BUFFER;
-            // ⚠ read 쪽 크기는 **hw_frame_size 뿐이다**(부록 A.13)
+            // ⚠ the read-side size is **hw_frame_size only** (Appendix A.13)
             br.dma_buffer = hailo_dma_buffer_t{pp_.raw_dmabuf_fd(slot, t), hw_size_[t]};
             named.emplace(out_[t]->name(), std::make_pair(br, [this](hailo_status st) { note(st); }));
         }
@@ -933,18 +933,18 @@ private:
         if (st != HAILO_SUCCESS) {
             ng_->decrease_ongoing_callbacks();
             remaining_.store(0);
-            throw std::runtime_error("infer_async 실패: status " + status_name(st));
+            throw std::runtime_error("infer_async failed: status " + status_name(st));
         }
     }
 
     void issue_read_async(int slot, std::uint8_t* in) {
-        // FIFO 짝맞추기: write 1회 + read 6회를 한 mutex 안에서 발행한다(프레임을 순차로 돌리므로 충분하다).
+        // FIFO pairing: issue 1 write + 6 reads inside one mutex (sufficient since frames run sequentially).
         std::lock_guard<std::mutex> issue(issue_m_);
         const auto st_in = input_->write_async(
             in, in_size_, [this](const hailort::InputStream::CompletionInfo& ci) { note(ci.status); });
         if (st_in != HAILO_SUCCESS) {
             remaining_.store(0);
-            throw std::runtime_error("write_async 실패: status " + status_name(st_in));
+            throw std::runtime_error("write_async failed: status " + status_name(st_in));
         }
         for (int t = 0; t < kYoloNumTensors; ++t) {
             const auto st = out_[t]->read_async(
@@ -956,7 +956,7 @@ private:
                     std::lock_guard<std::mutex> lk(m_);
                     cv_.notify_all();
                 }
-                throw std::runtime_error("read_async 실패: status " + status_name(st));
+                throw std::runtime_error("read_async failed: status " + status_name(st));
             }
         }
     }
@@ -994,7 +994,7 @@ float read_chip_temp() {
     return std::max(t->ts0_temperature, t->ts1_temperature);
 }
 
-// measure 스킬의 냉각 규칙: 75 °C 를 넘으면 65 °C 까지, 최대 120 초.
+// Cooling rule of the measure skill: above 75 °C, wait down to 65 °C, at most 120 s.
 int cool_down(Tee& log) {
     const float before = read_chip_temp();
     log(fmt("[thermal] chip temp before = %.1f °C", static_cast<double>(before)));
@@ -1008,10 +1008,10 @@ int cool_down(Tee& log) {
         if (!(now > 65.0f)) break;
     }
     if (std::isnan(now))
-        log(fmt("[thermal] ⚠ 냉각 대기 %d s 뒤에도 칩 온도를 읽지 못했다(장치를 다른 프로세스가 쥐었다) — "
-                "이 실행의 성능 수치는 신뢰 불가", waited));
+        log(fmt("[thermal] ⚠ could not read the chip temperature even after %d s of cooling wait (another process holds the device) — "
+                "performance numbers of this run are unreliable", waited));
     else
-        log(fmt("[thermal] 냉각 대기 %d s → %.1f °C", waited, static_cast<double>(now)));
+        log(fmt("[thermal] cooling wait %d s → %.1f °C", waited, static_cast<double>(now)));
     return waited;
 }
 
@@ -1022,7 +1022,7 @@ std::string read_first_line(const std::string& path) {
     return l;
 }
 
-// Hailo-8 의 PCIe 경로는 시스템마다 다르다(이 Pi 5 는 0001:01:00.0). vendor id 0x1e60 으로 찾는다.
+// The PCIe path of the Hailo-8 differs per system (on this Pi 5 it is 0001:01:00.0). Find it by vendor id 0x1e60.
 std::string pcie_link_speed() {
     std::error_code ec;
     for (auto it = std::filesystem::directory_iterator("/sys/bus/pci/devices", ec);
@@ -1032,7 +1032,7 @@ std::string pcie_link_speed() {
         return read_first_line(dir + "/current_link_speed") + " x" + read_first_line(dir + "/current_link_width") +
                " (" + it->path().filename().string() + ")";
     }
-    return "(Hailo PCIe 장치를 못 찾았다)";
+    return "(Hailo PCIe device not found)";
 }
 
 int count_hailort_log_errors() {
@@ -1064,22 +1064,22 @@ std::vector<std::string> stream_names_by_tensor(const FixtureSet& fs) {
     return v;
 }
 
-// /dev/hailo0 을 다른 프로세스가 쥐고 있으면 VDevice::create 가 HAILO_OUT_OF_PHYSICAL_DEVICES(74) 로
-// 실패한다. 원인을 추측하지 않도록 먼저 확인해 이름까지 보고한다.
+// If another process holds /dev/hailo0, VDevice::create fails with HAILO_OUT_OF_PHYSICAL_DEVICES(74).
+// Check first and report down to the process name so the cause is not guessed.
 std::string npu_holder() {
     std::error_code ec;
     for (auto it = std::filesystem::directory_iterator("/proc", ec);
          !ec && it != std::filesystem::directory_iterator(); it.increment(ec)) {
         const std::string name = it->path().filename().string();
         if (name.empty() || !std::isdigit(static_cast<unsigned char>(name[0]))) continue;
-        // 자기 자신은 건너뛴다 — libhailort 가 프로세스 시작 시 /dev/hailo0 을 이미 열어 둔다.
+        // Skip ourselves — libhailort already opens /dev/hailo0 at process start.
         if (name == std::to_string(::getpid())) continue;
         std::error_code ec2;
         for (auto f = std::filesystem::directory_iterator(it->path() / "fd", ec2);
              !ec2 && f != std::filesystem::directory_iterator(); f.increment(ec2)) {
             std::error_code ec3;
             const auto target = std::filesystem::read_symlink(f->path(), ec3);
-            if (!ec3 && target.string().rfind("/dev/hailo", 0) == 0)   // 경로에 "hailo" 가 든 파일과 구분한다
+            if (!ec3 && target.string().rfind("/dev/hailo", 0) == 0)   // distinguish from files whose path contains "hailo"
                 return name + " (" + read_first_line(it->path().string() + "/comm") + ")";
         }
     }
@@ -1088,12 +1088,12 @@ std::string npu_holder() {
 
 int run_live_inner(const Options& o, Tee& log, long fd0);
 
-// fd 누수 계수: 세션·YoloPostproc·VulkanContext 가 **전부 파괴된 뒤**에 세야 의미가 있다.
+// fd leak count: only meaningful after the session, YoloPostproc and VulkanContext are **all destroyed**.
 int run_live(const Options& o, Tee& log) {
     const long fd0 = count_open_fds();
     const int rc = run_live_inner(o, log, fd0);
     const long fd1 = count_open_fds();
-    log(fmt("[fd] 해제 후 start=%ld end=%ld  %s", fd0, fd1, fd1 == fd0 ? "누수 없음" : "⚠ 누수 의심"));
+    log(fmt("[fd] after release start=%ld end=%ld  %s", fd0, fd1, fd1 == fd0 ? "no leak" : "⚠ leak suspected"));
     return (rc == 0 && fd1 == fd0) ? 0 : (rc != 0 ? rc : 1);
 }
 
@@ -1104,8 +1104,8 @@ int run_live_inner(const Options& o, Tee& log, long fd0) {
             o.live_frames, o.api.c_str(), o.batch, o.slots));
     log(fmt("[pcie] %s  fd(start)=%ld", pcie_link_speed().c_str(), fd0));
     if (const std::string holder = npu_holder(); !holder.empty())
-        throw std::runtime_error("NPU 가 이미 다른 프로세스에 잡혀 있다: pid " + holder +
-                                 " — Hailo-8 은 1개뿐이라 독점해야 한다");
+        throw std::runtime_error("the NPU is already held by another process: pid " + holder +
+                                 " — there is only one Hailo-8, so it must be used exclusively");
     cool_down(log);
     const int err0 = count_hailort_log_errors();
     const int th0 = count_hailort_log_thermal();
@@ -1122,8 +1122,8 @@ int run_live_inner(const Options& o, Tee& log, long fd0) {
     pc.local_size_x = o.lx;
     pc.local_size_y = o.ly;
     pc.score_thr = kHefScoreThreshold;
-    pc.input_alloc = alloc_of(o.alloc, YoloInputAlloc::ExportDmaBuf);   // plain = 계획서 §4.2 채택안
-    pc.input_sync = YoloInputSync::Foreign;          // Hailo PCIe DMA 가 쓴 외부 메모리다
+    pc.input_alloc = alloc_of(o.alloc, YoloInputAlloc::ExportDmaBuf);   // plain = option adopted in plan §4.2
+    pc.input_sync = YoloInputSync::Foreign;          // external memory written by Hailo PCIe DMA
     pc.heap_sync = heap_sync_cells(o.heap_sync).front();
     pc.checksum_pipeline = true;
     pc.verbose = o.verbose;
@@ -1137,24 +1137,24 @@ int run_live_inner(const Options& o, Tee& log, long fd0) {
                 pp.raw_dmabuf_size(0, t), pp.raw_dmabuf_fd(0, t)));
 
     LiveSession sess(o.hef, pp, stream_names_by_tensor(fs), o.api == "infer_async", o.batch, o.verbose);
-    log(fmt("[live] dma_map_dmabuf %ld회 %.3f ms", sess.map_calls(), sess.map_ms()));
+    log(fmt("[live] dma_map_dmabuf %ld calls %.3f ms", sess.map_calls(), sess.map_ms()));
 
-    // 입력 프레임 준비
+    // prepare input frames
     std::size_t in_sz = 0;
     {
-        // LiveSession 이 이미 검증했다. 입력 크기는 640*640*3 이다.
+        // Already validated by LiveSession. The input size is 640*640*3.
         in_sz = static_cast<std::size_t>(fs.lb.dst_w) * fs.lb.dst_h * 3;
     }
     const auto inputs = make_nhcw_inputs(o.video, o.live_frames, fs.lb, in_sz);
-    log(fmt("[live] 입력 프레임 %zu장 준비 (NHCW %zu B)", inputs.size(), in_sz));
+    log(fmt("[live] prepared %zu input frames (NHCW %zu B)", inputs.size(), in_sz));
 
     log("");
-    log("== P3-(2) / V1 3자 대조: Hailo DMA 쓰기 → GPU 계산 합 ↔ CPU 캐시 매핑 읽기 합 ↔ malloc 스냅샷 합 ==");
-    log("  · shader : kChecksum 파이프라인이 V3D 로 읽어 더한 값");
-    log("  · mapped : CPU 가 힙 fd 의 캐시 매핑을 READ sync 구간 안에서 직접 읽어 더한 값");
-    log("  · malloc : 같은 READ 구간 안에서 malloc 버퍼로 memcpy 한 뒤 그 사본을 더한 값");
-    log("  ⚠ malloc 사본은 같은 매핑에서 떠온 것이라 **독립 경로가 아니다** — 매핑 읽기가 도중에 흔들리는");
-    log("    경우(찢어진 읽기)를 잡을 뿐, HailoRT 가 malloc 버퍼로 직접 받은 P2 의 기준과는 다르다.");
+    log("== P3-(2) / V1 three-way check: Hailo DMA write → GPU computed sum ↔ CPU cached-mapping read sum ↔ malloc snapshot sum ==");
+    log("  · shader : value read and summed by V3D through the kChecksum pipeline");
+    log("  · mapped : value the CPU read and summed directly from the cached mapping of the heap fd inside the READ sync section");
+    log("  · malloc : value summed from a copy memcpy'd into a malloc buffer inside the same READ section");
+    log("  ⚠ the malloc copy is taken from the same mapping, so it is **not an independent path** — it only catches cases where");
+    log("    the mapping read wobbles midway (torn reads); it differs from the P2 reference where HailoRT received directly into a malloc buffer.");
     log("frame slot  tensor mismatch  cand  cpu_cand  matched  max_coord_err_px");
     bool sum_ok = true, dec_ok = true, v1_ok = true;
     std::size_t v1_cmp = 0, v1_bad_mapped = 0, v1_bad_malloc = 0;
@@ -1165,14 +1165,14 @@ int run_live_inner(const Options& o, Tee& log, long fd0) {
         const int slot = static_cast<int>(f) % pp.num_slots();
         sess.run_frame(slot, inputs[f], o.timeout_ms);
 
-        // ① 바이트 합 대조 (kChecksum 파이프라인)
+        // ① byte-sum check (kChecksum pipeline)
         pp.submit(slot, fs.lb, fs.src_w, fs.src_h, /*checksum=*/true);
         pp.wait(slot);
         std::uint32_t shader[kYoloNumTensors];
         pp.checksums(slot, shader);
         int mism = 0;
         {
-            // R2: 완료 신호(vkWaitForFences + HailoRT 콜백) **뒤에** READ 구간을 연다.
+            // R2: open the READ section **after** the completion signal (vkWaitForFences + HailoRT callback).
             const RawRead rr(pp, slot);
             for (int t = 0; t < kYoloNumTensors; ++t) {
                 const FixtureStream& m = *order[static_cast<std::size_t>(t)];
@@ -1195,7 +1195,7 @@ int run_live_inner(const Options& o, Tee& log, long fd0) {
         sum_ok = sum_ok && mism == 0;
         v1_ok = v1_ok && mism == 0 && v1_bad_malloc == 0;
 
-        // ② 같은 버퍼로 평상시 파이프라인 → CPU 기준 비교
+        // ② same buffer through the normal pipeline → comparison against the CPU reference
         pp.submit(slot, fs.lb, fs.src_w, fs.src_h);
         pp.wait(slot);
         pass1.push_back(pp.last_pass1_ms());
@@ -1213,55 +1213,55 @@ int run_live_inner(const Options& o, Tee& log, long fd0) {
         log(fmt("%5zu %4d %8d  %5zu  %8zu  %7zu  %16.6f", f, slot, mism, c.gpu, c.cpu, c.matched,
                 static_cast<double>(c.max_coord_err)));
     }
-    log(fmt("[P3-(2)] 바이트 합 %s / 디코드 일치 %s", sum_ok ? "PASS" : "FAIL", dec_ok ? "PASS" : "FAIL"));
-    log(fmt("[V1] 3자 대조 %s — 비교 %zu건(텐서 단위, %zu프레임 x 6) · shader!=mapped %zu · shader!=malloc %zu "
-            "(기준: 불일치 0)",
+    log(fmt("[P3-(2)] byte sum %s / decode match %s", sum_ok ? "PASS" : "FAIL", dec_ok ? "PASS" : "FAIL"));
+    log(fmt("[V1] three-way check %s — %zu comparisons (per tensor, %zu frames x 6) · shader!=mapped %zu · shader!=malloc %zu "
+            "(criterion: 0 mismatches)",
             v1_ok ? "PASS" : "FAIL", v1_cmp, inputs.size(), v1_bad_mapped, v1_bad_malloc));
     if (!pass1.empty())
-        log(fmt("[live] pass1_ms median %.4f p90 %.4f (NPU 동시 실행 상태 — 부록 A.8: 단독 벤치보다 높게 나온다)",
+        log(fmt("[live] pass1_ms median %.4f p90 %.4f (with the NPU running concurrently — Appendix A.8: higher than the standalone bench)",
                 percentile(pass1, 0.5), percentile(pass1, 0.9)));
 
     const int err1 = count_hailort_log_errors();
     const int th1 = count_hailort_log_thermal();
-    log(fmt("[hailort.log] error +%d  온도·클럭 warning +%d %s", err1 - err0, th1 - th0,
-            (th1 - th0) ? "→ 이 실행의 성능 수치는 신뢰 불가" : ""));
+    log(fmt("[hailort.log] error +%d  temperature/clock warning +%d %s", err1 - err0, th1 - th0,
+            (th1 - th0) ? "→ performance numbers of this run are unreliable" : ""));
     log(fmt("[validation] errors=%llu warnings=%llu",
             static_cast<unsigned long long>(ctx.validation_errors()),
             static_cast<unsigned long long>(ctx.validation_warnings())));
-    log(fmt("[fd] start=%ld  세션 보유 중=%ld (= 슬롯 %d x 텐서 %d dma-buf + HailoRT/Vulkan 내부)", fd0,
+    log(fmt("[fd] start=%ld  while session held=%ld (= slots %d x tensors %d dma-buf + HailoRT/Vulkan internal)", fd0,
             count_open_fds(), pp.num_slots(), kYoloNumTensors));
     const bool pass = sum_ok && dec_ok && v1_ok && ctx.validation_errors() == 0 && (err1 - err0) == 0;
     log(fmt("[RESULT] live %s", pass ? "PASS" : "FAIL"));
     return pass ? 0 : 1;
 }
 
-// 같은 슬롯 버퍼에 프레임 A, B 를 연속으로 받아 각각 pass 1 을 돌린다(배리어 on/off).
+// Receive frames A and B back to back into the same slot buffer and run pass 1 on each (barrier on/off).
 int run_stale(const Options& o, Tee& log) {
     FixtureSet fs = load_fixtures(o.fixture_dir);
     const YoloTensorLayout L = layout_from_fixtures(fs);
-    log(fmt("[stale] 같은 슬롯 버퍼(num_slots=1)에 서로 다른 프레임 A/B 를 연속으로 받는다. barrier=%s",
+    log(fmt("[stale] receive different frames A/B back to back into the same slot buffer (num_slots=1). barrier=%s",
             o.stale_barrier.c_str()));
     log(fmt("[pcie] %s", pcie_link_speed().c_str()));
     if (const std::string holder = npu_holder(); !holder.empty())
-        throw std::runtime_error("NPU 가 이미 다른 프로세스에 잡혀 있다: pid " + holder +
-                                 " — Hailo-8 은 1개뿐이라 독점해야 한다");
+        throw std::runtime_error("the NPU is already held by another process: pid " + holder +
+                                 " — there is only one Hailo-8, so it must be used exclusively");
     cool_down(log);
     const int err0 = count_hailort_log_errors();
 
     std::vector<bool> modes;
     if (o.stale_barrier == "on" || o.stale_barrier == "both") modes.push_back(true);
     if (o.stale_barrier == "off" || o.stale_barrier == "both") modes.push_back(false);
-    // V2(부록 B.10): ImportHeap 이면 `--heap-sync` 축을 더해 {sync} x {barrier} 셀을 전부 돈다.
+    // V2 (Appendix B.10): with ImportHeap, add the `--heap-sync` axis and run every {sync} x {barrier} cell.
     const YoloInputAlloc stale_alloc = alloc_of(o.alloc, YoloInputAlloc::ExportDmaBuf);
     const std::vector<bool> syncs =
         stale_alloc == YoloInputAlloc::ImportHeap ? heap_sync_cells(o.heap_sync) : std::vector<bool>{true};
-    log(fmt("[stale] alloc=%s  셀 %zu(heap_sync) x %zu(barrier)", o.alloc.c_str(), syncs.size(), modes.size()));
+    log(fmt("[stale] alloc=%s  cells %zu(heap_sync) x %zu(barrier)", o.alloc.c_str(), syncs.size(), modes.size()));
 
-    // 입력 디코드는 NPU 가 필요 없다 → **세션을 만들기 전에** 끝내 둔다(NPU 보유 시간을 최소화한다).
+    // Input decoding does not need the NPU → finish it **before creating the session** (minimizes the time the NPU is held).
     const std::size_t in_sz = static_cast<std::size_t>(fs.lb.dst_w) * fs.lb.dst_h * 3;
     const auto inputs = make_nhcw_inputs(o.video, std::max(2, o.live_frames), fs.lb, in_sz);
     const std::vector<std::vector<std::uint8_t>> ab{inputs.front(), inputs.back()};
-    log(fmt("[stale] 프레임 A/B 준비 완료 (영상 앞 %zu장 중 첫/마지막)", inputs.size()));
+    log(fmt("[stale] frames A/B ready (first/last of the first %zu frames of the video)", inputs.size()));
 
     bool barrier_on_ok = true;
     bool barrier_off_wrong = false;
@@ -1271,9 +1271,9 @@ int run_stale(const Options& o, Tee& log) {
     for (const bool heap_sync : syncs)
     for (const bool barrier : modes) {
         log("");
-        log(fmt("---- heap_sync %s / acquire 배리어 %s ----",
+        log(fmt("---- heap_sync %s / acquire barrier %s ----",
                 stale_alloc == YoloInputAlloc::ImportHeap ? (heap_sync ? "ON" : "OFF") : "n/a",
-                barrier ? "ON (FOREIGN_EXT → 컴퓨트)" : "OFF (배리어 없음)"));
+                barrier ? "ON (FOREIGN_EXT → compute)" : "OFF (no barrier)"));
         yvo::vk::VulkanContextOptions co;
         co.enable_validation = o.validation;
         co.validation_sync = o.sync_validation;
@@ -1281,7 +1281,7 @@ int run_stale(const Options& o, Tee& log) {
         yvo::vk::VulkanContext ctx(co);
 
         YoloPostprocConfig pc;
-        pc.num_slots = 1;   // **같은 버퍼를 재사용하게 만든다** — 스테일이 드러나는 조건이다
+        pc.num_slots = 1;   // **force reuse of the same buffer** — the condition under which staleness shows up
         pc.max_dets = o.max_dets;
         pc.local_size_x = o.lx;
         pc.local_size_y = o.ly;
@@ -1295,7 +1295,7 @@ int run_stale(const Options& o, Tee& log) {
 
         log("pass frame  cand  cpu_cand  matched  onlyCPU  onlyGPU  score_bit_mismatch  max_coord_err_px  verdict");
         const auto order = tensor_order(fs);
-        for (int rep = 0; rep < 2; ++rep) {   // A, B 를 두 번 돌려 순서 의존성까지 본다
+        for (int rep = 0; rep < 2; ++rep) {   // run A, B twice to also check order dependence
             for (std::size_t k = 0; k < ab.size(); ++k) {
                 sess.run_frame(0, ab[k], o.timeout_ms);
                 pp.submit(0, fs.lb, fs.src_w, fs.src_h);
@@ -1305,12 +1305,12 @@ int run_stale(const Options& o, Tee& log) {
                 for (int t = 0; t < kYoloNumTensors; ++t) ptr[t] = pp.raw_host_ptr(0, t);
                 std::vector<DetectionKeyed> cpu;
                 {
-                    const RawRead rr(pp, 0);   // R2 (heap_sync=off 셀에서는 no-op 이다 — 그것이 이 셀의 요점이다)
+                    const RawRead rr(pp, 0);   // R2 (a no-op in the heap_sync=off cell — that is the point of this cell)
                     cpu = yvo::cpu_yolov8_candidates(make_raw_set(L, ptr), kHefScoreThreshold, fs.lb, fs.src_w,
                                                      fs.src_h);
                 }
                 const Compare c = compare_candidates(cpu, gpu);
-                // 바이트 합도 같이 본다(셰이더가 실제로 읽은 바이트가 호스트가 보는 것과 같은가)
+                // also check the byte sum (are the bytes the shader actually read the same as what the host sees)
                 pp.submit(0, fs.lb, fs.src_w, fs.src_h, /*checksum=*/true);
                 pp.wait(0);
                 std::uint32_t shader[kYoloNumTensors];
@@ -1344,18 +1344,18 @@ int run_stale(const Options& o, Tee& log) {
     }
     const int err1 = count_hailort_log_errors();
     log("");
-    log(fmt("[P3-(3)] 배리어 ON 에서 A/B 각각 정확: %s", barrier_on_ok ? "PASS" : "FAIL"));
-    log(fmt("[P3-(4)] 배리어 OFF 에서 틀린 결과가 나왔는가: %s (판정 아님 — 기록)",
-            barrier_off_wrong ? "예 (배리어가 필수임을 보이는 증거)"
-                              : "아니오 (이 하드웨어에서는 배리어 없이도 맞았다 — 우연일 수 있다)"));
+    log(fmt("[P3-(3)] A/B each correct with barrier ON: %s", barrier_on_ok ? "PASS" : "FAIL"));
+    log(fmt("[P3-(4)] did a wrong result appear with barrier OFF: %s (not a verdict — recorded)",
+            barrier_off_wrong ? "yes (evidence that the barrier is required)"
+                              : "no (correct even without the barrier on this hardware — may be by chance)"));
     if (stale_alloc == YoloInputAlloc::ImportHeap) {
-        log(fmt("[V2] heap_sync ON 셀에서 A/B 각각 정확: %s", sync_on_ok ? "PASS" : "FAIL"));
-        log(fmt("[V2] heap_sync OFF 에서 틀린 결과가 나왔는가: %s",
-                sync_off_wrong ? "예" : "아니오"));
-        log("     ⚠ **부록 A P3-④ 교훈**: OFF 에서 안 틀렸다고 해서 **sync 가 불필요하다는 증거가 아니다.**");
-        log("       이 테스트는 캐시 라인이 우연히 깨끗했을 때를 배제하지 못한다. 실패를 강제하는 것은 V3 다.");
-        log("       구조적 근거는 그대로다 — 디바이스 트리에 `dma-coherent` 가 0건이라 커널이 V3D 를");
-        log("       비일관 장치로 취급한다. 실험이 그것을 반증하지 못한 것일 뿐이다.");
+        log(fmt("[V2] A/B each correct in the heap_sync ON cell: %s", sync_on_ok ? "PASS" : "FAIL"));
+        log(fmt("[V2] did a wrong result appear with heap_sync OFF: %s",
+                sync_off_wrong ? "yes" : "no"));
+        log("     ⚠ **Appendix A P3-④ lesson**: not going wrong with OFF is **not evidence that sync is unnecessary.**");
+        log("       This test cannot rule out the cache lines happening to be clean. Forcing the failure is V3's job.");
+        log("       The structural basis stands — the device tree has 0 `dma-coherent` entries, so the kernel treats V3D");
+        log("       as a non-coherent device. The experiment merely failed to refute that.");
     }
     log(fmt("[hailort.log] error +%d", err1 - err0));
     const bool pass = barrier_on_ok && sync_on_ok && vk_errors == 0 && (err1 - err0) == 0;
@@ -1364,47 +1364,47 @@ int run_stale(const Options& o, Tee& log) {
 }
 
 
-// ───────────────────────────────── V3: 실패를 강제하는 테스트 (부록 B.10, **NPU 독점**)
+// ───────────────────────────────── V3: tests that force failure (Appendix B.10, **exclusive NPU**)
 //
-// V2 는 "운 좋게 안 틀릴" 수 있다. V3 는 캐시를 의도적으로 나쁜 상태로 만들어 실패를 **강제**한다.
-// 세 가지 변종을 돌린다 — 앞의 둘은 **쓰기 방향**(더러운 라인), 셋째는 **읽기 방향**(낡은 깨끗한 라인)이다.
-// 읽기 방향이 부록 B.18 이 "아직 한 번도 실증되지 않았다"고 적은 바로 그 구멍이다.
+// V2 may "luckily not go wrong". V3 deliberately puts the cache in a bad state to **force** the failure.
+// Three variants are run — the first two are the **write direction** (dirty lines), the third is the **read direction** (stale clean lines).
+// The read direction is exactly the hole Appendix B.18 describes as "never demonstrated yet".
 //
-//   ① full-dirty  : CPU 가 버퍼 **전체**에 0xA5 를 memset — `END|WRITE` 를 일부러 생략 → Hailo DMA 가
-//                   프레임 A 를 씀 → 읽는다. 더러운 라인이 남아 있으면 0xA5 가 살아남는다.
-//                   ⚠ 1.22 MB 는 A76 의 write-streaming(긴 순차 쓰기에 라인 할당을 끔)과 용량 축출 때문에
-//                     추론이 끝나기 전에 대부분 DRAM 으로 내려간다 → 재현력이 낮다. ②가 그 보완이다.
-//   ② line-dirty  : **작은 창**(--v3-window, 기본 4096 B)에만, **64 B 라인마다 1바이트씩** 쓴다.
-//                   부분 라인 쓰기는 write-streaming 을 못 쓰고 라인을 fetch 해서 dirty 로 만든다.
-//                   창이 작아 L1/L2 에 머무를 가능성이 훨씬 높다. `END|WRITE` 는 역시 생략한다.
-//   ③ stale-read  : **읽기 방향**. 프레임 B 를 받아 창을 읽어 캐시를 깨끗한 라인으로 채운다(priming) →
-//                   Hailo DMA 가 **다른** 프레임 A 를 씀 → `START|READ` 없이 읽는다.
-//                   낡은 라인이 남아 있으면 **프레임 B 의 바이트**가 보인다. 그것을 세는 것이 판정이다.
+//   ① full-dirty  : the CPU memsets 0xA5 over the **whole** buffer — `END|WRITE` deliberately omitted → Hailo DMA
+//                   writes frame A → read. If dirty lines remain, 0xA5 survives.
+//                   ⚠ 1.22 MB mostly goes down to DRAM before inference finishes, due to A76 write-streaming (no line allocation for long
+//                     sequential writes) and capacity eviction → low reproducibility. ② compensates for that.
+//   ② line-dirty  : write **1 byte per 64 B line** only within a **small window** (--v3-window, default 4096 B).
+//                   Partial-line writes cannot use write-streaming and fetch the line, making it dirty.
+//                   The window is small, so it is far more likely to stay in L1/L2. `END|WRITE` is again omitted.
+//   ③ stale-read  : **read direction**. Receive frame B and read the window to fill the cache with clean lines (priming) →
+//                   Hailo DMA writes a **different** frame A → read without `START|READ`.
+//                   If stale lines remain, **frame B's bytes** show up. Counting them is the verdict.
 //
-// 기준(reference)은 **셀과 무관하게 강제 sync** 로 뜬다(`forced_sync`) — 기준까지 오염되면 판정이 무의미하다.
-// 기대: `--heap-sync off` 에서 오염 > 0, `on` 에서 0. **`on` 셀의 오염 0 만 PASS 조건이다.**
+// The reference is taken with a **forced sync regardless of the cell** (`forced_sync`) — if the reference is contaminated too, the verdict is meaningless.
+// Expected: contamination > 0 with `--heap-sync off`, 0 with `on`. **Only zero contamination in the `on` cell is the PASS condition.**
 constexpr std::uint8_t kDirtyByte = 0xA5;
 constexpr std::size_t kCacheLine = 64;   // getconf LEVEL1_DCACHE_LINESIZE = 64 (Cortex-A76)
 
 struct V3Sub {
     const char* name = "";
-    std::size_t bytes_cmp = 0;      // 비교한 바이트 수 (누적)
-    std::size_t diff = 0;           // 기준과 다른 바이트 수
-    std::size_t a5 = 0;             // 그중 0xA5 (① ② 의 잔존)
-    std::size_t stale = 0;          // 그중 **다른 프레임의 값** (③ 의 낡은 데이터)
-    int gpu_mismatch = 0;           // GPU 바이트 합이 기준과 다른 (trial x 텐서) 수
+    std::size_t bytes_cmp = 0;      // number of bytes compared (cumulative)
+    std::size_t diff = 0;           // number of bytes differing from the reference
+    std::size_t a5 = 0;             // of those, 0xA5 (residue of ① ②)
+    std::size_t stale = 0;          // of those, **values from the other frame** (stale data of ③)
+    int gpu_mismatch = 0;           // number of (trial x tensor) where the GPU byte sum differs from the reference
     int gpu_cmp = 0;
-    std::size_t detectable = 0;     // ③ 에서 A 와 B 가 실제로 다른 바이트 수 = 검출 가능 예산
+    std::size_t detectable = 0;     // bytes where A and B actually differ in ③ = detection budget
 };
 
 int run_v3(const Options& o, Tee& log) {
     FixtureSet fs = load_fixtures(o.fixture_dir);
     const YoloTensorLayout L = layout_from_fixtures(fs);
-    log("[v3] 실패 강제 하네스 3변종: ① full-dirty ② line-dirty ③ stale-read(읽기 방향)");
+    log("[v3] failure-forcing harness, 3 variants: ① full-dirty ② line-dirty ③ stale-read (read direction)");
     log(fmt("[pcie] %s", pcie_link_speed().c_str()));
     if (const std::string holder = npu_holder(); !holder.empty())
-        throw std::runtime_error("NPU 가 이미 다른 프로세스에 잡혀 있다: pid " + holder +
-                                 " — Hailo-8 은 1개뿐이라 독점해야 한다");
+        throw std::runtime_error("the NPU is already held by another process: pid " + holder +
+                                 " — there is only one Hailo-8, so it must be used exclusively");
     cool_down(log);
     const int err0 = count_hailort_log_errors();
 
@@ -1412,7 +1412,7 @@ int run_v3(const Options& o, Tee& log) {
     const auto inputs = make_nhcw_inputs(o.video, std::max(2, o.live_frames), fs.lb, in_sz);
     const std::vector<std::uint8_t>& frame_a = inputs.front();
     const std::vector<std::uint8_t>& frame_b = inputs.back();
-    log(fmt("[v3] 프레임 A/B 준비 (영상 앞 %zu장 중 첫/마지막). 셀당 변종별 %d회 반복, 창 %d B, 라인 %zu B",
+    log(fmt("[v3] frames A/B ready (first/last of the first %zu frames of the video). %d repeats per variant per cell, window %d B, line %zu B",
             inputs.size(), o.repeats, o.v3_window, kCacheLine));
 
     std::vector<std::pair<bool, std::array<V3Sub, 3>>> cells;
@@ -1423,7 +1423,7 @@ int run_v3(const Options& o, Tee& log) {
         sub[1].name = "line-dirty";
         sub[2].name = "stale-read";
         log("");
-        log(fmt("======== heap_sync %s ========", heap_sync ? "ON (규약대로 START/END|READ)" : "OFF (sync 없음)"));
+        log(fmt("======== heap_sync %s ========", heap_sync ? "ON (START/END|READ per protocol)" : "OFF (no sync)"));
 
         yvo::vk::VulkanContextOptions co;
         co.enable_validation = o.validation;
@@ -1432,20 +1432,20 @@ int run_v3(const Options& o, Tee& log) {
         yvo::vk::VulkanContext ctx(co);
 
         YoloPostprocConfig pc;
-        pc.num_slots = 1;                                   // **같은 버퍼를 강제로 재사용한다**
+        pc.num_slots = 1;                                   // **force reuse of the same buffer**
         pc.max_dets = o.max_dets;
         pc.local_size_x = o.lx;
         pc.local_size_y = o.ly;
         pc.score_thr = kHefScoreThreshold;
-        pc.input_alloc = YoloInputAlloc::ImportHeap;        // V3 는 heap 전용이다
-        pc.input_sync = YoloInputSync::Foreign;             // 배리어는 항상 켠다(축이 아니다)
+        pc.input_alloc = YoloInputAlloc::ImportHeap;        // V3 is heap-only
+        pc.input_sync = YoloInputSync::Foreign;             // the barrier is always on (it is not an axis)
         pc.heap_sync = heap_sync;
         pc.checksum_pipeline = true;
         pc.verbose = o.verbose;
         YoloPostproc pp(ctx, L, pc);
         LiveSession sess(o.hef, pp, stream_names_by_tensor(fs), o.api == "infer_async", o.batch, o.verbose);
 
-        // 한 프레임을 받아 (전체 스냅샷 + GPU 바이트 합) 기준을 뜬다. sync 는 **강제**다.
+        // Receive one frame and take the reference (full snapshot + GPU byte sum). The sync is **forced**.
         auto capture = [&](const std::vector<std::uint8_t>& frame,
                            std::array<std::vector<std::uint8_t>, kYoloNumTensors>& snap,
                            std::uint32_t sum[kYoloNumTensors]) {
@@ -1480,18 +1480,18 @@ int run_v3(const Options& o, Tee& log) {
                 }
             }
         }
-        log(fmt("[기준] 프레임 A 스냅샷의 0xA5 바이트 %zu개(①② 잡음 하한) · A≠B 바이트 전체 %zu / 창 %zu "
-                "(③ 검출 가능 예산, 창 합계 %zu B)", a5_noise, ab_diff_full, ab_diff_win, win_total));
+        log(fmt("[reference] 0xA5 bytes in frame A snapshot %zu (noise floor for ①②) · A≠B bytes total %zu / window %zu "
+                "(③ detection budget, window total %zu B)", a5_noise, ab_diff_full, ab_diff_win, win_total));
         if (ab_diff_win == 0)
-            log("  ⚠ 창 안에서 A 와 B 가 같다 — ③ 은 이 창으로 아무것도 검출할 수 없다. --v3-window 를 키울 것");
+            log("  ⚠ A and B are identical within the window — ③ cannot detect anything with this window. Increase --v3-window");
 
         std::vector<std::uint8_t> buf;
-        // 셀 설정대로 읽어 기준과 비교한다. cmp_bytes 만큼만 본다.
+        // Read per the cell setting and compare with the reference. Only cmp_bytes are examined.
         auto read_and_compare = [&](V3Sub& st, const std::array<std::vector<std::uint8_t>, kYoloNumTensors>& ref,
                                     const std::array<std::vector<std::uint8_t>, kYoloNumTensors>* other,
                                     std::size_t cmp_bytes) {
             std::size_t d = 0, a5 = 0, stale = 0;
-            const RawRead rr(pp, 0);   // heap_sync=off 셀이면 no-op 이다 — 그것이 이 셀의 요점이다
+            const RawRead rr(pp, 0);   // a no-op in the heap_sync=off cell — that is the point of this cell
             for (int t = 0; t < kYoloNumTensors; ++t) {
                 const auto& r = ref[static_cast<std::size_t>(t)];
                 const std::size_t n = std::min(cmp_bytes, r.size());
@@ -1531,26 +1531,26 @@ int run_v3(const Options& o, Tee& log) {
 
         // ── ① full-dirty ─────────────────────────────────────────────────────────────────────
         log("");
-        log("---- ① full-dirty: 전체 memset(0xA5), END|WRITE 생략 ----");
-        log("trial  gpu_mismatch  diff_bytes  0xA5_잔존");
+        log("---- ① full-dirty: full memset(0xA5), END|WRITE omitted ----");
+        log("trial  gpu_mismatch  diff_bytes  0xA5_left");
         for (int trial = 0; trial < o.repeats; ++trial) {
             forced_sync(pp, 0, yvo::DmaSyncDir::Write, /*start=*/true);
             for (int t = 0; t < kYoloNumTensors; ++t)
                 std::memset(pp.raw_host_ptr(0, t), kDirtyByte, pp.raw_size(t));
-            // (END|WRITE 없음 — 이것이 이 변종의 핵심이다)
+            // (no END|WRITE — this is the core of this variant)
             sess.run_frame(0, frame_a, o.timeout_ms);
             const int gm = gpu_compare(sub[0], sumA);
             const std::size_t before = sub[0].a5;
             const std::size_t d = read_and_compare(sub[0], refA, nullptr, SIZE_MAX);
             log(fmt("%5d  %12d  %10zu  %9zu", trial, gm, d, sub[0].a5 - before));
-            forced_sync(pp, 0, yvo::DmaSyncDir::Write, /*start=*/false);   // ioctl 짝을 맞춘다
+            forced_sync(pp, 0, yvo::DmaSyncDir::Write, /*start=*/false);   // pair up the ioctls
         }
 
         // ── ② line-dirty ─────────────────────────────────────────────────────────────────────
         log("");
-        log(fmt("---- ② line-dirty: 창 %zu B 안에서 %zu B 라인마다 1바이트만 쓴다(부분 라인 → dirty 강제), "
-                "END|WRITE 생략 ----", win, kCacheLine));
-        log("trial  gpu_mismatch  diff_bytes(창)  0xA5_잔존");
+        log(fmt("---- ② line-dirty: within a %zu B window, write only 1 byte per %zu B line (partial line → forced dirty), "
+                "END|WRITE omitted ----", win, kCacheLine));
+        log("trial  gpu_mismatch  diff_bytes(win)  0xA5_left");
         for (int trial = 0; trial < o.repeats; ++trial) {
             forced_sync(pp, 0, yvo::DmaSyncDir::Write, /*start=*/true);
             for (int t = 0; t < kYoloNumTensors; ++t) {
@@ -1566,14 +1566,14 @@ int run_v3(const Options& o, Tee& log) {
             forced_sync(pp, 0, yvo::DmaSyncDir::Write, /*start=*/false);
         }
 
-        // ── ③ stale-read (읽기 방향) ─────────────────────────────────────────────────────────
+        // ── ③ stale-read (read direction) ────────────────────────────────────────────────────
         log("");
-        log(fmt("---- ③ stale-read: 프레임 B 로 창 %zu B 를 읽어 캐시를 채운 뒤 DMA 가 프레임 A 를 쓴다 ----",
+        log(fmt("---- ③ stale-read: read a %zu B window with frame B to fill the cache, then DMA writes frame A ----",
                 win));
-        log("trial  gpu_mismatch  diff_bytes(창)  그중_B값(낡은_데이터)");
+        log("trial  gpu_mismatch  diff_bytes(win)  of_which_B_values(stale_data)");
         std::vector<std::uint8_t> prime;
         for (int trial = 0; trial < o.repeats; ++trial) {
-            // (a) 프레임 B 를 받고, 창을 여러 번 읽어 **깨끗한 라인**으로 캐시를 채운다(강제 sync).
+            // (a) Receive frame B and read the window several times to fill the cache with **clean lines** (forced sync).
             sess.run_frame(0, frame_b, o.timeout_ms);
             forced_sync(pp, 0, yvo::DmaSyncDir::Read, /*start=*/true);
             std::uint64_t acc = 0;
@@ -1584,9 +1584,9 @@ int run_v3(const Options& o, Tee& log) {
                     for (std::size_t i = 0; i < n; ++i) acc += src[i];
                 }
             forced_sync(pp, 0, yvo::DmaSyncDir::Read, /*start=*/false);
-            // (b) DMA 가 **다른** 프레임 A 를 같은 버퍼에 쓴다
+            // (b) DMA writes a **different** frame A into the same buffer
             sess.run_frame(0, frame_a, o.timeout_ms);
-            // (c) 셀 설정대로 읽는다. off 셀이면 START|READ 가 없다 → 낡은 라인이 보이면 B 값이 나온다
+            // (c) Read per the cell setting. In the off cell there is no START|READ → if stale lines show, B values appear
             const int gm = gpu_compare(sub[2], sumA);
             const std::size_t before = sub[2].stale;
             const std::size_t d = read_and_compare(sub[2], refA, &refB, win);
@@ -1601,8 +1601,8 @@ int run_v3(const Options& o, Tee& log) {
 
     const int err1 = count_hailort_log_errors();
     log("");
-    log("== V3 판정 ==");
-    log("heap_sync  변종         비교바이트     diff  0xA5잔존  낡은B값  gpu_mismatch/비교  검출예산");
+    log("== V3 verdict ==");
+    log("heap_sync  variant       bytes_cmp     diff  0xA5left  staleB  gpu_mismatch/cmp  budget");
     bool on_clean = true, off_dirty = false;
     for (const auto& [heap_sync, sub] : cells)
         for (const V3Sub& st : sub) {
@@ -1613,16 +1613,16 @@ int run_v3(const Options& o, Tee& log) {
             else if (st.diff > 0 || st.gpu_mismatch > 0)
                 off_dirty = true;
         }
-    log(fmt("[V3] heap_sync ON 에서 오염 0 (3변종 전부): %s", on_clean ? "PASS" : "**FAIL**"));
-    log(fmt("[V3] heap_sync OFF 에서 오염이 재현됐는가: %s", off_dirty ? "예 — sync 필요가 실증됐다" : "아니오"));
+    log(fmt("[V3] zero contamination with heap_sync ON (all 3 variants): %s", on_clean ? "PASS" : "**FAIL**"));
+    log(fmt("[V3] was contamination reproduced with heap_sync OFF: %s", off_dirty ? "yes — the need for sync is demonstrated" : "no"));
     if (!off_dirty) {
-        log("     ⚠ 세 변종 모두 재현하지 못했다. **그래도 sync 는 그대로 유지한다.**");
-        log("       디바이스 트리에 `dma-coherent` 가 0건이라 커널이 V3D 를 비일관 장치로 취급하는 것이");
-        log("       '필요하다' 쪽의 구조적 근거이고, 이 실험은 그것을 반증하지 못한 것뿐이다(부록 A P3-④).");
-        log("       가능한 기제(미확정): ⓐ system heap 의 begin/end_cpu_access 가 attach 된 장치를 순회하며");
-        log("       이미 필요한 캐시 관리를 하고 있다, ⓑ PCIe DMA 가 CPU 캐시를 스누핑한다(ACP/IO-coherent),");
-        log("       ⓒ 추론 지연(ms) 동안 캐시가 자연 축출돼 조건 자체가 성립하지 않는다.");
-        log("       ⓒ 를 줄이려고 ②③ 은 창을 작게(부분 라인/priming) 잡았으나 그래도 재현되지 않았다.");
+        log("     ⚠ none of the three variants reproduced it. **Sync is kept as is anyway.**");
+        log("       The kernel treating V3D as a non-coherent device because the device tree has 0 `dma-coherent` entries");
+        log("       is the structural basis for 'required'; this experiment merely failed to refute it (Appendix A P3-④).");
+        log("       Possible mechanisms (unconfirmed): ⓐ begin/end_cpu_access of the system heap walks the attached devices and");
+        log("       already performs the needed cache maintenance, ⓑ PCIe DMA snoops the CPU caches (ACP/IO-coherent),");
+        log("       ⓒ the cache is naturally evicted during the inference latency (ms), so the condition itself does not hold.");
+        log("       To reduce ⓒ, ②③ used a small window (partial line/priming), yet it still did not reproduce.");
     }
     log(fmt("[hailort.log] error +%d", err1 - err0));
     const bool pass = on_clean && vk_errors == 0 && (err1 - err0) == 0;
@@ -1633,67 +1633,67 @@ int run_v3(const Options& o, Tee& log) {
 #else   // !defined(YVO_HAVE_HAILO)
 
 int run_live(const Options&, Tee& log) {
-    log("[live] HailoRT 없이 빌드됐다 — live 모드를 쓸 수 없다");
+    log("[live] built without HailoRT — live mode is unavailable");
     return 2;
 }
 int run_stale(const Options&, Tee& log) {
-    log("[stale] HailoRT 없이 빌드됐다 — stale 모드를 쓸 수 없다");
+    log("[stale] built without HailoRT — stale mode is unavailable");
     return 2;
 }
 int run_v3(const Options&, Tee& log) {
-    log("[v3] HailoRT 없이 빌드됐다 — v3 모드를 쓸 수 없다");
+    log("[v3] built without HailoRT — v3 mode is unavailable");
     return 2;
 }
 
 #endif
 
-// ───────────────────────────────────────────── heapimport (부록 B 1단계 = P0 관문, S1)
+// ───────────────────────────────────────────── heapimport (Appendix B step 1 = P0 gate, S1)
 //
-// **NPU 를 쓰지 않는다.** 6텐서 각각에 대해 /dev/dma_heap 에서 align_up(hw_frame_size, 16384) 를 잡고
-// `DmaBufImportCache::get()` 으로 Vulkan 에 import 한 뒤, 판정에 필요한 값을 전부 기록한다.
+// **Does not use the NPU.** For each of the 6 tensors, take align_up(hw_frame_size, 16384) from /dev/dma_heap,
+// import it into Vulkan via `DmaBufImportCache::get()`, then record every value needed for the verdict.
 //
-// 기록하는 것 (부록 B.13 1단계 게이트 + B.12 설계 근거):
-//   ① VkMemoryFdPropertiesKHR::memoryTypeBits      — **0 이면 그 자리에서 끝이다(S1)**
-//   ② VkMemoryRequirements2::size vs dma-buf 크기  — V3DV 여유(+256 B)의 실측. B.12 headroom 이 여기서 나온다
-//   ③ VkMemoryDedicatedRequirements 두 플래그      — prefers=true 면 과할당이 spec 위반이다
+// What is recorded (Appendix B.13 step-1 gate + B.12 design basis):
+//   ① VkMemoryFdPropertiesKHR::memoryTypeBits      — **if 0, it ends right there (S1)**
+//   ② VkMemoryRequirements2::size vs dma-buf size  — measured V3DV slack (+256 B). The B.12 headroom comes from here
+//   ③ VkMemoryDedicatedRequirements two flags      — if prefers=true, over-allocation is a spec violation
 //                                                    (VUID-VkMemoryDedicatedAllocateInfo-buffer-02965)
-//   ④ ImportedDmaBuf::range vs size                — range < size 면 -256 B 축소가 발동한 것이다
-//   ⑤ vkAllocateMemory 의 VkResult (실패 시 dmesg)
-//   ⑥ mmap 포인터의 16384 정렬 (HailoRT 요구, 부록 A.4) — **P0 는 판정이 목적이라 throw 하지 않고 기록만 한다**
-//   ⑦ 왕복: CPU 가 mmap 으로 쓴 패턴의 바이트 합 == GPU(heap_sum.comp)가 계산한 합
+//   ④ ImportedDmaBuf::range vs size                — range < size means the -256 B shrink kicked in
+//   ⑤ VkResult of vkAllocateMemory (dmesg on failure)
+//   ⑥ 16384 alignment of the mmap pointer (HailoRT requirement, Appendix A.4) — **P0 exists for the verdict, so it only records, no throw**
+//   ⑦ round trip: byte sum of the pattern the CPU wrote via mmap == sum computed by the GPU (heap_sum.comp)
 //
-// ── 2·3단계 이후 (부록 B.13) ────────────────────────────────────────────────────────────────
-// 할당·매핑·sync 는 전부 **`core/dma_heap_alloc.hpp` 의 `yvo::DmaHeapPool`** 이 한다(2단계 일원화).
-// 프로브 안에 있던 인라인 구현(`HeapAlloc`/`HeapBuf`/`dma_sync`)은 없앴다.
-// 할당 크기는 **`align_up(hw + device_headroom, 16384)`** 다(3단계 B.12) — `device_headroom` 은
-// `vk::StorageHeadroomQuery` 가 질의로 구한다. **상수 256 을 박지 않는다.**
-// import 에는 `min_range = hw` 를 넘겨 `range < hw` 면 예외가 나게 한다(B.12 강제 검증).
+// ── After steps 2·3 (Appendix B.13) ──────────────────────────────────────────────────────────
+// Allocation, mapping and sync are all done by **`yvo::DmaHeapPool` in `core/dma_heap_alloc.hpp`** (step-2 unification).
+// The inline implementation that lived in the probe (`HeapAlloc`/`HeapBuf`/`dma_sync`) was removed.
+// The allocation size is **`align_up(hw + device_headroom, 16384)`** (step 3, B.12) — `device_headroom` is
+// obtained by querying `vk::StorageHeadroomQuery`. **No hard-coded constant 256.**
+// import is given `min_range = hw` so it throws if `range < hw` (B.12 enforced check).
 
 constexpr std::size_t kHeapAlign = yvo::vk::kHailoAsyncAlign;   // 16384
-constexpr std::uint32_t kSumGroups = 64;                        // heap_sum.comp 디스패치 워크그룹 수(고정)
-constexpr std::uint32_t kPatternMul = 2654435761u;              // Knuth. 워드 i 의 값 = i * kPatternMul
+constexpr std::uint32_t kSumGroups = 64;                        // workgroup count of the heap_sum.comp dispatch (fixed)
+constexpr std::uint32_t kPatternMul = 2654435761u;              // Knuth. value of word i = i * kPatternMul
 
 std::size_t align_up_sz(std::size_t v, std::size_t a) { return a <= 1 ? v : (v + a - 1) / a * a; }
 
 std::string run_capture(const char* cmd) {
     std::string out;
     FILE* p = ::popen(cmd, "r");
-    if (!p) return "(popen 실패)";
+    if (!p) return "(popen failed)";
     char buf[512];
     while (std::fgets(buf, sizeof(buf), p)) out += buf;
     ::pclose(p);
-    return out.empty() ? std::string("(출력 없음)") : out;
+    return out.empty() ? std::string("(no output)") : out;
 }
 
-// DMA_BUF_IOCTL_SYNC 를 non-strict 로 불러 errno 를 기록만 한다(프로브는 판정이 목적이다).
-// 실제 구현은 `yvo::dma_sync_*`(core/dma_heap_alloc.hpp)다 — 부록 B.10 R5.
+// Calls DMA_BUF_IOCTL_SYNC non-strictly and only records errno (the probe exists for the verdict).
+// The real implementation is `yvo::dma_sync_*` (core/dma_heap_alloc.hpp) — Appendix B.10 R5.
 int dma_sync_note(int fd, yvo::DmaSyncDir dir, bool start) {
     const std::uint64_t flags =
         (start ? DMA_BUF_SYNC_START : DMA_BUF_SYNC_END) | yvo::dma_sync_dir_bits(dir);
     return yvo::detail::dma_sync_raw(fd, flags);
 }
 
-// heap_sum.comp 실행기. 파이프라인·디스크립터·커맨드버퍼를 한 번 만들고 6텐서에 재사용한다.
+// heap_sum.comp runner. Creates the pipeline, descriptors and command buffer once and reuses them for the 6 tensors.
 class HeapSumRig {
 public:
     explicit HeapSumRig(yvo::vk::VulkanContext& ctx) : ctx_(ctx) {
@@ -1756,7 +1756,7 @@ public:
         dsi.pSetLayouts = &set_layout_;
         YVO_VK_CHECK(vkAllocateDescriptorSets(dev, &dsi, &set_));
 
-        // 결과 버퍼 {sum, words} 8 B. V3D 는 메모리 타입이 하나뿐이라 HOST_VISIBLE|HOST_COHERENT 다.
+        // Result buffer {sum, words} 8 B. V3D has only one memory type, so it is HOST_VISIBLE|HOST_COHERENT.
         VkBufferCreateInfo bci{};
         bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         bci.size = sizeof(std::uint32_t) * 2;
@@ -1768,7 +1768,7 @@ public:
         const std::uint32_t type = ctx_.find_memory_type(
             req.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        if (type == UINT32_MAX) throw std::runtime_error("HeapSumRig: HOST_VISIBLE|HOST_COHERENT 메모리 타입 없음");
+        if (type == UINT32_MAX) throw std::runtime_error("HeapSumRig: no HOST_VISIBLE|HOST_COHERENT memory type");
         VkMemoryAllocateInfo mai{};
         mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         mai.allocationSize = req.size;
@@ -1810,7 +1810,7 @@ public:
     HeapSumRig(const HeapSumRig&) = delete;
     HeapSumRig& operator=(const HeapSumRig&) = delete;
 
-    // src 의 앞 n_words 워드를 바이트 단위로 더한 값. groups 에는 실제로 돈 워크그룹 수가 들어간다.
+    // Byte-wise sum of the first n_words words of src. groups receives the number of workgroups actually run.
     std::uint32_t run(VkBuffer src, VkDeviceSize range, std::uint32_t n_words, std::uint32_t& groups) {
         VkDevice dev = ctx_.device();
         dst_host_[0] = 0;
@@ -1843,8 +1843,8 @@ public:
         const std::uint32_t q = ctx_.queue_family();
         const std::uint32_t ext = ctx_.external_queue_family();
 
-        // ① 외부(CPU 가 dma-buf 매핑으로 쓴 메모리) → 컴퓨트 큐 acquire + 결과 버퍼 호스트 쓰기 가용화.
-        //    부록 B.10: sync ioctl 은 **CPU 캐시**만, Vulkan 배리어는 **V3D 캐시**만 다룬다. 둘 다 필요하다.
+        // ① external (memory the CPU wrote through the dma-buf mapping) → compute queue acquire + make result buffer host writes available.
+        //    Appendix B.10: the sync ioctl handles only the **CPU caches**, the Vulkan barrier only the **V3D caches**. Both are needed.
         std::array<VkBufferMemoryBarrier2, 2> acq{};
         acq[0].sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
         acq[0].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
@@ -1877,11 +1877,11 @@ public:
         vkCmdPushConstants(cmd_, pipe_layout_, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(n_words), &n_words);
         vkCmdDispatch(cmd_, kSumGroups, 1, 1);
 
-        // ② 입력 release(외부로 반납) + 결과 셰이더 쓰기 → 호스트 읽기 가시화
+        // ② release input (return to external) + result shader write → make visible to host read
         std::array<VkBufferMemoryBarrier2, 2> rel{};
         rel[0] = acq[0];
         rel[0].srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-        rel[0].srcAccessMask = VK_ACCESS_2_NONE;   // 읽기만 했으므로 가용화할 쓰기 없음
+        rel[0].srcAccessMask = VK_ACCESS_2_NONE;   // only read, so no writes to make available
         rel[0].dstStageMask = VK_PIPELINE_STAGE_2_NONE;
         rel[0].dstAccessMask = VK_ACCESS_2_NONE;
         rel[0].srcQueueFamilyIndex = q;
@@ -1923,32 +1923,32 @@ private:
     VkFence fence_ = VK_NULL_HANDLE;
 };
 
-// 한 텐서의 P0 기록
+// P0 record for one tensor
 struct HeapImportRow {
     std::string name;
     std::size_t hw = 0, want = 0, dmabuf = 0;
-    std::size_t headroom = 0;   // B.12: 이 텐서 크기에 대해 드라이버가 요구한 여유 (질의값)
+    std::size_t headroom = 0;   // B.12: slack the driver required for this tensor size (queried value)
     bool mmap_aligned = false;
     std::uint32_t fd_type_bits = 0;
-    // dma-buf 크기로 만든 더미 VkBuffer 의 요구 (B.12 의 2번 단계)
+    // requirements of a dummy VkBuffer created with the dma-buf size (step 2 of B.12)
     VkDeviceSize req_size_dmabuf = 0, req_align = 0;
     std::uint32_t req_type_bits = 0;
     bool requires_ded = false, prefers_ded = false;
-    // hw_frame_size 로 만든 더미의 요구 → headroom = req - hw
+    // requirements of a dummy created with hw_frame_size → headroom = req - hw
     VkDeviceSize req_size_hw = 0;
-    // import 결과
+    // import result
     bool imported = false;
     VkDeviceSize imp_size = 0, imp_range = 0;
     std::string import_error;
-    // 왕복
+    // round trip
     bool roundtrip_ok = false;
     std::uint32_t gpu_sum = 0, cpu_sum = 0, groups = 0;
     std::uint32_t n_words = 0;
     int sync_err_begin = 0, sync_err_end = 0;
 };
 
-// requested 바이트짜리 외부 메모리용 더미 VkBuffer 의 메모리 요구를 묻는다 (할당하지 않는다).
-// 구현은 vulkan/vk_storage_headroom.hpp 로 옮겼다(부록 B.12 — 다른 호출자도 쓴다).
+// Queries the memory requirements of a dummy VkBuffer for external memory of `requested` bytes (does not allocate).
+// The implementation moved to vulkan/vk_storage_headroom.hpp (Appendix B.12 — other callers use it too).
 void query_dummy_req(yvo::vk::VulkanContext& ctx, VkDeviceSize requested, VkMemoryRequirements& out,
                      VkMemoryDedicatedRequirements& ded) {
     ded = VkMemoryDedicatedRequirements{};
@@ -1979,26 +1979,26 @@ int run_heapimport(const Options& o, Tee& log) {
                     static_cast<unsigned>(mp.memoryTypes[i].propertyFlags)));
     }
 
-    // fd 누수 판정 기준선: VulkanContext 가 연 fd 는 세지 않는다(컨텍스트는 이 블록보다 오래 산다).
+    // fd leak baseline: fds opened by VulkanContext are not counted (the context outlives this block).
     const long fd_base = count_open_fds();
 
     std::vector<HeapImportRow> rows;
     bool hard_stop = false;
     std::uint64_t imports = 0, hits = 0;
-    // heap·import·파이프라인을 안쪽 스코프에 두어, 스코프를 벗어난 뒤 fd 가 기준선으로 돌아오는지 본다.
+    // Put heap, import and pipeline in an inner scope, and check that the fd count returns to the baseline after leaving it.
     {
-    // ── 3단계(B.12): 헤드룸을 **질의**로 구한다. 상수를 박지 않는다. ────────────────────────
-    // DmaHeapConfig::device_headroom 은 풀 하나에 값 하나라 6텐서 중 최대값을 쓴다
-    // (V3D 는 크기와 무관하게 256 이라 6개 모두 같다. 과할당은 안전하다 — requires/prefers = 0).
+    // ── step 3 (B.12): obtain the headroom by **query**. No hard-coded constant. ──────────────────
+    // DmaHeapConfig::device_headroom is one value per pool, so the max over the 6 tensors is used
+    // (V3D is 256 regardless of size, so all 6 are equal. Over-allocation is safe — requires/prefers = 0).
     yvo::vk::StorageHeadroomQuery hq(ctx.device());
     std::vector<std::size_t> tensor_sizes;
     tensor_sizes.reserve(fs.streams.size());
     for (const FixtureStream& t : fs.streams) tensor_sizes.push_back(t.bytes);
     const std::size_t queried = hq.max_headroom(tensor_sizes.begin(), tensor_sizes.end());
     const std::size_t headroom = o.no_headroom ? 0 : queried;
-    log(fmt("[headroom] 질의 %zu회 → 질의값 %zu B (req.alignment = %llu B)%s. 할당 크기 = align_up(hw + %zu, %zu)",
+    log(fmt("[headroom] %zu queries → queried value %zu B (req.alignment = %llu B)%s. allocation size = align_up(hw + %zu, %zu)",
             hq.queries(), queried, static_cast<unsigned long long>(hq.last_alignment()),
-            o.no_headroom ? "  **--no-headroom: 0 으로 강제(음성 대조)**" : "", headroom, kHeapAlign));
+            o.no_headroom ? "  **--no-headroom: forced to 0 (negative control)**" : "", headroom, kHeapAlign));
 
     yvo::DmaHeapConfig hc;
     if (!o.heap.empty()) hc.heaps = {o.heap};
@@ -2009,7 +2009,7 @@ int run_heapimport(const Options& o, Tee& log) {
     hc.zero_init = true;
     hc.name = "yvo_p0_heapimport";
     yvo::DmaHeapPool heap(hc);
-    log(fmt("[heap] %s (yvo::DmaHeapPool — 부록 B.11 일원화 API)", heap.heap().c_str()));
+    log(fmt("[heap] %s (yvo::DmaHeapPool — Appendix B.11 unified API)", heap.heap().c_str()));
 
     HeapSumRig rig(ctx);
     yvo::vk::DmaBufImportCache cache(ctx, 16);
@@ -2018,14 +2018,14 @@ int run_heapimport(const Options& o, Tee& log) {
         HeapImportRow r;
         r.name = t.file;
         r.hw = t.bytes;
-        r.headroom = headroom;   // 실제 적용값(--no-headroom 이면 0). 질의값은 [headroom] 줄에 있다
+        r.headroom = headroom;   // actually applied value (0 with --no-headroom). The queried value is on the [headroom] line
         r.want = align_up_sz(t.bytes + headroom, kHeapAlign);
         const int hi = heap.allocate(t.bytes);
-        const yvo::DmaHeapBuf hb = heap.at(hi);   // POD 복사 — 다음 allocate() 가 벡터를 재할당해도 안전
+        const yvo::DmaHeapBuf hb = heap.at(hi);   // POD copy — safe even if the next allocate() reallocates the vector
         r.dmabuf = hb.dmabuf_size;
         r.mmap_aligned = reinterpret_cast<std::uintptr_t>(hb.ptr) % kHeapAlign == 0;
 
-        // ① 이 fd 를 import 할 수 있는 메모리 타입 — **0 이면 S1 하드 스톱**
+        // ① memory types that can import this fd — **if 0, S1 hard stop**
         VkMemoryFdPropertiesKHR fdp{};
         fdp.sType = VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR;
         const VkResult fr = ctx.vkGetMemoryFdPropertiesKHR(
@@ -2038,13 +2038,13 @@ int run_heapimport(const Options& o, Tee& log) {
         }
         r.fd_type_bits = fdp.memoryTypeBits;
         if (fdp.memoryTypeBits == 0) {
-            r.import_error = "memoryTypeBits == 0 (V3DV 가 이 dma-heap fd 를 import 하지 못한다)";
+            r.import_error = "memoryTypeBits == 0 (V3DV cannot import this dma-heap fd)";
             hard_stop = true;
             rows.push_back(r);
             continue;
         }
 
-        // ②·③ 더미 버퍼로 크기 요구와 dedicated 플래그 (B.12 의 1~2번 단계)
+        // ②·③ size requirements and dedicated flags via dummy buffers (steps 1~2 of B.12)
         {
             VkMemoryRequirements req{};
             VkMemoryDedicatedRequirements ded{};
@@ -2060,10 +2060,10 @@ int run_heapimport(const Options& o, Tee& log) {
             r.req_size_hw = req_hw.size;
         }
 
-        // ④·⑤ 실제 import — **기존 DmaBufImportCache::get() 을 그대로 쓴다**
+        // ④·⑤ actual import — **uses the existing DmaBufImportCache::get() as is**
         const yvo::vk::ImportedDmaBuf* imp = nullptr;
         try {
-            // min_range = hw → range < hw 면 예외다(B.12 강제 검증)
+            // min_range = hw → throws if range < hw (B.12 enforced check)
             imp = &cache.get(hb.fd, hb.dmabuf_size, r.hw);
             r.imported = true;
             r.imp_size = imp->size;
@@ -2075,7 +2075,7 @@ int run_heapimport(const Options& o, Tee& log) {
             continue;
         }
 
-        // ⑦ 왕복: CPU 가 쓴 패턴을 GPU 가 같은 값으로 읽는가
+        // ⑦ round trip: does the GPU read the pattern the CPU wrote as the same value
         r.sync_err_begin = dma_sync_note(hb.fd, yvo::DmaSyncDir::Write, /*start=*/true);
         const std::size_t total_words = hb.dmabuf_size / 4;
         auto* wp = reinterpret_cast<std::uint32_t*>(hb.ptr);
@@ -2096,27 +2096,27 @@ int run_heapimport(const Options& o, Tee& log) {
     }
     imports = cache.imports();
     hits = cache.hits();
-    cache.clear();   // import 한 dup fd 를 전부 닫는다(vkFreeMemory 가 같이 닫는다)
+    cache.clear();   // close every imported dup fd (vkFreeMemory closes them together)
     }
     const long fd_after = count_open_fds();
 
-    // ── 보고 ─────────────────────────────────────────────────────────────────────────────────
+    // ── report ───────────────────────────────────────────────────────────────────────────────
     log("");
-    log("== 텐서별 기록 ==");
+    log("== per-tensor records ==");
     for (const HeapImportRow& r : rows) {
-        log(fmt("[%s] hw=%zu headroom=%zu want=align_up(hw+hr,%zu)=%zu dmabuf=%zu  mmap 16384정렬=%s",
+        log(fmt("[%s] hw=%zu headroom=%zu want=align_up(hw+hr,%zu)=%zu dmabuf=%zu  mmap 16384-aligned=%s",
                 r.name.c_str(), r.hw, r.headroom, kHeapAlign, r.want, r.dmabuf,
-                r.mmap_aligned ? "예" : "**아니오**"));
+                r.mmap_aligned ? "yes" : "**no**"));
         log(fmt("    (1) VkMemoryFdPropertiesKHR::memoryTypeBits = 0x%08x", r.fd_type_bits));
         if (!r.import_error.empty()) {
-            log(fmt("    !! 실패: %s", r.import_error.c_str()));
+            log(fmt("    !! failed: %s", r.import_error.c_str()));
             continue;
         }
-        log(fmt("    (2) req(size=dmabuf %zu) = %llu  → 여유 %+lld B | align=%llu typeBits=0x%08x", r.dmabuf,
+        log(fmt("    (2) req(size=dmabuf %zu) = %llu  → slack %+lld B | align=%llu typeBits=0x%08x", r.dmabuf,
                 static_cast<unsigned long long>(r.req_size_dmabuf),
                 static_cast<long long>(r.req_size_dmabuf) - static_cast<long long>(r.dmabuf),
                 static_cast<unsigned long long>(r.req_align), r.req_type_bits));
-        log(fmt("        req(size=hw %zu) = %llu  → **headroom %+lld B** (B.12 가 캐시할 값)", r.hw,
+        log(fmt("        req(size=hw %zu) = %llu  → **headroom %+lld B** (value B.12 will cache)", r.hw,
                 static_cast<unsigned long long>(r.req_size_hw),
                 static_cast<long long>(r.req_size_hw) - static_cast<long long>(r.hw)));
         log(fmt("    (3) requiresDedicatedAllocation=%d prefersDedicatedAllocation=%d", r.requires_ded ? 1 : 0,
@@ -2124,66 +2124,66 @@ int run_heapimport(const Options& o, Tee& log) {
         const bool shrunk = r.imp_range < r.imp_size;
         log(fmt("    (4) ImportedDmaBuf: size=%llu range=%llu  %s",
                 static_cast<unsigned long long>(r.imp_size), static_cast<unsigned long long>(r.imp_range),
-                shrunk ? "***** range < size — 축소가 발동했다 *****" : "range == size (축소 없음)"));
+                shrunk ? "***** range < size — shrink kicked in *****" : "range == size (no shrink)"));
         if (shrunk)
-            log(fmt("        ⇒ 축소 %lld B. hw 대비 %s (range %llu vs hw %zu, 여유 %+lld B)",
+            log(fmt("        ⇒ shrink %lld B. vs hw: %s (range %llu vs hw %zu, slack %+lld B)",
                     static_cast<long long>(r.imp_size) - static_cast<long long>(r.imp_range),
-                    r.imp_range >= r.hw ? "아직 여유 안" : "***** hw 를 잘라먹는다 *****",
+                    r.imp_range >= r.hw ? "still within slack" : "***** cuts into hw *****",
                     static_cast<unsigned long long>(r.imp_range), r.hw,
                     static_cast<long long>(r.imp_range) - static_cast<long long>(r.hw)));
         log(fmt("    (5) vkAllocateMemory = VK_SUCCESS"));
-        log(fmt("    (6) DMA_BUF_IOCTL_SYNC START|WRITE=%d END|WRITE=%d (0 = 성공)", r.sync_err_begin,
+        log(fmt("    (6) DMA_BUF_IOCTL_SYNC START|WRITE=%d END|WRITE=%d (0 = success)", r.sync_err_begin,
                 r.sync_err_end));
-        log(fmt("    (7) 왕복: n_words=%u groups=%u  gpu=0x%08x cpu=0x%08x  %s", r.n_words, r.groups, r.gpu_sum,
-                r.cpu_sum, r.roundtrip_ok ? "일치" : "***** 불일치 *****"));
+        log(fmt("    (7) round trip: n_words=%u groups=%u  gpu=0x%08x cpu=0x%08x  %s", r.n_words, r.groups, r.gpu_sum,
+                r.cpu_sum, r.roundtrip_ok ? "match" : "***** mismatch *****"));
     }
 
-    // ── 판정 (부록 B.14 S1) ──────────────────────────────────────────────────────────────────
+    // ── verdict (Appendix B.14 S1) ───────────────────────────────────────────────────────────
     int n_imported = 0, n_shrunk = 0, n_roundtrip = 0, n_unaligned = 0, n_range_ok = 0;
     for (const HeapImportRow& r : rows) {
         if (r.imported) ++n_imported;
         if (r.imported && r.imp_range < r.imp_size) ++n_shrunk;
-        if (r.imported && r.imp_range >= r.hw) ++n_range_ok;   // **3단계 게이트**
+        if (r.imported && r.imp_range >= r.hw) ++n_range_ok;   // **step-3 gate**
         if (r.roundtrip_ok) ++n_roundtrip;
         if (!r.mmap_aligned) ++n_unaligned;
     }
     const std::uint64_t vk_errors = ctx.validation_errors();
     log("");
-    log(fmt("[요약] import %d/%zu · **range >= hw %d/%zu** · 왕복 일치 %d/%zu · range<size %d · "
-            "mmap 미정렬 %d · 검증레이어 errors %llu",
+    log(fmt("[summary] import %d/%zu · **range >= hw %d/%zu** · round trip match %d/%zu · range<size %d · "
+            "mmap unaligned %d · validation layer errors %llu",
             n_imported, rows.size(), n_range_ok, rows.size(), n_roundtrip, rows.size(), n_shrunk, n_unaligned,
             static_cast<unsigned long long>(vk_errors)));
 
     std::string verdict;
     int rc = 0;
     if (hard_stop || n_imported != static_cast<int>(rows.size())) {
-        verdict = o.no_headroom ? "불합격 — **--no-headroom 음성 대조**. 헤드룸 없이는 range < hw 로 터진다(기대한 결과)"
-                                : "불합격(하드 스톱) — S1. 버퍼 전환 전면 중단";
+        verdict = o.no_headroom ? "FAIL — **--no-headroom negative control**. Without headroom it breaks with range < hw (expected result)"
+                                : "FAIL (hard stop) — S1. Buffer migration fully halted";
         rc = 1;
         log("");
         log("== dmesg (v3d/dma) ==");
         log(run_capture("dmesg 2>&1 | grep -iE 'v3d|dma-?buf|dma_heap' | tail -n 30"));
     } else if (n_roundtrip != static_cast<int>(rows.size())) {
-        verdict = "일관성 문제 — 왕복 불일치. sync 방향·시점 재시도 필요";
+        verdict = "coherency problem — round trip mismatch. Retry sync direction/timing";
         rc = 1;
     } else if (n_range_ok != static_cast<int>(rows.size())) {
-        // 3단계 게이트 실패 = 부록 B.14 S4. 헤드룸으로 해결하지 못한 것이다.
-        verdict = "불합격 — range < hw 인 텐서가 있다(S4). 헤드룸이 부족하다";
+        // step-3 gate failure = Appendix B.14 S4. The headroom did not solve it.
+        verdict = "FAIL — there is a tensor with range < hw (S4). Headroom is insufficient";
         rc = 1;
     } else if (n_shrunk > 0) {
-        // range < size 는 정상이다 — 헤드룸을 미리 더해 잡았으므로 축소가 hw 를 침범하지 않는다.
-        verdict = "합격 — 6/6 range >= hw (헤드룸 적용), 왕복 일치. range < size 는 설계대로다";
+        // range < size is normal — the headroom was added in advance, so the shrink does not encroach on hw.
+        verdict = "PASS — 6/6 range >= hw (headroom applied), round trip match. range < size is by design";
     } else {
-        verdict = "합격 — 전부 성공, range == size, 왕복 일치";
+        verdict = "PASS — all succeeded, range == size, round trip match";
     }
     if (vk_errors != 0) {
-        verdict += " / 검증 레이어 errors != 0";
+        verdict += " / validation layer errors != 0";
         rc = 1;
     }
-    log(fmt("[S1/S4 판정] %s", verdict.c_str()));
+    log(fmt("[S1/S4 verdict] %s", verdict.c_str()));
     log(fmt("[import cache] imports=%llu hits=%llu", static_cast<unsigned long long>(imports),
             static_cast<unsigned long long>(hits)));
-    log(fmt("[fd] 진입 %ld · 컨텍스트 뒤 기준선 %ld · heap/import 스코프 종료 후 %ld → 누수 %ld", fd0, fd_base,
+    log(fmt("[fd] entry %ld · baseline after context %ld · after heap/import scope ends %ld → leak %ld", fd0, fd_base,
             fd_after, fd_after - fd_base));
     if (fd_after != fd_base) rc = 1;
     log(fmt("[RESULT] heapimport %s", rc == 0 ? "PASS" : "FAIL"));
@@ -2197,7 +2197,7 @@ int main(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         auto next = [&](const char* what) -> std::string {
-            if (i + 1 >= argc) throw std::runtime_error(std::string("인자 누락: ") + what);
+            if (i + 1 >= argc) throw std::runtime_error(std::string("missing argument: ") + what);
             return argv[++i];
         };
         try {
@@ -2234,25 +2234,25 @@ int main(int argc, char** argv) {
             else if (a == "--local") {
                 const std::string v = next("--local");
                 const auto comma = v.find(',');
-                if (comma == std::string::npos) throw std::runtime_error("--local 은 X,Y 형식이다");
+                if (comma == std::string::npos) throw std::runtime_error("--local must be in X,Y form");
                 o.lx = static_cast<std::uint32_t>(std::stoul(v.substr(0, comma)));
                 o.ly = static_cast<std::uint32_t>(std::stoul(v.substr(comma + 1)));
             } else if (a == "-h" || a == "--help") {
                 usage();
                 return 0;
             } else {
-                std::fprintf(stderr, "알 수 없는 인자: %s\n", a.c_str());
+                std::fprintf(stderr, "unknown argument: %s\n", a.c_str());
                 usage();
                 return 2;
             }
         } catch (const std::exception& e) {
-            std::fprintf(stderr, "인자 오류: %s\n", e.what());
+            std::fprintf(stderr, "argument error: %s\n", e.what());
             return 2;
         }
     }
-    // heapimport 는 부록 B(dmaheap_unify) 산출물이라 기본 출력 위치가 다르다.
-    // 부록 B(dmaheap_unify) 산출물은 기본 출력 위치가 다르다.
-    // 기본 출력은 build/out/ 이라 보관 증거를 덮지 않는다. 07_results 에 쓸 때는 --out-dir·--out-file 을 명시할 것.
+    // heapimport is an Appendix B (dmaheap_unify) deliverable, so its default output location differs.
+    // Appendix B (dmaheap_unify) deliverables have a different default output location.
+    // The default output is build/out/ so it does not overwrite archived evidence. When writing to 07_results, pass --out-dir/--out-file explicitly.
     if (o.probe == "heapimport" || o.probe == "gpuab" || o.probe == "v3") {
         if (!o.out_dir_set) o.out_dir = YVO_REPO_ROOT "/build/out/yvo_postproc_probe/dmaheap";
         if (o.out_file.empty())
@@ -2264,7 +2264,7 @@ int main(int argc, char** argv) {
     try {
         Tee log(out_path);
         log(fmt("yvo_postproc_probe --probe %s   (%s)", o.probe.c_str(),
-                o.probe == "heapimport" ? "계획서 부록 B 1단계 = P0 관문" : "계획서 §6.2 P3"));
+                o.probe == "heapimport" ? "plan Appendix B step 1 = P0 gate" : "plan §6.2 P3"));
         if (o.probe == "heapimport") return run_heapimport(o, log);
         if (o.probe == "gpuab") return run_gpuab(o, log);
         if (o.probe == "v3") return run_v3(o, log);
@@ -2272,7 +2272,7 @@ int main(int argc, char** argv) {
         if (o.probe == "sweep") return run_sweep(o, log);
         if (o.probe == "live") return run_live(o, log);
         if (o.probe == "stale") return run_stale(o, log);
-        log(fmt("알 수 없는 probe: %s", o.probe.c_str()));
+        log(fmt("unknown probe: %s", o.probe.c_str()));
         usage();
         return 2;
     } catch (const std::exception& e) {

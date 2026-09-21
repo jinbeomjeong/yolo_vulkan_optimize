@@ -14,9 +14,9 @@ namespace {
 
 constexpr const char* kValidationLayer = "VK_LAYER_KHRONOS_validation";
 
-// vulkan_wayland.h 를 포함하면 <wayland-client.h> 가 함께 끌려 들어와 yvo_vulkan 이 Wayland 헤더에 의존하게
-// 된다. 필요한 것은 확장 이름 문자열과 함수 포인터 타입 하나뿐이므로 직접 선언한다.
-// wl_display* 는 불투명 포인터(void*)로 다룬다 — ABI가 동일하다.
+// Including vulkan_wayland.h also drags in <wayland-client.h>, making yvo_vulkan depend on Wayland headers.
+// All that is needed is the extension name string and one function pointer type, so they are declared directly.
+// wl_display* is handled as an opaque pointer (void*) — the ABI is identical.
 constexpr const char* kWaylandSurfaceExt = "VK_KHR_wayland_surface";
 using PFN_yvoWaylandPresentationSupport = VkBool32(VKAPI_PTR*)(VkPhysicalDevice, std::uint32_t, void*);
 
@@ -64,7 +64,7 @@ std::vector<VkExtensionProperties> device_extensions(VkPhysicalDevice pd) {
     return v;
 }
 
-// STORAGE_BUFFER 용도의 dma-buf 외부 메모리 기능 조회
+// Query dma-buf external memory capabilities for STORAGE_BUFFER usage
 VkExternalMemoryFeatureFlags dmabuf_buffer_features(VkPhysicalDevice pd) {
     VkPhysicalDeviceExternalBufferInfo info{};
     info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_BUFFER_INFO;
@@ -93,7 +93,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanContext::debug_callback(VkDebugUtilsMessage
     } else {
         return VK_FALSE;
     }
-    // 같은 메시지가 프레임마다 반복될 수 있으므로 출력은 앞쪽 50건으로 제한
+    // The same message may repeat every frame, so output is limited to the first 50
     if (self->printed_.fetch_add(1) < 50)
         std::fprintf(stderr, "[vulkan %s] %s\n", tag, data && data->pMessage ? data->pMessage : "(null)");
     return VK_FALSE;
@@ -101,7 +101,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanContext::debug_callback(VkDebugUtilsMessage
 
 VulkanContext::VulkanContext(const VulkanContextOptions& opt) {
     try {
-        // ---- 인스턴스 ----
+        // ---- Instance ----
         const bool want_validation = opt.enable_validation || env_true("YVO_VK_VALIDATION");
         const bool env_validation = env_contains("VK_LOADER_LAYERS_ENABLE", "validation") ||
                                     env_contains("VK_INSTANCE_LAYERS", "validation");
@@ -124,7 +124,7 @@ VulkanContext::VulkanContext(const VulkanContextOptions& opt) {
         const bool debug_utils = has_ext(inst_exts, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         if (debug_utils) exts.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
-        // ---- present: 인스턴스 확장 (enable_present일 때만. 끄면 목록이 위 한 줄로 끝난다) ----
+        // ---- present: instance extensions (only when enable_present. When off, the list ends with the one line above) ----
         auto present_off = [&](std::string why) {
             if (present_reason_.empty()) present_reason_ = std::move(why);
             if (opt.require_present)
@@ -133,23 +133,23 @@ VulkanContext::VulkanContext(const VulkanContextOptions& opt) {
         bool want_present = opt.enable_present;
         if (want_present && opt.wayland_display == nullptr) {
             want_present = false;
-            present_off("wayland_display가 null이다 (WaylandWindow를 먼저 열어야 한다)");
+            present_off("wayland_display is null (WaylandWindow must be opened first)");
         }
         if (want_present) {
             for (const char* req : {VK_KHR_SURFACE_EXTENSION_NAME, kWaylandSurfaceExt}) {
                 if (!has_ext(inst_exts, req)) {
                     want_present = false;
-                    present_off(std::string("인스턴스 확장 없음: ") + req);
+                    present_off(std::string("missing instance extension: ") + req);
                 }
             }
         }
         if (want_present) {
             exts.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
             exts.push_back(kWaylandSurfaceExt);
-            // VK_EXT_surface_maintenance1 은 present mode별 minImageCount 질의(FIFO 3 / MAILBOX 4)를 준다.
-            // 의존성: VK_KHR_get_surface_capabilities2 (인스턴스). 둘 다 있어야 켠다.
-            // ⚠ 디바이스 확장 VK_EXT_swapchain_maintenance1 은 **이 인스턴스 확장을 전제로 한다.**
-            //   여기서 못 켜면 아래 디바이스 확장도 켜지 않는다.
+            // VK_EXT_surface_maintenance1 provides the per-present-mode minImageCount query (FIFO 3 / MAILBOX 4).
+            // Dependency: VK_KHR_get_surface_capabilities2 (instance). Enabled only when both are present.
+            // ⚠ The device extension VK_EXT_swapchain_maintenance1 **presupposes this instance extension.**
+            //   If it cannot be enabled here, the device extension below is not enabled either.
             if (has_ext(inst_exts, VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME) &&
                 has_ext(inst_exts, VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME)) {
                 exts.push_back(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
@@ -190,7 +190,7 @@ VulkanContext::VulkanContext(const VulkanContextOptions& opt) {
         ici.ppEnabledExtensionNames = exts.data();
         const void** tail = &ici.pNext;
         if (debug_utils) {
-            *tail = &dbg; // 인스턴스 생성·파괴 중 메시지도 받는다
+            *tail = &dbg; // also receive messages during instance creation/destruction
             tail = const_cast<const void**>(&dbg.pNext);
         }
         const bool want_sync = (opt.validation_sync || env_true("YVO_VK_SYNC_VALIDATION")) && validation_layer_active_ &&
@@ -207,7 +207,7 @@ VulkanContext::VulkanContext(const VulkanContextOptions& opt) {
             }
         }
 
-        // ---- 물리 장치: V3D 선택 (llvmpipe 등 CPU 장치 제외) ----
+        // ---- Physical device: select V3D (exclude CPU devices such as llvmpipe) ----
         std::uint32_t n = 0;
         YVO_VK_CHECK(vkEnumeratePhysicalDevices(instance_, &n, nullptr));
         std::vector<VkPhysicalDevice> pds(n);
@@ -230,27 +230,27 @@ VulkanContext::VulkanContext(const VulkanContextOptions& opt) {
             throw std::runtime_error(std::string("VulkanContext: device ") + props_.deviceName +
                                      " does not support Vulkan 1.3");
 
-        // ---- present: presentation support 질의 함수 (surface가 필요 없는 유일한 경로) ----
+        // ---- present: presentation support query function (the only path that needs no surface) ----
         PFN_yvoWaylandPresentationSupport wl_present_support = nullptr;
         if (want_present) {
             wl_present_support = reinterpret_cast<PFN_yvoWaylandPresentationSupport>(
                 vkGetInstanceProcAddr(instance_, "vkGetPhysicalDeviceWaylandPresentationSupportKHR"));
             if (!wl_present_support) {
                 want_present = false;
-                present_off("vkGetPhysicalDeviceWaylandPresentationSupportKHR 진입점을 얻지 못했다");
+                present_off("could not obtain the vkGetPhysicalDeviceWaylandPresentationSupportKHR entry point");
             }
         }
 
-        // ---- 컴퓨트 큐 (present 여부가 선택에 영향을 주므로 확장 결정보다 먼저 한다) ----
+        // ---- Compute queue (done before deciding extensions, since present affects the choice) ----
         std::uint32_t qn = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(phys_, &qn, nullptr);
         std::vector<VkQueueFamilyProperties> qfs(qn);
         vkGetPhysicalDeviceQueueFamilyProperties(phys_, &qn, qfs.data());
-        // 점수 기반 선택. **present == false 일 때 기존 2-pass 루프와 항상 같은 결과가 나온다**:
-        //   컴퓨트 없는 패밀리는 제외 → GRAPHICS 없는 쪽에 +2 → 동점이면 인덱스가 작은 쪽
-        //   = "컴퓨트 전용 패밀리 우선, 없으면 컴퓨트를 지원하는 첫 패밀리" 와 동일하다.
-        // present == true 면 present 지원에 +4(사실상 필수), GRAPHICS 에 +1(그래픽스 폴백 여지).
-        // V3D 는 큐 패밀리가 1개라 양쪽 모두 family 0 을 고른다 — 이 하드웨어에서 회귀 위험은 0이다.
+        // Score-based selection. **When present == false it always gives the same result as the previous 2-pass loop**:
+        //   families without compute are excluded → +2 for those without GRAPHICS → on a tie, the smaller index
+        //   = identical to "prefer a compute-only family, otherwise the first family that supports compute".
+        // When present == true, +4 for present support (effectively mandatory), +1 for GRAPHICS (room for a graphics fallback).
+        // V3D has a single queue family, so both pick family 0 — zero regression risk on this hardware.
         bool present_qf_found = false;
         auto select_queue_family = [&](bool present) {
             bool found = false;
@@ -269,7 +269,7 @@ VulkanContext::VulkanContext(const VulkanContextOptions& opt) {
                 } else if (!graphics) {
                     score += 2;
                 }
-                if (score > best_score) {  // 동점이면 먼저 본 쪽(= 인덱스가 작은 쪽)을 유지한다
+                if (score > best_score) {  // on a tie, keep the one seen first (= the smaller index)
                     best_score = score;
                     queue_family_ = i;
                     graphics_supported_ = graphics;
@@ -281,14 +281,14 @@ VulkanContext::VulkanContext(const VulkanContextOptions& opt) {
         bool found = select_queue_family(want_present);
         if (found && want_present && !present_qf_found) {
             want_present = false;
-            present_off("present를 지원하는 컴퓨트 큐 패밀리가 없다 "
+            present_off("no compute queue family supports present "
                         "(vkGetPhysicalDeviceWaylandPresentationSupportKHR == VK_FALSE)");
-            found = select_queue_family(false);  // present 없는 기준 규칙으로 다시 고른다
+            found = select_queue_family(false);  // re-select with the baseline rule without present
         }
         if (!found) throw std::runtime_error("VulkanContext: no compute queue family");
 
-        // ---- 확장 ----
-        // present 선택 확장은 "확장이 있는가"와 "feature가 켜지는가"를 모두 통과해야 활성화된다.
+        // ---- Extensions ----
+        // Optional present extensions are activated only if they pass both "is the extension available" and "can the feature be enabled".
         bool sm1_avail = false, pid_avail = false, pwait_avail = false;
         const auto dexts = device_extensions(phys_);
         std::vector<const char*> dev_exts;
@@ -301,20 +301,20 @@ VulkanContext::VulkanContext(const VulkanContextOptions& opt) {
             dev_exts.push_back(VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME);
             external_qf_ = VK_QUEUE_FAMILY_FOREIGN_EXT;
         }
-        // ---- present: 디바이스 확장 (present가 살아 있을 때만. 끄면 위 3개로 끝난다) ----
+        // ---- present: device extensions (only while present is alive. When off, it ends with the 3 above) ----
         if (want_present && !has_ext(dexts, VK_KHR_SWAPCHAIN_EXTENSION_NAME)) {
             want_present = false;
-            present_off(std::string("디바이스 확장 없음: ") + VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+            present_off(std::string("missing device extension: ") + VK_KHR_SWAPCHAIN_EXTENSION_NAME);
         }
         if (want_present) {
             dev_exts.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-            // ⚠ VK_EXT_swapchain_maintenance1 은 인스턴스 확장 VK_EXT_surface_maintenance1 을 **전제로 한다**
-            //   (모드별 minImageCount 질의와 VkSwapchainPresentModesCreateInfoEXT 가 한 쌍이다).
-            //   surface_maintenance1_ 가 false면 여기서도 켜지 않는다. 계획서 §5.2 안전장치 3.
-            //   (드라이버는 승격판 VK_KHR_swapchain_maintenance1 도 광고하지만 설치된 Vulkan 헤더 1.4.309 에
-            //    KHR 쪽 feature 구조체가 없고 인스턴스 짝도 EXT 뿐이라 EXT 판을 쓴다.)
+            // ⚠ VK_EXT_swapchain_maintenance1 **presupposes** the instance extension VK_EXT_surface_maintenance1
+            //   (the per-mode minImageCount query and VkSwapchainPresentModesCreateInfoEXT are a pair).
+            //   If surface_maintenance1_ is false, it is not enabled here either. Plan §5.2 safeguard 3.
+            //   (The driver also advertises the promoted VK_KHR_swapchain_maintenance1, but the installed Vulkan headers 1.4.309
+            //    lack the KHR feature struct and the instance counterpart is EXT only, so the EXT version is used.)
             sm1_avail = surface_maintenance1_ && has_ext(dexts, VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
-            // present_wait 는 present_id 를 전제로 한다(제출한 presentId 를 기다리는 구조).
+            // present_wait presupposes present_id (it waits for a submitted presentId).
             pid_avail = has_ext(dexts, VK_KHR_PRESENT_ID_EXTENSION_NAME);
             pwait_avail = pid_avail && has_ext(dexts, VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
         }
@@ -330,7 +330,7 @@ VulkanContext::VulkanContext(const VulkanContextOptions& opt) {
         timestamp_valid_bits_ = qfs[queue_family_].timestampValidBits;
         timestamps_supported_ = timestamp_valid_bits_ > 0 && props_.limits.timestampComputeAndGraphics;
 
-        // ---- 논리 장치 ----
+        // ---- Logical device ----
         VkPhysicalDeviceVulkan13Features f13{};
         f13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
         VkPhysicalDeviceFeatures2 f2{};
@@ -341,16 +341,16 @@ VulkanContext::VulkanContext(const VulkanContextOptions& opt) {
         VkPhysicalDeviceVulkan13Features en13{};
         en13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
         en13.synchronization2 = VK_TRUE;
-        // 셰이더의 local_size_x_id(SPIR-V 1.6 LocalSizeId)에 필요. Vulkan 1.3 필수 기능.
+        // Required for the shader's local_size_x_id (SPIR-V 1.6 LocalSizeId). A required feature in Vulkan 1.3.
         if (!f13.maintenance4) throw std::runtime_error("VulkanContext: maintenance4 not supported");
         en13.maintenance4 = VK_TRUE;
         VkPhysicalDeviceFeatures2 en2{};
         en2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
         en2.pNext = &en13;
 
-        // ---- present 선택 기능: 확장이 광고돼 있고 feature 도 지원할 때만 확장·기능을 함께 켠다 ----
-        // (확장만 켜고 feature 를 안 켜면 검증 레이어가 "feature not enabled" 를 내고, feature 만 켜면
-        //  vkCreateDevice 가 VK_ERROR_FEATURE_NOT_PRESENT 를 낸다. 둘을 항상 쌍으로 다룬다.)
+        // ---- Optional present features: enable extension and feature together only if the extension is advertised and the feature is supported ----
+        // (Enabling only the extension without the feature makes the validation layer report "feature not enabled", and enabling only the feature makes
+        //  vkCreateDevice return VK_ERROR_FEATURE_NOT_PRESENT. The two are always handled as a pair.)
         VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT sm1_q{}, sm1_en{};
         sm1_q.sType = sm1_en.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT;
         VkPhysicalDevicePresentIdFeaturesKHR pid_q{}, pid_en{};
@@ -381,7 +381,7 @@ VulkanContext::VulkanContext(const VulkanContextOptions& opt) {
                 *etail = &pid_en;
                 etail = &pid_en.pNext;
             }
-            // present_wait 는 present_id 가 실제로 켜졌을 때만 의미가 있다.
+            // present_wait is meaningful only when present_id was actually enabled.
             if (present_id_ && pwait_avail && pwait_q.presentWait) {
                 present_wait_ = true;
                 dev_exts.push_back(VK_KHR_PRESENT_WAIT_EXTENSION_NAME);

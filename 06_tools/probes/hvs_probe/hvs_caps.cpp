@@ -1,11 +1,11 @@
-// hvs_caps: card1(vc4 KMS/HVS6)의 평면 능력을 읽기 전용으로 덤프한다.
-//   - 평면별 IN_FORMATS blob 을 drmModeFormatModifierBlobIterNext 로 해독
-//   - NV12/P030 x SAND128, AR24 x LINEAR 지원 평면 목록, zpos 범위, 색 속성(enum) 목록
-//   - 커넥터 목록(Writeback 포함), CRTC 상태
-//   - debugfs state 요약(평면별 crtc/fb/format/modifier/zpos)
-// DRM master 가 필요 없다(labwc 실행 중에도 된다). 아무것도 바꾸지 않는다.
+// hvs_caps: dumps card1 (vc4 KMS/HVS6) plane capabilities read-only.
+//   - decodes each plane's IN_FORMATS blob with drmModeFormatModifierBlobIterNext
+//   - list of planes supporting NV12/P030 x SAND128 and AR24 x LINEAR, zpos range, color property (enum) list
+//   - connector list (including Writeback), CRTC state
+//   - debugfs state summary (per-plane crtc/fb/format/modifier/zpos)
+// No DRM master needed (works while labwc is running). Changes nothing.
 //
-// 사용: hvs_caps [--card /dev/dri/card1] [--state /sys/kernel/debug/dri/1/state]
+// usage: hvs_caps [--card /dev/dri/card1] [--state /sys/kernel/debug/dri/1/state]
 #include <drm_fourcc.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -38,7 +38,7 @@ struct PlaneInfo {
     std::uint64_t zpos_min = 0, zpos_max = 0, zpos_cur = 0;
     bool zpos_immutable = false;
     bool has_zpos = false;
-    std::vector<std::string> enums;  // "COLOR_ENCODING: ..." 같은 사람이 읽을 줄
+    std::vector<std::string> enums;  // human-readable lines like "COLOR_ENCODING: ..."
     std::map<std::uint32_t, std::set<std::uint64_t>> fmt_mods; // format -> modifiers
     std::vector<std::string> prop_names;
 };
@@ -66,10 +66,10 @@ int main(int argc, char** argv) {
         return 1;
     }
     if (drmSetClientCap(fd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1) != 0)
-        std::fprintf(stderr, "[warn] UNIVERSAL_PLANES cap 실패: %s\n", std::strerror(errno));
+        std::fprintf(stderr, "[warn] UNIVERSAL_PLANES cap failed: %s\n", std::strerror(errno));
     const int atomic_ok = drmSetClientCap(fd, DRM_CLIENT_CAP_ATOMIC, 1);
     if (drmSetClientCap(fd, DRM_CLIENT_CAP_WRITEBACK_CONNECTORS, 1) != 0)
-        std::fprintf(stderr, "[warn] WRITEBACK_CONNECTORS cap 실패: %s\n", std::strerror(errno));
+        std::fprintf(stderr, "[warn] WRITEBACK_CONNECTORS cap failed: %s\n", std::strerror(errno));
 
     drmVersionPtr ver = drmGetVersion(fd);
     if (ver) {
@@ -81,8 +81,8 @@ int main(int argc, char** argv) {
     std::uint64_t cap = 0;
     if (drmGetCap(fd, DRM_CAP_ADDFB2_MODIFIERS, &cap) == 0)
         std::printf("ADDFB2_MODIFIERS %llu\n", static_cast<unsigned long long>(cap));
-    // master 여부: drmIsMaster 는 labwc 가 master 인 동안 0 이어야 한다.
-    std::printf("is master       %s (labwc 실행 중이면 no 가 정상)\n", drmIsMaster(fd) ? "yes" : "no");
+    // master check: drmIsMaster should be 0 while labwc is master.
+    std::printf("is master       %s (no is expected while labwc is running)\n", drmIsMaster(fd) ? "yes" : "no");
 
     drmModeResPtr res = drmModeGetResources(fd);
     if (!res) {
@@ -201,7 +201,7 @@ int main(int argc, char** argv) {
     }
     drmModeFreePlaneResources(pres);
 
-    // CRTC idx -> id 표 (possible_crtcs 는 비트마스크)
+    // CRTC idx -> id table (possible_crtcs is a bitmask)
     std::vector<std::uint32_t> crtc_ids(res->crtcs, res->crtcs + res->count_crtcs);
     auto crtc_list = [&](std::uint32_t mask) {
         std::string s;
@@ -229,17 +229,17 @@ int main(int argc, char** argv) {
                     static_cast<unsigned long long>(p.zpos_cur), nv12_sand ? "Y" : "n", p030_sand ? "Y" : "n",
                     ar24_lin ? "Y" : "n", p.fmt_mods.size());
     }
-    std::printf("\n요약: NV12xSAND128 평면 %d개, P030xSAND128 %d개, AR24xLINEAR %d개 (총 %zu)\n", n_nv12_sand,
+    std::printf("\nsummary: NV12xSAND128 planes %d, P030xSAND128 %d, AR24xLINEAR %d (total %zu)\n", n_nv12_sand,
                 n_p030_sand, n_ar24_lin, planes.size());
 
-    // 대표 평면(primary 1개, overlay 1개)의 전체 format/modifier 표와 속성
+    // full format/modifier table and properties of representative planes (1 primary, 1 overlay)
     bool shown_primary = false, shown_overlay = false;
     for (const auto& p : planes) {
         const bool is_primary = p.type == "Primary";
         const bool is_overlay = p.type == "Overlay";
         if ((is_primary && shown_primary) || (is_overlay && shown_overlay) || (!is_primary && !is_overlay)) continue;
         (is_primary ? shown_primary : shown_overlay) = true;
-        std::printf("\n-- plane %u (%s) 상세 --\n  props:", p.id, p.type.c_str());
+        std::printf("\n-- plane %u (%s) details --\n  props:", p.id, p.type.c_str());
         for (const auto& n : p.prop_names) std::printf(" [%s]", n.c_str());
         std::printf("\n");
         for (const auto& e : p.enums) std::printf("  %s\n", e.c_str());
@@ -252,13 +252,13 @@ int main(int argc, char** argv) {
     drmModeFreeResources(res);
     close(fd);
 
-    // debugfs state 요약: crtc 가 붙은 평면만 요약한다.
+    // debugfs state summary: only planes with a crtc attached.
     std::ifstream st(state_path);
     if (!st) {
-        std::printf("\n(debugfs %s 를 읽을 수 없다)\n", state_path.c_str());
+        std::printf("\n(cannot read debugfs %s)\n", state_path.c_str());
         return 0;
     }
-    std::printf("\n== debugfs %s: 활성 평면 ==\n", state_path.c_str());
+    std::printf("\n== debugfs %s: active planes ==\n", state_path.c_str());
     std::string line, cur_plane, crtc, fmt, mod, size, zpos, alloc, crtcpos, srcpos, enc, range;
     auto flush = [&]() {
         if (!cur_plane.empty() && crtc != "(null)" && !crtc.empty())

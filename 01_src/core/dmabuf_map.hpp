@@ -1,10 +1,10 @@
-// dma-buf CPU 읽기 매핑 (헤더 전용). 생성 시 DMA_BUF_SYNC_START|READ, 소멸 시 END|READ로 CPU 캐시 일관성을 맞춘다.
-// CPU 기준 경로(테스트·벤치)에서 디코더 dma-buf를 읽을 때 쓴다.
+// dma-buf CPU read mapping (header-only). Issues DMA_BUF_SYNC_START|READ on construction and END|READ on destruction to keep CPU caches coherent.
+// Used when the CPU reference path (tests, benchmarks) reads a decoder dma-buf.
 //
-// **남의 fd를 읽기 전용으로 매핑하는 별개 용도다** — 할당하지 않는다. 직접 할당하는 쪽은
-// core/dma_heap_alloc.hpp 의 DmaHeapPool 이다(부록 B.11 일원화).
-// ioctl 두 곳은 그 헤더의 dma_sync_begin/end 에 위임한다. strict=false 로 불러
-// **기존 동작(ioctl 실패를 무시)을 그대로 유지**한다 — 이 클래스의 공개 API와 동작은 바뀌지 않았다.
+// **A separate purpose: mapping someone else's fd read-only** — it does not allocate. The side that allocates directly
+// is DmaHeapPool in core/dma_heap_alloc.hpp (Appendix B.11 consolidation).
+// The two ioctls are delegated to that header's dma_sync_begin/end. They are called with strict=false,
+// **keeping the previous behavior (ioctl failures ignored) unchanged** — this class's public API and behavior did not change.
 #pragma once
 
 #include <cstddef>

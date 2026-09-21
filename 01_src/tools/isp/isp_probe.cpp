@@ -1,11 +1,11 @@
-// yvo_isp_probe: BCM2712 PiSP Back End(ISP) 리사이즈 타당성 확인 도구
+// yvo_isp_probe: feasibility check tool for BCM2712 PiSP Back End (ISP) resize
 //
-//   --dump            설정만 만들고(장치를 열지 않고) describe()를 출력한다.
-//   --convert         영상에서 --frame N번째 프레임을 디코드 → ISP 리사이즈 → --png로 저장.
-//                     --frames K를 주면 그 프레임부터 K장을 슬롯을 돌려 가며 처리한다(슬롯·캐시·fd 확인용).
-//   --check-padding   출력 버퍼의 letterbox 패딩 영역이 정확히 pad_value인지 바이트 단위로 검사한다.
+//   --dump            build the config only (without opening the device) and print describe().
+//   --convert         decode the --frame N-th frame of the video → ISP resize → save to --png.
+//                     With --frames K, processes K frames from there while cycling slots (to check slots, cache, fds).
+//   --check-padding   check byte by byte that the output buffer's letterbox padding area is exactly pad_value.
 //
-// 가장 위험한 것부터 본다: 그림이 제대로 나오고 패딩이 그대로면 나머지는 공학 문제다.
+// Check the riskiest things first: if the image comes out right and the padding stays intact, the rest is engineering.
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -31,7 +31,7 @@ struct Args {
     std::string video = YVO_DEFAULT_VIDEO;
     std::string media = "/dev/media0";
     std::string png;
-    std::string filter;         // resample 필터 (비면 smart selection)
+    std::string filter;         // resample filter (empty = smart selection)
     int frame = 0;
     int frames = 1;
     int slots = yvo::kNumSlots;
@@ -90,14 +90,14 @@ bool save_rgb(const std::string& path, const std::uint8_t* rgb, int w, int h) {
     o << "P6\n" << w << " " << h << "\n255\n";
     o.write(reinterpret_cast<const char*>(rgb), static_cast<std::streamsize>(w) * h * 3);
     if (!o) return false;
-    std::printf("(OpenCV 없음) PPM으로 저장: %s\n", p.c_str());
+    std::printf("(no OpenCV) saving as PPM: %s\n", p.c_str());
     return true;
 #endif
     std::printf("saved: %s\n", path.c_str());
     return true;
 }
 
-// letterbox 패딩 영역(윗/아랫 행, 좌/우 열)이 전부 pad_value인지 검사. 위반 픽셀 수를 반환.
+// Check that the letterbox padding area (top/bottom rows, left/right columns) is all pad_value. Returns the violating pixel count.
 long check_padding(const std::uint8_t* rgb, const yvo::LetterboxParams& lb, int w, int h, int content_w,
                    int content_h) {
     long bad = 0;
@@ -155,7 +155,7 @@ int main(int argc, char** argv) {
         cfg.resample_filter = a.filter;
         cfg.open_device = need_device;
 
-        // 입력 기하는 영상에서 읽는다(장치를 여는 경우). --dump만이면 기본값(1080p)으로 설정만 만든다.
+        // Input geometry is read from the video (when opening the device). With --dump only, build the config from defaults (1080p).
         yvo::FfmpegDrmDecoder dec;
         if (need_device) {
             yvo::FfmpegDrmDecoder::Options dopt;
@@ -168,7 +168,7 @@ int main(int argc, char** argv) {
             cfg.src_h = dec.height();
         }
 
-        // 첫 프레임에서 SAND 열 높이와 coded_height를 확인한 뒤 리사이저를 만든다.
+        // Check the SAND column height and coded_height on the first frame, then create the resizer.
         std::optional<yvo::DrmFrame> frame;
         if (need_device) {
             while ((frame = dec.next())) {
@@ -194,7 +194,7 @@ int main(int argc, char** argv) {
 
         if (!need_device) return 0;
 
-        // --frames K: 슬롯을 돌려 가며 K장을 처리한다(슬롯 재사용·입력 캐시·fd 누수 확인).
+        // --frames K: process K frames while cycling slots (checks slot reuse, input cache, fd leaks).
         std::vector<std::uint8_t> rgb;
         std::vector<double> isp_ms;
         int done = 0;
@@ -206,7 +206,7 @@ int main(int argc, char** argv) {
                 std::printf("isp: %.3f ms, output %d x %d, %zu B, dmabuf fd %d, layout %s\n", isp.last_isp_ms(),
                             isp.out_width(), isp.out_height(), out.size, out.dmabuf_fd,
                             out.layout == yvo::TensorLayout::Nhwc ? "nhwc" : "nhcw");
-                // CPU로 읽을 때는 dma-buf sync로 감싼다.
+                // Wrap CPU reads in dma-buf sync.
                 rgb.resize(out.size);
                 const yvo::isp::IspResizer::OutputRead lock(isp, slot);
                 std::memcpy(rgb.data(), lock.data(), out.size);
@@ -240,7 +240,7 @@ int main(int argc, char** argv) {
                 rc = 1;
             }
         }
-        // 디코더 프레임 참조를 리사이저보다 먼저 놓는다.
+        // Release decoder frame references before the resizer.
         frame.reset();
         return rc;
     } catch (const std::exception& e) {

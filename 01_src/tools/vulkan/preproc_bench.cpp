@@ -1,8 +1,8 @@
-// yvo_preproc_bench: HEVC HW 디코드(DRM_PRIME) → Vulkan SAND128 letterbox 전처리 성능 측정
+// yvo_preproc_bench: HEVC HW decode (DRM_PRIME) → Vulkan SAND128 letterbox preprocessing performance measurement
 //
-// 출력: FPS, GPU 셰이더 시간(timestamp 중앙값/p90), 호스트 submit/wait 시간, CPU ms/frame(getrusage),
-//       import 캐시 통계, 검증 레이어 에러·경고 수, 샘플 letterbox PNG 1장.
-// 검증 레이어: VK_LOADER_LAYERS_ENABLE='*validation' 또는 --validation 으로 켠다.
+// Output: FPS, GPU shader time (timestamp median/p90), host submit/wait time, CPU ms/frame (getrusage),
+//       import cache statistics, validation layer error/warning counts, one sample letterbox PNG.
+// Validation layer: enable with VK_LOADER_LAYERS_ENABLE='*validation' or --validation.
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -42,19 +42,19 @@ using yvo::tool::save_rgb;
 using yvo::tool::cpu_ms;
 struct Args {
     std::string video = YVO_DEFAULT_VIDEO;
-    int frames = 0;       // 0 = 전체
+    int frames = 0;       // 0 = all
     int slots = 8;
-    int depth = 2;        // 동시에 GPU에 올려 둘 프레임 수
+    int depth = 2;        // number of frames kept in flight on the GPU at once
     std::uint32_t lx = 32, ly = 8;
-    yvo::TensorLayout layout = yvo::TensorLayout::Nhwc; // 출력 텐서 레이아웃 (--layout)
+    yvo::TensorLayout layout = yvo::TensorLayout::Nhwc; // output tensor layout (--layout)
     std::string png_dir = YVO_REPO_ROOT "/build/out/yvo_preproc_bench";
     int png_frame = 100;
     bool validation = false;
     bool sync_validation = false;
-    bool no_gpu = false;  // 디코드만 (같은 루프, 기준선)
-    bool sweep = false;   // 워크그룹 크기 스윕
+    bool no_gpu = false;  // decode only (same loop, baseline)
+    bool sweep = false;   // workgroup size sweep
     bool export_test = false;
-    bool cpu_baseline = false; // CPU 기준 경로(dma-buf mmap → de-SAND → cpu_letterbox) 시간 측정
+    bool cpu_baseline = false; // time the CPU reference path (dma-buf mmap → de-SAND → cpu_letterbox)
     int repeat = 1;
 };
 
@@ -155,7 +155,7 @@ RunResult run_once(const Args& a, yvo::vk::SandLetterbox* pre, bool save_png) {
         finish(inflight.front());
         inflight.pop_front();
     }
-    // 디코더를 닫기 전에 import 캐시를 비운다(캐시가 dma-buf 참조를 들고 있어 디코더 버퍼가 해제되지 않음)
+    // Empty the import cache before closing the decoder (the cache holds dma-buf references, so decoder buffers would not be freed)
     if (pre) pre->clear_import_cache();
     const auto t1 = std::chrono::steady_clock::now();
     const double c1 = cpu_ms();
@@ -171,7 +171,7 @@ RunResult run_once(const Args& a, yvo::vk::SandLetterbox* pre, bool save_png) {
         std::filesystem::create_directories(a.png_dir, ec);
         const auto& lb = yvo::make_letterbox(1920, 1080);
         std::string name = "/letterbox_frame" + std::to_string(png_pts);
-        if (pre && pre->config().out_layout == yvo::TensorLayout::Nhcw) { // 저장 전에 packed로 되돌린다
+        if (pre && pre->config().out_layout == yvo::TensorLayout::Nhcw) { // convert back to packed before saving
             std::vector<std::uint8_t> packed(png_copy.size());
             yvo::nhcw_to_rgb_packed(png_copy.data(), lb.dst_w, lb.dst_h, packed.data());
             png_copy.swap(packed);
@@ -182,7 +182,7 @@ RunResult run_once(const Args& a, yvo::vk::SandLetterbox* pre, bool save_png) {
     return r;
 }
 
-// CPU 기준 경로: 프레임마다 dma-buf mmap → desand_nv12 → cpu_letterbox_nv12_bt709 (단일 스레드, 스칼라)
+// CPU reference path: per frame dma-buf mmap → desand_nv12 → cpu_letterbox_nv12_bt709 (single thread, scalar)
 int run_cpu_baseline(const Args& a) {
     yvo::FfmpegDrmDecoder dec;
     if (!dec.open(a.video)) {
@@ -305,8 +305,8 @@ int main(int argc, char** argv) {
                 if (!r.ok) return 1;
             }
             {
-                // 출력 메모리(V3D: HOST_CACHED 없음 = CPU 비캐시 매핑)를 CPU가 읽는 비용. HailoRT가 host 포인터를
-                // 복사하는 경우의 참고값.
+                // Cost of the CPU reading output memory (V3D: no HOST_CACHED = uncached CPU mapping). Reference value for
+                // the case where HailoRT copies from a host pointer.
                 std::vector<std::uint8_t> dst(pre.output_size());
                 std::vector<double> ms;
                 for (int i = 0; i < 20; ++i) {
