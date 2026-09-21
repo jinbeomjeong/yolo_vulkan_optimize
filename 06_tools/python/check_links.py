@@ -11,6 +11,12 @@
 
 `파일:행` 형태는 행 번호가 파일 길이 이내인지도 본다.
 깨진 링크가 하나라도 있으면 종료 코드 1이다.
+
+    python3 06_tools/python/check_links.py --stale STRUCTURE.md
+
+`--stale MAPFILE` 은 링크 검사 대신, 매핑표(relocate.py 형식)의 **옛 경로**가 아직 남아 있는지 본다.
+대상·제외 규칙과 경로 해석은 relocate.py 와 같다(정규식 행은 토큰마다 fullmatch 로 판정하므로
+이동 뒤에도 옛 경로를 알아본다). 옛 경로가 하나라도 남아 있으면 종료 코드 1이다.
 """
 import re
 import sys
@@ -47,7 +53,46 @@ def check(md: Path, target: str, bad: list) -> bool:
     return True
 
 
+def stale(map_file: str) -> int:
+    """매핑표의 옛 경로가 제외 대상 밖 파일에 남아 있으면 보고한다."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import relocate  # 같은 폴더. 매핑표 파서·토큰 해석을 공유한다
+
+    mp = Path(map_file)
+    if not mp.is_absolute():
+        mp = mp if mp.exists() else ROOT / mp
+    if not mp.exists():
+        print(f"매핑표 없음: {mp}")
+        return 2
+    try:
+        map_rel = str(mp.resolve().relative_to(ROOT))
+    except ValueError:
+        map_rel = ""
+    rows = relocate.parse_map(mp)
+    if not rows:
+        print("매핑표에서 '옛 경로' 표 행을 찾지 못했다")
+        return 2
+    mapper = relocate.Mapper(rows)
+    results, rw = relocate.scan_refs(mapper, map_rel)
+    n = 0
+    for rel, _, _, edits in results:
+        for e in edits:
+            print(f"옛 경로 잔존    {rel}:{e.line} -> {e.old}  (새: {e.new})")
+            n += 1
+    for g in rw.guess:
+        print(f"옛 경로 추정    {g.file}:{g.line} -> {g.token}  ({g.why})")
+    for g in rw.manual:
+        print(f"수동 확인       {g.file}:{g.line} -> {g.token}  (글롭·자리표시자)")
+    print(f"---\n매핑 행 {len(rows)}개, 옛 경로 잔존 {n}건, 추정 {len(rw.guess)}건, 수동 확인 {len(rw.manual)}건")
+    return 1 if n or rw.guess else 0
+
+
 def main() -> int:
+    if len(sys.argv) >= 2 and sys.argv[1] == "--stale":
+        if len(sys.argv) != 3:
+            print("사용법: check_links.py --stale MAPFILE")
+            return 2
+        return stale(sys.argv[2])
     bad: list = []
     checked = 0
     for md in sorted(ROOT.rglob("*.md")):

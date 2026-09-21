@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""01_src/common/glyph_font_8x16.hpp 를 생성한다 (ASCII 32~126, 8x16 비트맵).
+"""01_src/ref/glyph_font_8x16.hpp 를 생성한다 (ASCII 32~126, 8x16 비트맵).
 
 원본: /usr/share/consolefonts/Lat15-VGA16.psf.gz (console-setup 패키지의 IBM VGA 8x16 비트맵).
 비트맵 글리프 형상 자체는 공개 도메인이다(미국 저작권법상 서체 비트맵은 보호 대상이 아니다).
@@ -8,7 +8,7 @@
 얻었는지 재현하기 위한 기록이다. 폰트를 바꾸려면 다시 돌려 헤더를 덮어쓰고 커밋한다.
 
 사용:
-  python3 06_tools/python/gen_glyph_font_8x16.py [--psf PATH.psf(.gz)] [--out 01_src/common/glyph_font_8x16.hpp]
+  python3 06_tools/python/gen_glyph_font_8x16.py [--psf PATH.psf(.gz)] [--out 01_src/ref/glyph_font_8x16.hpp]
   python3 06_tools/python/gen_glyph_font_8x16.py --dump ABC   # 글리프를 아스키 아트로 확인만 한다
 """
 
@@ -26,7 +26,7 @@ NUM_GLYPHS = LAST_CH - FIRST_CH + 1  # 95
 ROWS = 16
 
 DEFAULT_PSF = "/usr/share/consolefonts/Lat15-VGA16.psf.gz"
-DEFAULT_OUT = "01_src/common/glyph_font_8x16.hpp"
+DEFAULT_OUT = "01_src/ref/glyph_font_8x16.hpp"
 
 
 def read_psf(path: pathlib.Path) -> bytes:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """두 파이프라인의 detections.jsonl을 비교한다.
 
-매칭 규칙은 01_src/common/detection_match.hpp 의 match() 와 **동치**다(C++ 쪽이 정본):
+매칭 규칙은 01_src/ref/detection_match.hpp 의 match() 와 **동치**다(C++ 쪽이 정본):
   같은 클래스만, 참조 검출을 (점수 내림차순, 원래 순번 오름차순) 전순서로 훑으며
   IoU가 가장 큰 미사용 테스트 검출과 greedy 매칭(IoU 동률이면 먼저 나온 것).
   매칭 비율 = matched / max(ref_count, test_count)  (프레임 합계)
@@ -16,7 +16,7 @@
 좌표 오차(G4)는 매칭된 (ref, test) 쌍마다
   err = max(|dx1|, |dy1|, |dx2|, |dy2|)   [원본 프레임 픽셀 좌표계]
 를 모아 max/mean/p50/p90을 IoU 임계값별로 낸다.
-백분위는 01_src/common/stats.hpp 와 같은 선형 보간이다.
+백분위는 01_src/toolkit/stats.hpp 와 같은 선형 보간이다.
 CSV에서 접미사 없는 *_coord_err_px 열은 PRIMARY_IOU 기준이다.
 
 사용법:
@@ -30,7 +30,7 @@ import sys
 from collections import Counter
 
 IOUS = (0.5, 0.7, 0.9)
-# 접미사 없는 좌표 오차 열의 기준. common/detection_match.hpp 의 kIouThreshold 와 같다.
+# 접미사 없는 좌표 오차 열의 기준. ref/detection_match.hpp 의 kIouThreshold 와 같다.
 PRIMARY_IOU = 0.9
 
 
@@ -40,7 +40,7 @@ def f32(x):
 
 
 def iou(a, b):
-    """common/cpu_yolov8_decode.hpp 의 iou_xyxy() 를 float32 로 흉내 낸다(연산 순서까지 같다)."""
+    """ref/cpu_yolov8_decode.hpp 의 iou_xyxy() 를 float32 로 흉내 낸다(연산 순서까지 같다)."""
     a = [f32(v) for v in a]
     b = [f32(v) for v in b]
     ix = max(0.0, f32(min(a[2], b[2]) - max(a[0], b[0])))
@@ -53,7 +53,7 @@ def iou(a, b):
 
 
 def match_pairs(ref, test, thr):
-    """common/detection_match.hpp 의 match() 와 동치인 greedy 매칭. 매칭된 (ref, test) 쌍 목록을 반환."""
+    """ref/detection_match.hpp 의 match() 와 동치인 greedy 매칭. 매칭된 (ref, test) 쌍 목록을 반환."""
     used = [False] * len(test)
     pairs = []
     thr32 = f32(thr)
