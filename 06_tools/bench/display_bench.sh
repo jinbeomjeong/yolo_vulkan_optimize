@@ -90,12 +90,13 @@ fi
 cat "$OUT_DIR/env_bench.txt"
 
 RAW="$OUT_DIR/results_raw.csv"
-# RESULT_CSV 22필드 + RESULT_CSV2 의 label 뒤 27필드 + 스크립트 4필드 = 53열
+# RESULT_CSV 22필드 + RESULT_CSV2 의 label 뒤 33필드 + 스크립트 4필드 = 59열
 #   RESULT_CSV2 = 후처리 8필드(ok 는 RESULT_CSV 의 ok 와 중복이라 아래 awk 가 뺀다) + 표시 14필드 + GPU NMS 5필드
-#   (main.cpp 의 RESULT_CSV2 주석)
+#                 + 평면 스캔아웃 6필드(wayland-planes 외에는 "-". main.cpp 의 RESULT_CSV2 주석)
 #   ⚠ 그 줄을 cut -f3- 로 통째로 붙이므로 main.cpp 가 필드를 덧붙이면 이 헤더도 같이 고쳐야 한다.
-#   NMS 5필드가 없는 옛 헤더(07_results/display_e2e/, 48열)와는 APPEND=1 로 섞을 수 없다.
-CSV_HEADER="label,mode,layout,batch,slots,frames,wall_s,fps,cpu_ms_per_frame,decode_ms_mean,gpu_ms_mean,gpu_ms_p90,npu_ms_mean,npu_ms_p90,e2e_ms_mean,e2e_ms_p90,detections,hailo_t0,hailo_t1,soc_t0,soc_t1,ok,postproc,alloc,gpu_post_mean,gpu_post_p90,cpu_nms_us_mean,cand_mean,cand_max,cand_overflow,display,sync,pace,disp_convert_mean,disp_convert_p90,disp_overlay_mean,present_interval_median,e2e_glass_mean,e2e_glass_p90,presented,display_dropped,recreates,held_frames_max,slot_timeout_count,nms,gpu_nms_mean,gpu_nms_p90,nms_fallback,nms_verify_mismatch,run,cool_wait_s,hailort_warnings,hailort_errors"
+#   NMS 5필드가 없는 옛 헤더(07_results/display_e2e/, 48열)와도, 스캔아웃 6필드가 없는 53열 헤더와도
+#   APPEND=1 로 섞을 수 없다.
+CSV_HEADER="label,mode,layout,batch,slots,frames,wall_s,fps,cpu_ms_per_frame,decode_ms_mean,gpu_ms_mean,gpu_ms_p90,npu_ms_mean,npu_ms_p90,e2e_ms_mean,e2e_ms_p90,detections,hailo_t0,hailo_t1,soc_t0,soc_t1,ok,postproc,alloc,gpu_post_mean,gpu_post_p90,cpu_nms_us_mean,cand_mean,cand_max,cand_overflow,display,sync,pace,disp_convert_mean,disp_convert_p90,disp_overlay_mean,present_interval_median,e2e_glass_mean,e2e_glass_p90,presented,display_dropped,recreates,held_frames_max,slot_timeout_count,nms,gpu_nms_mean,gpu_nms_p90,nms_fallback,nms_verify_mismatch,scanout_zero_copy,plane_color_ok,hvs_underrun_delta,overlay_skipped,frame_cb_timeouts,zero_copy_feedback,run,cool_wait_s,hailort_warnings,hailort_errors"
 if [[ "$APPEND" == "1" && -f "$RAW" ]]; then
   head -1 "$RAW" | grep -qx "$CSV_HEADER" || { echo "APPEND=1인데 기존 $RAW 헤더가 다르다" >&2; exit 1; }
 else

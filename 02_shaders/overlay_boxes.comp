@@ -55,7 +55,24 @@ struct DetGpu {
     uint keep;
 };
 
+// ── 출력 대상: 두 변형 (같은 소스, 전처리 매크로로 갈린다) ────────────────────────────────────
+//   기본            : rgba8 storage image (스왑체인·오프스크린 합성 경로, overlay_boxes.spv)
+//   YVO_OVERLAY_BUFFER : packed RGBA8 storage buffer (overlay_boxes_buf.spv). HVS 오버레이 평면용 dma-buf 이다.
+//     V3D 가 LINEAR 타일링 RGBA8 에 STORAGE_IMAGE 기능을 주지 않아서(linearTilingFeatures 에 비트 없음)
+//     LINEAR 이미지를 export 할 수 없다 → 버퍼에 pitch(픽셀 단위)로 직접 쓴다. 메모리 바이트 순서는
+//     R,G,B,A(packUnorm4x8 의 x 가 최하위 바이트) = DRM_FORMAT_ABGR8888(AB24).
+//     버퍼 경로는 imageStore 의 "범위 밖 쓰기는 버린다" 보장이 없으므로 store_px 가 경계를 직접 검사한다.
+//     push constant 뒤에 dst_pitch 와 erase 가 붙는다: erase != 0 이면 같은 픽셀 집합에 (0,0,0,0) 을 쓴다
+//     (링 항목 재사용 시 직전 박스만 지우는 패스 — overlay_plane.hpp 설명).
+#ifdef YVO_OVERLAY_BUFFER
+layout(std430, set = 0, binding = 0) writeonly buffer DstBuf {
+    uint dst_px[];
+};
+#define STORE_PX(p, c) store_px(p, c)
+#else
 layout(rgba8, set = 0, binding = 0) uniform writeonly image2D dst_image;
+#define STORE_PX(p, c) imageStore(dst_image, p, c)
+#endif
 
 // std430: dispatch 0..11 / count 12 / overflow 16 / text_bytes 20 / text[32] 24..151 / dets 152..
 // 호스트 OverlayDetBufHeader(152 B)와 static_assert 로 맞춰 둔다.
@@ -80,7 +97,18 @@ layout(push_constant, std430) uniform Params {
     int dst_w, dst_h;
     int line_width;         // R3
     uint max_dets;          // dets[] 상한 (count 를 이 값으로 클램프한다)
+#ifdef YVO_OVERLAY_BUFFER
+    int dst_pitch;          // 행 간격(픽셀 = uint 워드 단위). 바이트 pitch / 4
+    uint erase;             // 1 = 색 대신 (0,0,0,0) 을 쓴다
+#endif
 } pc;
+
+#ifdef YVO_OVERLAY_BUFFER
+void store_px(ivec2 p, vec4 c) {
+    if (uint(p.x) >= uint(pc.dst_w) || uint(p.y) >= uint(pc.dst_h)) return;
+    dst_px[p.y * pc.dst_pitch + p.x] = (pc.erase != 0u) ? 0u : packUnorm4x8(c);
+}
+#endif
 
 // R1
 int rnd(float v) { return int(floor(clamp(v, -32768.0, 32767.0) + 0.5)); }
@@ -105,7 +133,7 @@ void band_h(int x0, int y0, int x1, int y1, vec4 c) {
     y1 = min(y1, pc.dst_h - 1);
     const int step = int(gl_WorkGroupSize.x);
     for (int y = y0; y <= y1; ++y)
-        for (int x = x0 + int(gl_LocalInvocationID.x); x <= x1; x += step) imageStore(dst_image, ivec2(x, y), c);
+        for (int x = x0 + int(gl_LocalInvocationID.x); x <= x1; x += step) STORE_PX(ivec2(x, y), c);
 }
 
 // 세로로 긴 밴드(왼·오른 변, 폭 = line_width): 행을 invocation 에 분배한다.
@@ -116,7 +144,7 @@ void band_v(int x0, int y0, int x1, int y1, vec4 c) {
     y1 = min(y1, pc.dst_h - 1);
     const int step = int(gl_WorkGroupSize.x);
     for (int y = y0 + int(gl_LocalInvocationID.x); y <= y1; y += step)
-        for (int x = x0; x <= x1; ++x) imageStore(dst_image, ivec2(x, y), c);
+        for (int x = x0; x <= x1; ++x) STORE_PX(ivec2(x, y), c);
 }
 
 // ── 문자 만들기 ───────────────────────────────────────────────────────────────────────────────
@@ -168,7 +196,7 @@ void draw_text_run(int x0, int y0, uint nchars, vec4 c, bool hud, uint name_o, u
                 // 가로 경계 검사를 하지 않는다: 범위 밖 imageStore 는 Vulkan 이 버리도록 보장하므로
                 // CPU 기준의 클리핑(R5)과 결과가 같고, 픽셀당 분기가 사라진다
                 // (display_convert.comp 의 store_px() 와 같은 근거).
-                for (int i = 0; i < s; ++i) imageStore(dst_image, ivec2(cx + i, py), c);
+                for (int i = 0; i < s; ++i) STORE_PX(ivec2(cx + i, py), c);
             }
         }
     }

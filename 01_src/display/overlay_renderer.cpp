@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "overlay_boxes_buf_spv.h" // 같은 소스의 -DYVO_OVERLAY_BUFFER 변형
 #include "overlay_boxes_spv.h" // 빌드 시 glslc 로 생성 (02_shaders/CMakeLists.txt)
 #include "vulkan/vk_check.hpp"
 #include "vulkan/vulkan_context.hpp"
@@ -57,11 +58,13 @@ OverlayStyle OverlayRenderer::style() const {
 void OverlayRenderer::create_pipeline() {
     VkDevice dev = ctx_.device();
 
-    // 0: 출력 storage image, 1: DetBuf, 2: 폰트+이름 SSBO
+    const bool buf_target = cfg_.target == OverlayTarget::Buffer;
+    // 0: 출력 storage image (버퍼 변형은 storage buffer), 1: DetBuf, 2: 폰트+이름 SSBO
     std::array<VkDescriptorSetLayoutBinding, 3> b{};
     for (std::uint32_t i = 0; i < 3; ++i) {
         b[i].binding = i;
-        b[i].descriptorType = (i == 0) ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        b[i].descriptorType = (i == 0 && !buf_target) ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
+                                                      : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         b[i].descriptorCount = 1;
         b[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
     }
@@ -71,7 +74,9 @@ void OverlayRenderer::create_pipeline() {
     dl.pBindings = b.data();
     YVO_VK_CHECK(vkCreateDescriptorSetLayout(dev, &dl, nullptr, &set_layout_));
 
-    VkPushConstantRange pcr{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(OverlayPush)};
+    VkPushConstantRange pcr{VK_SHADER_STAGE_COMPUTE_BIT, 0,
+                            buf_target ? static_cast<std::uint32_t>(sizeof(OverlayPushBuf))
+                                       : static_cast<std::uint32_t>(sizeof(OverlayPush))};
     VkPipelineLayoutCreateInfo pl{};
     pl.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pl.setLayoutCount = 1;
@@ -82,8 +87,8 @@ void OverlayRenderer::create_pipeline() {
 
     VkShaderModuleCreateInfo smi{};
     smi.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    smi.codeSize = sizeof(kOverlayBoxesSpv);
-    smi.pCode = kOverlayBoxesSpv;
+    smi.codeSize = buf_target ? sizeof(kOverlayBoxesBufSpv) : sizeof(kOverlayBoxesSpv);
+    smi.pCode = buf_target ? kOverlayBoxesBufSpv : kOverlayBoxesSpv;
     VkShaderModule module = VK_NULL_HANDLE;
     YVO_VK_CHECK(vkCreateShaderModule(dev, &smi, nullptr, &module));
 
@@ -110,8 +115,14 @@ void OverlayRenderer::create_pipeline() {
     YVO_VK_CHECK(r);
 
     const auto n = static_cast<std::uint32_t>(cfg_.num_slots);
-    const std::array<VkDescriptorPoolSize, 2> ps{
-        {{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2 * n}, {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, n}}};
+    // 버퍼 변형은 storage image 가 없다(descriptorCount 0 인 풀 크기는 허용되지 않으므로 항목을 뺀다).
+    std::vector<VkDescriptorPoolSize> ps;
+    if (buf_target) {
+        ps.push_back({VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 * n});
+    } else {
+        ps.push_back({VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2 * n});
+        ps.push_back({VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, n});
+    }
     VkDescriptorPoolCreateInfo dp{};
     dp.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     dp.maxSets = n;
@@ -307,6 +318,8 @@ int OverlayRenderer::set_frame(int slot, const std::vector<Detection>& in, std::
 void OverlayRenderer::record(int slot, VkCommandBuffer cb, VkImageView dst_view, VkExtent2D dst_extent,
                              const OverlayAffine& affine, bool barrier_prior_compute_write) {
     if (cb == VK_NULL_HANDLE) throw std::invalid_argument("OverlayRenderer::record: null command buffer");
+    if (cfg_.target != OverlayTarget::Image)
+        throw std::logic_error("OverlayRenderer::record: target is Buffer — use record_buffer()");
     Slot& s = slots_.at(static_cast<std::size_t>(slot));
 
     // binding 0 만 갱신한다. 이 슬롯을 쓰는 GPU 작업이 없을 때만 부르는 것은 호출자 책임이다
@@ -322,6 +335,58 @@ void OverlayRenderer::record(int slot, VkCommandBuffer cb, VkImageView dst_view,
     w.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     w.pImageInfo = &ii;
     vkUpdateDescriptorSets(ctx_.device(), 1, &w, 0, nullptr);
+
+    OverlayPush pc{};
+    pc.sx = affine.sx;
+    pc.sy = affine.sy;
+    pc.tx = affine.tx;
+    pc.ty = affine.ty;
+    pc.dst_w = static_cast<std::int32_t>(dst_extent.width);
+    pc.dst_h = static_cast<std::int32_t>(dst_extent.height);
+    pc.line_width = cfg_.line_width;
+    pc.max_dets = static_cast<std::uint32_t>(cfg_.max_dets);
+    record_dispatch(slot, cb, &pc, sizeof(pc), barrier_prior_compute_write);
+}
+
+void OverlayRenderer::record_buffer(int slot, VkCommandBuffer cb, VkBuffer dst, VkDeviceSize dst_offset,
+                                    VkDeviceSize dst_range, VkExtent2D dst_extent, std::uint32_t pitch_px,
+                                    const OverlayAffine& affine, bool barrier_prior_compute_write, bool erase) {
+    if (cb == VK_NULL_HANDLE) throw std::invalid_argument("OverlayRenderer::record_buffer: null command buffer");
+    if (cfg_.target != OverlayTarget::Buffer)
+        throw std::logic_error("OverlayRenderer::record_buffer: target is Image — use record()");
+    if (pitch_px < dst_extent.width)
+        throw std::invalid_argument("OverlayRenderer::record_buffer: pitch_px < width");
+    if (static_cast<VkDeviceSize>(pitch_px) * dst_extent.height * 4u > dst_range)
+        throw std::invalid_argument("OverlayRenderer::record_buffer: buffer range too small for pitch*height");
+    Slot& s = slots_.at(static_cast<std::size_t>(slot));
+
+    VkDescriptorBufferInfo bi{dst, dst_offset, dst_range};
+    VkWriteDescriptorSet w{};
+    w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    w.dstSet = s.set;
+    w.dstBinding = 0;
+    w.descriptorCount = 1;
+    w.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    w.pBufferInfo = &bi;
+    vkUpdateDescriptorSets(ctx_.device(), 1, &w, 0, nullptr);
+
+    OverlayPushBuf pc{};
+    pc.base.sx = affine.sx;
+    pc.base.sy = affine.sy;
+    pc.base.tx = affine.tx;
+    pc.base.ty = affine.ty;
+    pc.base.dst_w = static_cast<std::int32_t>(dst_extent.width);
+    pc.base.dst_h = static_cast<std::int32_t>(dst_extent.height);
+    pc.base.line_width = cfg_.line_width;
+    pc.base.max_dets = static_cast<std::uint32_t>(cfg_.max_dets);
+    pc.dst_pitch = static_cast<std::int32_t>(pitch_px);
+    pc.erase = erase ? 1u : 0u;
+    record_dispatch(slot, cb, &pc, sizeof(pc), barrier_prior_compute_write);
+}
+
+void OverlayRenderer::record_dispatch(int slot, VkCommandBuffer cb, const void* push, std::uint32_t push_size,
+                                      bool barrier_prior_compute_write) {
+    Slot& s = slots_.at(static_cast<std::size_t>(slot));
 
     // ① 호스트가 쓴 DetBuf 를 가용화한다: HOST_WRITE → SHADER_READ | INDIRECT_COMMAND_READ
     VkBufferMemoryBarrier2 bb{};
@@ -357,19 +422,9 @@ void OverlayRenderer::record(int slot, VkCommandBuffer cb, VkImageView dst_view,
     }
     vkCmdPipelineBarrier2(cb, &di);
 
-    OverlayPush pc{};
-    pc.sx = affine.sx;
-    pc.sy = affine.sy;
-    pc.tx = affine.tx;
-    pc.ty = affine.ty;
-    pc.dst_w = static_cast<std::int32_t>(dst_extent.width);
-    pc.dst_h = static_cast<std::int32_t>(dst_extent.height);
-    pc.line_width = cfg_.line_width;
-    pc.max_dets = static_cast<std::uint32_t>(cfg_.max_dets);
-
     vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_);
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_, 0, 1, &s.set, 0, nullptr);
-    vkCmdPushConstants(cb, pipeline_layout_, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pc), &pc);
+    vkCmdPushConstants(cb, pipeline_layout_, VK_SHADER_STAGE_COMPUTE_BIT, 0, push_size, push);
 
     const auto q = static_cast<std::uint32_t>(slot) * kQueriesPerSlot;
     if (query_pool_) {

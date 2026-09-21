@@ -41,6 +41,7 @@
 
 #include "core/frame_types.hpp"
 #include "display/display_convert.hpp"
+#include "display/display_sink.hpp"
 #include "display/offscreen_backend.hpp"
 #include "display/overlay_renderer.hpp"
 #include "display/vk_swapchain.hpp"
@@ -56,6 +57,14 @@ enum class DisplayBackendKind {
     Auto,        // Wayland 를 먼저 시도하고 실패하면 offscreen
     Wayland,     // strict — 실패하면 예외(조용한 폴백 금지)
     Offscreen,
+    WaylandPlanes,  // HVS 두 평면 스캔아웃 (PlaneDisplay + WaylandPlaneScanout). DisplayPipeline 은 만들지 않는다
+};
+
+// wayland-planes 가 컴포지터에 요청할 COLOR_RANGE (wp_color_representation_v1)
+enum class ColorRangeRequest {
+    Auto,      // = Full: labwc 0.20.1/wlroots 0.20.2 는 요청과 **뒤집혀** 나간다("fullhack") → 실제로 limited
+    Full,
+    Limited,
 };
 
 // 어느 프레임을 어떤 검출과 함께 보여 줄 것인가.
@@ -91,14 +100,16 @@ struct DisplayPipelineConfig {
     double source_fps = 30.0;          // pace = Source 의 목표
     int num_slots = 4;                 // 파이프라인 슬롯 수 (retain 배열 크기)
 
+    ColorRangeRequest color_range = ColorRangeRequest::Auto;   // wayland-planes 전용
+
     std::string title = "yolo_vulkan_optimize";
     std::string app_id = "yvo_pipeline";
     bool verbose = false;
 };
 
-class DisplayPipeline {
+class DisplayPipeline final : public DisplaySink {
 public:
-    using Clock = std::chrono::steady_clock;
+    using Clock = DisplaySink::Clock;
 
     // ⚠ **VulkanContext 보다 먼저** 불러야 한다. vkGetPhysicalDeviceWaylandPresentationSupportKHR 가
     //   wl_display* 를 요구하기 때문이다(vulkan_context.hpp 의 닭-달걀 설명).
@@ -108,62 +119,63 @@ public:
 
     // win == nullptr 또는 ctx.present_enabled()==false 면 오프스크린 백엔드로 만든다.
     DisplayPipeline(yvo::vk::VulkanContext& ctx, WaylandWindow* win, const DisplayPipelineConfig& cfg);
-    ~DisplayPipeline();
+    ~DisplayPipeline() override;
     DisplayPipeline(const DisplayPipeline&) = delete;
     DisplayPipeline& operator=(const DisplayPipeline&) = delete;
 
     // 표시가 끝나 슬롯을 놓아도 된다고 알린다(submit 펜스 기준). 인자는 **파이프라인 슬롯**.
-    void set_display_done_callback(std::function<void(int)> cb) { done_cb_ = std::move(cb); }
+    void set_display_done_callback(std::function<void(int)> cb) override { done_cb_ = std::move(cb); }
 
     // 원본 프레임 크기. **디코더를 연 뒤 첫 show() 전에** 부른다(`InferStage::set_source_size` 와 같은 규약).
     // 초기화 순서가 창 → 컨텍스트 → 표시 → 디코더라서 생성자 시점에는 아직 알 수 없다
     // (`extra_hw_frames` 가 `image_count()` 에 의존하므로 디코더가 마지막이어야 한다).
     // 1:1 인지 균일 스케일인지가 여기서 정해진다 — 잘못 두면 조용히 2.6배 느린 경로로 간다.
-    void set_source_size(int w, int h);
+    void set_source_size(int w, int h) override;
 
     // 디코드 직후: 이 슬롯이 쓸 프레임의 keepalive 를 **추가로** 붙든다(main 의 f.reset() 앞에서).
     // 동시에 이 시각을 glass-to-glass 의 시작점으로 기록한다.
-    void retain(int slot, const DrmFrame& f);
+    void retain(int slot, const DrmFrame& f) override;
 
     // 한 프레임을 화면에 낸다. false = 표시 드롭 — 호출자는 **즉시** display_done(slot) 을 세워야 한다.
-    bool show(int slot, const std::vector<Detection>& dets, std::string_view hud = {});
+    bool show(int slot, const std::vector<Detection>& dets, std::string_view hud = {}) override;
 
     // 펜스 폴링 → finish → display_done 콜백. 블로킹하지 않는다. 매 바퀴 부른다.
-    void pump();
+    void pump() override;
 
     // 남은 표시 작업을 전부 끝낸다(블로킹). 종료 때 한 번.
-    void drain();
+    void drain() override;
 
     // Wayland 이벤트 처리 + 창 크기 변경 예약. false = 창이 닫혔거나 종료 키가 눌렸다(오프스크린이면 항상 true).
     // 둘은 quit_requested() 로 구분한다.
-    bool poll_window();
+    bool poll_window() override;
 
     // 표시 창에 포커스가 있을 때 종료 키(Esc, q, Ctrl+C)가 눌렸다 — 호출자는 SIGINT 와 같은 중단으로 취급한다.
-    bool quit_requested() const;
+    bool quit_requested() const override;
 
     // 이 경로가 지금 붙들고 있는 디코더 프레임 수 (retained + DisplayConvert 인플라이트).
-    int frames_held() const;
+    int frames_held() const override;
 
     // pace 에 따른 이 프레임의 처리 마감 시각. 페이싱이 없으면 빈 optional.
     // 호출자는 그때까지 pump 루프를 돈다(블로킹 sleep 을 쓰면 NPU·GPU 후처리가 굶는다).
-    std::optional<Clock::time_point> pace_deadline(std::int64_t frame_index);
+    std::optional<Clock::time_point> pace_deadline(std::int64_t frame_index) override;
 
     // ── 통계 ──
-    std::uint64_t presented() const { return backend_->presented(); }
-    std::uint64_t display_dropped() const { return backend_->display_dropped() + skipped_ + busy_dropped_; }
-    std::uint64_t recreates() const { return backend_->recreates(); }
-    std::uint32_t image_count() const { return backend_->image_count(); }
-    bool offscreen() const { return offscreen_; }
-    bool uniform_scale() const { return uniform_scale_; }
-    bool blit_mode() const { return backend_->blit_mode(); }
-    VkExtent2D extent() const { return backend_->extent(); }
-    std::uint64_t overlay_overflows() const { return overlay_overflow_; }
+    const char* backend_name() const override { return offscreen_ ? "offscreen" : "wayland"; }
+    std::uint64_t presented() const override { return backend_->presented(); }
+    std::uint64_t display_dropped() const override { return backend_->display_dropped() + skipped_ + busy_dropped_; }
+    std::uint64_t recreates() const override { return backend_->recreates(); }
+    std::uint32_t image_count() const override { return backend_->image_count(); }
+    bool offscreen() const override { return offscreen_; }
+    bool uniform_scale() const override { return uniform_scale_; }
+    bool blit_mode() const override { return backend_->blit_mode(); }
+    VkExtent2D extent() const override { return backend_->extent(); }
+    std::uint64_t overlay_overflows() const override { return overlay_overflow_; }
 
-    const std::vector<double>& convert_ms() const { return convert_ms_; }
-    const std::vector<double>& convert_total_ms() const { return convert_total_ms_; }
-    const std::vector<double>& overlay_ms() const { return overlay_ms_; }
-    const std::vector<double>& present_interval_ms() const { return interval_ms_; }
-    const std::vector<double>& glass_ms() const { return glass_ms_; }
+    const std::vector<double>& convert_ms() const override { return convert_ms_; }
+    const std::vector<double>& convert_total_ms() const override { return convert_total_ms_; }
+    const std::vector<double>& overlay_ms() const override { return overlay_ms_; }
+    const std::vector<double>& present_interval_ms() const override { return interval_ms_; }
+    const std::vector<double>& glass_ms() const override { return glass_ms_; }
 
 private:
     struct Pending {              // 표시 슬롯 → 파이프라인 슬롯 + 지연 측정 정보
@@ -224,6 +236,8 @@ private:
 const char* sync_name(DisplaySync s);
 const char* pace_name(DisplayPace p);
 bool parse_backend_kind(const std::string& s, DisplayBackendKind* out);
+bool parse_color_range(const std::string& s, ColorRangeRequest* out);
+const char* color_range_name(ColorRangeRequest r);
 bool parse_display_sync(const std::string& s, DisplaySync* out);
 bool parse_display_pace(const std::string& s, DisplayPace* out);
 

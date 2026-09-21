@@ -14,6 +14,13 @@
 
 // wayland-scanner 로 생성한 스텁 (01_src/display/CMakeLists.txt 의 yvo_wayland_protocols 타깃)
 #include "xdg-shell-client-protocol.h"
+// wayland-planes 용 (plane_globals=true 일 때만 bind 한다)
+#include "display/linux-dmabuf-client-protocol.h"
+#include "display/presentation-time-client-protocol.h"
+#include "display/viewporter-client-protocol.h"
+#ifdef YVO_HAVE_COLOR_REPRESENTATION
+#include "display/color-representation-client-protocol.h"
+#endif
 
 namespace yvo::display {
 
@@ -29,6 +36,11 @@ constexpr std::uint32_t kSubcompositorVersion = 1;
 //   wl_seat       5 : wl_seat.release(v5)·wl_keyboard.release(v3)까지. v7+ 는 keymap mmap 규약만 바뀌고(우리는 매핑하지
 //                     않는다) v8+ 는 axis 계열(포인터)이라 필요 없다. 광고 버전이 낮으면 그에 맞춘다.
 constexpr std::uint32_t kSeatVersion = 5;
+//   zwp_linux_dmabuf_v1 4 : v4 부터 format/modifier 이벤트를 보내지 않는다(리스너 불필요). create/create_immed 는 v2~.
+//   wp_presentation 1 / wp_viewporter 1 / wp_color_representation_manager_v1 1 : 쓰는 요청이 전부 v1 에 있다.
+constexpr std::uint32_t kLinuxDmabufVersion = 4;
+constexpr std::uint32_t kPresentationVersion = 1;
+constexpr std::uint32_t kViewporterVersion = 1;
 
 template <typename T>
 T* bind_global(wl_registry* r, std::uint32_t name, const wl_interface* iface, std::uint32_t advertised,
@@ -61,10 +73,97 @@ void WaylandWindow::on_registry_global(void* data, wl_registry* r, std::uint32_t
         self->seat_ = bind_global<wl_seat>(r, name, &wl_seat_interface, version, kSeatVersion);
         wl_seat_add_listener(self->seat_, &seat_listener, self);
     } else if (std::strcmp(iface, wl_subcompositor_interface.name) == 0) {
-        // 안 (III) 의 전제. 지금은 bind 만 한다.
+        // wayland-planes 의 박스 subsurface 가 쓴다. Vulkan 경로는 bind 만 한다.
         self->subcompositor_ =
             bind_global<wl_subcompositor>(r, name, &wl_subcompositor_interface, version, kSubcompositorVersion);
+    } else if (self->plane_globals_) {
+        self->bind_plane_global(r, name, iface, version);
     }
+}
+
+void WaylandWindow::bind_plane_global(wl_registry* r, std::uint32_t name, const char* iface, std::uint32_t version) {
+    if (std::strcmp(iface, zwp_linux_dmabuf_v1_interface.name) == 0 && dmabuf_ == nullptr) {
+        dmabuf_version_ = std::min(version, kLinuxDmabufVersion);
+        dmabuf_ = bind_global<zwp_linux_dmabuf_v1>(r, name, &zwp_linux_dmabuf_v1_interface, version,
+                                                   kLinuxDmabufVersion);
+    } else if (std::strcmp(iface, wp_presentation_interface.name) == 0 && presentation_ == nullptr) {
+        // clock_id 이벤트는 bind 직후에 온다 → 리스너를 여기서 붙여야 놓치지 않는다.
+        static const wp_presentation_listener pres_listener = [] {
+            wp_presentation_listener l{};
+            l.clock_id = &WaylandWindow::on_presentation_clock_id;
+            return l;
+        }();
+        presentation_ = bind_global<wp_presentation>(r, name, &wp_presentation_interface, version, kPresentationVersion);
+        wp_presentation_add_listener(presentation_, &pres_listener, this);
+    } else if (std::strcmp(iface, wp_viewporter_interface.name) == 0 && viewporter_ == nullptr) {
+        viewporter_ = bind_global<wp_viewporter>(r, name, &wp_viewporter_interface, version, kViewporterVersion);
+    }
+#ifdef YVO_HAVE_COLOR_REPRESENTATION
+    else if (std::strcmp(iface, wp_color_representation_manager_v1_interface.name) == 0) {
+        // 지원 목록 이벤트(supported_*, done)도 bind 직후에 온다. 후보마다 자기 컨텍스트를 준다(전역 상태 없음).
+        static const wp_color_representation_manager_v1_listener color_listener = [] {
+            wp_color_representation_manager_v1_listener l{};
+            l.supported_alpha_mode = &WaylandWindow::on_color_alpha_mode;
+            l.supported_coefficients_and_ranges = &WaylandWindow::on_color_coef_range;
+            l.done = &WaylandWindow::on_color_done;
+            return l;
+        }();
+        auto c = std::make_unique<ColorMgrCand>();
+        c->self = this;
+        c->mgr = bind_global<wp_color_representation_manager_v1>(r, name, &wp_color_representation_manager_v1_interface,
+                                                                 version, 1);
+        wp_color_representation_manager_v1_add_listener(c->mgr, &color_listener, c.get());
+        color_cands_.push_back(std::move(c));
+        ++color_mgrs_advertised_;
+    }
+#endif
+}
+
+void WaylandWindow::on_presentation_clock_id(void* data, wp_presentation* /*p*/, std::uint32_t clk) {
+    static_cast<WaylandWindow*>(data)->presentation_clock_ = clk;
+}
+
+void WaylandWindow::on_color_alpha_mode(void* /*data*/, wp_color_representation_manager_v1* /*m*/,
+                                        std::uint32_t /*mode*/) {}
+
+void WaylandWindow::on_color_coef_range(void* data, wp_color_representation_manager_v1* /*m*/, std::uint32_t coef,
+                                        std::uint32_t range) {
+    static_cast<ColorMgrCand*>(data)->pairs.emplace_back(coef, range);
+}
+
+void WaylandWindow::on_color_done(void* /*data*/, wp_color_representation_manager_v1* /*m*/) {}
+
+void WaylandWindow::select_color_manager() {
+#ifdef YVO_HAVE_COLOR_REPRESENTATION
+    // BT.709 를 지원하는 첫 관리자 하나만 남긴다(hvs_wl_probe.cpp:793-799 와 같은 규칙).
+    for (auto& c : color_cands_) {
+        const bool has709 = std::any_of(c->pairs.begin(), c->pairs.end(), [](const auto& pr) {
+            return pr.first == WP_COLOR_REPRESENTATION_SURFACE_V1_COEFFICIENTS_BT709;
+        });
+        if (color_mgr_ == nullptr && has709) {
+            color_mgr_ = c->mgr;
+            color_pairs_ = c->pairs;
+        } else {
+            wp_color_representation_manager_v1_destroy(c->mgr);
+        }
+        c->mgr = nullptr;
+    }
+    color_cands_.clear();
+#endif
+}
+
+bool WaylandWindow::color_pair_supported(std::uint32_t coefficients, std::uint32_t range) const {
+    return std::any_of(color_pairs_.begin(), color_pairs_.end(),
+                       [&](const auto& pr) { return pr.first == coefficients && pr.second == range; });
+}
+
+std::string WaylandWindow::color_pairs_text() const {
+    std::string s;
+    for (const auto& [c, r] : color_pairs_) {
+        if (!s.empty()) s += ' ';
+        s += "(coef=" + std::to_string(c) + ",range=" + std::to_string(r) + ")";
+    }
+    return s.empty() ? std::string("-") : s;
 }
 
 void WaylandWindow::on_registry_global_remove(void* /*data*/, wl_registry* /*r*/, std::uint32_t /*name*/) {
@@ -220,6 +319,7 @@ bool WaylandWindow::open(const WaylandWindowOptions& opt) {
         return false;
     }
     verbose_ = opt.verbose;
+    plane_globals_ = opt.plane_globals;
     error_.clear();
     quit_requested_ = false;
     width_ = std::max(1, opt.width);
@@ -287,6 +387,8 @@ bool WaylandWindow::open(const WaylandWindowOptions& opt) {
     }
     // 첫 configure 로 받은 크기는 "변경"이 아니다 — 스왑체인이 width()/height() 로 만들면 된다.
     size_pending_ = false;
+    // color-representation 관리자의 지원 목록은 위 두 번째 roundtrip 까지 다 왔다 → 하나만 고른다.
+    if (plane_globals_) select_color_manager();
     if (verbose_)
         std::printf("[wayland] open %dx%d%s (subcompositor=%d)\n", width_, height_,
                     opt.fullscreen ? " fullscreen" : "", has_subcompositor());
@@ -310,6 +412,29 @@ void WaylandWindow::close() {
     if (wm_base_ != nullptr) {
         xdg_wm_base_destroy(wm_base_);
         wm_base_ = nullptr;
+    }
+    // wayland-planes 전역 (plane_globals=false 면 전부 nullptr)
+#ifdef YVO_HAVE_COLOR_REPRESENTATION
+    for (auto& c : color_cands_)
+        if (c->mgr != nullptr) wp_color_representation_manager_v1_destroy(c->mgr);
+    if (color_mgr_ != nullptr) wp_color_representation_manager_v1_destroy(color_mgr_);
+#endif
+    color_cands_.clear();
+    color_mgr_ = nullptr;
+    color_pairs_.clear();
+    color_mgrs_advertised_ = 0;
+    if (viewporter_ != nullptr) {
+        wp_viewporter_destroy(viewporter_);
+        viewporter_ = nullptr;
+    }
+    if (presentation_ != nullptr) {
+        wp_presentation_destroy(presentation_);
+        presentation_ = nullptr;
+    }
+    if (dmabuf_ != nullptr) {
+        zwp_linux_dmabuf_v1_destroy(dmabuf_);
+        dmabuf_ = nullptr;
+        dmabuf_version_ = 0;
     }
     // keyboard 는 seat 에서 얻었으므로 seat 보다 먼저 해제한다.
     release_keyboard();
@@ -341,7 +466,7 @@ void WaylandWindow::close() {
     size_pending_ = false;
 }
 
-bool WaylandWindow::poll() {
+bool WaylandWindow::poll(int timeout_ms) {
     if (display_ == nullptr) return false;
     auto fail = [&](const char* what) {
         const int err = wl_display_get_error(display_);
@@ -360,7 +485,8 @@ bool WaylandWindow::poll() {
     pollfd pfd{};
     pfd.fd = wl_display_get_fd(display_);
     pfd.events = POLLIN;
-    const int pr = ::poll(&pfd, 1, 0);  // timeout 0 = 논블로킹. 블로킹 dispatch 는 쓰지 않는다.
+    // timeout 0 = 논블로킹(기본). 양수면 그 시간까지만 기다린다. 블로킹 dispatch(무한 대기)는 쓰지 않는다.
+    const int pr = ::poll(&pfd, 1, std::max(timeout_ms, 0));
     if (pr > 0 && (pfd.revents & POLLIN) != 0) {
         if (wl_display_read_events(display_) < 0) return fail("wl_display_read_events");
     } else {

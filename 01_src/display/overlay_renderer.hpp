@@ -53,7 +53,13 @@ class VulkanContext;
 
 namespace yvo::display {
 
+// 출력 대상. Image = rgba8 storage image(overlay_boxes.spv, 합성 경로). Buffer = packed RGBA8 storage
+// buffer(overlay_boxes_buf.spv, HVS 오버레이 평면용 dma-buf — V3D 가 LINEAR RGBA8 storage image 를 지원하지
+// 않아서다. overlay_plane.hpp 참고). 한 OverlayRenderer 는 한 가지 대상만 쓴다(파이프라인·레이아웃이 다르다).
+enum class OverlayTarget { Image, Buffer };
+
 struct OverlayConfig {
+    OverlayTarget target = OverlayTarget::Image;
     int num_slots = 3;            // 인플라이트 수 (= 스왑체인 이미지 개수, DisplayConvert 와 같게)
     int max_dets = 80;            // DetBuf 의 dets[] 상한 (계획서 §5.4)
     // 워크그룹 크기(spec constant). 검출 하나당 워크그룹 하나이므로 x 만 쓴다.
@@ -77,6 +83,15 @@ struct OverlayPush {
     std::uint32_t max_dets;
 };
 static_assert(sizeof(OverlayPush) == 32, "push constant layout must match shader");
+
+// 버퍼 변형(YVO_OVERLAY_BUFFER)의 push constant: OverlayPush 뒤에 두 필드가 붙는다.
+struct OverlayPushBuf {
+    OverlayPush base;
+    std::int32_t dst_pitch;       // 행 간격 (픽셀 = uint32 워드 단위)
+    std::uint32_t erase;          // 1 = 같은 픽셀 집합에 (0,0,0,0) 을 쓴다
+};
+static_assert(sizeof(OverlayPushBuf) == 40, "buffer-variant push constant layout must match shader");
+static_assert(offsetof(OverlayPushBuf, dst_pitch) == 32, "dst_pitch offset must match shader");
 
 // DetBuf 헤더 (std430). 셰이더의 DetBuf 앞부분과 바이트 단위로 같아야 한다.
 //   dispatch 0..11 / count 12 / overflow 16 / text_bytes 20 / text[32] 24..151 / dets[] 152..
@@ -120,8 +135,17 @@ public:
     int set_frame(int slot, const std::vector<Detection>& dets, std::string_view hud = {});
 
     // 같은 커맨드 버퍼에 이어 기록한다. affine 은 make_overlay_affine(src, dst) 결과다.
+    // (target == Image 전용)
     void record(int slot, VkCommandBuffer cb, VkImageView dst_view, VkExtent2D dst_extent,
                 const OverlayAffine& affine, bool barrier_prior_compute_write = true);
+
+    // (target == Buffer 전용) packed RGBA8 버퍼에 그린다. pitch_px = 바이트 pitch / 4.
+    // dst_offset 은 minStorageBufferOffsetAlignment 배수여야 한다. erase = true 면 이 슬롯의 **현재 DetBuf 내용**이
+    // 그릴 픽셀 집합에 (0,0,0,0) 을 쓴다 — 같은 입력·같은 affine 이면 픽셀 집합이 결정적이라 정확히 지워진다.
+    // barrier_prior_compute_write 는 record() 와 같다(앞선 컴퓨트 쓰기와의 WAW 를 끊는 전역 배리어).
+    void record_buffer(int slot, VkCommandBuffer cb, VkBuffer dst, VkDeviceSize dst_offset, VkDeviceSize dst_range,
+                       VkExtent2D dst_extent, std::uint32_t pitch_px, const OverlayAffine& affine,
+                       bool barrier_prior_compute_write, bool erase = false);
 
     // 제출 펜스가 끝난 뒤 호출 — timestamp 를 읽는다(대기하지 않는다).
     void collect(int slot);
@@ -145,6 +169,9 @@ private:
     };
 
     void create_pipeline();
+    // record/record_buffer 공통: DetBuf 배리어(+선택적 WAW 배리어) → 바인드 → push → timestamp → dispatch
+    void record_dispatch(int slot, VkCommandBuffer cb, const void* push, std::uint32_t push_size,
+                         bool barrier_prior_compute_write);
     void create_font_buffer();
     void create_slots();
     void destroy();

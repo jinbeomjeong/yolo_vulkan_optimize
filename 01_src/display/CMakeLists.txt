@@ -31,10 +31,34 @@ file(TO_CMAKE_PATH "${YVO_WL_PROTO_DIR}" YVO_WL_PROTO_DIR)
 # wayland-scanner 로 클라이언트 스텁 생성 (yvo_add_shaders() 가 glslc 를 add_custom_command 로 돌리는 것과 같은 패턴).
 # 프로토콜을 추가할 때는 아래 목록에 "<이름>=<xml 상대경로>" 한 줄만 더한다.
 set(yvo_wl_protocols
-  "xdg-shell=stable/xdg-shell/xdg-shell.xml")         # 창 (필수)
+  "xdg-shell=stable/xdg-shell/xdg-shell.xml"                   # 창 (필수)
+  "linux-dmabuf=stable/linux-dmabuf/linux-dmabuf-v1.xml"       # wayland-planes: 디코더 SAND dma-buf → wl_buffer
+  "presentation-time=stable/presentation-time/presentation-time.xml"  # wayland-planes: 표시 시각(glass-to-glass)
+  "viewporter=stable/viewporter/viewporter.xml")               # wayland-planes: 출력 ≠ 원본 크기일 때 HVS 스케일
+# 선택 프로토콜: XML 이 없어도 yvo_display 는 빌드된다. 있으면 YVO_HAVE_<매크로>=1 을 정의한다.
+#   color-representation-v1 은 staging 이라 wayland-protocols 버전에 따라 없을 수 있다(1.44+).
+set(yvo_wl_optional_protocols
+  "color-representation=staging/color-representation/color-representation-v1.xml=YVO_HAVE_COLOR_REPRESENTATION")
+set(yvo_wl_defines "")
+foreach(entry IN LISTS yvo_wl_optional_protocols)
+  string(REPLACE "=" ";" parts "${entry}")
+  list(GET parts 0 name)
+  list(GET parts 1 rel)
+  list(GET parts 2 macro)
+  if(EXISTS "${YVO_WL_PROTO_DIR}/${rel}")
+    list(APPEND yvo_wl_protocols "${name}=${rel}")
+    list(APPEND yvo_wl_defines "${macro}=1")
+  else()
+    message(STATUS "yvo_display: 선택 프로토콜 ${rel} 없음 — ${macro} 없이 빌드한다")
+  endif()
+endforeach()
 
+# 헤더는 generated/display/ 에 둔다: 새 소스는 "display/<이름>-client-protocol.h" 로 include 해서 include 계층 규칙
+# (STRUCTURE.md §2.2, check_structure C4 "<계층>/<파일>")을 지킨다. 기존 xdg-shell 은 접두사 없이 쓰던 그대로
+# (structure_rules.toml include_unprefixed 예외) generated/display 도 include 경로에 넣는다.
 set(yvo_wl_gen_dir ${CMAKE_CURRENT_BINARY_DIR}/generated)
-file(MAKE_DIRECTORY ${yvo_wl_gen_dir})
+set(yvo_wl_hdr_dir ${yvo_wl_gen_dir}/display)
+file(MAKE_DIRECTORY ${yvo_wl_hdr_dir})
 set(yvo_wl_sources "")
 set(yvo_wl_headers "")
 foreach(entry IN LISTS yvo_wl_protocols)
@@ -46,7 +70,7 @@ foreach(entry IN LISTS yvo_wl_protocols)
     message(STATUS "yvo_display: ${xml} 없음 — 건너뛴다")
     return()
   endif()
-  set(hdr ${yvo_wl_gen_dir}/${name}-client-protocol.h)
+  set(hdr ${yvo_wl_hdr_dir}/${name}-client-protocol.h)
   set(src ${yvo_wl_gen_dir}/${name}-protocol.c)
   add_custom_command(OUTPUT ${hdr}
     COMMAND ${YVO_WAYLAND_SCANNER} client-header ${xml} ${hdr}
@@ -67,7 +91,7 @@ enable_language(C)
 #   따라서 **yvo_warnings 를 붙이지 않고** include 디렉터리를 SYSTEM 으로 준다.
 #   "빌드 경고 0" 기준을 지키는 유일한 방법이다.
 add_library(yvo_wayland_protocols STATIC ${yvo_wl_sources})
-target_include_directories(yvo_wayland_protocols SYSTEM PUBLIC ${yvo_wl_gen_dir})
+target_include_directories(yvo_wayland_protocols SYSTEM PUBLIC ${yvo_wl_gen_dir} ${yvo_wl_hdr_dir})
 target_link_libraries(yvo_wayland_protocols PUBLIC PkgConfig::YVO_WAYLAND)
 set_target_properties(yvo_wayland_protocols PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # 헤더는 소스와 별개 커스텀 커맨드라 명시적으로 빌드 순서를 걸어 준다.
@@ -76,12 +100,18 @@ add_dependencies(yvo_wayland_protocols yvo_wayland_protocols_headers)
 
 add_library(yvo_display STATIC
   wayland_window.cpp
+  drm_state.cpp
+  plane_display.cpp
+  wayland_plane_scanout.cpp
   vk_swapchain.cpp
   display_convert.cpp
   overlay_renderer.cpp
+  overlay_plane.cpp
   offscreen_backend.cpp
   display_pipeline.cpp)
 target_link_libraries(yvo_display
   PUBLIC yvo_vulkan yvo_ref
   PRIVATE PkgConfig::YVO_WAYLAND yvo_wayland_protocols yvo_shaders)
 yvo_target_defaults(yvo_display)
+# 선택 프로토콜 매크로는 이 라이브러리 소스 안에서만 쓴다(공개 헤더는 매크로에 의존하지 않는다).
+target_compile_definitions(yvo_display PRIVATE ${yvo_wl_defines})
