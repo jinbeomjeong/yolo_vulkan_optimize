@@ -32,7 +32,7 @@
 //
 // 실행 예 (SSH):
 //   XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0
-//     build/01_src/display/yvo_display_probe --probe present --display-fullscreen --hold-seconds 5
+//     build/bin/yvo_display_probe --probe present --display-fullscreen --hold-seconds 5
 #include <algorithm>
 #include <chrono>
 #include <cstdio>

@@ -437,7 +437,7 @@ GPU 4패스 합 median 6.995 ms = 주기 28.6 ms 의 24.5%<y:LabelModel>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="124.78" modelName="custom" textColor="#000000" visible="true" width="357.28" x="21.36" y="11.01">최종 실행 커맨드 (07_results/op_point/summary.md §8.3)
 XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
-build/01_src/pipeline/yvo_pipeline \
+build/bin/yvo_pipeline \
   --video 04_data/videos/video_h265.mp4 \
   --hef 03_models/yolov11m.hef \
   --mode dmabuf --layout nhcw --postproc gpu \

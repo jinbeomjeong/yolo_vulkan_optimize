@@ -6,7 +6,7 @@
 - 대상 영상: `04_data/videos/video_h265.mp4` (HEVC Main 1920×1080@30)
 - 목적: 계획서(`/home/pi/.claude/plans/jaunty-dazzling-quasar.md`) §5의 표시 경로 설계에서
   **본구현 전에 검증해야 할 가정**을 닫는다. 사용자가 **원본 1920×1080 해상도 기준 박스 표현을 1순위**로 확정했다.
-- 실행: `XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 build/01_src/display/yvo_display_probe --probe ...`
+- 실행: `XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 build/bin/yvo_display_probe --probe ...`
 
 ## 결과
 

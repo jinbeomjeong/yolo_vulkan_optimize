@@ -12,7 +12,7 @@
 
 | 항목 | 값 |
 |---|---|
-| 실행 | `build/01_src/vulkan/yvo_postproc_probe --probe heapimport --validation --sync-validation` |
+| 실행 | `build/bin/yvo_postproc_probe --probe heapimport --validation --sync-validation` |
 | 일시 / 온도 | 2026-09-20 16:18 KST / `measure_temp=65.9 °C`, `get_throttled=0xe0000`(과거 비트만) |
 | **NPU** | **쓰지 않는다.** HailoRT 를 한 번도 부르지 않는다 |
 | GPU | `V3D 7.1.10.2` / `DRIVER_ID_MESA_V3DV` / V3DV Mesa **26.2.2** / apiVersion 1.3.354 |
@@ -137,7 +137,7 @@ conv71_178: requested = 409,600
 
 ```bash
 cmake -S . -B build -G Ninja && cmake --build build
-build/01_src/vulkan/yvo_postproc_probe --probe heapimport --validation --sync-validation
+build/bin/yvo_postproc_probe --probe heapimport --validation --sync-validation
 # → 07_results/dmaheap_unify/evidence/p0_heapimport.txt
 # 종료 코드 0 = PASS (하드 스톱·왕복 불일치·검증레이어 error·fd 누수면 1)
 ```

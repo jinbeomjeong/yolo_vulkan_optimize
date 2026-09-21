@@ -228,7 +228,7 @@ FPS·CPU·glass 를 행 사이에서 섞어 인용하면 안 된다(이 표의 �
 
 ```bash
 XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
-build/01_src/pipeline/yvo_pipeline \
+build/bin/yvo_pipeline \
   --video 04_data/videos/video_h265.mp4 --hef 03_models/yolov11m.hef \
   --mode dmabuf --layout nhcw --postproc gpu \
   --batch 2 --slots 4 \

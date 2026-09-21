@@ -376,7 +376,7 @@ NHCW 1.78 GHz). NHCW는 프로세스가 코어의 20%만 써서 거버너가 클
 cmake -S . -B build -G Ninja && cmake --build build
 ctest --test-dir build
 # 권장 경로: dmabuf + NHCW
-build/01_src/pipeline/yvo_pipeline --video 04_data/videos/video_h265.mp4 \
+build/bin/yvo_pipeline --video 04_data/videos/video_h265.mp4 \
     --mode dmabuf --layout nhcw --batch 8 --slots 16 --dump-dir /tmp/out --dump-every 300
 bash 06_tools/bench/pipeline_bench.sh                       # 전체 9설정(약 55분, 냉각 포함)
 ONLY='nhcw' APPEND=1 bash 06_tools/bench/pipeline_bench.sh  # NHCW만 재서 기존 결과에 추가

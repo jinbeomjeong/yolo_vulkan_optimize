@@ -21,8 +21,7 @@ PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # 공통 함수(온도·PCIe·냉각·hailort 경고 판정·벤치 락)는 lib/common.sh 하나로 모았다.
 # 예전에는 이 함수들이 7개 스크립트에 복붙돼 있었고 실제로 갈라져 있었다(pcie_link 의 Gen5 분기 등).
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
-bench_lock_acquire
-BIN="${BIN:-$PROJ/build/01_src/pipeline/yvo_pipeline}"
+BIN="${BIN:-$BIN_DIR/yvo_pipeline}"
 VIDEO="${VIDEO:-$PROJ/04_data/videos/video_h265.mp4}"
 HEF="${HEF:-$PROJ/03_models/yolov11m.hef}"
 OUT_DIR="${OUT_DIR:-$PROJ/07_results/display_e2e}"
@@ -33,9 +32,10 @@ COOL_C="${COOL_C:-65}"
 COOL_MAX_S="${COOL_MAX_S:-120}"
 HOT_C="${HOT_C:-75}"
 APPEND="${APPEND:-0}"
-PY_HAILO=/home/pi/miniconda3/envs/hailo-yolo/bin/python
 
-[[ -x "$BIN" ]] || { echo "yvo_pipeline 없음: $BIN" >&2; exit 1; }
+require_bin "$BIN" yvo_pipeline
+check_only_exit
+bench_lock_acquire
 mkdir -p "$OUT_DIR/raw"
 
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
@@ -58,7 +58,7 @@ configs=(
 # M5a — NPU 유휴 GPU 기준선. M4 **직전 같은 열 상태에서** 찍는다. 이게 없으면 M4 의 GPU 시간이
 # 경합 때문인지 코드 때문인지 구분할 수 없다. 냉각하지 않는다(의도적).
 if [[ "${SKIP_M5A:-0}" != "1" ]] && (( HAVE_WAYLAND )); then
-  PROBE="$PROJ/build/01_src/display/yvo_display_probe"
+  PROBE="$BIN_DIR/yvo_display_probe"
   if [[ -x "$PROBE" ]]; then
     echo "[M5a] NPU 유휴 GPU 기준선 (yvo_display_probe --probe convert, fullscreen, overlay 5개)"
     mkdir -p "$OUT_DIR/raw/m5a"

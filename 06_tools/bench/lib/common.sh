@@ -7,13 +7,35 @@
 #   - `cool_down()` 이 스크립트마다 센서(hailo/soc)·임계·루프 구조가 달랐고,
 #     `decode_bench.sh` 는 함수 없이 인라인이라 `nan` 처리와 대기 시간 기록이 없었다.
 #
-# 전제: 이 파일을 source 하기 전에 아래가 정의돼 있어야 한다.
+# 전제: 이 파일을 source 하기 전에 PROJ(저장소 루트)가 정의돼 있어야 하고,
+#   함수를 부르기 전에 아래가 정의돼 있어야 한다.
 #   OUT_DIR        결과 폴더 (hailo_temp 가 $OUT_DIR/raw 에서 실행한다)
-#   PY_HAILO       conda hailo-yolo 파이썬 경로
 #   COOL_C         냉각 목표 온도
 #   COOL_MAX_S     냉각 최대 대기 초
 #
 # 센서 선택: NPU 를 쓰는 벤치는 hailo(기본), NPU 를 안 쓰는 벤치(전처리·디코드)는 soc 를 쓴다.
+
+# ── 경로 (여기서 한 번만 정의한다) ─────────────────────────────────────────────
+# 실행파일은 모두 CMAKE_RUNTIME_OUTPUT_DIRECTORY = <build>/bin 에서 나온다(2026-09-22).
+# 소스 폴더를 옮겨도 벤치의 바이너리 경로가 깨지지 않게 하려는 것이다.
+BUILD_DIR="${BUILD_DIR:-$PROJ/build}"
+BIN_DIR="${BIN_DIR:-$BUILD_DIR/bin}"
+PY_HAILO="${PY_HAILO:-/home/pi/miniconda3/envs/hailo-yolo/bin/python}"   # conda hailo-yolo 파이썬
+
+# ── 사전 점검 ─────────────────────────────────────────────────────────────────
+# require_bin <경로> <이름>: 실행파일이 없으면 종료한다.
+require_bin() {
+  [[ -x "$1" ]] || { echo "$2 없음: $1 (먼저 cmake --build build)" >&2; exit 1; }
+}
+
+# CHECK_ONLY=1 이면 바이너리 검사까지만 하고 **락·냉각·측정 전에** 0 으로 끝낸다.
+# 경로 설정이 맞는지 벤치를 돌리지 않고 확인할 때 쓴다(예: 폴더 재배치 뒤).
+check_only_exit() {
+  if [[ "${CHECK_ONLY:-0}" == "1" ]]; then
+    echo "CHECK_ONLY: $(basename "$0") 경로 점검 통과 (BIN_DIR=$BIN_DIR)"
+    exit 0
+  fi
+}
 
 # ── 온도 ───────────────────────────────────────────────────────────────────────
 hailo_temp() {  # hailort.log 가 raw/ 에 생기도록 그 디렉터리에서 실행

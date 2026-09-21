@@ -41,7 +41,7 @@ ctest --test-dir build --output-on-failure
 ## 3. Vulkan 검증 레이어 — errors 0
 
 ```bash
-VK_LOADER_LAYERS_ENABLE='*validation' build/01_src/pipeline/yvo_pipeline \
+VK_LOADER_LAYERS_ENABLE='*validation' build/bin/yvo_pipeline \
     --video 04_data/videos/video_h265.mp4 --mode dmabuf --layout nhcw --frames 200
 ```
 
@@ -57,7 +57,7 @@ VK_LOADER_LAYERS_ENABLE='*validation' build/01_src/pipeline/yvo_pipeline \
 cmake -S . -B build-asan -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer"
 cmake --build build-asan
-build-asan/01_src/pipeline/yvo_pipeline --video 04_data/videos/video_h265.mp4 \
+build-asan/bin/yvo_pipeline --video 04_data/videos/video_h265.mp4 \
     --mode dmabuf --layout nhcw --frames 100
 ```
 

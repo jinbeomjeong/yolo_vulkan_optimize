@@ -4,7 +4,7 @@
   kernel 6.18.50, g++ 14.2 Release, 칩 온도 64~73 °C (`get_throttled=0x80000` = 과거 기록 비트)
 - 대상: `02_shaders/overlay_boxes.comp` + `01_src/display/overlay_renderer.{hpp,cpp}` +
   `01_src/display/overlay_reference.hpp`(규약·CPU 기준) + `05_tests/test_overlay.cpp`
-- 실행: `build/01_src/display/yvo_display_probe --probe overlay [--frames N] [--overlay-local N]`
+- 실행: `build/bin/yvo_display_probe --probe overlay [--frames N] [--overlay-local N]`
   (**NPU·디스플레이·디코더 전부 불필요** — 오프스크린 R8G8B8A8_UNORM 이미지)
 
 ---

@@ -24,6 +24,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+# 실행파일은 모두 <build>/bin 에 모은다(2026-09-22). 소스 폴더를 옮겨도 벤치·스킬·문서의
+# 바이너리 경로(build/bin/yvo_*)가 깨지지 않는다. 테스트의 WORKING_DIRECTORY 는 build/05_tests 그대로다.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # 빌드 타입 미지정 시 Release (단일 구성 생성기에서만)
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)

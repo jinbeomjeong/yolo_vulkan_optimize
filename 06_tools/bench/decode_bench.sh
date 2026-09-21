@@ -30,7 +30,6 @@ PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # 공통 함수(온도·PCIe·냉각·hailort 경고 판정·벤치 락)는 lib/common.sh 하나로 모았다.
 # 예전에는 이 함수들이 7개 스크립트에 복붙돼 있었고 실제로 갈라져 있었다(pcie_link 의 Gen5 분기 등).
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
-bench_lock_acquire
 VID="$PROJ/04_data/videos"
 OUT_DIR="${OUT_DIR:-$PROJ/07_results/decode_benchmark}"
 RUNS="${RUNS:-3}"
@@ -38,6 +37,8 @@ ONLY="${ONLY:-.}"
 PY=/usr/bin/python3
 COOL_C="${COOL_C:-65}"        # 각 실행 전 대기 목표 온도(°C)
 COOL_MAX_S="${COOL_MAX_S:-120}"
+check_only_exit
+bench_lock_acquire
 mkdir -p "$OUT_DIR/raw"
 
 H264="$VID/video_h264.mp4"

@@ -178,7 +178,7 @@ cmake -S . -B build -G Ninja && cmake --build build
 
 ### 실행 파일
 
-**본체는 하나다**: `build/01_src/pipeline/yvo_pipeline`
+**본체는 하나다**: `build/bin/yvo_pipeline`
 
 나머지는 전부 **진단 도구**다. 각 도구는 "이 단계만 따로 돌려 본다"는 목적이 있다.
 
@@ -265,7 +265,7 @@ C++ 테스트의 판정 규칙([`01_src/common/detection_match.hpp`](../01_src/c
 
 ```bash
 # 이렇게 돌리면 가장 느린 경로로 돈다
-build/01_src/pipeline/yvo_pipeline --video ... --hef ...
+build/bin/yvo_pipeline --video ... --hef ...
 ```
 
 인자 없이 돌리면 `--mode ptr --layout nhwc --postproc host --display off` 로 간다.

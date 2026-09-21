@@ -26,8 +26,7 @@ PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # 공통 함수(온도·PCIe·냉각·hailort 경고 판정·벤치 락)는 lib/common.sh 하나로 모았다.
 # 예전에는 이 함수들이 7개 스크립트에 복붙돼 있었고 실제로 갈라져 있었다(pcie_link 의 Gen5 분기 등).
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
-bench_lock_acquire
-BIN="${BIN:-$PROJ/build/01_src/pipeline/yvo_pipeline}"
+BIN="${BIN:-$BIN_DIR/yvo_pipeline}"
 VIDEO="${VIDEO:-$PROJ/04_data/videos/video_h265.mp4}"
 HEF="${HEF:-$PROJ/03_models/yolov11m.hef}"
 OUT_DIR="${OUT_DIR:-$PROJ/07_results/pipeline_ffmpeg_vulkan_hailo}"
@@ -40,9 +39,10 @@ HOT_C="${HOT_C:-75}"
 SAMPLES="${SAMPLES:-1}"
 SAMPLE_LAYOUT="${SAMPLE_LAYOUT:-nhcw}"   # 샘플 덤프에 쓸 레이아웃
 APPEND="${APPEND:-0}"                  # 1이면 results_raw.csv를 지우지 않고 이어붙인다
-PY_HAILO=/home/pi/miniconda3/envs/hailo-yolo/bin/python
 
-[[ -x "$BIN" ]] || { echo "yvo_pipeline 없음: $BIN (먼저 cmake --build build)" >&2; exit 1; }
+require_bin "$BIN" yvo_pipeline
+check_only_exit
+bench_lock_acquire
 mkdir -p "$OUT_DIR/raw"
 
 # id|mode|layout|batch|slots

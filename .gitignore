@@ -1,6 +1,5 @@
 # 빌드 산출물
-build/
-build-asan/
+/build*/
 *.spv
 *.spv.d
 __pycache__/

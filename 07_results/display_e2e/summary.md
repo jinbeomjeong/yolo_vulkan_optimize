@@ -116,7 +116,7 @@
 | fd 누수 | 900프레임 실행 중 4회 샘플링 → **105개로 완전히 일정**(dma-buf 81 포함) |
 | `hailort.log` | 12회 전부 error 0, 온도·클럭 warning 0 |
 | **화면 도달** | `grim -o HDMI-A-1` → `samples/hdmi_boxes.png` 에 박스·라벨과 HUD `FPS 30.2 DET 3 NPU 69ms` 확인 |
-| 링크 격리 | `ldd build/05_tests/test_preproc | grep -c wayland` = **0** |
+| 링크 격리 | `ldd build/bin/test_preproc | grep -c wayland` = **0** |
 | CSV 호환 | `RESULT_CSV` **22필드 그대로**, 신규 14지표는 `RESULT_CSV2` 뒤에만 |
 
 ## 7. 주의 · 남은 일

@@ -5,7 +5,7 @@ labwc(Wayland) on HDMI-A-1 1920x1080@60, SSH 에서 `XDG_RUNTIME_DIR=/run/user/1
 칩 온도 66~69 °C (측정 중 `vcgencmd get_throttled` = 0x80000 = 과거 기록 비트만).
 NPU 유휴(`ps -eo comm | grep yvo_` 0건) 상태에서 측정했다.
 
-빌드: `build/01_src/display/yvo_display_probe` (Release, `-mcpu=cortex-a76`).
+빌드: `build/bin/yvo_display_probe` (Release, `-mcpu=cortex-a76`).
 
 ---
 
@@ -13,7 +13,7 @@ NPU 유휴(`ps -eo comm | grep yvo_` 0건) 상태에서 측정했다.
 
 ```
 XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
-  build/01_src/display/yvo_display_probe --probe surface --display-fullscreen
+  build/bin/yvo_display_probe --probe surface --display-fullscreen
 ```
 
 | 기준 | 결과 | 실측값 |
@@ -60,7 +60,7 @@ Vulkan 헤더(1.4.309)에도 없다**(드라이버는 `VK_EXT_surface_maintenanc
 
 ```
 XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
-  build/01_src/display/yvo_display_probe --probe present --display-fullscreen \
+  build/bin/yvo_display_probe --probe present --display-fullscreen \
     --frames 120 --hold-seconds 12 --sync-validation
 ```
 
@@ -136,7 +136,7 @@ bbox 는 x 761~1159, y 391~689 다. 꼭지점 마커도 4,096(64²) / 4,032(64×
 
 ```
 XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
-  build/01_src/display/yvo_display_probe --probe convert --frames 300 \
+  build/bin/yvo_display_probe --probe convert --frames 300 \
     --display-fullscreen --sync-validation
 ```
 

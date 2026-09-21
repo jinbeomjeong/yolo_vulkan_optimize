@@ -22,9 +22,8 @@ PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # 공통 함수(온도·PCIe·냉각·hailort 경고 판정·벤치 락)는 lib/common.sh 하나로 모았다.
 # 예전에는 이 함수들이 7개 스크립트에 복붙돼 있었고 실제로 갈라져 있었다(pcie_link 의 Gen5 분기 등).
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
-bench_lock_acquire
-ISP_BIN="${ISP_BIN:-$PROJ/build/01_src/isp/yvo_isp_bench}"
-GPU_BIN="${GPU_BIN:-$PROJ/build/01_src/vulkan/yvo_preproc_bench}"
+ISP_BIN="${ISP_BIN:-$BIN_DIR/yvo_isp_bench}"
+GPU_BIN="${GPU_BIN:-$BIN_DIR/yvo_preproc_bench}"
 VIDEO="${VIDEO:-$PROJ/04_data/videos/video_h265.mp4}"
 OUT_DIR="${OUT_DIR:-$PROJ/07_results/isp_resize}"
 RUNS="${RUNS:-3}"
@@ -36,10 +35,11 @@ COOL_C="${COOL_C:-66}"   # Pi 5(CM5, 액티브 쿨러)는 유휴에서도 SoC 65
 COOL_MAX_S="${COOL_MAX_S:-120}"
 HOT_C="${HOT_C:-72}"
 APPEND="${APPEND:-0}"
-PY_HAILO=/home/pi/miniconda3/envs/hailo-yolo/bin/python
 
-[[ -x "$ISP_BIN" ]] || { echo "yvo_isp_bench 없음: $ISP_BIN (먼저 cmake --build build)" >&2; exit 1; }
-[[ -x "$GPU_BIN" ]] || { echo "yvo_preproc_bench 없음: $GPU_BIN" >&2; exit 1; }
+require_bin "$ISP_BIN" yvo_isp_bench
+require_bin "$GPU_BIN" yvo_preproc_bench
+check_only_exit
+bench_lock_acquire
 mkdir -p "$OUT_DIR/raw" "$OUT_DIR/samples"
 
 # id|tool|args...
