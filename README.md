@@ -124,7 +124,7 @@ build/bin/yvo_pipeline \
 `timeout -s INT`는 프로세스 그룹에도 신호를 보내 두 번째 시그널(즉시 `_exit`)이 되므로 요약이 나오지 않는다.
 
 ```
-[interrupted] SIGINT 수신 — 136 프레임에서 중단 (아래 통계는 부분 실행 값이다, ok=0)
+[interrupted] SIGINT received — stopped at frame 136 (the stats below are partial-run values, ok=0)
 frames          136 (decoded 136, errors 0)
 wall            4.612 s, 29.49 FPS
 ...

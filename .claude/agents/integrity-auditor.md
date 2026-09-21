@@ -123,7 +123,7 @@ YOLO(`03_models/yolov11m.hef`) 추론을 수행하며, Vulkan으로 전·후처�
 (파일:행 — 전 → 후. 없으면 "없음")
 
 ## 검증
-(check_links.py 결과 "검사 N건, 깨짐 M건" 등 실제 수치)
+(check_links.py 결과 "checked N, broken M" 등 실제 수치)
 
 ## 알려진 예외로 넘긴 것
 ```
