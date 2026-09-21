@@ -92,7 +92,7 @@ cat "$OUT_DIR/env_bench.txt"
 RAW="$OUT_DIR/results_raw.csv"
 # RESULT_CSV 22필드 + RESULT_CSV2 의 label 뒤 33필드 + 스크립트 4필드 = 59열
 #   RESULT_CSV2 = 후처리 8필드(ok 는 RESULT_CSV 의 ok 와 중복이라 아래 awk 가 뺀다) + 표시 14필드 + GPU NMS 5필드
-#                 + 평면 스캔아웃 6필드(wayland-planes 외에는 "-". main.cpp 의 RESULT_CSV2 주석)
+#                 + 평면 스캔아웃 6필드(wayland-planes / kms 외에는 "-". main.cpp 의 RESULT_CSV2 주석)
 #   ⚠ 그 줄을 cut -f3- 로 통째로 붙이므로 main.cpp 가 필드를 덧붙이면 이 헤더도 같이 고쳐야 한다.
 #   NMS 5필드가 없는 옛 헤더(07_results/display_e2e/, 48열)와도, 스캔아웃 6필드가 없는 53열 헤더와도
 #   APPEND=1 로 섞을 수 없다.

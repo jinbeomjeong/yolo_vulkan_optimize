@@ -37,7 +37,9 @@
 //
 // ── master ────────────────────────────────────────────────────────────────────────────────────
 //   open 직후 drmIsMaster → 아니면 drmSetMaster. 실패하면 KmsMasterError(누가 master 인지 debugfs clients 에서 찾아
-//   메시지에 넣는다). 데스크톱이 **비활성 VT** 에 있으면 master 가 비어 있어 커널이 open 한 파일에 자동으로 준다.
+//   메시지에 넣는다). 운용: lightdm 은 그대로 두고 `loginctl activate <비데스크톱 세션 id>`(sudo 불필요, 또는
+//   `sudo chvt N`)로 데스크톱 세션을 비활성화하면 master 가 비고, card1 을 open 할 때 커널이 자동으로 준다.
+//   실행 중에는 VT 를 전환하지 않는다(master 를 잃는다 — 아래 master_lost).
 //   실행 중 커밋이 EACCES 면 master 를 잃은 것이다(VT 복귀 등): 경고 1회, 이후 커밋은 ioctl 없이 거부(드롭)하고
 //   report_lines() 에 master_lost 로 표시한다.
 //   KmsScanoutOptions::acquire_master=false(테스트)는 master 를 **절대 가져가지 않는다**: drmSetMaster 를 부르지
@@ -46,9 +48,9 @@
 // ── 종료·복원 ─────────────────────────────────────────────────────────────────────────────────
 //   첫 모드셋 **직전에** 현재 KMS 상태를 저장한다(capture_state): CRTC MODE_ID·ACTIVE·GAMMA_LUT·CTM, 커넥터 CRTC_ID·
 //   Broadcast RGB, 우리 CRTC 에 붙은 평면과 우리가 쓸 두 평면의 FB_ID·CRTC_ID·SRC_*·CRTC_*·zpos·색·블렌드 속성.
-//   shutdown() 은 그 상태를 되돌리는 블로킹 커밋을 먼저 시도한다. chvt 방식에서는 이전 master(labwc)가 card1 을 계속
-//   쥐고 있어 lastclose 가 없고 fbcon 이 스스로 복원하지 않기 때문이다. 복원 대상 FB/blob 이 이미 지워졌으면(ENOENT 등)
-//   평면 두 장 끄기 → CRTC 끄기로 폴백한다. 결과는 한 줄 로그와 report_lines() 에 남는다. 그다음 drmDropMaster.
+//   shutdown() 은 그 상태를 되돌리는 블로킹 커밋을 먼저 시도한다. 세션 비활성화 방식에서는 이전 master(labwc)가 card1 을
+//   계속 열어 두어 lastclose 가 없고 fbcon 이 스스로 복원하지 않기 때문이다. 복원 커밋이 거부되면(실측 EINVAL —
+//   이전 master 의 FB 가 그사이 바뀐 것으로 추정) 평면 두 장 끄기 → CRTC 끄기(planes-off)로 폴백한다. 결과는 한 줄 로그와 report_lines() 에 남는다. 그다음 drmDropMaster.
 //   프로세스가 비정상 종료해도 커널이 master 를 회수한다(화면 복원은 다음 master 몫).
 //
 // 스레드: 전부 메인 스레드. 창이 없으므로 quit_requested 는 항상 false(종료는 SIGINT/SIGTERM).

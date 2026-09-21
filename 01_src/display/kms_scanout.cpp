@@ -241,7 +241,8 @@ void KmsScanout::acquire_master_or_throw() {
     if (holders.empty()) holders = "알 수 없음 (" + opt_.dri_debug_dir + "/clients 를 읽지 못했다 — root:sudo 0750)";
     throw KmsMasterError("kms: " + opt_.card + " 의 DRM master 를 얻지 못했다 (drmSetMaster: " + errno_text(e) +
                          "). 현재 master: " + holders +
-                         ". 데스크톱을 비활성 VT 로 전환(sudo chvt 3)하거나 lightdm 을 정지한 뒤 실행해야 한다");
+                         ". 데스크톱 세션을 비활성화한 뒤 실행해야 한다: loginctl activate <비데스크톱 세션 id> "
+                         "(sudo 불필요, 또는 sudo chvt N). lightdm 은 멈추지 않아도 된다. 실행 중에는 VT 를 전환하지 않는다");
 }
 
 void KmsScanout::select_output() {

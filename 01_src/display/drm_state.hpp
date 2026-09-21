@@ -1,6 +1,6 @@
 // drm_state: debugfs `/sys/kernel/debug/dri/<n>/state` 의 활성 평면을 읽어 **실제 스캔아웃 배치**를 판정한다.
 //
-// 왜 필요한가: 평면 스캔아웃 백엔드(wayland-planes, 다음 단계 kms)는 "HVS 가 디코더 NV12 SAND 버퍼를 직접 읽고
+// 왜 필요한가: 평면 스캔아웃 백엔드(wayland-planes, kms)는 "HVS 가 디코더 NV12 SAND 버퍼를 직접 읽고
 // 박스 평면을 그 위에 블렌딩한다"는 것이 전제다. Wayland 에서는 컴포지터(labwc/wlroots)가 조용히 GL 합성으로
 // 떨어질 수 있고(창 모드, 포맷 거부 …), 색 범위도 labwc 0.20.1 에서 요청과 뒤집혀 나간다(wayland_plane_scanout.hpp
 // "색"). 프로토콜 응답으로는 이것을 알 수 없다 — 커널 atomic 상태를 직접 읽는 것이 유일한 확인 수단이다.

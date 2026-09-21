@@ -7,7 +7,7 @@
 // 슬롯 규약 (GPU·NPU·표시 공용 슬롯 번호, 0..slots-1) — **반납 조건이 둘이다**
 //   free → [GPU submit] → gpu 대기열 → [SandLetterbox::wait: 펜스 완료, AVFrame keepalive 해제]
 //        → [HailoRunner::submit] → [HailoRT 완료 콜백 = compute_done]
-//        → [DisplayPipeline 표시 완료 = display_done]  → 둘 다 서면 free
+//        → [표시 완료 = display_done: DisplayPipeline 은 submit 펜스, PlaneDisplay 는 스캔아웃 release]  → 둘 다 서면 free
 //   --display off 면 display 조건이 아예 없다(SlotExchange(need_display=false)) → 오늘과 완전히 같다.
 //   ⚠ display_done 을 세우는 주체는 **메인 스레드 자신**이다. 그래서 빈 슬롯을 기다릴 때 블로킹하면
 //     교착한다 — 아래 슬롯 확보 루프는 acquire_poll + pump 로만 돌린다(acquire_wait 를 쓰지 않는다).
@@ -34,8 +34,10 @@
 //          --nms cpu: CPU greedy 억제(cpu_nms_greedy_by_class). --nms verify: 둘 다 돌려 비트 비교.
 //          NPU 완료분을 GPU로 미는 일도 **메인 스레드**가 한다(InferStage::pump/drain_one) —
 //          VkQueue가 하나뿐이라 vkQueueSubmit을 다른 스레드에서 하면 안 되기 때문이다.
-// 종료 순서: InferStage::drain → flush_results → DisplayPipeline::drain → SandLetterbox::clear_import_cache
-//            → 디코더 close → 단계 해제(러너가 dma-buf unmap) → 표시 해제(스왑체인·surface)
+// 종료 순서: InferStage::drain → flush_results → 표시 drain → SandLetterbox::clear_import_cache
+//            (표시 drain = DisplayPipeline::drain 또는 PlaneDisplay::drain: 남은 pending 커밋 → scanout shutdown
+//             (화면에서 내림, kms 는 KMS 상태 복원/planes-off) → 남은 release 강제 → 영상 버퍼 캐시 비움)
+//            → 디코더 close → 단계 해제(러너가 dma-buf unmap) → 표시 해제(스왑체인·surface / 전송층·박스 링)
 //            → export fd close → VulkanContext → WaylandWindow
 //            (창은 컨텍스트보다 늦게 죽어야 하므로 컨텍스트보다 먼저 선언한다)
 // 시그널: SIGINT/SIGTERM 은 sigaction(SA_RESTART) 로 받아 **atomic 플래그만** 세운다.
@@ -196,7 +198,8 @@ void usage(const char* a0) {
                  "               nhcw는 HailoRT의 CPU 입력 변환(약 14 ms/frame)을 없앤다. --mode dmabuf 전용\n"
                  "  --slots      GPU·NPU 공용 슬롯 수 (기본 max(4, batch*2))\n"
                  "  --gpu-depth  GPU에 동시에 걸린 프레임 수 상한 (기본 3, 2~4 권장: 디코더 버퍼 한도)\n"
-                 "  --postproc   후처리 위치 (기본 host). gpu는 원시 출력 6스트림 + yolo_decode.comp + CPU 억제\n"
+                 "  --postproc   후처리 위치 (기본 host). gpu는 원시 출력 6스트림 + yolo_decode.comp + efficient_nms.comp 억제\n"
+                 "               (경계 프레임만 CPU fallback, --nms 참조)\n"
                  "               --mode dmabuf --layout nhcw 전용\n"
                  "  --postproc-alloc  gpu 후처리의 원시 출력 버퍼 할당 (기본 export)\n"
                  "  --nms        gpu 후처리의 억제 위치 (기본 gpu = efficient_nms.comp, 보호대 프레임만 CPU fallback)\n"
@@ -1000,7 +1003,7 @@ int run(const Args& a) {
     }
 #endif
     // 종료 순서: drain(위) → import 캐시 비움 → 디코더 close → 러너 해제(dma-buf unmap)
-    //            → 표시 해제(스왑체인·창) → export fd close(FdCloser) → ctx → 창
+    //            → 표시 해제(스왑체인·창 / 평면 전송층·박스 링) → export fd close(FdCloser) → ctx → 창
     pre.clear_import_cache();
     dec.close();
     gpu_stage = nullptr;

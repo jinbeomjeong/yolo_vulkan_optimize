@@ -1,4 +1,5 @@
-# Vulkan HDMI 표시 경로 (Wayland xdg-shell 창 + 스왑체인). 회귀 격리를 위해 yvo_vulkan 과 **별도 라이브러리**다
+# HDMI 표시 경로: Vulkan 합성(Wayland xdg-shell 창 + 스왑체인) + HVS 평면 스캔아웃(Wayland linux-dmabuf /
+# KMS atomic, libdrm). 회귀 격리를 위해 yvo_vulkan 과 **별도 라이브러리**다
 # (계획서 §5.2 안전장치 4): test_preproc / yvo_preproc_bench 의 링크 그래프가 바뀌지 않는다.
 option(YVO_BUILD_DISPLAY "Vulkan HDMI 표시 경로 빌드" ON)
 if(NOT YVO_BUILD_DISPLAY)

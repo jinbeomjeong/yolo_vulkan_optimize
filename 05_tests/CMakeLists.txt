@@ -84,7 +84,8 @@ if(TARGET yvo_stages AND TARGET yvo_decoder)
     RUN_SERIAL TRUE)
 endif()
 
-# 오버레이(박스·라벨·HUD) GPU 셰이더 vs CPU 기준 구현 — 비트 일치 (NPU·디스플레이 불필요, 오프스크린)
+# 오버레이(박스·라벨·HUD) GPU 셰이더 vs CPU 기준 구현 — 비트 일치 (NPU 불필요, 오프스크린)
+# 단 KmsScanout.* 는 /dev/dri/card1(master 를 가져가지 않는다)과 HEVC HW 디코더를 쓴다 — 없으면 skip.
 # 계획서 §7: OverlayGeometry / OverlayText / OverlayDeterminism 은 max 오차 0 이 하드 게이트다.
 # OverlayVsOpenCV 는 참고용(느슨한 기하 기준)이고 OpenCV 가 있을 때만 빌드된다.
 if(TARGET yvo_display)

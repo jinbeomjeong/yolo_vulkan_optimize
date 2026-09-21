@@ -8,8 +8,9 @@
 //
 // 붙이는 것: wl_compositor, xdg_wm_base(+ping/pong), xdg_surface(+ack_configure), xdg_toplevel
 //            (title/app_id/fullscreen/configure/close), wl_seat + wl_keyboard(종료 키만, 아래 "키보드"),
-//            그리고 선택적으로 wl_subcompositor (아래 "선택 전역" 참고 — bind 만 한다).
-// 붙이지 않는 것: wl_shm, wl_buffer(스왑체인이 만든다), wl_callback(FIFO 가 스로틀한다), 포인터·터치, EGL.
+//            그리고 선택적으로 wl_subcompositor (아래 "선택 전역" — wayland-planes 가 박스 subsurface 에 쓴다),
+//            plane_globals=true 일 때 linux-dmabuf·presentation·viewporter·color-representation.
+// 붙이지 않는 것: wl_shm, wl_buffer·wl_callback(스왑체인 또는 WaylandPlaneScanout 이 만든다), 포인터·터치, EGL.
 //
 // ── 키보드 (종료 키 전용) ──────────────────────────────────────────────────────────────────────────
 //  왜 붙이는가: --display-fullscreen 창이 키보드 포커스를 가져가면 Pi 키보드의 Ctrl+C 가 터미널(SIGINT)이
@@ -29,9 +30,10 @@
 //        labwc 0.20.1 은 이 전역을 **두 개** 광고한다(실측, hvs_wl_probe.cpp:176-184). 전부 bind 해서 지원 목록을
 //        받은 뒤 BT.709 를 지원하는 첫 관리자 하나만 남기고 나머지는 open() 끝에서 파괴한다.
 //    이것들은 Vulkan 경로의 동작을 바꾸지 않도록 옵션으로 막아 둔다(기존 경로 동작 변화 0).
-//  · wl_subcompositor (version 1, core 프로토콜이라 wayland-scanner 스텁이 필요 없다)
-//      계획서 §5.3 안 (III)(디코더 SAND dma-buf 를 surface 에 직접 붙이고 박스를 subsurface 로 올리는 안)의
-//      전제다. 지금은 쓰지 않는다 — 안 (I)(present 시점 변환 + 스왑체인 STORAGE 직접 쓰기)이 1순위다.
+//  · wl_subcompositor (version 1, core 프로토콜이라 wayland-scanner 스텁이 필요 없다) — 광고되면 항상 bind 한다.
+//      --display-backend wayland-planes(WaylandPlaneScanout, wayland_plane_scanout.cpp)가 디코더 SAND dma-buf 를
+//      주 surface 에 붙이고 박스(AB24) 를 subsurface 로 올린다(계획서 §5.3 안 (III)). Vulkan 스왑체인 경로
+//      (안 (I): present 시점 변환 + 스왑체인 STORAGE 직접 쓰기)는 bind 만 하고 쓰지 않는다.
 //
 // 실패 표현: 연결 실패(XDG_RUNTIME_DIR 없음, 소켓 없음, xdg_wm_base 미광고 …)는 **예외가 아니라 open() 의
 // false 반환 + error()** 다. 상위(DisplayPipeline)가 오프스크린으로 폴백해야 하기 때문이다.

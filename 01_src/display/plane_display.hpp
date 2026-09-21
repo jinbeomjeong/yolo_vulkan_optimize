@@ -4,7 +4,7 @@
 //   박스 : OverlayPlane 이 GPU(overlay_boxes_buf.spv)로 그린 AB24 LINEAR dma-buf 를 영상 위 평면에 올린다.
 //   HVS 가 스캔아웃 중에 YUV→RGB 변환과 블렌딩을 한다. 계획서 atomic-munching-kite §2.
 //
-// 전송(Wayland linux-dmabuf / 다음 단계 KMS atomic)은 `PlaneScanout` 인터페이스 뒤에 있다. 이 클래스는 전송과
+// 전송(WaylandPlaneScanout = Wayland linux-dmabuf / KmsScanout = KMS atomic)은 `PlaneScanout` 인터페이스 뒤에 있다. 이 클래스는 전송과
 // 무관한 공통부 — 프레임 수명, 박스 링, 커밋 게이트(페이싱), 통계, debugfs 검증 — 를 맡는다.
 //
 // ── 프레임 수명 (display_done 을 언제 세우는가) ─────────────────────────────────────────────────
@@ -79,7 +79,7 @@ public:
     virtual void on_discarded(std::uint64_t token) = 0;               // 화면에 나가지 않고 대체됐다
 };
 
-// 평면 스캔아웃 전송층 (구현: WaylandPlaneScanout, 다음 단계 KmsScanout)
+// 평면 스캔아웃 전송층 (구현: WaylandPlaneScanout, KmsScanout)
 class PlaneScanout {
 public:
     virtual ~PlaneScanout() = default;

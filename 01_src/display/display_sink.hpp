@@ -3,7 +3,7 @@
 // 파이프라인(main.cpp)은 이 인터페이스만 쥔다. 구현은 둘을 염두에 둔다.
 //   · `DisplayPipeline` — V3D 합성(display_convert.comp + overlay_boxes.comp) → Vulkan 스왑체인/오프스크린.
 //   · `PlaneDisplay` (plane_display.hpp) — 평면 스캔아웃. 디코더 NV12 SAND dma-buf 를 HVS 영상 평면에, GPU 로
-//     그린 박스(OverlayPlane, AB24 dma-buf)를 HVS 오버레이 평면에 올린다(Wayland linux-dmabuf, 다음 단계 KMS atomic).
+//     그린 박스(OverlayPlane, AB24 dma-buf)를 HVS 오버레이 평면에 올린다(전송: WaylandPlaneScanout = Wayland linux-dmabuf, KmsScanout = KMS atomic).
 //
 // `DisplayBackend`(offscreen_backend.hpp)는 "그릴 VkImage 를 내주는" 한 단계 아래 인터페이스라 평면
 // 스캔아웃이 맞지 않는다. 그래서 다형성의 이음새를 `show()` 수준에 둔다.
