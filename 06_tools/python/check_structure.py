@@ -627,8 +627,12 @@ class Checker:
                 self.add(Violation("C3", p, ".comp 가 02_shaders/ 밖에 있음", "02_shaders/" + os.path.basename(p)))
                 continue
             relp = p[len("02_shaders/"):]
-            if not re.search(r"(?<![\w/.-])" + re.escape(relp) + r"(?![\w.-])", shader_cmake):
-                self.add(Violation("C3", p, "02_shaders/CMakeLists.txt 에 등록되지 않음", f"yvo_add_shaders(... {relp})"))
+            # 같은 폴더의 CMakeLists.txt 가 파일명만으로 등록하는 경우(02_shaders/diag/CMakeLists.txt)도 인정한다
+            own_cmake = os.path.dirname(p) + "/CMakeLists.txt"
+            own_text = strip_cmake_comments(_read(own_cmake)) if own_cmake in self.all_files else ""
+            pat = lambda s: r"(?<![\w/.-])" + re.escape(s) + r"(?![\w.-])"
+            if not (re.search(pat(relp), shader_cmake) or re.search(pat(os.path.basename(p)), own_text)):
+                self.add(Violation("C3", p, "02_shaders/ 의 CMakeLists.txt 에 등록되지 않음", f"yvo_add_shaders(... {relp})"))
 
         # C4, C5, C7
         deps = code["include_deps"]
@@ -647,7 +651,8 @@ class Checker:
             codetext, lits = scan_cpp(text)
             # C4
             if layer in layers:
-                allowed = deps[layer]
+                # library_exclude 파일(앱 본체 main.cpp 등)은 실행파일이라 tools 와 같은 규칙을 따른다
+                allowed = deps["tools"] if p in lib_excl else deps[layer]
                 for m in INCLUDE_RE.finditer(text):
                     inc = m.group(1)
                     ln = text.count("\n", 0, m.start()) + 1
