@@ -18,7 +18,7 @@ proj="${CLAUDE_PROJECT_DIR:-$(cd "$here/../.." && pwd)}"
 input=$(cat)
 
 # 아래 낱말이 하나도 없으면 JSON 파싱 없이 즉시 통과한다.
-if ! grep -qE 'yvo_pipeline|yvo_hailo_selftest|test_detections|hailortcli|ctest|_bench\.sh|hailo_platform|--build|ninja|perf' <<<"$input"; then
+if ! grep -qE 'yvo_pipeline|yvo_hailo_selftest|yvo_hailo_raw_probe|yvo_isp_pipeline|yvo_postproc_probe|test_detections|test_postproc|hailortcli|ctest|_bench\.sh|hailo_platform|--build|ninja|perf' <<<"$input"; then
     exit 0
 fi
 

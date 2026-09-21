@@ -7,18 +7,42 @@
 pgrep -f 로 프로세스 이름을 찾으면 안 된다. 패턴 문자열이 호출자 셸의 명령줄에 들어 있어
 자기 자신을 매칭한다(실측 확인).
 """
+import glob
 import json
 import os
 import re
 import subprocess
 import sys
 
-# NPU 를 여는 명령
-NPU_CMDS = {"yvo_pipeline", "yvo_hailo_selftest", "hailortcli", "test_detections", "ctest"}
-# 06_tools/bench/ 의 전부. 새 벤치를 추가하면 여기도 추가한다.
-BENCH_SCRIPTS = ("pipeline_bench.sh", "decode_bench.sh", "op_point_bench.sh",
-                 "display_bench.sh", "backpressure_bench.sh",
-                 "isp_bench.sh", "isp_pipeline_bench.sh")
+# NPU 를 여는 명령. 실행파일은 01_src/tools/CMakeLists.txt·01_src/pipeline·05_tests 에서 yvo_hailo(또는
+# yvo_stages)를 링크하고 실제로 VDevice 를 여는 것만 넣었다. test_postproc 은 PostprocLive.* 가 NPU 를 연다.
+NPU_CMDS = {"yvo_pipeline", "yvo_hailo_selftest", "yvo_hailo_raw_probe", "yvo_isp_pipeline",
+            "hailortcli", "test_detections", "test_postproc", "ctest"}
+# yvo_postproc_probe 는 모드에 따라 다르다(postproc_probe.cpp main()):
+#   live·stale·v3 → VDevice 를 연다(NPU 독점)
+#   gpuab         → 픽스처만 쓰지만 GPU/CPU 시간을 재는 측정이라 부하로 분류한다
+#   fixture(기본)·sweep·heapimport → NPU 불필요
+POSTPROC_PROBE = "yvo_postproc_probe"
+POSTPROC_NPU_MODES = {"live", "stale", "v3"}
+POSTPROC_LOAD_MODES = {"gpuab"}
+_PROBE_MODE_RE = re.compile(r"--probe(?:\s+|=)(\S+)|--(live|stale|fixture|sweep|heapimport)\b")
+
+# 벤치 목록은 06_tools/bench/*_bench.sh 글롭으로 찾는다. 루트 계산이 실패하면 아래 목록으로 폴백한다.
+_BENCH_FALLBACK = ("pipeline_bench.sh", "decode_bench.sh", "op_point_bench.sh",
+                   "display_bench.sh", "backpressure_bench.sh",
+                   "isp_bench.sh", "isp_pipeline_bench.sh")
+
+
+def _bench_scripts():
+    root = os.environ.get("CLAUDE_PROJECT_DIR") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
+    try:
+        found = tuple(sorted(os.path.basename(p) for p in glob.glob(os.path.join(root, "06_tools", "bench", "*_bench.sh"))))
+    except OSError:
+        found = ()
+    return found or _BENCH_FALLBACK
+
+
+BENCH_SCRIPTS = _bench_scripts()
 
 HOW = ("\n다시 되는 시점: 위 작업이 끝나면 바로 통과한다. 진행 상황은 그 작업의 로그로 확인할 것."
        "\n꼭 지금 실행해야 하면 명령 앞에 YVO_HOOK_OFF=1 을 붙인다(측정값은 신뢰할 수 없게 된다).")
@@ -40,12 +64,26 @@ def leading_commands(shell_cmd):
             yield os.path.basename(parts[0]), seg
 
 
+def postproc_probe_mode(seg):
+    """yvo_postproc_probe 조각에서 실제로 적용될 모드. 인자는 앞에서부터 덮어쓰므로 마지막 것이 이긴다."""
+    mode = "fixture"
+    for m in _PROBE_MODE_RE.finditer(seg):
+        mode = m.group(1) or m.group(2)
+    return mode
+
+
 def classify(shell_cmd):
     """(npu_hit, load_hit) 반환. 각각 걸린 명령 이름 또는 None."""
     npu_hit = load_hit = None
     for base, seg in leading_commands(shell_cmd):
         if base in NPU_CMDS:
             npu_hit = base
+        elif base == POSTPROC_PROBE:
+            mode = postproc_probe_mode(seg)
+            if mode in POSTPROC_NPU_MODES:
+                npu_hit = f"{base} --probe {mode}"
+            elif mode in POSTPROC_LOAD_MODES:
+                load_hit = f"{base} --probe {mode}"
         elif base == "bash" or base.endswith(".sh"):
             if any(b in seg for b in BENCH_SCRIPTS):
                 npu_hit = "bench script"
