@@ -55,7 +55,7 @@
 ├── display/    화면 표시 (Wayland + 스왑체인)   — vulkan과 별도 라이브러리
 ├── isp/        ISP 전처리 — 구현됐지만 미사용
 ├── pipeline/   이 전부를 묶는 실행 파일 main.cpp
-└── tools/      빌드되는 진단·측정 도구 12개 ({hailo,vulkan,display,isp,decode}/ — 측정 대상 도메인 기준)
+└── tools/      빌드되는 진단·측정 도구 10개 ({hailo,vulkan,display,isp,decode}/ — 측정 대상 도메인 기준)
 ```
 
 ### 왜 일부러 갈라 뒀나
