@@ -6,12 +6,14 @@
 #   RUNS=1 bash 06_tools/bench/decode_bench.sh          # 반복 횟수 변경
 #   ONLY='A_t0' bash 06_tools/bench/decode_bench.sh     # combo id에 대한 grep -E 패턴으로 일부만 실행
 #   COOL_C=65 COOL_MAX_S=120 bash ...             # 실행 전 냉각 대기 조건
-#   OUT_DIR=/path bash 06_tools/bench/decode_bench.sh   # 출력 디렉터리 변경
+#   OUT_DIR=/path bash 06_tools/bench/decode_bench.sh   # 출력 디렉터리 변경(비어 있지 않으면 FORCE=1 필요)
 #   ONLY='^h265_E_' bash 06_tools/bench/decode_bench.sh # ffmpeg HW HEVC 디코드 → 파이프 → GStreamer 조합(E)만 실행
 #
-# 출력: $OUT_DIR/raw/<combo>_run<N>.log (gst-launch -v 로그 중 caps/에러/마지막 줄),
+# 출력: $OUT_DIR/raw/<combo>_run<N>/run.log (gst-launch -v 로그 중 caps/에러/마지막 줄만 뽑은 발췌라 run.log),
 #       $OUT_DIR/results_raw.csv (실행별), $OUT_DIR/results.csv (조합별 중앙값·편차),
-#       $OUT_DIR/env_before.txt, env_after.txt
+#       $OUT_DIR/env_bench.txt (측정 전 스냅샷 + 끝에 "# after" 스냅샷을 덧붙인다)
+#   레이아웃 규약은 STRUCTURE.md §3. 2026-09-22 이전 결과는 raw/<combo>_run<N>.log 평면 파일,
+#   env_before.txt·env_after.txt 였다(보관본은 raw/<combo>_run<N>/run.log(R1), env/(2026-09-21 표준화)로 옮겨져 있다).
 #
 # 측정 방식:
 # - /usr/bin/time 이 설치되어 있지 않아, 동일한 정보(wait4 rusage: user, sys, maxrss)를
@@ -38,6 +40,7 @@ PY=/usr/bin/python3
 COOL_C="${COOL_C:-65}"        # 각 실행 전 대기 목표 온도(°C)
 COOL_MAX_S="${COOL_MAX_S:-120}"
 check_only_exit
+guard_out_dir   # OUT_DIR 이 비어 있지 않으면 FORCE=1 없이는 멈춘다(보관 결과 보호)
 bench_lock_acquire
 mkdir -p "$OUT_DIR/raw"
 
@@ -114,10 +117,11 @@ env_snapshot() {
     echo -n "hailo0 users (readable /proc only): "
     for p in /proc/[0-9]*; do ls -l "$p/fd" 2>/dev/null | grep -q hailo0 && echo -n "$(cat $p/comm)(${p#/proc/}) "; done; echo
     echo "hailo/vulkan processes: $(pgrep -a -f 'hailortcli|hailonet|vkcube|vulkan' | grep -v pgrep | tr '\n' ';')"
-  } > "$1"
+  }
 }
 
-env_snapshot "$OUT_DIR/env_before.txt"
+# measure 스킬 §5: 새 측정은 env_bench.txt 하나에 스냅샷을 쓴다.
+env_snapshot > "$OUT_DIR/env_bench.txt"
 
 RAW_CSV="$OUT_DIR/results_raw.csv"
 echo "combo,run,expected_frames,frames,frames_ok,exit_code,wall_s,user_s,sys_s,fps,avg_cores,cpu_pct_4core,max_rss_mb,temp_c_after" > "$RAW_CSV"
@@ -130,7 +134,9 @@ for c in "${combos[@]}"; do
     # 예전에는 여기에 자체 루프가 있었는데 온도를 못 읽으면 `|| echo 0` 으로 0 이 되어
     # **식지 않았는데도 즉시 통과**했고, 대기 시간도 기록하지 않았다(measure 스킬 §2 위반).
     cool_down "$id run$r" soc
-    log="$OUT_DIR/raw/${id}_run${r}.log"
+    run_dir="$OUT_DIR/raw/${id}_run${r}"
+    mkdir -p "$run_dir"
+    log="$run_dir/run.log"   # 발췌 로그(전문이 아니다)라 stdout.log 가 아니라 run.log
     "$PY" - "$id" "$r" "$expected" "$log" "$video" "$pipe" >> "$RAW_CSV" <<'PYEOF'
 import os, re, shlex, subprocess, sys, time
 cid, run, expected, log, video, pipe = sys.argv[1:7]
@@ -189,7 +195,7 @@ PYEOF
   done
 done
 
-env_snapshot "$OUT_DIR/env_after.txt"
+{ echo; echo "# after"; env_snapshot; } >> "$OUT_DIR/env_bench.txt"
 
 # 조합별 중앙값 요약
 "$PY" - "$RAW_CSV" "$OUT_DIR/results.csv" <<'PYEOF'

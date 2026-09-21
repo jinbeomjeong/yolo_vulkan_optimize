@@ -9,7 +9,7 @@
 #
 # 전제: 이 파일을 source 하기 전에 PROJ(저장소 루트)가 정의돼 있어야 하고,
 #   함수를 부르기 전에 아래가 정의돼 있어야 한다.
-#   OUT_DIR        결과 폴더 (hailo_temp 가 $OUT_DIR/raw 에서 실행한다)
+#   OUT_DIR        결과 폴더 (hailo_temp 가 $OUT_DIR/raw/_session 에서 실행한다)
 #   COOL_C         냉각 목표 온도
 #   COOL_MAX_S     냉각 최대 대기 초
 #
@@ -37,9 +37,27 @@ check_only_exit() {
   fi
 }
 
+# ── 보관 결과 보호 ─────────────────────────────────────────────────────────────
+# OUT_DIR 이 이미 있고 비어 있지 않으면 FORCE=1 없이는 멈춘다.
+# 07_results/<실험>/ 은 수치의 정본이다. 기본 OUT_DIR 로 벤치를 다시 돌리면 env_bench.txt·results*.csv 를
+# 덮어쓰고 raw/<설정>_run<N>/ 을 rm -rf 로 지워 보관본이 조용히 사라진다(STRUCTURE.md §3.3 내용 불변).
+# APPEND=1 로 이어 쓸 때도 기존 폴더를 고치는 것이므로 FORCE=1 이 필요하다.
+# check_only_exit 뒤, bench_lock_acquire·mkdir 앞에서 부른다(CHECK_ONLY 는 아무것도 쓰지 않고 끝난다).
+guard_out_dir() {
+  local dir="${1:-$OUT_DIR}"
+  if [[ -d "$dir" ]] && [[ -n "$(ls -A "$dir" 2>/dev/null)" ]] && [[ "${FORCE:-0}" != "1" ]]; then
+    echo "OUT_DIR 가 비어 있지 않다: $dir" >&2
+    echo "  보관 결과를 덮어쓰지 않도록 멈춘다. 새 폴더를 OUT_DIR=... 로 주거나, 덮어쓰려면 FORCE=1." >&2
+    exit 1
+  fi
+}
+
 # ── 온도 ───────────────────────────────────────────────────────────────────────
-hailo_temp() {  # hailort.log 가 raw/ 에 생기도록 그 디렉터리에서 실행
-  (cd "$OUT_DIR/raw" && "$PY_HAILO" - <<'PYEOF' 2>/dev/null) || echo nan
+# 세션 hailort.log 가 raw/_session/ 에 생기도록 그 디렉터리에서 실행한다(STRUCTURE.md §3.5).
+# raw/ 직계에는 <설정>_run<N>/ 과 _session/ 만 둔다.
+hailo_temp() {
+  mkdir -p "$OUT_DIR/raw/_session" 2>/dev/null || { echo nan; return; }
+  (cd "$OUT_DIR/raw/_session" && "$PY_HAILO" - <<'PYEOF' 2>/dev/null) || echo nan
 from hailo_platform import Device
 d = Device()
 t = d.control.get_chip_temperature()

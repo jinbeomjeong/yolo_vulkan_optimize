@@ -35,6 +35,7 @@ APPEND="${APPEND:-0}"
 
 require_bin "$BIN" yvo_pipeline
 check_only_exit
+guard_out_dir   # OUT_DIR 이 비어 있지 않으면 FORCE=1 없이는 멈춘다(보관 결과 보호)
 bench_lock_acquire
 mkdir -p "$OUT_DIR/raw"
 
@@ -61,12 +62,15 @@ if [[ "${SKIP_M5A:-0}" != "1" ]] && (( HAVE_WAYLAND )); then
   PROBE="$BIN_DIR/yvo_display_probe"
   if [[ -x "$PROBE" ]]; then
     echo "[M5a] NPU 유휴 GPU 기준선 (yvo_display_probe --probe convert, fullscreen, overlay 5개)"
-    mkdir -p "$OUT_DIR/raw/m5a"
-    # ⚠ --video 는 절대경로로 넘긴다. 프로브를 raw/m5a 에서 돌리므로 기본 상대경로가 깨진다.
-    (cd "$OUT_DIR/raw/m5a" && "$PROBE" --probe convert --video "$VIDEO" --frames 300 --display-fullscreen \
-        --with-overlay --overlay-dets 5 > m5a.log 2>&1) || true
+    # 실행 1회 = 폴더 1개(STRUCTURE.md §3): raw/m5a_run1/{stdout.log(전문), m5a_baseline.txt(발췌)}
+    # 2026-09-22 이전에는 raw/m5a/m5a.log 와 루트의 m5a_baseline.txt 였다.
+    m5a_dir="$OUT_DIR/raw/m5a_run1"
+    mkdir -p "$m5a_dir"
+    # ⚠ --video 는 절대경로로 넘긴다. 프로브를 raw/m5a_run1 에서 돌리므로 기본 상대경로가 깨진다.
+    (cd "$m5a_dir" && "$PROBE" --probe convert --video "$VIDEO" --frames 300 --display-fullscreen \
+        --with-overlay --overlay-dets 5 > stdout.log 2>&1) || true
     grep -E "display path|on-screen shader|on-screen overlay|present_wait|presented" \
-      "$OUT_DIR/raw/m5a/m5a.log" | tee "$OUT_DIR/m5a_baseline.txt"
+      "$m5a_dir/stdout.log" | tee "$m5a_dir/m5a_baseline.txt"
   fi
 fi
 

@@ -36,6 +36,7 @@ APPEND="${APPEND:-0}"
 
 require_bin "$BIN" yvo_pipeline
 check_only_exit
+guard_out_dir   # OUT_DIR 이 비어 있지 않으면 FORCE=1 없이는 멈춘다(보관 결과 보호)
 bench_lock_acquire
 mkdir -p "$OUT_DIR/raw"
 

@@ -7,6 +7,10 @@
 #   RUNS=1 FRAMES=300 bash 06_tools/bench/isp_pipeline_bench.sh
 #   ONLY='isp_' bash ...            # 설정 id(grep -E 패턴) 일부만
 #   DUMPS=0 bash ...                # 검출 JSONL 덤프 실행 생략
+#   OUT_DIR=/path bash ...          # 출력 디렉터리(비어 있지 않으면 FORCE=1 필요)
+#
+# 출력: $OUT_DIR/raw/<id>_run<N>/{stdout.log,hailort.log}, $OUT_DIR/raw/_session/hailort.log(온도 프로브),
+#       $OUT_DIR/results_raw.csv, results.csv, env_bench.txt, $OUT_DIR/samples/detections/<id>/ (검출 덤프)
 #
 # 실행 순서: 반복(run) 바깥 루프, 설정 안쪽 루프(열 상태 편향을 설정 간에 고르게 나눈다).
 # 냉각(measure 스킬 §2): 직전 실행의 hailort.log에 온도·스로틀 경고가 있거나 실행 직전 칩 온도가
@@ -21,7 +25,7 @@ GPU_BIN="${GPU_BIN:-$BIN_DIR/yvo_pipeline}"
 ISP_BIN="${ISP_BIN:-$BIN_DIR/yvo_isp_pipeline}"
 VIDEO="${VIDEO:-$PROJ/04_data/videos/video_h265.mp4}"
 HEF="${HEF:-$PROJ/03_models/yolov11m.hef}"
-OUT_DIR="${OUT_DIR:-$PROJ/07_results/isp_resize/pipeline}"
+OUT_DIR="${OUT_DIR:-$PROJ/07_results/isp_resize/runs/pipeline}"   # 회차 폴더는 runs/<회차>/ (STRUCTURE.md §3)
 RUNS="${RUNS:-3}"
 FRAMES="${FRAMES:-0}"
 ONLY="${ONLY:-.}"
@@ -34,6 +38,7 @@ APPEND="${APPEND:-0}"
 require_bin "$GPU_BIN" yvo_pipeline
 require_bin "$ISP_BIN" yvo_isp_pipeline
 check_only_exit
+guard_out_dir   # OUT_DIR 이 비어 있지 않으면 FORCE=1 없이는 멈춘다(보관 결과 보호)
 bench_lock_acquire
 mkdir -p "$OUT_DIR/raw"
 
@@ -151,7 +156,9 @@ if [[ "$DUMPS" == "1" ]]; then
   for c in "${configs[@]}"; do
     IFS='|' read -r id tool extra <<<"$c"
     echo "$id" | grep -Eq "$ONLY" || continue
-    d="$OUT_DIR/../detections/$id"
+    # 덤프는 측정과 별도인 1회 실행 산출물이라 samples/ (STRUCTURE.md §3). OUT_DIR 밖에 쓰지 않는다.
+    # 2026-09-22 이전에는 $OUT_DIR/../detections/<id> (= isp_resize/detections, 지금 isp_resize/samples/detections)였다.
+    d="$OUT_DIR/samples/detections/$id"
     rm -rf "$d"; mkdir -p "$d"
     BIN=$([[ "$tool" == "gpu" ]] && echo "$GPU_BIN" || echo "$ISP_BIN")
     echo "[dumps] $id -> $d"
