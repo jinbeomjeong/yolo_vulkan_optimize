@@ -31,6 +31,24 @@ if(OpenCV_FOUND)
   target_include_directories(yvo_opencv INTERFACE ${OpenCV_INCLUDE_DIRS})
 endif()
 
+# ── 자산 경로 ─────────────────────────────────────────────────────────────────
+# 도구·앱·테스트의 기본 입력·출력 경로를 **절대 경로 컴파일 정의**로 준다(2026-09-22).
+# 전에는 04_data/videos/video_h265.mp4 같은 CWD 기준 문자열 리터럴이 14곳에 있어서 저장소 루트에서 실행해야만 동작했다.
+#   YVO_REPO_ROOT      저장소 루트(= PROJECT_SOURCE_DIR). 도구 기본 출력은 YVO_REPO_ROOT "/build/out/<도구>"
+#   YVO_DEFAULT_HEF    기본 모델
+#   YVO_DEFAULT_VIDEO  기본 입력 영상
+#   YVO_FIXTURE_DIR    GPU 후처리 픽스처(원시 텐서) 폴더
+# **라이브러리는 링크하지 않는다** — 라이브러리는 자산 경로를 모르고 호출자가 넘긴다(예: HailoRunnerConfig::hef_path).
+set(YVO_DEFAULT_HEF "${PROJECT_SOURCE_DIR}/03_models/yolov11m.hef" CACHE FILEPATH "도구·앱·테스트의 기본 HEF")
+set(YVO_DEFAULT_VIDEO "${PROJECT_SOURCE_DIR}/04_data/videos/video_h265.mp4" CACHE FILEPATH "도구·앱·테스트의 기본 입력 영상")
+set(YVO_FIXTURE_DIR "${PROJECT_SOURCE_DIR}/04_data/raw_tensors" CACHE PATH "GPU 후처리 픽스처(원시 텐서) 폴더")
+add_library(yvo_assets INTERFACE)
+target_compile_definitions(yvo_assets INTERFACE
+  YVO_REPO_ROOT="${PROJECT_SOURCE_DIR}"
+  YVO_DEFAULT_HEF="${YVO_DEFAULT_HEF}"
+  YVO_DEFAULT_VIDEO="${YVO_DEFAULT_VIDEO}"
+  YVO_FIXTURE_DIR="${YVO_FIXTURE_DIR}")
+
 # ── 도구 등록 ─────────────────────────────────────────────────────────────────
 # yvo_add_tool(<name> <src>
 #   [REQUIRES <target>...]        이 중 하나라도 없으면 도구를 만들지 않는다(STATUS 메시지만)
@@ -38,7 +56,7 @@ endif()
 #   [DEFINES <def>...]            PRIVATE 컴파일 정의
 #   [OPTIONAL <target>=<MACRO>...] 타깃이 있으면 링크하고 <MACRO>=1 을 정의한다(LIBS 뒤에 링크)
 # )
-# 모든 도구에 yvo_target_defaults 가 붙는다.
+# 모든 도구에 yvo_target_defaults 와 yvo_assets 가 붙는다.
 function(yvo_add_tool name src)
   cmake_parse_arguments(PARSE_ARGV 2 T "" "" "REQUIRES;LIBS;DEFINES;OPTIONAL")
   foreach(req IN LISTS T_REQUIRES)
@@ -48,7 +66,7 @@ function(yvo_add_tool name src)
     endif()
   endforeach()
   add_executable(${name} ${src})
-  target_link_libraries(${name} PRIVATE ${T_LIBS})
+  target_link_libraries(${name} PRIVATE ${T_LIBS} yvo_assets)
   yvo_target_defaults(${name})
   if(T_DEFINES)
     target_compile_definitions(${name} PRIVATE ${T_DEFINES})

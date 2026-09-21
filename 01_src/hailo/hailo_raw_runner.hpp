@@ -86,7 +86,7 @@ struct RawInferResult {
 using RawInferCallback = std::function<void(RawInferResult&&)>;
 
 struct HailoRawRunnerConfig {
-    std::string hef_path = "03_models/yolov11m.hef";
+    std::string hef_path;  // 호출자가 지정한다(기본 경로는 yvo_assets 의 YVO_DEFAULT_HEF — 라이브러리는 자산 경로를 모른다)
     std::uint16_t batch_size = 8;             // 스케줄러 burst 크기
     int num_slots = 8;                        // 동시에 비행할 수 있는 프레임 수. min_queue 로 클램프된다
     std::chrono::milliseconds timeout{5000};  // drain() 시한 (무한 대기 금지)

@@ -185,6 +185,7 @@ cmake -S . -B build -G Ninja && cmake --build build
 | `yvo_isp` | ISP | `libpisp` 없으면 통째로 빠진다 |
 | `yvo_decoder` | 디코드 | libavcodec + libdrm |
 | `yvo_stages` | 후처리 글루 | OpenCV에 의존하지 않는다(테스트가 링크할 수 있게) |
+| `yvo_assets` | 컴파일 정의만 (INTERFACE) | `YVO_REPO_ROOT`·`YVO_DEFAULT_HEF`·`YVO_DEFAULT_VIDEO`·`YVO_FIXTURE_DIR` 절대 경로. 도구·앱·테스트만 링크 → 어느 디렉터리에서 실행해도 기본 경로가 맞다 |
 
 ### 실행 파일
 

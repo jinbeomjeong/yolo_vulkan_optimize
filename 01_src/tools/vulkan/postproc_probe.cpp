@@ -152,11 +152,11 @@ std::uint32_t cpu_valid_sum(const std::uint8_t* p, int grid_h, int features, int
 
 struct Options {
     std::string probe = "fixture";
-    std::string fixture_dir = "04_data/raw_tensors";
-    std::string out_dir = "07_results/gpu_postprocess/evidence";
+    std::string fixture_dir = YVO_FIXTURE_DIR;
+    std::string out_dir = YVO_REPO_ROOT "/build/out/yvo_postproc_probe";
     std::string out_file;                 // 비면 probe 이름으로 정한다
-    std::string hef = "03_models/yolov11m.hef";
-    std::string video = "04_data/videos/video_h265.mp4";
+    std::string hef = YVO_DEFAULT_HEF;
+    std::string video = YVO_DEFAULT_VIDEO;
     int perf_frames = 300;                // P3-⑥ (>= 200)
     int warmup = 30;
     int repeats = 10;                     // G6
@@ -186,8 +186,8 @@ struct Options {
 void usage() {
     std::puts(
         "yvo_postproc_probe --probe {fixture|sweep|live|stale|heapimport|gpuab|v3} [옵션]\n"
-        "  --fixture-dir DIR      픽스처 디렉터리 (기본 04_data/raw_tensors)\n"
-        "  --out-dir DIR          증거 파일 디렉터리 (기본 07_results/gpu_postprocess/evidence)\n"
+        "  --fixture-dir DIR      픽스처 디렉터리 (기본 <저장소>/04_data/raw_tensors = YVO_FIXTURE_DIR)\n"
+        "  --out-dir DIR          증거 파일 디렉터리 (기본 <저장소>/build/out/yvo_postproc_probe)\n"
         "  --out-file NAME        증거 파일 이름 (기본 p3_<probe>.txt)\n"
         "  --perf-frames N        연속 스트림 측정 프레임 수 (기본 300, P3-⑥ 는 >= 200)\n"
         "  --warmup N             측정 전 워밍업 (기본 30)\n"
@@ -2252,9 +2252,9 @@ int main(int argc, char** argv) {
     }
     // heapimport 는 부록 B(dmaheap_unify) 산출물이라 기본 출력 위치가 다르다.
     // 부록 B(dmaheap_unify) 산출물은 기본 출력 위치가 다르다.
-    // ⚠ heapimport 의 기본 파일명은 1단계 증거(`p0_heapimport.txt`)를 덮어쓴다 — `--out-file` 을 쓸 것.
+    // 기본 출력은 build/out/ 이라 보관 증거를 덮지 않는다. 07_results 에 쓸 때는 --out-dir·--out-file 을 명시할 것.
     if (o.probe == "heapimport" || o.probe == "gpuab" || o.probe == "v3") {
-        if (!o.out_dir_set) o.out_dir = "07_results/dmaheap_unify/evidence";
+        if (!o.out_dir_set) o.out_dir = YVO_REPO_ROOT "/build/out/yvo_postproc_probe/dmaheap";
         if (o.out_file.empty())
             o.out_file = o.probe == "heapimport" ? "p0_heapimport.txt" : ("stage_" + o.probe + ".txt");
     }

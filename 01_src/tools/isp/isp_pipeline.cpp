@@ -63,8 +63,8 @@ using yvo::class_name;
 enum class Mode { Ptr, Dmabuf };
 
 struct Args {
-    std::string video = "04_data/videos/video_h265.mp4";
-    std::string hef = "03_models/yolov11m.hef";
+    std::string video = YVO_DEFAULT_VIDEO;
+    std::string hef = YVO_DEFAULT_HEF;
     std::string media = "/dev/media0";
     std::string filter; // libpisp resample 필터(비면 smart selection: 1.5배 리샘플 구간 = lanczos2)
     long frames = 0; // 0 = 전체

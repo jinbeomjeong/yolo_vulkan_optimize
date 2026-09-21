@@ -43,10 +43,10 @@ namespace {
 using yvo::tool::save_rgb;
 using yvo::tool::cpu_ms;
 struct Args {
-    std::string video = "04_data/videos/video_h265.mp4";
+    std::string video = YVO_DEFAULT_VIDEO;
     std::string media = "/dev/media0";
     std::string filter;  // resample 필터 (비면 smart selection)
-    std::string png_dir = "07_results/isp_resize/samples";
+    std::string png_dir = YVO_REPO_ROOT "/build/out/yvo_isp_bench";
     std::string csv_label;
     int png_frame = 100;
     int frames = 0;   // 0 = 전체

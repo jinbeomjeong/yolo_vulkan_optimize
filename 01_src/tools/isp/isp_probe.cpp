@@ -28,7 +28,7 @@
 namespace {
 
 struct Args {
-    std::string video = "04_data/videos/video_h265.mp4";
+    std::string video = YVO_DEFAULT_VIDEO;
     std::string media = "/dev/media0";
     std::string png;
     std::string filter;         // resample 필터 (비면 smart selection)

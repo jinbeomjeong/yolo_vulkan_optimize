@@ -41,13 +41,13 @@ namespace {
 using yvo::tool::save_rgb;
 using yvo::tool::cpu_ms;
 struct Args {
-    std::string video = "04_data/videos/video_h265.mp4";
+    std::string video = YVO_DEFAULT_VIDEO;
     int frames = 0;       // 0 = 전체
     int slots = 8;
     int depth = 2;        // 동시에 GPU에 올려 둘 프레임 수
     std::uint32_t lx = 32, ly = 8;
     yvo::TensorLayout layout = yvo::TensorLayout::Nhwc; // 출력 텐서 레이아웃 (--layout)
-    std::string png_dir = "07_results/pipeline_ffmpeg_vulkan_hailo/preproc";
+    std::string png_dir = YVO_REPO_ROOT "/build/out/yvo_preproc_bench";
     int png_frame = 100;
     bool validation = false;
     bool sync_validation = false;

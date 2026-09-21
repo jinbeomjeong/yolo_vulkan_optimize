@@ -38,7 +38,7 @@ class VulkanContext;
 namespace yvo::pipeline {
 
 struct GpuPostprocStageConfig {
-    std::string hef_path = "03_models/yolov11m.hef";
+    std::string hef_path;  // 호출자가 지정한다(기본 경로는 yvo_assets 의 YVO_DEFAULT_HEF — 라이브러리는 자산 경로를 모른다)
     std::uint16_t batch_size = 8;
     int num_slots = 8;
     float score_thr = 0.2f;    // HEF YOLOV8 post-process 와 같은 값

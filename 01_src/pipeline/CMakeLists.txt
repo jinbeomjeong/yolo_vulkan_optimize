@@ -14,7 +14,7 @@ endif()
 # 통합 앱: HW 디코드 → Vulkan letterbox → HailoRT 추론 (ptr/dmabuf 모드)
 if(TARGET yvo_stages AND TARGET yvo_opencv)
   add_executable(yvo_pipeline main.cpp)
-  target_link_libraries(yvo_pipeline PRIVATE yvo_decoder yvo_stages yvo_opencv yvo_toolkit)
+  target_link_libraries(yvo_pipeline PRIVATE yvo_decoder yvo_stages yvo_opencv yvo_toolkit yvo_assets)
   yvo_target_defaults(yvo_pipeline)
   # HDMI 표시는 **조건부 링크**다. yvo_display 는 계속 별도 라이브러리로 두어
   # test_preproc / yvo_preproc_bench 의 링크 그래프에 wayland 가 끌려오지 않게 한다.

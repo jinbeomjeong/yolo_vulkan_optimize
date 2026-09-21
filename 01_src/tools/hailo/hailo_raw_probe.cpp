@@ -739,10 +739,10 @@ yvo::RawOutputSet make_raw_set(const RawLayout& L, const RawFrame& f, bool p5_in
 // ---------------------------------------------------------------- 옵션
 
 struct Options {
-    std::string video = "04_data/videos/video_h265.mp4";
-    std::string hef = "03_models/yolov11m.hef";
-    std::string out_dir = "07_results/gpu_postprocess/evidence";
-    std::string fixture_dir = "04_data/raw_tensors";
+    std::string video = YVO_DEFAULT_VIDEO;
+    std::string hef = YVO_DEFAULT_HEF;
+    std::string out_dir = YVO_REPO_ROOT "/build/out/yvo_hailo_raw_probe";
+    std::string fixture_dir = YVO_FIXTURE_DIR;
     std::string api = "both";           // infer_async | read_async | both
     int compare_frames = 30;            // CPU 기준 구현 ↔ HailoRT NMS 비교 프레임 수 (>= 20)
     int api_check_frames = 8;           // API 경로 확인용 프레임 수

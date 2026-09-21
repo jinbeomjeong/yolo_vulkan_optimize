@@ -97,7 +97,7 @@ const char* pf(bool ok) { return ok ? "PASS" : "FAIL"; }
 
 struct Args {
     std::string probe = "context-regression";
-    std::string video = "04_data/videos/video_h265.mp4";
+    std::string video = YVO_DEFAULT_VIDEO;
     int width = 1920, height = 1080;
     bool fullscreen = false;
     bool verbose = false;

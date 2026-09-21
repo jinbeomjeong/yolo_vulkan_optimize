@@ -42,9 +42,9 @@ using yvo::tool::read_nv12_frames;
 using yvo::kCoco;
 
 struct Options {
-    std::string video = "04_data/videos/video_h265.mp4";
-    std::string hef = "03_models/yolov11m.hef";
-    std::string out_dir = "07_results/pipeline_ffmpeg_vulkan_hailo/selftest";
+    std::string video = YVO_DEFAULT_VIDEO;
+    std::string hef = YVO_DEFAULT_HEF;
+    std::string out_dir = YVO_REPO_ROOT "/build/out/yvo_hailo_selftest";
     int frames = 8;          // 검출 확인용 프레임 수
     int bench_frames = 300;  // 연속 제출 측정 프레임 수
     int warmup = 30;

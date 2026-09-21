@@ -1,12 +1,14 @@
 # GoogleTest: GPU/NPU 경로를 CPU 기준 구현과 비교
 include(GoogleTest)
+# 자산 경로: 모든 테스트가 yvo_assets(cmake/YvoTargets.cmake)를 링크한다. YVO_FIXTURE_DIR 은 거기서 오고,
+# 테스트 소스가 쓰는 YVO_TEST_VIDEO / YVO_TEST_HEF 는 YVO_DEFAULT_VIDEO / YVO_DEFAULT_HEF 의 별칭이다(이름 유지).
 
 if(TARGET yvo_vulkan)
   add_executable(test_preproc test_preproc.cpp)
-  target_link_libraries(test_preproc PRIVATE yvo_vulkan yvo_decoder GTest::gtest_main)
+  target_link_libraries(test_preproc PRIVATE yvo_vulkan yvo_decoder yvo_assets GTest::gtest_main)
   yvo_target_defaults(test_preproc)
   target_compile_definitions(test_preproc PRIVATE
-    YVO_TEST_VIDEO="${PROJECT_SOURCE_DIR}/04_data/videos/video_h265.mp4")
+    YVO_TEST_VIDEO=YVO_DEFAULT_VIDEO)
   if(TARGET yvo_opencv)
     target_link_libraries(test_preproc PRIVATE yvo_opencv)
     target_compile_definitions(test_preproc PRIVATE YVO_HAVE_OPENCV=1)
@@ -23,10 +25,10 @@ endif()
 # /dev/media0을 독점하므로 RUN_SERIAL로 돌린다.
 if(TARGET yvo_isp AND TARGET yvo_vulkan AND TARGET yvo_decoder)
   add_executable(test_isp_preproc test_isp_preproc.cpp)
-  target_link_libraries(test_isp_preproc PRIVATE yvo_isp yvo_vulkan yvo_decoder GTest::gtest_main)
+  target_link_libraries(test_isp_preproc PRIVATE yvo_isp yvo_vulkan yvo_decoder yvo_assets GTest::gtest_main)
   yvo_target_defaults(test_isp_preproc)
   target_compile_definitions(test_isp_preproc PRIVATE
-    YVO_TEST_VIDEO="${PROJECT_SOURCE_DIR}/04_data/videos/video_h265.mp4")
+    YVO_TEST_VIDEO=YVO_DEFAULT_VIDEO)
   if(TARGET yvo_opencv)
     target_link_libraries(test_isp_preproc PRIVATE yvo_opencv)
     target_compile_definitions(test_isp_preproc PRIVATE YVO_HAVE_OPENCV=1)
@@ -43,11 +45,11 @@ endif()
 # NPU를 독점하므로 RUN_SERIAL로 돌린다.
 if(TARGET yvo_vulkan AND TARGET yvo_hailo AND TARGET yvo_decoder)
   add_executable(test_detections test_detections.cpp)
-  target_link_libraries(test_detections PRIVATE yvo_vulkan yvo_hailo yvo_decoder GTest::gtest_main)
+  target_link_libraries(test_detections PRIVATE yvo_vulkan yvo_hailo yvo_decoder yvo_assets GTest::gtest_main)
   yvo_target_defaults(test_detections)
   target_compile_definitions(test_detections PRIVATE
-    YVO_TEST_VIDEO="${PROJECT_SOURCE_DIR}/04_data/videos/video_h265.mp4"
-    YVO_TEST_HEF="${PROJECT_SOURCE_DIR}/03_models/yolov11m.hef")
+    YVO_TEST_VIDEO=YVO_DEFAULT_VIDEO
+    YVO_TEST_HEF=YVO_DEFAULT_HEF)
   add_test(NAME test_detections COMMAND test_detections)
   set_tests_properties(test_detections PROPERTIES
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
@@ -62,12 +64,11 @@ endif()
 # NPU 가 다른 작업에 잡혀 있을 때 셰이더 회귀를 못 잡는다.
 if(TARGET yvo_stages AND TARGET yvo_decoder)
   add_executable(test_postproc test_postproc.cpp)
-  target_link_libraries(test_postproc PRIVATE yvo_stages yvo_decoder yvo_testkit_postproc GTest::gtest_main)
+  target_link_libraries(test_postproc PRIVATE yvo_stages yvo_decoder yvo_testkit_postproc yvo_assets GTest::gtest_main)
   yvo_target_defaults(test_postproc)
   target_compile_definitions(test_postproc PRIVATE
-    YVO_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/04_data/raw_tensors"
-    YVO_TEST_VIDEO="${PROJECT_SOURCE_DIR}/04_data/videos/video_h265.mp4"
-    YVO_TEST_HEF="${PROJECT_SOURCE_DIR}/03_models/yolov11m.hef")
+    YVO_TEST_VIDEO=YVO_DEFAULT_VIDEO
+    YVO_TEST_HEF=YVO_DEFAULT_HEF)
   # fixture 쪽은 게이트마다 따로 등록한다 — 어느 게이트가 깨졌는지 ctest 줄만 보고 알 수 있게.
   # TEST_FILTER 로 PostprocLive 는 제외한다(아래에서 RUN_SERIAL 로 따로 등록한다).
   gtest_discover_tests(test_postproc
@@ -87,7 +88,7 @@ endif()
 # OverlayVsOpenCV 는 참고용(느슨한 기하 기준)이고 OpenCV 가 있을 때만 빌드된다.
 if(TARGET yvo_display)
   add_executable(test_overlay test_overlay.cpp)
-  target_link_libraries(test_overlay PRIVATE yvo_display yvo_testkit_display GTest::gtest_main)
+  target_link_libraries(test_overlay PRIVATE yvo_display yvo_testkit_display yvo_assets GTest::gtest_main)
   yvo_target_defaults(test_overlay)
   if(TARGET yvo_opencv)
     target_link_libraries(test_overlay PRIVATE yvo_opencv)
@@ -104,10 +105,10 @@ endif()
 # BT.709 계수의 세 번째 사본에 게이트가 없던 구멍을 막는다(2026-09-21). 판정은 testkit/display_convert_check.hpp.
 if(TARGET yvo_display AND TARGET yvo_decoder)
   add_executable(test_display_convert test_display_convert.cpp)
-  target_link_libraries(test_display_convert PRIVATE yvo_display yvo_decoder yvo_testkit_display GTest::gtest_main)
+  target_link_libraries(test_display_convert PRIVATE yvo_display yvo_decoder yvo_testkit_display yvo_assets GTest::gtest_main)
   yvo_target_defaults(test_display_convert)
   target_compile_definitions(test_display_convert PRIVATE
-    YVO_TEST_VIDEO="${PROJECT_SOURCE_DIR}/04_data/videos/video_h265.mp4")
+    YVO_TEST_VIDEO=YVO_DEFAULT_VIDEO)
   gtest_discover_tests(test_display_convert
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     PROPERTIES TIMEOUT 300

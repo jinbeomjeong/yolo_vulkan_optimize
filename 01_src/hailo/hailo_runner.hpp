@@ -47,7 +47,7 @@ private:
 };
 
 struct HailoRunnerConfig {
-    std::string hef_path = "03_models/yolov11m.hef";
+    std::string hef_path;  // 호출자가 지정한다(기본 경로는 yvo_assets 의 YVO_DEFAULT_HEF — 라이브러리는 자산 경로를 모른다)
     // 러너가 받을 입력 텐서 레이아웃. Nhcw면 set_format_order(HAILO_FORMAT_ORDER_NHCW)로
     // HailoRT의 CPU 입력 변환을 없앤다(dma-buf 입력 전용).
     TensorLayout input_layout = TensorLayout::Nhwc;

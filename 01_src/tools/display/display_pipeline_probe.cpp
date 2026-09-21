@@ -51,7 +51,7 @@ std::vector<yvo::Detection> synth_dets(int n, int w, int h) {
 }
 
 struct Args {
-    std::string video = "04_data/videos/video_h265.mp4";
+    std::string video = YVO_DEFAULT_VIDEO;
     int frames = 300;
     int slots = 4;
     int dets = 5;

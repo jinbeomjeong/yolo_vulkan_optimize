@@ -141,8 +141,8 @@ enum class Mode { Ptr, Dmabuf };
 enum class Postproc { Host, Gpu };
 
 struct Args {
-    std::string video = "04_data/videos/video_h265.mp4";
-    std::string hef = "03_models/yolov11m.hef";
+    std::string video = YVO_DEFAULT_VIDEO;
+    std::string hef = YVO_DEFAULT_HEF;
     long frames = 0;  // 0 = 전체
     Mode mode = Mode::Ptr;
     // 전처리 출력·NPU 입력 텐서 레이아웃. Nhcw면 HailoRT의 CPU 입력 변환이 사라진다(dmabuf 모드 전용).
