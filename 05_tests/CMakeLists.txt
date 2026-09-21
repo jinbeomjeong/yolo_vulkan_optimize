@@ -58,7 +58,8 @@ if(TARGET yvo_vulkan AND TARGET yvo_hailo AND TARGET yvo_decoder)
 endif()
 
 # GPU 후처리(--postproc gpu) 회귀 고정 — 계획서 [G]
-#   PostprocFixture.* : 04_data/raw_tensors 픽스처 vs cpu_yolov8_candidates. **NPU 불필요**(수 초)
+#   PostprocFixture.* : 04_data/raw_tensors 픽스처 vs cpu_yolov8_candidates / cpu_nms_greedy_by_class. **NPU 불필요**
+#   EfficientNms.*    : 합성 DetBuf → efficient_nms.comp vs cpu_nms_greedy_by_class (NPU 불필요)
 #   PostprocLive.*    : host 경로 vs raw+GPU 경로 검출 매칭. **Hailo-8 독점** → RUN_SERIAL
 # 두 묶음을 **별도 ctest 항목**으로 등록한다. 한 항목으로 묶으면 fixture 판정까지 NPU 를 기다리게 되고,
 # NPU 가 다른 작업에 잡혀 있을 때 셰이더 회귀를 못 잡는다.
@@ -72,7 +73,7 @@ if(TARGET yvo_stages AND TARGET yvo_decoder)
   # fixture 쪽은 게이트마다 따로 등록한다 — 어느 게이트가 깨졌는지 ctest 줄만 보고 알 수 있게.
   # TEST_FILTER 로 PostprocLive 는 제외한다(아래에서 RUN_SERIAL 로 따로 등록한다).
   gtest_discover_tests(test_postproc
-    TEST_FILTER PostprocFixture.*
+    TEST_FILTER PostprocFixture.*:EfficientNms.*
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     PROPERTIES TIMEOUT 300
     DISCOVERY_TIMEOUT 60)

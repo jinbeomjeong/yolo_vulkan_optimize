@@ -7,10 +7,11 @@
 //
 // ── 무엇을 하고 무엇을 하지 않는가 ────────────────────────────────────────────────────────────
 // 한다  : dequantize → DFL softmax → threshold → letterbox 역변환 → **원본 좌표 후보 압축**
-// 안 한다: **NMS 억제**. 계획서 §4.4 A안(하이브리드)이 기본이므로 억제는 호스트의
-//          `cpu_nms_greedy_by_class()`(= `01_src/ref/cpu_yolov8_decode.hpp`, 기준 구현과 같은 코드)가 한다.
-//          프레임당 후보는 수십 개(≈1.6 KB)이고 CPU 억제 비용은 5~20 µs 다.
-//          완전 GPU NMS(`yolo_nms.comp`)는 계획서 [H] 단계이고 이 파일의 범위가 아니다.
+// 선택  : **NMS 억제** (`enable_nms`). 켜면 소유한 `EfficientNms`(02_shaders/efficient_nms.comp)가
+//          **같은 커맨드 버퍼**에서 디코드 3디스패치 뒤에 돈다(DetBuf compute write → read 배리어 1개).
+//          결과는 `cpu_nms_greedy_by_class()`(01_src/ref/cpu_yolov8_decode.hpp)와 비트 단위로 같고,
+//          같다고 보장할 수 없는 프레임은 `nms_fallback_reason()` != 0 으로 알린다 → 호출자가 CPU 로 처리.
+//          끄면 예전대로 후보만 내고 억제는 호출자가 CPU 에서 한다(`--nms cpu`).
 //
 // ── 텐서 인덱싱 규약 ──────────────────────────────────────────────────────────────────────────
 // 텐서는 **6개를 0..5 로 번호 매긴다**: 스케일 s(0=P3/stride 8, 1=P4/16, 2=P5/32)의
@@ -50,6 +51,7 @@
 #include <vulkan/vulkan.h>
 
 #include "ref/cpu_yolov8_decode.hpp"
+#include "vulkan/efficient_nms.hpp"
 #include "core/dma_heap_alloc.hpp"
 #include "core/frame_types.hpp"
 
@@ -143,6 +145,9 @@ struct YoloPostprocConfig {
     bool checksum_pipeline = false;
     bool timestamps = true;
     bool verbose = false;
+    // GPU NMS (efficient_nms.comp). false 면 EfficientNms 를 만들지 않는다(명령·메모리 0).
+    bool enable_nms = false;
+    EfficientNmsConfig nms;
 };
 
 // 셰이더 push constant (std430, 02_shaders/yolo_decode.comp 의 Params 와 같은 순서·크기)
@@ -240,7 +245,15 @@ public:
     std::size_t raw_size(int tensor) const;                    // 텐서 크기 = hw_frame_size
     std::uint8_t* raw_host_ptr(int slot, int tensor) const;    // 영구 매핑(16384 정렬)
 
+    // ── GPU NMS (enable_nms 일 때만. 아니면 read_nms 는 false, 사유는 0) ──
+    // wait() 뒤에 호출한다. false 면 out 은 비고 그 프레임은 CPU 로 처리해야 한다.
+    bool read_nms(int slot, std::vector<DetectionKeyed>& out) const;
+    std::uint32_t nms_fallback_reason(int slot) const;   // kNmsFallback* 비트
+    bool nms_enabled() const { return nms_ != nullptr; }
+    const EfficientNms* nms() const { return nms_.get(); }
+
     double last_pass1_ms() const { return last_pass1_ms_; }   // 3 디스패치 구간
+    double last_nms_ms() const { return last_nms_ms_; }       // NMS 디스패치 구간 (끄면 -1)
     double last_total_ms() const { return last_total_ms_; }   // 커맨드 버퍼 전체(배리어 포함)
 
     int num_slots() const { return static_cast<int>(slots_.size()); }
@@ -295,11 +308,14 @@ private:
     // 그다음 힙 풀(mmap/fd)을 놓는다. destroy() 가 그 순서를 지킨다.
     std::unique_ptr<yvo::DmaHeapPool> heap_;
     std::unique_ptr<DmaBufImportCache> import_cache_;
+    // 슬롯 DetBuf 를 입력 디스크립터로 쥔다 → destroy() 에서 슬롯보다 먼저 파괴한다.
+    std::unique_ptr<EfficientNms> nms_;
     std::size_t heap_headroom_ = 0;
     std::vector<Slot> slots_;
     VkDeviceSize det_size_ = 0;
     double last_pass1_ms_ = -1.0;
     double last_total_ms_ = -1.0;
+    double last_nms_ms_ = -1.0;
 };
 
 } // namespace yvo::vk

@@ -1,4 +1,10 @@
-// GpuPostprocStage: 원시 출력 6스트림(NPU) → GPU pass 1 → CPU greedy 억제.
+// GpuPostprocStage: 원시 출력 6스트림(NPU) → GPU pass 1 → 억제(GPU EfficientNMS 또는 CPU greedy).
+//
+// 억제 위치는 `NmsBackend` 로 고른다(--nms):
+//   Gpu    : pass 1 과 같은 커맨드 버퍼의 `efficient_nms.comp`. 호스트는 NMS 결과만 읽는다.
+//            셰이더가 fallback 사유(후보 > kMaxSelected, IoU 보호대)를 내면 그 프레임만 CPU 로 처리한다.
+//   Cpu    : 예전 경로. 후보를 읽어 `cpu_nms_greedy_by_class()` 로 억제한다.
+//   Verify : 두 가지를 모두 돌려 비트 비교하고 불일치 수를 센다. 내보내는 결과는 CPU 쪽이다.
 //
 // 호스트 NMS(HailoRT 가 CPU 에서 하는 2.2~3.2 ms/frame 고정비)를
 //   GPU pass 1 (`02_shaders/yolo_decode.comp`, 실측 0.56 ms) + CPU 억제(후보 수십 개, 3~11 µs)
@@ -37,6 +43,8 @@ class VulkanContext;
 
 namespace yvo::pipeline {
 
+enum class NmsBackend { Gpu, Cpu, Verify };
+
 struct GpuPostprocStageConfig {
     std::string hef_path;  // 호출자가 지정한다(기본 경로는 yvo_assets 의 YVO_DEFAULT_HEF — 라이브러리는 자산 경로를 모른다)
     std::uint16_t batch_size = 8;
@@ -50,6 +58,7 @@ struct GpuPostprocStageConfig {
     yvo::vk::YoloInputAlloc input_alloc = yvo::vk::YoloInputAlloc::ExportDmaBuf;
     std::chrono::milliseconds timeout{5000};
     bool verbose = false;
+    NmsBackend nms = NmsBackend::Gpu;
 };
 
 class GpuPostprocStage final : public InferStage {
@@ -71,7 +80,9 @@ public:
     float chip_temperature() const override { return raw_->chip_temperature(); }
 
     double last_post_ms() const override { return last_post_ms_; }
+    // CPU 억제 시간. Gpu 백엔드에서는 fallback 프레임에서만 갱신된다(아니면 -1).
     double last_nms_us() const override { return last_nms_us_; }
+    double last_gpu_nms_ms() const { return last_gpu_nms_ms_; }   // efficient_nms.comp 구간 (Cpu 면 -1)
 
     // ── RESULT_CSV2 용 누적 통계 (메인 스레드에서만 갱신·조회한다) ──
     const std::vector<double>& post_ms() const { return post_ms_; }
@@ -80,6 +91,12 @@ public:
     // NPU 완료 콜백 도착 → 슬롯 반납까지. 이 값이 크면 슬롯이 후처리 대기열에 묶여 NPU 점유가 떨어진다.
     const std::vector<double>& hold_ms() const { return hold_ms_; }
     long overflow_frames() const { return overflow_frames_; }
+    const std::vector<double>& gpu_nms_ms() const { return gpu_nms_ms_; }
+    long nms_fallback_frames() const { return nms_fallback_frames_; }       // 사유 무관 합계
+    long nms_fallback_capacity() const { return nms_fallback_capacity_; }   // 후보 > kMaxSelected 등
+    long nms_fallback_guard() const { return nms_fallback_guard_; }         // IoU 보호대
+    long nms_verify_mismatch() const { return nms_verify_mismatch_; }       // Verify: GPU != CPU 프레임 수
+    NmsBackend nms_backend() const { return cfg_.nms; }
     const char* alloc_name() const;
 
 private:
@@ -90,7 +107,7 @@ private:
         std::chrono::steady_clock::time_point t_done;   // 콜백 도착 시각
     };
 
-    void finish(int slot);   // pp_->wait() 가 끝난 슬롯을 CPU 억제 → Done
+    void finish(int slot);   // pp_->wait() 가 끝난 슬롯을 NMS 결과(또는 CPU 억제) → Done
     void push_ready_to_gpu();   // ready_ 를 비워 pp_ 로 넘긴다
 
     // 선언 순서 = 생성 순서. 파괴는 역순이므로 raw_ 가 pp_ 보다 먼저 죽는다(러너가 fd 매핑을 쥔다).
@@ -111,10 +128,11 @@ private:
     std::vector<hailo_status> status_;  // 슬롯별 NPU 상태
     std::deque<int> pp_q_;              // GPU pass 1 에 걸린 슬롯 (submit 순서)
 
-    std::vector<double> post_ms_, nms_us_, cand_, hold_ms_;
+    std::vector<double> post_ms_, nms_us_, cand_, hold_ms_, gpu_nms_ms_;
     std::vector<std::chrono::steady_clock::time_point> t_done_;   // 슬롯별 콜백 도착 시각
     long overflow_frames_ = 0;
-    double last_post_ms_ = -1.0, last_nms_us_ = -1.0;
+    long nms_fallback_frames_ = 0, nms_fallback_capacity_ = 0, nms_fallback_guard_ = 0, nms_verify_mismatch_ = 0;
+    double last_post_ms_ = -1.0, last_nms_us_ = -1.0, last_gpu_nms_ms_ = -1.0;
 };
 
 } // namespace yvo::pipeline

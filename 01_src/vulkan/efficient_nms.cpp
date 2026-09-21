@@ -1,0 +1,262 @@
+#include "vulkan/efficient_nms.hpp"
+
+#include <array>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
+#include <stdexcept>
+#include <string>
+
+#include "vulkan/vk_check.hpp"
+#include "vulkan/vulkan_context.hpp"
+#include "vulkan/yolo_postproc.hpp"   // YoloDetBufHeader / YoloDetGpu (입출력 DetBuf 계약)
+#include "efficient_nms_spv.h"        // 빌드 시 glslc 로 생성 (02_shaders/CMakeLists.txt)
+
+namespace yvo::vk {
+
+EfficientNms::EfficientNms(VulkanContext& ctx, const EfficientNmsConfig& cfg, const std::vector<VkBuffer>& inputs,
+                           VkDeviceSize input_size, std::uint32_t input_max_dets)
+    : ctx_(ctx), cfg_(cfg), input_max_dets_(input_max_dets) {
+    validate();
+    // 보호대 경계는 double 로 계산해 한 번만 float 로 내린다(셰이더는 곱셈만 한다).
+    push_.iou_thr = cfg_.iou_thr;
+    push_.iou_lo = static_cast<float>(static_cast<double>(cfg_.iou_thr) - static_cast<double>(cfg_.iou_guard));
+    push_.iou_hi = static_cast<float>(static_cast<double>(cfg_.iou_thr) + static_cast<double>(cfg_.iou_guard));
+    push_.max_per_class = static_cast<std::uint32_t>(cfg_.max_per_class);
+    push_.max_output = static_cast<std::uint32_t>(cfg_.max_output);
+    push_.n_max = input_max_dets_;
+    try {
+        create_pipeline();
+        create_slots(inputs, input_size);
+    } catch (...) {
+        destroy();
+        throw;
+    }
+}
+
+EfficientNms::~EfficientNms() { destroy(); }
+
+std::size_t EfficientNms::shared_bytes() const {
+    // efficient_nms.comp 의 shared 선언: uint/float 배열 6개 x kMaxSelected + s_kept[kNumClasses] + 스칼라 5개
+    return 6u * static_cast<std::size_t>(cfg_.max_selected) * 4u + static_cast<std::size_t>(cfg_.num_classes) * 4u +
+           5u * 4u;
+}
+
+void EfficientNms::validate() {
+    const auto& lim = ctx_.properties().limits;
+    if (cfg_.local_size == 0 || cfg_.local_size > lim.maxComputeWorkGroupInvocations ||
+        cfg_.local_size > lim.maxComputeWorkGroupSize[0])
+        throw std::invalid_argument("EfficientNms: local_size " + std::to_string(cfg_.local_size) +
+                                    " exceeds device limits");
+    const std::uint32_t m = cfg_.max_selected;
+    if (m == 0 || (m & (m - 1)) != 0 || m > 4096)
+        throw std::invalid_argument("EfficientNms: max_selected must be a power of two <= 4096 (출력 위치 12비트)");
+    if (cfg_.num_classes == 0 || cfg_.num_classes > 65536)
+        throw std::invalid_argument("EfficientNms: num_classes must be in 1..65536");
+    if (cfg_.max_per_class <= 0) throw std::invalid_argument("EfficientNms: max_per_class must be > 0");
+    if (cfg_.max_output < 0) throw std::invalid_argument("EfficientNms: max_output must be >= 0");
+    if (!(cfg_.iou_guard > 0.0f) || !(cfg_.iou_thr > 0.0f))
+        throw std::invalid_argument("EfficientNms: iou_thr / iou_guard must be > 0");
+    if (input_max_dets_ == 0) throw std::invalid_argument("EfficientNms: input_max_dets must be > 0");
+    // VUID-RuntimeSpirv-Workgroup-06530: Workgroup 변수 합 <= maxComputeSharedMemorySize
+    if (shared_bytes() > lim.maxComputeSharedMemorySize)
+        throw std::invalid_argument("EfficientNms: shared " + std::to_string(shared_bytes()) + " B > " +
+                                    "maxComputeSharedMemorySize " +
+                                    std::to_string(lim.maxComputeSharedMemorySize) + " B (max_selected 를 줄여라)");
+}
+
+void EfficientNms::create_pipeline() {
+    VkDevice dev = ctx_.device();
+
+    // 0: 입력 DetBuf(디코드 결과), 1: 출력 DetBuf
+    std::array<VkDescriptorSetLayoutBinding, 2> b{};
+    for (std::uint32_t i = 0; i < 2; ++i) {
+        b[i].binding = i;
+        b[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        b[i].descriptorCount = 1;
+        b[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    }
+    VkDescriptorSetLayoutCreateInfo dl{};
+    dl.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    dl.bindingCount = static_cast<std::uint32_t>(b.size());
+    dl.pBindings = b.data();
+    YVO_VK_CHECK(vkCreateDescriptorSetLayout(dev, &dl, nullptr, &set_layout_));
+
+    VkPushConstantRange pcr{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(EfficientNmsPush)};
+    VkPipelineLayoutCreateInfo pl{};
+    pl.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pl.setLayoutCount = 1;
+    pl.pSetLayouts = &set_layout_;
+    pl.pushConstantRangeCount = 1;
+    pl.pPushConstantRanges = &pcr;
+    YVO_VK_CHECK(vkCreatePipelineLayout(dev, &pl, nullptr, &pipeline_layout_));
+
+    // 개발용: YVO_EFFICIENT_NMS_SPV 로 외부 .spv 주입 (yolo_postproc.cpp 와 같은 관례)
+    std::vector<std::uint32_t> ext_spv;
+    if (const char* path = std::getenv("YVO_EFFICIENT_NMS_SPV"); path && *path) {
+        std::ifstream in(path, std::ios::binary | std::ios::ate);
+        if (!in) throw std::runtime_error(std::string("EfficientNms: cannot open ") + path);
+        const auto n = static_cast<std::size_t>(in.tellg());
+        if (n == 0 || n % 4) throw std::runtime_error(std::string("EfficientNms: bad SPIR-V size: ") + path);
+        ext_spv.resize(n / 4);
+        in.seekg(0);
+        in.read(reinterpret_cast<char*>(ext_spv.data()), static_cast<std::streamsize>(n));
+        std::fprintf(stderr, "[EfficientNms] using external SPIR-V %s\n", path);
+    }
+    VkShaderModuleCreateInfo smi{};
+    smi.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    smi.codeSize = ext_spv.empty() ? sizeof(kEfficientNmsSpv) : ext_spv.size() * 4;
+    smi.pCode = ext_spv.empty() ? kEfficientNmsSpv : ext_spv.data();
+    VkShaderModule module = VK_NULL_HANDLE;
+    YVO_VK_CHECK(vkCreateShaderModule(dev, &smi, nullptr, &module));
+
+    // spec 0 local_size, 1 kMaxSelected, 2 kNumClasses, 3 kScoreSigmoid, 4 kClassAgnostic (bool 은 32bit)
+    const std::array<std::uint32_t, 5> spec_data{cfg_.local_size, cfg_.max_selected, cfg_.num_classes,
+                                                 cfg_.score_sigmoid ? VK_TRUE : VK_FALSE,
+                                                 cfg_.class_agnostic ? VK_TRUE : VK_FALSE};
+    const std::array<VkSpecializationMapEntry, 5> spec_map{{{0, 0, 4}, {1, 4, 4}, {2, 8, 4}, {3, 12, 4}, {4, 16, 4}}};
+    VkSpecializationInfo spec{};
+    spec.mapEntryCount = static_cast<std::uint32_t>(spec_map.size());
+    spec.pMapEntries = spec_map.data();
+    spec.dataSize = sizeof(spec_data);
+    spec.pData = spec_data.data();
+
+    VkComputePipelineCreateInfo cpi{};
+    cpi.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    cpi.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    cpi.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    cpi.stage.module = module;
+    cpi.stage.pName = "main";
+    cpi.stage.pSpecializationInfo = &spec;
+    cpi.layout = pipeline_layout_;
+    const VkResult r = vkCreateComputePipelines(dev, VK_NULL_HANDLE, 1, &cpi, nullptr, &pipeline_);
+    vkDestroyShaderModule(dev, module, nullptr);
+    YVO_VK_CHECK(r);
+}
+
+void EfficientNms::create_slots(const std::vector<VkBuffer>& inputs, VkDeviceSize input_size) {
+    VkDevice dev = ctx_.device();
+    const auto n = static_cast<std::uint32_t>(inputs.size());
+    if (n == 0) throw std::invalid_argument("EfficientNms: inputs is empty");
+
+    VkDescriptorPoolSize ps{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2 * n};
+    VkDescriptorPoolCreateInfo dp{};
+    dp.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    dp.maxSets = n;
+    dp.poolSizeCount = 1;
+    dp.pPoolSizes = &ps;
+    YVO_VK_CHECK(vkCreateDescriptorPool(dev, &dp, nullptr, &desc_pool_));
+
+    // 워크스페이스는 초기화 때 전량 할당한다(TRT §6). 런타임 할당 없음.
+    out_size_ = static_cast<VkDeviceSize>(sizeof(YoloDetBufHeader)) +
+                static_cast<VkDeviceSize>(cfg_.max_selected) * sizeof(YoloDetGpu);
+    slots_.resize(n);
+    for (std::uint32_t i = 0; i < n; ++i) {
+        Slot& s = slots_[i];
+        VkBufferCreateInfo bci{};
+        bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        bci.size = out_size_;
+        // INDIRECT_BUFFER: 오버레이가 맨 앞 uvec3 로 vkCmdDispatchIndirect 할 수 있게 둔다(DetBuf 계약)
+        bci.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+        bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        YVO_VK_CHECK(vkCreateBuffer(dev, &bci, nullptr, &s.out));
+        VkMemoryRequirements req{};
+        vkGetBufferMemoryRequirements(dev, s.out, &req);
+        const std::uint32_t type = ctx_.find_memory_type(
+            req.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        if (type == UINT32_MAX) throw std::runtime_error("EfficientNms: no HOST_VISIBLE|HOST_COHERENT memory type");
+        VkMemoryAllocateInfo mai{};
+        mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        mai.allocationSize = req.size;
+        mai.memoryTypeIndex = type;
+        YVO_VK_CHECK(vkAllocateMemory(dev, &mai, nullptr, &s.mem));
+        YVO_VK_CHECK(vkBindBufferMemory(dev, s.out, s.mem, 0));
+        void* p = nullptr;
+        YVO_VK_CHECK(vkMapMemory(dev, s.mem, 0, VK_WHOLE_SIZE, 0, &p));   // 영구 매핑
+        s.host = static_cast<std::uint8_t*>(p);
+        std::memset(s.host, 0, static_cast<std::size_t>(out_size_));
+
+        VkDescriptorSetAllocateInfo dai{};
+        dai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        dai.descriptorPool = desc_pool_;
+        dai.descriptorSetCount = 1;
+        dai.pSetLayouts = &set_layout_;
+        YVO_VK_CHECK(vkAllocateDescriptorSets(dev, &dai, &s.set));
+        const std::array<VkDescriptorBufferInfo, 2> bi{{{inputs[i], 0, input_size}, {s.out, 0, out_size_}}};
+        std::array<VkWriteDescriptorSet, 2> w{};
+        for (std::uint32_t k = 0; k < 2; ++k) {
+            w[k].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            w[k].dstSet = s.set;
+            w[k].dstBinding = k;
+            w[k].descriptorCount = 1;
+            w[k].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            w[k].pBufferInfo = &bi[k];
+        }
+        vkUpdateDescriptorSets(dev, 2, w.data(), 0, nullptr);
+    }
+}
+
+void EfficientNms::record(VkCommandBuffer cb, int slot) const {
+    const Slot& s = slots_.at(static_cast<std::size_t>(slot));
+    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_);
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_, 0, 1, &s.set, 0, nullptr);
+    vkCmdPushConstants(cb, pipeline_layout_, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(push_), &push_);
+    vkCmdDispatch(cb, 1, 1, 1);   // 워크그룹 1개 = 프레임 1장 (TRT §5.4 의 이미지당 블록 1개)
+}
+
+std::uint32_t EfficientNms::fallback_reason(int slot) const {
+    return reinterpret_cast<const YoloDetBufHeader*>(slots_.at(static_cast<std::size_t>(slot)).host)->overflow;
+}
+
+std::uint32_t EfficientNms::result_count(int slot) const {
+    return reinterpret_cast<const YoloDetBufHeader*>(slots_.at(static_cast<std::size_t>(slot)).host)->count;
+}
+
+bool EfficientNms::read_results(int slot, std::vector<DetectionKeyed>& out) const {
+    out.clear();
+    const Slot& s = slots_.at(static_cast<std::size_t>(slot));
+    const auto* h = reinterpret_cast<const YoloDetBufHeader*>(s.host);
+    if (h->overflow != 0) return false;
+    if (h->count > cfg_.max_selected)   // 셰이더 계약 위반 — 믿지 말고 CPU 로 넘긴다
+        return false;
+    const auto* d = reinterpret_cast<const YoloDetGpu*>(s.host + sizeof(YoloDetBufHeader));
+    out.reserve(h->count);
+    for (std::uint32_t i = 0; i < h->count; ++i) {
+        DetectionKeyed k;
+        k.class_id = static_cast<int>(d[i].class_id);
+        k.score = d[i].score;
+        k.x1 = d[i].x1;
+        k.y1 = d[i].y1;
+        k.x2 = d[i].x2;
+        k.y2 = d[i].y2;
+        k.anchor_key = d[i].anchor_key;
+        out.push_back(k);
+    }
+    return true;
+}
+
+void EfficientNms::destroy() {
+    VkDevice dev = ctx_.device();
+    if (dev == VK_NULL_HANDLE) return;
+    vkDeviceWaitIdle(dev);   // 종료 시에만
+    for (Slot& s : slots_) {
+        if (s.host) vkUnmapMemory(dev, s.mem);
+        if (s.out) vkDestroyBuffer(dev, s.out, nullptr);
+        if (s.mem) vkFreeMemory(dev, s.mem, nullptr);
+        s = Slot{};
+    }
+    slots_.clear();
+    if (desc_pool_) vkDestroyDescriptorPool(dev, desc_pool_, nullptr);   // 셋도 함께 해제
+    if (pipeline_) vkDestroyPipeline(dev, pipeline_, nullptr);
+    if (pipeline_layout_) vkDestroyPipelineLayout(dev, pipeline_layout_, nullptr);
+    if (set_layout_) vkDestroyDescriptorSetLayout(dev, set_layout_, nullptr);
+    desc_pool_ = VK_NULL_HANDLE;
+    pipeline_ = VK_NULL_HANDLE;
+    pipeline_layout_ = VK_NULL_HANDLE;
+    set_layout_ = VK_NULL_HANDLE;
+}
+
+} // namespace yvo::vk

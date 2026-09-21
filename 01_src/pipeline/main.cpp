@@ -25,7 +25,9 @@
 //          latest  = 전처리가 끝나는 대로 표시하고 검출은 가장 최근 것을 얹는다(finish_gpu 에서 show).
 // 후처리 (--postproc)
 //   host : HEF 내장 NMS 출력 1개 → HailoRT가 호스트 CPU에서 파싱 (기준 경로, 기본값)
-//   gpu  : 원시 출력 6스트림(dma-buf) → yolo_decode.comp pass 1 → CPU greedy 억제.
+//   gpu  : 원시 출력 6스트림(dma-buf) → yolo_decode.comp pass 1 → 억제(--nms).
+//          --nms gpu(기본): 같은 커맨드 버퍼의 efficient_nms.comp. 보호대·용량 초과 프레임만 CPU fallback.
+//          --nms cpu: CPU greedy 억제(cpu_nms_greedy_by_class). --nms verify: 둘 다 돌려 비트 비교.
 //          NPU 완료분을 GPU로 미는 일도 **메인 스레드**가 한다(InferStage::pump/drain_one) —
 //          VkQueue가 하나뿐이라 vkQueueSubmit을 다른 스레드에서 하면 안 되기 때문이다.
 // 종료 순서: InferStage::drain → flush_results → DisplayPipeline::drain → SandLetterbox::clear_import_cache
@@ -160,6 +162,9 @@ struct Args {
     // GPU 후처리의 원시 출력 버퍼 할당 방식. 기본 export(= Vulkan 이 할당·export).
     // heap(dma-heap import)은 3자 일관성(PCIe DMA ↔ CPU 캐시 ↔ V3D)이 아직 미검증이다.
     std::string postproc_alloc = "export";
+    // --postproc gpu 의 억제 위치. 기본 gpu(efficient_nms.comp).
+    yvo::pipeline::NmsBackend nms = yvo::pipeline::NmsBackend::Gpu;
+    bool nms_explicit = false;
     std::string dump_dir;
     int dump_every = 100;
     bool quiet = false;
@@ -177,7 +182,8 @@ void usage(const char* a0) {
     std::fprintf(stderr,
                  "usage: %s [--video PATH] [--hef PATH] [--frames N] [--mode ptr|dmabuf] [--layout nhwc|nhcw]\n"
                  "          [--batch N] [--slots N] [--postproc host|gpu] [--postproc-alloc export|heap]\n"
-                 "          [--gpu-depth N] [--score T] [--dump-dir DIR] [--dump-every K] [--quiet] [--csv-label L]\n"
+                 "          [--nms gpu|cpu|verify] [--gpu-depth N] [--score T] [--dump-dir DIR] [--dump-every K]\n"
+                 "          [--quiet] [--csv-label L]\n"
                  "  --layout     전처리 출력·NPU 입력 텐서 레이아웃 (기본 nhwc)\n"
                  "               nhcw는 HailoRT의 CPU 입력 변환(약 14 ms/frame)을 없앤다. --mode dmabuf 전용\n"
                  "  --slots      GPU·NPU 공용 슬롯 수 (기본 max(4, batch*2))\n"
@@ -185,6 +191,9 @@ void usage(const char* a0) {
                  "  --postproc   후처리 위치 (기본 host). gpu는 원시 출력 6스트림 + yolo_decode.comp + CPU 억제\n"
                  "               --mode dmabuf --layout nhcw 전용\n"
                  "  --postproc-alloc  gpu 후처리의 원시 출력 버퍼 할당 (기본 export)\n"
+                 "  --nms        gpu 후처리의 억제 위치 (기본 gpu = efficient_nms.comp, 보호대 프레임만 CPU fallback)\n"
+                 "               cpu = cpu_nms_greedy_by_class, verify = 둘 다 돌려 비트 비교(출력은 CPU 쪽)\n"
+                 "               --postproc gpu 전용\n"
                  "  --dump-dir   detections.jsonl(프레임당 한 줄) + K 프레임마다 박스 PNG(letterbox 입력 위)\n"
 #ifdef YVO_HAVE_DISPLAY
                  "  --display {off,on}                       HDMI 실시간 표시 (기본 off)\n"
@@ -233,6 +242,13 @@ bool parse(int argc, char** argv, Args& a) {
             const std::string p = v;
             if (p != "export" && p != "heap") return false;
             a.postproc_alloc = p;
+        } else if (s == "--nms" && (v = next())) {
+            const std::string p = v;
+            if (p == "gpu") a.nms = yvo::pipeline::NmsBackend::Gpu;
+            else if (p == "cpu") a.nms = yvo::pipeline::NmsBackend::Cpu;
+            else if (p == "verify") a.nms = yvo::pipeline::NmsBackend::Verify;
+            else return false;
+            a.nms_explicit = true;
         }
         else if (s == "--score" && (v = next())) a.score = static_cast<float>(std::atof(v));
         else if (s == "--dump-dir" && (v = next())) a.dump_dir = v;
@@ -403,6 +419,14 @@ struct FdCloser {
 };
 
 const char* layout_name(yvo::TensorLayout l) { return l == yvo::TensorLayout::Nhcw ? "nhcw" : "nhwc"; }
+const char* nms_name(yvo::pipeline::NmsBackend b) {
+    switch (b) {
+        case yvo::pipeline::NmsBackend::Gpu: return "gpu";
+        case yvo::pipeline::NmsBackend::Cpu: return "cpu";
+        case yvo::pipeline::NmsBackend::Verify: return "verify";
+    }
+    return "?";
+}
 
 int run(const Args& a) {
     const bool dmabuf = a.mode == Mode::Dmabuf;
@@ -420,6 +444,10 @@ int run(const Args& a) {
         std::fprintf(stderr,
                      "--postproc gpu는 --mode dmabuf --layout nhcw 전용이다: HailoRawRunner는 입력·출력을\n"
                      "dma-buf로만 받고(호스트 포인터 경로 없음), 원시 출력 6스트림 경로는 NHCW 입력으로만 검증됐다.\n");
+        return 2;
+    }
+    if (a.nms_explicit && a.postproc != Postproc::Gpu) {
+        std::fprintf(stderr, "--nms 는 --postproc gpu 전용이다 (host 경로의 NMS 는 HailoRT 가 HEF 설정대로 한다).\n");
         return 2;
     }
     const double soc_t0 = soc_temperature();
@@ -462,6 +490,7 @@ int run(const Args& a) {
         gcfg.batch_size = static_cast<std::uint16_t>(a.batch);
         gcfg.num_slots = a.slots;
         gcfg.score_thr = a.score >= 0.0f ? a.score : 0.2f;
+        gcfg.nms = a.nms;
         gcfg.input_alloc = a.postproc_alloc == "heap" ? yvo::vk::YoloInputAlloc::ImportHeap
                                                       : yvo::vk::YoloInputAlloc::ExportDmaBuf;
         auto g = std::make_unique<yvo::pipeline::GpuPostprocStage>(ctx, gcfg);
@@ -810,9 +839,14 @@ int run(const Args& a) {
     }
     const float hailo_t1 = stage->chip_temperature();
     // GPU 후처리 통계는 stage 를 놓기 전에 떠 둔다.
-    Stats sp, sq, sc, sh;
-    long cand_overflow = 0;
+    Stats sp, sq, sc, sh, sgn;
+    long cand_overflow = 0, nms_fb = 0, nms_fb_cap = 0, nms_fb_guard = 0, nms_mismatch = 0;
     if (gpu_stage) {
+        sgn = stats(gpu_stage->gpu_nms_ms());
+        nms_fb = gpu_stage->nms_fallback_frames();
+        nms_fb_cap = gpu_stage->nms_fallback_capacity();
+        nms_fb_guard = gpu_stage->nms_fallback_guard();
+        nms_mismatch = gpu_stage->nms_verify_mismatch();
         sp = stats(gpu_stage->post_ms());
         sq = stats(gpu_stage->nms_us());
         sc = stats(gpu_stage->cand());
@@ -884,8 +918,17 @@ int run(const Args& a) {
     if (a.postproc == Postproc::Gpu) {
         std::printf("gpu post ms     mean %.3f  median %.3f  p90 %.3f  max %.3f  (yolo_decode.comp pass 1)\n", sp.mean,
                     sp.median, sp.p90, sp.max);
-        std::printf("cpu nms us      mean %.3f  median %.3f  p90 %.3f  max %.3f  (cpu_nms_greedy_by_class)\n", sq.mean,
-                    sq.median, sq.p90, sq.max);
+        std::printf("cpu nms us      mean %.3f  median %.3f  p90 %.3f  max %.3f  (cpu_nms_greedy_by_class, n=%zu)\n",
+                    sq.mean, sq.median, sq.p90, sq.max, sq.n);
+        std::printf("nms backend     %s\n", nms_name(a.nms));
+        if (a.nms != yvo::pipeline::NmsBackend::Cpu) {
+            std::printf("gpu nms ms      mean %.4f  median %.4f  p90 %.4f  max %.4f  (efficient_nms.comp)\n", sgn.mean,
+                        sgn.median, sgn.p90, sgn.max);
+            std::printf("nms fallback    %ld frames (capacity %ld, iou guard %ld)\n", nms_fb, nms_fb_cap, nms_fb_guard);
+        }
+        if (a.nms == yvo::pipeline::NmsBackend::Verify)
+            std::printf("nms verify mismatch %ld frames (GPU 결과가 CPU 기준과 비트 단위로 다른 프레임, fallback 제외)\n",
+                        nms_mismatch);
         std::printf("candidates      mean %.2f  max %.0f  overflow frames %ld\n", sc.mean, sc.max, cand_overflow);
         std::printf("slot hold ms    mean %.3f  median %.3f  p90 %.3f  max %.3f  (NPU 완료 콜백 → 슬롯 반납)\n",
                     sh.mean, sh.median, sh.p90, sh.max);
@@ -924,6 +967,7 @@ int run(const Args& a) {
         // + 표시 지표는 **뒤로만** 덧붙인다(앞의 10필드는 순서·개수를 바꾸지 않는다):
         //   display,sync,pace,disp_convert_mean,disp_convert_p90,disp_overlay_mean,present_interval_median,
         //   e2e_glass_mean,e2e_glass_p90,presented,display_dropped,recreates,held_frames_max,slot_timeout_count
+        // + GPU NMS 지표도 **뒤로만** 덧붙인다: nms,gpu_nms_mean,gpu_nms_p90,nms_fallback,nms_verify_mismatch
         const char* sync_s = "-";
         const char* pace_s = "-";
 #ifdef YVO_HAVE_DISPLAY
@@ -933,12 +977,14 @@ int run(const Args& a) {
         }
 #endif
         std::printf("RESULT_CSV2,%s,%s,%s,%.4f,%.4f,%.3f,%.2f,%.0f,%ld,%d"
-                    ",%s,%s,%s,%.4f,%.4f,%.4f,%.3f,%.2f,%.2f,%llu,%llu,%llu,%ld,%ld\n",
+                    ",%s,%s,%s,%.4f,%.4f,%.4f,%.3f,%.2f,%.2f,%llu,%llu,%llu,%ld,%ld"
+                    ",%s,%.4f,%.4f,%ld,%ld\n",
                     a.csv_label.c_str(), a.postproc == Postproc::Gpu ? "gpu" : "host",
                     a.postproc == Postproc::Gpu ? a.postproc_alloc.c_str() : "-", sp.mean, sp.p90, sq.mean, sc.mean,
                     sc.max, cand_overflow, fail ? 0 : 1,
                     disp_backend, sync_s, pace_s, sdc.mean, sdc.p90, sdo.mean, sdi.median, sdg.mean, sdg.p90,
-                    presented, disp_dropped, recreates, held_frames_max, slot_timeout_count);
+                    presented, disp_dropped, recreates, held_frames_max, slot_timeout_count,
+                    a.postproc == Postproc::Gpu ? nms_name(a.nms) : "-", sgn.mean, sgn.p90, nms_fb, nms_mismatch);
     }
     std::fflush(stdout);
     if (ctx.debug_messenger_active() && ctx.validation_errors() > 0) fail = true;

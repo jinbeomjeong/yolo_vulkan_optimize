@@ -21,8 +21,9 @@ namespace yvo::vk {
 
 namespace {
 
-// [0] cmd 시작 [1] 디스패치 전 [2] 디스패치 후 [3] cmd 끝
-constexpr std::uint32_t kQueriesPerSlot = 4;
+// [0] cmd 시작 [1] 디코드 전 [2] 디코드 후 [3] NMS 전(배리어 뒤) [4] NMS 후 [5] cmd 끝
+// NMS 를 끄면 [3]/[4] 는 같은 자리에 연달아 찍힌다(구간 0, last_nms_ms 는 -1 로 보고).
+constexpr std::uint32_t kQueriesPerSlot = 6;
 
 } // namespace
 
@@ -359,6 +360,18 @@ void YoloPostproc::create_slots() {
         fi.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         YVO_VK_CHECK(vkCreateFence(dev, &fi, nullptr, &s.fence));
     }
+
+    // ── GPU NMS: 슬롯 DetBuf 를 입력으로 쥐는 EfficientNms (출력 버퍼·디스크립터 전량 초기화 시 할당) ──
+    if (cfg_.enable_nms) {
+        std::vector<VkBuffer> inputs;
+        for (const Slot& s : slots_) inputs.push_back(s.det);
+        EfficientNmsConfig nc = cfg_.nms;
+        nc.num_classes = static_cast<std::uint32_t>(layout_.num_classes);
+        nms_ = std::make_unique<EfficientNms>(ctx_, nc, inputs, det_size_, static_cast<std::uint32_t>(cfg_.max_dets));
+        if (cfg_.verbose)
+            std::fprintf(stderr, "[YoloPostproc] EfficientNms: local %u, max_selected %u, shared %zu B, guard %g\n",
+                         nc.local_size, nc.max_selected, nms_->shared_bytes(), static_cast<double>(nc.iou_guard));
+    }
 }
 
 void YoloPostproc::record(Slot& s, int slot, const LetterboxParams& lb, int src_w, int src_h, bool checksum) {
@@ -466,11 +479,35 @@ void YoloPostproc::record(Slot& s, int slot, const LetterboxParams& lb, int src_
     }
     if (query_pool_) vkCmdWriteTimestamp2(cb, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, query_pool_, qslot + 2);
 
+    // ── GPU NMS (같은 커맨드 버퍼) ────────────────────────────────────────────────────────────
+    // DetBuf: 디코드의 셰이더 쓰기(atomicAdd/atomicMax 포함) → NMS 의 셰이더 읽기. 버퍼 하나뿐인 RAW 의존성이다.
+    if (nms_) {
+        VkBufferMemoryBarrier2 b{};
+        b.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+        b.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        b.srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+        b.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        b.dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+        b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        b.buffer = s.det;
+        b.offset = 0;
+        b.size = VK_WHOLE_SIZE;
+        VkDependencyInfo nd{};
+        nd.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        nd.bufferMemoryBarrierCount = 1;
+        nd.pBufferMemoryBarriers = &b;
+        vkCmdPipelineBarrier2(cb, &nd);
+    }
+    if (query_pool_) vkCmdWriteTimestamp2(cb, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, query_pool_, qslot + 3);
+    if (nms_) nms_->record(cb, slot);
+    if (query_pool_) vkCmdWriteTimestamp2(cb, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, query_pool_, qslot + 4);
+
     // ── 종료 배리어 ───────────────────────────────────────────────────────────────────────────
     // ① 원시 출력 release (Foreign 일 때만). 읽기만 했으므로 가용화할 쓰기가 없다 → srcAccessMask NONE.
     //    release 연산에서는 dstStageMask/dstAccessMask 가 무시된다(sand_letterbox.cpp:401-424 와 같다).
     // ② DetBuf: 셰이더 쓰기(atomic 포함 — atomic 은 read+write 접근이다) → 호스트 읽기 가시성.
-    std::array<VkBufferMemoryBarrier2, 1 + kYoloNumTensors> rel{};
+    std::array<VkBufferMemoryBarrier2, 2 + kYoloNumTensors> rel{};
     std::uint32_t nrel = 0;
     if (cfg_.input_sync == YoloInputSync::Foreign) {
         for (int i = 0; i < kYoloNumTensors; ++i) {
@@ -500,11 +537,25 @@ void YoloPostproc::record(Slot& s, int slot, const LetterboxParams& lb, int src_
         b.offset = 0;
         b.size = VK_WHOLE_SIZE;
     }
+    if (nms_) {
+        // ③ NMS 출력: 셰이더 쓰기 → 호스트 읽기 (read_nms)
+        VkBufferMemoryBarrier2& b = rel[nrel++];
+        b.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+        b.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        b.srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+        b.dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT;
+        b.dstAccessMask = VK_ACCESS_2_HOST_READ_BIT;
+        b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        b.buffer = nms_->output(slot);
+        b.offset = 0;
+        b.size = VK_WHOLE_SIZE;
+    }
     di.bufferMemoryBarrierCount = nrel;
     di.pBufferMemoryBarriers = rel.data();
     vkCmdPipelineBarrier2(cb, &di);
 
-    if (query_pool_) vkCmdWriteTimestamp2(cb, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, query_pool_, qslot + 3);
+    if (query_pool_) vkCmdWriteTimestamp2(cb, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, query_pool_, qslot + 5);
     YVO_VK_CHECK(vkEndCommandBuffer(cb));
 }
 
@@ -559,6 +610,7 @@ void YoloPostproc::wait(int slot, std::uint64_t timeout_ns) {
 
     last_pass1_ms_ = -1.0;
     last_total_ms_ = -1.0;
+    last_nms_ms_ = -1.0;
     if (query_pool_ == VK_NULL_HANDLE) return;
     std::array<std::uint64_t, kQueriesPerSlot> ts{};
     const VkResult r = vkGetQueryPoolResults(ctx_.device(), query_pool_,
@@ -571,7 +623,8 @@ void YoloPostproc::wait(int slot, std::uint64_t timeout_ns) {
     const std::uint64_t mask = bits >= 64 ? ~0ull : ((1ull << bits) - 1);
     const double period = static_cast<double>(ctx_.timestamp_period());
     last_pass1_ms_ = static_cast<double>(((ts[2] & mask) - (ts[1] & mask)) & mask) * period * 1e-6;
-    last_total_ms_ = static_cast<double>(((ts[3] & mask) - (ts[0] & mask)) & mask) * period * 1e-6;
+    last_total_ms_ = static_cast<double>(((ts[5] & mask) - (ts[0] & mask)) & mask) * period * 1e-6;
+    if (nms_) last_nms_ms_ = static_cast<double>(((ts[4] & mask) - (ts[3] & mask)) & mask) * period * 1e-6;
 }
 
 const YoloDetBufHeader* YoloPostproc::header(int slot) const {
@@ -605,6 +658,16 @@ std::vector<DetectionKeyed> YoloPostproc::read_candidates(int slot) const {
         out.push_back(k);
     }
     return out;
+}
+
+bool YoloPostproc::read_nms(int slot, std::vector<DetectionKeyed>& out) const {
+    out.clear();
+    if (!nms_) return false;
+    return nms_->read_results(slot, out);
+}
+
+std::uint32_t YoloPostproc::nms_fallback_reason(int slot) const {
+    return nms_ ? nms_->fallback_reason(slot) : 0u;
 }
 
 // 부록 B.10 R2/R3. 슬롯의 원시 출력 6개 전부에 START/END 를 건다.
@@ -648,6 +711,7 @@ void YoloPostproc::destroy() {
     VkDevice dev = ctx_.device();
     if (dev == VK_NULL_HANDLE) return;
     vkDeviceWaitIdle(dev);   // 종료 시에만
+    nms_.reset();            // 슬롯 DetBuf 를 디스크립터로 쥐고 있다 → 슬롯보다 먼저
     for (Slot& s : slots_) {
         if (s.fence) vkDestroyFence(dev, s.fence, nullptr);
         if (s.det_host) vkUnmapMemory(dev, s.det_mem);

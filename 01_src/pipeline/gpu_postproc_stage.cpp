@@ -1,5 +1,6 @@
 #include "pipeline/gpu_postproc_stage.hpp"
 
+#include <cstring>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -14,6 +15,20 @@ namespace yvo::pipeline {
 namespace {
 
 using Clock = std::chrono::steady_clock;
+
+// 비트 단위 비교 (개수·순서·class·anchor_key·score·좌표). float 는 == 가 아니라 비트로 본다.
+bool same_bits(const std::vector<yvo::DetectionKeyed>& a, const std::vector<yvo::DetectionKeyed>& b) {
+    if (a.size() != b.size()) return false;
+    for (std::size_t i = 0; i < a.size(); ++i) {
+        const auto& x = a[i];
+        const auto& y = b[i];
+        if (x.class_id != y.class_id || x.anchor_key != y.anchor_key) return false;
+        const float fx[5] = {x.score, x.x1, x.y1, x.x2, x.y2};
+        const float fy[5] = {y.score, y.x1, y.y1, y.x2, y.y2};
+        if (std::memcmp(fx, fy, sizeof(fx)) != 0) return false;
+    }
+    return true;
+}
 
 // dma-buf 실크기. `bind_slot()` 의 매핑 크기 계약은 **lseek 값**이다(전송 크기가 아니다).
 std::size_t dmabuf_size(int fd) {
@@ -81,6 +96,9 @@ GpuPostprocStage::GpuPostprocStage(yvo::vk::VulkanContext& ctx, const GpuPostpro
     pc.input_sync = yvo::vk::YoloInputSync::Foreign;   // Hailo PCIe DMA 가 쓴 외부 메모리다
     pc.checksum_pipeline = false;
     pc.verbose = cfg_.verbose;
+    pc.enable_nms = cfg_.nms != NmsBackend::Cpu;
+    pc.nms.iou_thr = cfg_.iou_thr;
+    pc.nms.max_per_class = cfg_.max_per_class;
     pp_ = std::make_unique<yvo::vk::YoloPostproc>(ctx, layout_from_runner(raw_->info()), pc);
 
     const auto n = static_cast<std::size_t>(cfg_.num_slots);
@@ -177,11 +195,38 @@ void GpuPostprocStage::finish(int slot) {
     cand_.push_back(static_cast<double>(raw_n));
     if (pp_->overflow(slot)) ++overflow_frames_;
 
-    std::vector<yvo::DetectionKeyed> cand = pp_->read_candidates(slot);
-    const auto n0 = Clock::now();
-    yvo::cpu_nms_greedy_by_class(cand, cfg_.iou_thr, cfg_.max_per_class);
-    last_nms_us_ = std::chrono::duration<double, std::micro>(Clock::now() - n0).count();
-    nms_us_.push_back(last_nms_us_);
+    // CPU 억제 (Cpu 백엔드, GPU fallback, Verify 의 기준). last_nms_us_ 는 이 경로에서만 갱신한다.
+    auto cpu_nms = [&]() {
+        std::vector<yvo::DetectionKeyed> c = pp_->read_candidates(slot);
+        const auto n0 = Clock::now();
+        yvo::cpu_nms_greedy_by_class(c, cfg_.iou_thr, cfg_.max_per_class);
+        last_nms_us_ = std::chrono::duration<double, std::micro>(Clock::now() - n0).count();
+        nms_us_.push_back(last_nms_us_);
+        return c;
+    };
+
+    std::vector<yvo::DetectionKeyed> cand;
+    if (cfg_.nms == NmsBackend::Cpu) {
+        cand = cpu_nms();
+    } else {
+        last_gpu_nms_ms_ = pp_->last_nms_ms();
+        gpu_nms_ms_.push_back(last_gpu_nms_ms_);
+        std::vector<yvo::DetectionKeyed> gpu;
+        const bool gpu_ok = pp_->read_nms(slot, gpu);
+        if (!gpu_ok) {
+            const std::uint32_t why = pp_->nms_fallback_reason(slot);
+            ++nms_fallback_frames_;
+            if (why & yvo::vk::kNmsFallbackIouGuard) ++nms_fallback_guard_;
+            if (why & (yvo::vk::kNmsFallbackCapacity | yvo::vk::kNmsFallbackBadClass)) ++nms_fallback_capacity_;
+        }
+        if (cfg_.nms == NmsBackend::Verify) {
+            cand = cpu_nms();
+            if (gpu_ok && !same_bits(gpu, cand)) ++nms_verify_mismatch_;
+        } else {
+            last_nms_us_ = -1.0;
+            cand = gpu_ok ? std::move(gpu) : cpu_nms();
+        }
+    }
 
     hold_ms_.push_back(std::chrono::duration<double, std::milli>(Clock::now() - t_done_[s]).count());
 
