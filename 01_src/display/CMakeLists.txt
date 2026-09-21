@@ -98,11 +98,16 @@ set_target_properties(yvo_wayland_protocols PROPERTIES POSITION_INDEPENDENT_CODE
 add_custom_target(yvo_wayland_protocols_headers DEPENDS ${yvo_wl_headers})
 add_dependencies(yvo_wayland_protocols yvo_wayland_protocols_headers)
 
+# kms 백엔드(kms_scanout.cpp)는 libdrm atomic API 를 쓴다. libdrm 은 decode/ 에서 이미 REQUIRED 로 찾았다.
+# pkg_check_modules 의 IMPORTED 타깃은 디렉터리 범위라 여기서 다시 부른다(캐시된 결과로 타깃만 만든다).
+pkg_check_modules(YVO_LIBDRM REQUIRED IMPORTED_TARGET libdrm)
+
 add_library(yvo_display STATIC
   wayland_window.cpp
   drm_state.cpp
   plane_display.cpp
   wayland_plane_scanout.cpp
+  kms_scanout.cpp
   vk_swapchain.cpp
   display_convert.cpp
   overlay_renderer.cpp
@@ -111,7 +116,7 @@ add_library(yvo_display STATIC
   display_pipeline.cpp)
 target_link_libraries(yvo_display
   PUBLIC yvo_vulkan yvo_ref
-  PRIVATE PkgConfig::YVO_WAYLAND yvo_wayland_protocols yvo_shaders)
+  PRIVATE PkgConfig::YVO_WAYLAND PkgConfig::YVO_LIBDRM yvo_wayland_protocols yvo_shaders)
 yvo_target_defaults(yvo_display)
 # 선택 프로토콜 매크로는 이 라이브러리 소스 안에서만 쓴다(공개 헤더는 매크로에 의존하지 않는다).
 target_compile_definitions(yvo_display PRIVATE ${yvo_wl_defines})

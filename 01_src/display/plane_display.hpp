@@ -105,6 +105,10 @@ public:
     virtual bool reports_presentation() const = 0;
     // 박스를 커밋했을 때 debugfs 에서 영상 위 AB24 평면을 기대하는가.
     virtual bool expects_debugfs_overlay() const { return true; }
+    // 요약에 덧붙일 전송층 고유 줄 (예: kms 의 flip_timeouts·master_lost·종료 복원 결과). 기본 없음.
+    virtual std::vector<std::string> report_lines() const { return {}; }
+    // 복구 불가 오류 (should_close 가 true 가 된 이유). "" = 없음. 호출자는 실행을 실패로 처리한다.
+    virtual std::string fatal_error() const { return {}; }
 };
 
 class PlaneDisplay final : public DisplaySink, private PlaneScanoutListener {

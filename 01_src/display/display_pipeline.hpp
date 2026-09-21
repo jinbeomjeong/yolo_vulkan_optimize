@@ -58,11 +58,14 @@ enum class DisplayBackendKind {
     Wayland,     // strict — 실패하면 예외(조용한 폴백 금지)
     Offscreen,
     WaylandPlanes,  // HVS 두 평면 스캔아웃 (PlaneDisplay + WaylandPlaneScanout). DisplayPipeline 은 만들지 않는다
+    Kms,            // 같은 두 평면을 KMS atomic 으로 직접 커밋 (PlaneDisplay + KmsScanout). DRM master 필요
 };
 
-// wayland-planes 가 컴포지터에 요청할 COLOR_RANGE (wp_color_representation_v1)
+// 평면 스캔아웃이 요청할 COLOR_RANGE.
+//   wayland-planes: wp_color_representation_v1 로 컴포지터에 요청. kms: 영상 평면 COLOR_RANGE 속성에 그대로 싣는다.
 enum class ColorRangeRequest {
-    Auto,      // = Full: labwc 0.20.1/wlroots 0.20.2 는 요청과 **뒤집혀** 나간다("fullhack") → 실제로 limited
+    Auto,      // wayland-planes = Full: labwc 0.20.1/wlroots 0.20.2 는 요청과 **뒤집혀** 나간다("fullhack") → 실제로 limited
+               // kms = Limited (뒤집힘이 없다)
     Full,
     Limited,
 };
@@ -100,7 +103,8 @@ struct DisplayPipelineConfig {
     double source_fps = 30.0;          // pace = Source 의 목표
     int num_slots = 4;                 // 파이프라인 슬롯 수 (retain 배열 크기)
 
-    ColorRangeRequest color_range = ColorRangeRequest::Auto;   // wayland-planes 전용
+    ColorRangeRequest color_range = ColorRangeRequest::Auto;   // wayland-planes / kms 전용
+    std::string connector;             // kms 전용 (--display-connector). "" = 연결된 첫 HDMI-A
 
     std::string title = "yolo_vulkan_optimize";
     std::string app_id = "yvo_pipeline";

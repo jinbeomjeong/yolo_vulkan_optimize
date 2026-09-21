@@ -13,6 +13,11 @@
 //                       링 항목 재사용 시 잔상 0 (Full·Erase 두 지우기 방식), pitch·크기·링 상태 검사, 지우기 GPU 시간.
 //   DrmState            평면 스캔아웃(wayland-planes) 검증용 debugfs state 파서(display/drm_state.hpp). GPU 불필요.
 //                       실측 state 발췌(hvs_wl_probe fullhack f225, labwc 데스크톱 fbcon/XR24)를 문자열 리터럴로 고정한다.
+//   KmsScanout          --display-backend kms 전송층(display/kms_scanout.hpp). card1 이 없으면 skip.
+//                       **master 를 절대 가져가지 않고 화면을 바꾸지 않는다**: 데스크톱(labwc)이 master 일 때만 돈다.
+//                       아무도 master 가 아니면(= open 이 master 를 자동으로 받는 상황) 모드셋 시도 없이 skip.
+//                       장치·커넥터·CRTC·평면 탐색(NV12 SAND128 / AB24 LINEAR), 박스·영상 AddFB2, master 없는 commit 이
+//                       멈추지 않고 명확한 오류로 끝나는지, KmsMasterError 메시지에 master 소유자가 들어가는지.
 //   OverlayVsOpenCV     (게이트 아님) draw_and_save() 와 640x640 에서 느슨한 기하 비교.
 //                       FONT_HERSHEY_SIMPLEX 는 다른 메트릭의 벡터 폰트라 비트 일치는 원리적으로 불가능하다.
 //
@@ -23,13 +28,16 @@
 // 실패하면 build/05_tests/overlay_diff/ 에 GPU·CPU·차이 이미지를 저장한다(test_preproc 의 관례).
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -46,7 +54,10 @@
 #endif
 
 #include "ref/overlay_reference.hpp"
+#include "decode/ffmpeg_drm_decoder.hpp"
 #include "display/drm_state.hpp"
+#include "display/kms_scanout.hpp"
+#include "display/plane_display.hpp"
 #include "display/overlay_plane.hpp"
 #include "display/overlay_renderer.hpp"
 #include "testkit/offscreen_target.hpp"
@@ -1050,6 +1061,253 @@ TEST(DrmState, HvsUnderrunCounter) {
     EXPECT_EQ(yvo::display::parse_hvs_underrun(" 17\n"), 17);
     EXPECT_EQ(yvo::display::parse_hvs_underrun(""), -1);
     EXPECT_EQ(yvo::display::parse_hvs_underrun("n/a"), -1);
+}
+
+// ── KmsScanout (--display-backend kms 전송층) ─────────────────────────────────────────────────
+// 안전 규칙: master 를 가져가거나 화면을 바꾸는 호출을 하지 않는다. 모든 KmsScanout 은 acquire_master=false 로 만들고
+// (master 획득 경로를 보는 MasterErrorNamesHolder 만 예외 — 다른 프로세스가 master 일 때만 돈다, 그때 drmSetMaster 는
+// 커널이 거부한다), commit 은 master 가 없어 ioctl 전에 거부된다.
+using yvo::display::KmsScanout;
+using yvo::display::KmsScanoutOptions;
+
+constexpr const char* kCard = "/dev/dri/card1";
+
+// 다른 프로세스가 master 일 때만 true. 아니면 skip 사유를 채운다.
+bool kms_guard(std::string* why) {
+    switch (KmsScanout::probe_master(kCard)) {
+    case KmsScanout::MasterProbe::Unavailable:
+        *why = std::string(kCard) + " 을 열 수 없다(장치 없음·권한)";
+        return false;
+    case KmsScanout::MasterProbe::NoMaster:
+        *why = "아무도 DRM master 가 아니다(데스크톱이 비활성 VT?) — 화면을 바꿀 위험이 있어 skip";
+        return false;
+    case KmsScanout::MasterProbe::OtherMaster: return true;
+    }
+    return false;
+}
+
+KmsScanoutOptions kms_test_opts() {
+    KmsScanoutOptions o;
+    o.card = kCard;
+    o.acquire_master = false;
+    o.verbose = true;
+    return o;
+}
+
+// 디코더 첫 프레임 (NV12 SAND128 dma-buf)
+struct KmsTestFrame {
+    yvo::FfmpegDrmDecoder dec;
+    std::optional<yvo::DrmFrame> f;
+    bool open() {
+        if (!dec.open(YVO_DEFAULT_VIDEO)) return false;
+        f = dec.next();
+        return f.has_value();
+    }
+};
+
+TEST(KmsScanout, DiscoversConnectorCrtcAndPlanes) {
+    std::string why;
+    if (!kms_guard(&why)) GTEST_SKIP() << why;
+    std::printf("[kms] master holders: %s\n", KmsScanout::find_master_holders(yvo::display::kDefaultDriDebugDir).c_str());
+    KmsScanout k(kms_test_opts());
+    EXPECT_FALSE(k.is_master());
+    EXPECT_EQ(k.connector_name().rfind("HDMI-A-", 0), 0u) << k.connector_name();
+    EXPECT_NE(k.connector_id(), 0u);
+    EXPECT_NE(k.crtc_id(), 0u);
+    EXPECT_NE(k.video_plane_id(), 0u);
+    EXPECT_NE(k.overlay_plane_id(), 0u);
+    EXPECT_NE(k.video_plane_id(), k.overlay_plane_id());
+    EXPECT_TRUE(k.video_plane_nv12_sand128());
+    EXPECT_TRUE(k.overlay_plane_ab24_linear());
+    EXPECT_TRUE(k.timestamp_monotonic());
+    const VkExtent2D e = k.output_extent();
+    EXPECT_GT(e.width, 0u);
+    EXPECT_GT(e.height, 0u);
+    EXPECT_STREQ(k.name(), "kms");
+    EXPECT_TRUE(k.reports_presentation());
+    EXPECT_FALSE(k.quit_requested());
+    EXPECT_FALSE(k.should_close());
+    const std::string d = k.describe();
+    std::printf("[kms] %s\n", d.c_str());
+    EXPECT_NE(d.find("color=BT.709/limited"), std::string::npos) << d;   // auto = limited
+    EXPECT_NE(d.find(" modeset:"), std::string::npos) << d;             // 모드셋 때 넣을 색 속성(B11)
+}
+
+TEST(KmsScanout, UnknownConnectorIsClearError) {
+    std::string why;
+    if (!kms_guard(&why)) GTEST_SKIP() << why;
+    KmsScanoutOptions o = kms_test_opts();
+    o.connector = "HDMI-A-99";
+    try {
+        KmsScanout k(o);
+        FAIL() << "없는 커넥터인데 예외가 없다";
+    } catch (const std::runtime_error& ex) {
+        std::printf("[kms] %s\n", ex.what());
+        EXPECT_NE(std::string(ex.what()).find("HDMI-A-99"), std::string::npos);
+    }
+}
+
+TEST(KmsScanout, OverlayBuffersAddFB2) {
+    std::string why;
+    if (!kms_guard(&why)) GTEST_SKIP() << why;
+    KmsScanout k(kms_test_opts());
+    const VkExtent2D e = k.output_extent();
+    OverlayPlane pl(ctx(), plane_cfg(static_cast<int>(e.width), static_cast<int>(e.height), OverlayClearMode::Auto, true));
+    ASSERT_NO_THROW(k.register_overlay(pl));
+    std::vector<std::uint32_t> fbs;
+    for (int i = 0; i < pl.ring_size(); ++i) {
+        fbs.push_back(k.overlay_fb(i));
+        EXPECT_NE(fbs.back(), 0u) << "#" << i;
+    }
+    std::sort(fbs.begin(), fbs.end());
+    EXPECT_EQ(std::unique(fbs.begin(), fbs.end()), fbs.end()) << "FB id 가 겹친다";
+    EXPECT_EQ(k.overlay_fb(pl.ring_size()), 0u);
+    ASSERT_NO_THROW(k.register_overlay(pl));   // 다시 등록해도 이전 FB 를 정리하고 새로 만든다
+    EXPECT_NE(k.overlay_fb(0), 0u);
+}
+
+TEST(KmsScanout, VideoFbFromDecoderFrame) {
+    std::string why;
+    if (!kms_guard(&why)) GTEST_SKIP() << why;
+    KmsTestFrame tf;
+    if (!tf.open()) GTEST_SKIP() << "HEVC 디코더/영상 없음: " << YVO_DEFAULT_VIDEO;
+    KmsScanout k(kms_test_opts());
+    const std::uint32_t fb = k.video_fb_for(*tf.f);
+    ASSERT_NE(fb, 0u) << k.last_error();
+    EXPECT_EQ(k.video_fb_for(*tf.f), fb);   // (dev, ino) 캐시
+    EXPECT_EQ(k.video_fb_count(), 1u);
+    k.clear_video_cache();
+    EXPECT_EQ(k.video_fb_count(), 0u);
+    yvo::DrmFrame bad = *tf.f;
+    bad.fd = -1;
+    EXPECT_EQ(k.video_fb_for(bad), 0u);
+    EXPECT_FALSE(k.last_error().empty());
+}
+
+TEST(KmsScanout, CommitWithoutMasterFailsFastWithoutTouchingScreen) {
+    std::string why;
+    if (!kms_guard(&why)) GTEST_SKIP() << why;
+    KmsTestFrame tf;
+    if (!tf.open()) GTEST_SKIP() << "HEVC 디코더/영상 없음: " << YVO_DEFAULT_VIDEO;
+    KmsScanout k(kms_test_opts());
+    const VkExtent2D e = k.output_extent();
+    OverlayPlane pl(ctx(), plane_cfg(static_cast<int>(e.width), static_cast<int>(e.height), OverlayClearMode::Auto, true));
+    k.register_overlay(pl);
+    const auto t0 = std::chrono::steady_clock::now();
+    EXPECT_FALSE(k.commit(*tf.f, 1, 0));
+    EXPECT_FALSE(k.commit(*tf.f, 2, -1));
+    EXPECT_TRUE(k.dispatch(0));
+    EXPECT_TRUE(k.dispatch(20));      // 이벤트가 없으니 20 ms 뒤 그냥 돌아온다
+    k.shutdown(100);
+    EXPECT_FALSE(k.commit(*tf.f, 3, 0));   // 종료 뒤 커밋은 거부
+    const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+    std::printf("[kms] no-master commit error: %s (%.1f ms)\n", k.last_error().c_str(), ms);
+    EXPECT_NE(k.last_error().find("master"), std::string::npos) << k.last_error();
+    EXPECT_EQ(k.commit_failures(), 2u);
+    EXPECT_LT(ms, 1000.0);
+}
+
+// PlaneDisplay 전체 흐름: master 가 없어 모든 커밋이 거부돼도 display_done 이 서고 drain 이 유한 시간에 끝난다.
+TEST(KmsScanout, PlaneDisplayWithoutMasterDropsAndDrains) {
+    std::string why;
+    if (!kms_guard(&why)) GTEST_SKIP() << why;
+    KmsTestFrame tf;
+    if (!tf.open()) GTEST_SKIP() << "HEVC 디코더/영상 없음: " << YVO_DEFAULT_VIDEO;
+    yvo::display::DisplayPipelineConfig cfg;
+    cfg.backend = yvo::display::DisplayBackendKind::Kms;
+    cfg.pace = yvo::display::DisplayPace::None;
+    cfg.num_slots = 2;
+    cfg.src_w = tf.f->width;
+    cfg.src_h = tf.f->height;
+    std::vector<int> done;
+    const auto t0 = std::chrono::steady_clock::now();
+    {
+        yvo::display::PlaneDisplay pd(ctx(), std::make_unique<KmsScanout>(kms_test_opts()), cfg);
+        pd.set_display_done_callback([&](int s) { done.push_back(s); });
+        EXPECT_STREQ(pd.backend_name(), "kms");
+        pd.retain(0, *tf.f);
+        pd.show(0, {Detection{0, 0.9f, 100.f, 100.f, 300.f, 300.f}});
+        pd.pump();
+        pd.retain(1, *tf.f);
+        pd.show(1, {});
+        pd.pump();
+        pd.drain();
+        EXPECT_EQ(pd.presented(), 0u);
+        EXPECT_EQ(pd.display_dropped(), 2u);
+        EXPECT_EQ(pd.frames_held(), 0);
+    }
+    const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+    EXPECT_EQ(done, (std::vector<int>{0, 1}));
+    EXPECT_LT(ms, 3000.0);
+}
+
+// 종료 복원(A1)의 저장 단계: master 없이 현재 KMS 상태를 읽어 직렬화한다(복원 커밋 자체는 master 가 필요해 실표시에서 본다).
+TEST(KmsScanout, CapturesCurrentStateWithoutMaster) {
+    std::string why;
+    if (!kms_guard(&why)) GTEST_SKIP() << why;
+    KmsScanout k(kms_test_opts());
+    EXPECT_TRUE(k.saved_state().empty());
+    k.capture_state();
+    const std::string t = k.saved_state_text();
+    std::printf("[kms] saved state (%zu props):\n%s", k.saved_state().size(), t.c_str());
+    ASSERT_FALSE(k.saved_state().empty());
+    const std::string crtc = "crtc[" + std::to_string(k.crtc_id()) + "].";
+    const std::string conn = "connector[" + std::to_string(k.connector_id()) + "].";
+    const std::string vp = "plane[" + std::to_string(k.video_plane_id()) + "].";
+    const std::string op = "plane[" + std::to_string(k.overlay_plane_id()) + "].";
+    for (const std::string& key : {crtc + "MODE_ID=", crtc + "ACTIVE=", conn + "CRTC_ID=", vp + "FB_ID=",
+                                   vp + "CRTC_ID=", vp + "SRC_W=", vp + "CRTC_W=", op + "FB_ID=", op + "CRTC_ID="})
+        EXPECT_NE(t.find(key), std::string::npos) << key;
+    // immutable 속성(type, IN_FORMATS)은 복원 대상이 아니다
+    EXPECT_EQ(t.find(".type="), std::string::npos);
+    EXPECT_EQ(t.find(".IN_FORMATS="), std::string::npos);
+    // 저장한 평면은 우리 두 평면이거나 지금 우리 CRTC 에 붙은 평면이다
+    std::map<std::uint32_t, std::uint64_t> plane_crtc;
+    for (const auto& sp : k.saved_state())
+        if (sp.kind == "plane" && sp.name == "CRTC_ID") plane_crtc[sp.obj] = sp.value;
+    for (const auto& [id, c] : plane_crtc)
+        if (id != k.video_plane_id() && id != k.overlay_plane_id()) {
+            EXPECT_EQ(c, k.crtc_id()) << "plane " << id;
+        }
+    // 모드셋 전 종료: 복원 커밋 없이 끝난다(화면·master 그대로)
+    k.shutdown(0);
+    EXPECT_EQ(k.shutdown_result().rfind("not-needed", 0), 0u) << k.shutdown_result();
+    bool has_line = false;
+    for (const auto& l : k.report_lines()) {
+        std::printf("[kms] report: %s\n", l.c_str());
+        if (l.find("flip_timeouts 0") != std::string::npos && l.find("master_lost no") != std::string::npos) has_line = true;
+    }
+    EXPECT_TRUE(has_line);
+    EXPECT_TRUE(k.fatal_error().empty());
+    EXPECT_FALSE(k.should_close());
+    EXPECT_EQ(KmsScanout::probe_master(kCard), KmsScanout::MasterProbe::OtherMaster);
+}
+
+// main 이 쓰는 경로: acquire_master=true 인데 다른 프로세스가 master → KmsMasterError(종료 코드 2), 소유자 이름 포함.
+// 커널은 master 가 있는 동안 drmSetMaster 를 거부하므로 화면·master 는 그대로다.
+TEST(KmsScanout, MasterErrorNamesHolder) {
+    std::string why;
+    if (!kms_guard(&why)) GTEST_SKIP() << why;
+    KmsScanoutOptions o = kms_test_opts();
+    o.acquire_master = true;
+    const auto t0 = std::chrono::steady_clock::now();
+    try {
+        KmsScanout k(o);
+        // 여기 오면 경쟁 조건(가드와 생성 사이에 master 가 비었다)이다. 첫 커밋 전이라 화면은 그대로고,
+        // 소멸자가 master 를 놓는다.
+        ADD_FAILURE() << "다른 프로세스가 master 인데 master 를 얻었다";
+    } catch (const yvo::display::KmsMasterError& ex) {
+        const std::string m = ex.what();
+        std::printf("[kms] %s\n", m.c_str());
+        EXPECT_NE(m.find("master"), std::string::npos);
+        const std::string holders = KmsScanout::find_master_holders(yvo::display::kDefaultDriDebugDir);
+        if (!holders.empty() && holders != "(없음)") {
+            EXPECT_NE(m.find(holders), std::string::npos) << holders;
+        }
+    }
+    const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+    EXPECT_LT(ms, 1000.0);
+    EXPECT_EQ(KmsScanout::probe_master(kCard), KmsScanout::MasterProbe::OtherMaster);   // master 는 그대로
 }
 
 // 검증 레이어 카운터 (켜져 있을 때만 의미가 있다)

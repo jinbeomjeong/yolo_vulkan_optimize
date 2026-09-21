@@ -57,6 +57,8 @@ PlaneDisplay::~PlaneDisplay() {
     } catch (...) {
     }
     // 전송층(wl_buffer 가 OverlayPlane 의 dma-buf 를 가리킨다)을 먼저 없애고 박스 링을 푼다.
+    // 소멸 중인 전송층이 반쯤 해체된 this 로 이벤트를 보내지 않도록 리스너를 먼저 끊는다.
+    if (scanout_) scanout_->set_listener(nullptr);
     scanout_.reset();
     ov_.reset();
 }
@@ -316,6 +318,10 @@ DisplaySink::ScanoutReport PlaneDisplay::scanout_report() const {
     r.zero_copy_feedback = zero_copy_fb_;
     r.feedback_presented = feedback_presented_;
     r.busy_reuse = scanout_ ? scanout_->busy_reuse() : 0;
+    if (scanout_) {
+        r.transport_lines = scanout_->report_lines();
+        r.fatal = scanout_->fatal_error();
+    }
     const bool expect_ov = overlay_ever_committed_ && scanout_ && scanout_->expects_debugfs_overlay();
     std::vector<const DrmStateSnapshot*> snaps;
     if (snap_start_taken_) snaps.push_back(&snap_start_);

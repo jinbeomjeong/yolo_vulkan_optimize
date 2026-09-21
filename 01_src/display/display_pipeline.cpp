@@ -71,6 +71,7 @@ bool parse_backend_kind(const std::string& s, DisplayBackendKind* out) {
     else if (s == "wayland") *out = DisplayBackendKind::Wayland;
     else if (s == "offscreen") *out = DisplayBackendKind::Offscreen;
     else if (s == "wayland-planes") *out = DisplayBackendKind::WaylandPlanes;
+    else if (s == "kms") *out = DisplayBackendKind::Kms;
     else return false;
     return true;
 }
@@ -117,8 +118,8 @@ bool DisplayPipeline::open_window(WaylandWindow& win, const DisplayPipelineConfi
 DisplayPipeline::DisplayPipeline(yvo::vk::VulkanContext& ctx, WaylandWindow* win,
                                  const DisplayPipelineConfig& cfg)
     : ctx_(ctx), cfg_(cfg) {
-    if (cfg_.backend == DisplayBackendKind::WaylandPlanes)
-        throw std::logic_error("DisplayPipeline: wayland-planes 는 PlaneDisplay 가 맡는다 (plane_display.hpp)");
+    if (cfg_.backend == DisplayBackendKind::WaylandPlanes || cfg_.backend == DisplayBackendKind::Kms)
+        throw std::logic_error("DisplayPipeline: wayland-planes / kms 는 PlaneDisplay 가 맡는다 (plane_display.hpp)");
     const bool want_wayland = cfg_.backend != DisplayBackendKind::Offscreen;
     const bool can_wayland = want_wayland && win != nullptr && win->is_open() && ctx_.present_enabled();
     if (cfg_.backend == DisplayBackendKind::Wayland && !can_wayland) {

@@ -103,6 +103,8 @@ public:
         std::uint64_t feedback_presented = 0; // presented 피드백 수
         std::uint64_t busy_reuse = 0;      // 컴포지터가 아직 쥔 버퍼를 다시 붙이려 한 수 (0 이어야 한다)
         std::vector<std::string> lines;    // 요약에 그대로 찍을 판정 줄 (debugfs 발췌)
+        std::vector<std::string> transport_lines;   // 전송층 고유 줄 (kms: flip_timeouts·master_lost·종료 복원 결과)
+        std::string fatal;                 // 전송층 복구 불가 오류 ("" = 없음) — 실행을 실패로 처리한다
     };
     virtual ScanoutReport scanout_report() const { return {}; }
 

@@ -89,7 +89,8 @@ endif()
 # OverlayVsOpenCV 는 참고용(느슨한 기하 기준)이고 OpenCV 가 있을 때만 빌드된다.
 if(TARGET yvo_display)
   add_executable(test_overlay test_overlay.cpp)
-  target_link_libraries(test_overlay PRIVATE yvo_display yvo_testkit_display yvo_assets GTest::gtest_main)
+  # yvo_decoder: KmsScanout.* 가 디코더 NV12 SAND128 프레임으로 영상 FB(AddFB2)를 만든다
+  target_link_libraries(test_overlay PRIVATE yvo_display yvo_decoder yvo_testkit_display yvo_assets GTest::gtest_main)
   yvo_target_defaults(test_overlay)
   if(TARGET yvo_opencv)
     target_link_libraries(test_overlay PRIVATE yvo_opencv)

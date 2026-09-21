@@ -23,6 +23,8 @@
 //   on   : 디코더 SAND dma-buf → display_convert.comp → overlay_boxes.comp → 스왑체인 present.
 //          --display-backend wayland-planes 면 V3D 변환 없이 디코더 NV12 SAND dma-buf 를 HVS 영상 평면에,
 //          GPU 로 그린 박스(AB24 dma-buf)를 그 위 평면에 올린다(PlaneDisplay + WaylandPlaneScanout).
+//          --display-backend kms 면 같은 두 평면을 컴포지터 없이 KMS atomic 으로 직접 커밋한다
+//          (PlaneDisplay + KmsScanout, card1 DRM master 필요 — 없으면 종료 코드 2).
 //          matched = 그 프레임의 검출과 함께 표시(flush_results 에서 show),
 //          latest  = 전처리가 끝나는 대로 표시하고 검출은 가장 최근 것을 얹는다(finish_gpu 에서 show).
 // 후처리 (--postproc)
@@ -87,6 +89,7 @@
 #include "display/display_pipeline.hpp"
 #include "display/display_sink.hpp"
 #include "display/plane_display.hpp"
+#include "display/kms_scanout.hpp"
 #include "display/wayland_plane_scanout.hpp"
 #include "toolkit/stats.hpp"
 #include "toolkit/tool_util.hpp"
@@ -202,11 +205,15 @@ void usage(const char* a0) {
                  "  --dump-dir   detections.jsonl(프레임당 한 줄) + K 프레임마다 박스 PNG(letterbox 입력 위)\n"
 #ifdef YVO_HAVE_DISPLAY
                  "  --display {off,on}                       HDMI 실시간 표시 (기본 off)\n"
-                 "  --display-backend {auto,wayland,offscreen,wayland-planes}  기본 auto. wayland 는 strict(조용한 폴백 금지)\n"
+                 "  --display-backend {auto,wayland,offscreen,wayland-planes,kms}  기본 auto. wayland 는 strict(조용한 폴백 금지)\n"
                  "               wayland-planes = HVS 두 평면 스캔아웃(영상 NV12 SAND 평면 + 박스 AB24 평면, V3D 변환 없음).\n"
                  "               전체화면을 강제하고 Vulkan present 를 쓰지 않는다. strict(실패하면 종료)\n"
-                 "  --display-color-range {auto,full,limited}   wayland-planes 가 요청할 COLOR_RANGE (기본 auto)\n"
-                 "               auto = full 요청: labwc 0.20.1 이 뒤집어 limited 로 싣는다(실제 평면 값은 debugfs 로 판정)\n"
+                 "               kms = 같은 두 평면을 컴포지터 없이 KMS atomic 으로 직접 커밋한다. card1 DRM master 필요\n"
+                 "               (데스크톱이 활성 VT 에 있으면 master 를 못 얻어 종료 코드 2). 창이 없으니 종료는 Ctrl+C/SIGTERM\n"
+                 "  --display-connector NAME                 kms 가 쓸 커넥터 (기본: 연결된 첫 HDMI-A. 예: HDMI-A-2)\n"
+                 "  --display-color-range {auto,full,limited}   평면 스캔아웃의 COLOR_RANGE (기본 auto)\n"
+                 "               wayland-planes auto = full 요청: labwc 0.20.1 이 뒤집어 limited 로 싣는다\n"
+                 "               kms auto = limited 를 그대로 싣는다 (실제 평면 값은 둘 다 debugfs 로 판정)\n"
                  "  --display-sync {matched,latest}          기본 matched (그 프레임의 검출과 함께 표시)\n"
                  "  --display-pace {source,asap}             표시 on 이면 기본 source. asap 는 페이싱 없음\n"
                  "  --display-fullscreen | --display-size WxH | --display-every K\n"
@@ -272,6 +279,8 @@ bool parse(int argc, char** argv, Args& a) {
             else return false;
         } else if (s == "--display-backend" && (v = next())) {
             if (!yvo::display::parse_backend_kind(v, &a.disp.backend)) return false;
+        } else if (s == "--display-connector" && (v = next())) {
+            a.disp.connector = v;
         } else if (s == "--display-color-range" && (v = next())) {
             if (!yvo::display::parse_color_range(v, &a.disp.color_range)) return false;
         } else if (s == "--display-sync" && (v = next())) {
@@ -304,12 +313,16 @@ bool parse(int argc, char** argv, Args& a) {
     if (!a.pace_explicit)
         a.disp.pace = a.display ? yvo::display::DisplayPace::Source : yvo::display::DisplayPace::None;
     a.disp.num_slots = a.slots;
-    const bool planes = a.disp.backend == yvo::display::DisplayBackendKind::WaylandPlanes;
-    if (planes) a.disp.fullscreen = true;   // 창 모드는 labwc 가 GL 로 합성한다 → 이 백엔드의 의미가 없다
+    // 평면 스캔아웃(PlaneDisplay): wayland-planes 와 kms. 프레임 보유 규칙이 같다(PlaneDisplay 상한이 같다).
+    const bool planes = a.disp.backend == yvo::display::DisplayBackendKind::WaylandPlanes ||
+                        a.disp.backend == yvo::display::DisplayBackendKind::Kms;
+    if (!a.disp.connector.empty() && a.disp.backend != yvo::display::DisplayBackendKind::Kms)
+        std::fprintf(stderr, "경고: --display-connector 는 --display-backend kms 에서만 쓰인다 (지금은 무시한다)\n");
+    if (planes) a.disp.fullscreen = true;   // 창 모드는 labwc 가 GL 로 합성한다 → 이 백엔드의 의미가 없다 (kms 는 항상 전체)
     // ⚠ 디코더 13프레임 제약: 동시에 약 13프레임을 넘게 잡으면 디코더가 **에러 없이 멈춘다.**
     //   Vulkan 합성 경로: matched 는 slots + gpu_depth 를, latest 는 gpu_depth + image_count 를 잡는다.
     //   여유를 두고 10 에서 막는다.
-    //   wayland-planes (PlaneDisplay): 프레임을 **컴포지터가 wl_buffer.release 할 때까지** 쥔다.
+    //   wayland-planes / kms (PlaneDisplay): 프레임을 **컴포지터가 wl_buffer.release 할 때까지**(kms 는 다음 flip 까지) 쥔다.
     //     matched — display_done 을 release 에서 세우므로 표시가 쥔 프레임은 전부 자기 슬롯을 점유한다
     //               (retained → pending → committed 동안 슬롯이 안 돌아온다). gpu_depth 도 슬롯 안이다.
     //               → 최대 slots + 1 (슬롯을 기다리는, 방금 디코드한 프레임 하나).
@@ -324,10 +337,11 @@ bool parse(int argc, char** argv, Args& a) {
                               : 0);
         if (hold > 10) {
             std::fprintf(stderr,
-                         "--display-backend wayland-planes 에서 디코더 프레임 보유가 %d 로 10 을 넘는다 "
+                         "--display-backend %s 에서 디코더 프레임 보유가 %d 로 10 을 넘는다 "
                          "(slots %d + 디코드 대기 1%s).\n디코더는 동시에 약 13프레임 넘게 잡히면 에러 없이 멈춘다. "
                          "--slots 를 줄여라.\n",
-                         hold, a.slots, a.disp.sync == yvo::display::DisplaySync::Latest ? " + 표시 보유 5" : "");
+                         a.disp.backend == yvo::display::DisplayBackendKind::Kms ? "kms" : "wayland-planes", hold,
+                         a.slots, a.disp.sync == yvo::display::DisplaySync::Latest ? " + 표시 보유 5" : "");
             return false;
         }
     } else if (a.display && a.slots + a.gpu_depth > 10) {
@@ -498,8 +512,26 @@ int run(const Args& a) {
 #ifdef YVO_HAVE_DISPLAY
     yvo::display::WaylandWindow win;
     bool have_win = false;
-    const bool planes = a.display && a.disp.backend == yvo::display::DisplayBackendKind::WaylandPlanes;
-    if (planes) {
+    const bool kms = a.display && a.disp.backend == yvo::display::DisplayBackendKind::Kms;
+    const bool planes = a.display && (a.disp.backend == yvo::display::DisplayBackendKind::WaylandPlanes || kms);
+    // kms: 창도 Vulkan present 도 없다(copt 기본값 = present 끔). master 를 못 얻으면 NPU·GPU 를 열기 전에
+    // 종료 코드 2 로 끝낸다 — 그래서 장치 열기·master 획득을 **가장 먼저** 한다. 화면은 첫 커밋 때 바뀐다.
+    std::unique_ptr<yvo::display::KmsScanout> kms_scanout;
+    if (kms) {
+        yvo::display::KmsScanoutOptions ko;
+        ko.connector = a.disp.connector;
+        ko.color_range = a.disp.color_range;
+        ko.verbose = a.disp.verbose;
+        try {
+            kms_scanout = std::make_unique<yvo::display::KmsScanout>(ko);
+        } catch (const yvo::display::KmsMasterError& e) {
+            std::fprintf(stderr, "--display-backend kms: %s\n", e.what());
+            return 2;
+        } catch (const std::exception& e) {
+            std::fprintf(stderr, "--display-backend kms: %s\n", e.what());
+            return 1;
+        }
+    } else if (planes) {
         // wayland-planes: 전체화면 창 + linux-dmabuf/presentation/viewporter/color-representation 전역.
         // Vulkan present 는 쓰지 않는다(copt 는 기본값 = present 끔) — 영상은 디코더 dma-buf, 박스는 OverlayPlane dma-buf.
         yvo::display::WaylandWindowOptions wo;
@@ -577,7 +609,9 @@ int run(const Args& a) {
 #ifdef YVO_HAVE_DISPLAY
     // 파이프라인은 DisplaySink 인터페이스만 쥔다(구현: DisplayPipeline = V3D 합성 + 스왑체인).
     std::unique_ptr<yvo::display::DisplaySink> display;
-    if (planes) {
+    if (kms) {
+        display = std::make_unique<yvo::display::PlaneDisplay>(ctx, std::move(kms_scanout), a.disp);
+    } else if (planes) {
         yvo::display::WaylandPlaneScanoutOptions so;
         so.color_range = a.disp.color_range;
         so.verbose = a.disp.verbose;
@@ -593,7 +627,7 @@ int run(const Args& a) {
     dopt.extra_hw_frames = std::max(2 * yvo::kNumSlots, a.gpu_depth + 4);
 #ifdef YVO_HAVE_DISPLAY
     if (display && planes) {
-        // wayland-planes: parse() 의 보유 계산(matched slots+1, latest slots+1+5)에 여유 4.
+        // wayland-planes / kms: parse() 의 보유 계산(matched slots+1, latest slots+1+5)에 여유 4.
         const int hold = a.slots + 1 +
                          (a.disp.sync == yvo::display::DisplaySync::Latest
                               ? yvo::display::PlaneDisplay::kExtraHeldBeyondSlots
@@ -930,10 +964,11 @@ int run(const Args& a) {
     Stats sdc, sdo, sdi, sdg;
     unsigned long long presented = 0, disp_dropped = 0, recreates = 0, ov_overflow = 0;
     const char* disp_backend = "off";
-    // 평면 스캔아웃 판정 (wayland-planes 만. 나머지는 "-")
+    // 평면 스캔아웃 판정 (wayland-planes / kms 만. 나머지는 "-")
     std::string sc_zero_copy = "-", sc_color_ok = "-", sc_underrun = "-", sc_ov_skipped = "-", sc_cb_timeouts = "-",
                 sc_zc_feedback = "-";
-    std::vector<std::string> sc_lines;
+    std::vector<std::string> sc_lines, sc_transport_lines;
+    std::string sc_fatal;
     unsigned long long sc_busy_reuse = 0, sc_feedback = 0;
     bool sc_applicable = false;
 #ifdef YVO_HAVE_DISPLAY
@@ -957,6 +992,8 @@ int run(const Args& a) {
             sc_cb_timeouts = std::to_string(rep.frame_cb_timeouts);
             sc_zc_feedback = std::to_string(rep.zero_copy_feedback);
             sc_lines = rep.lines;
+            sc_transport_lines = rep.transport_lines;
+            sc_fatal = rep.fatal;
             sc_busy_reuse = rep.busy_reuse;
             sc_feedback = rep.feedback_presented;
         }
@@ -1025,8 +1062,12 @@ int run(const Args& a) {
         std::printf("slot hold ms    mean %.3f  median %.3f  p90 %.3f  max %.3f  (NPU 완료 콜백 → 슬롯 반납)\n",
                     sh.mean, sh.median, sh.p90, sh.max);
     }
+    if (!sc_fatal.empty()) {
+        std::fprintf(stderr, "[error] 표시 전송층: %s\n", sc_fatal.c_str());
+        fail = true;
+    }
     if (a.display && sc_applicable) {
-        std::printf("disp convert ms -  (wayland-planes: YUV→RGB 변환은 HVS 가 스캔아웃 중에 한다, V3D 0)\n");
+        std::printf("disp convert ms -  (%s: YUV→RGB 변환은 HVS 가 스캔아웃 중에 한다, V3D 0)\n", disp_backend);
         std::printf("disp overlay ms mean %.3f  median %.3f  p90 %.3f  (overlay_boxes_buf.spv + 지우기, 박스 평면)\n",
                     sdo.mean, sdo.median, sdo.p90);
     } else if (a.display) {
@@ -1045,6 +1086,7 @@ int run(const Args& a) {
             std::printf("scanout         zero_copy %s, color_ok %s, hvs_underrun delta %s (debugfs 판정)\n",
                         sc_zero_copy.c_str(), sc_color_ok.c_str(), sc_underrun.c_str());
             for (const auto& l : sc_lines) std::printf("  debugfs %s\n", l.c_str());
+            for (const auto& l : sc_transport_lines) std::printf("  %s\n", l.c_str());
             std::printf("scanout         overlay skipped %s, frame-callback timeouts %s, busy reuse %llu, "
                         "presentation ZERO_COPY %s/%llu\n",
                         sc_ov_skipped.c_str(), sc_cb_timeouts.c_str(), sc_busy_reuse, sc_zc_feedback.c_str(),
@@ -1075,7 +1117,7 @@ int run(const Args& a) {
         //   display,sync,pace,disp_convert_mean,disp_convert_p90,disp_overlay_mean,present_interval_median,
         //   e2e_glass_mean,e2e_glass_p90,presented,display_dropped,recreates,held_frames_max,slot_timeout_count
         // + GPU NMS 지표도 **뒤로만** 덧붙인다: nms,gpu_nms_mean,gpu_nms_p90,nms_fallback,nms_verify_mismatch
-        // + 평면 스캔아웃 지표도 **뒤로만** 덧붙인다(wayland-planes 외에는 전부 "-"):
+        // + 평면 스캔아웃 지표도 **뒤로만** 덧붙인다(wayland-planes / kms 외에는 전부 "-"):
         //   scanout_zero_copy,plane_color_ok,hvs_underrun_delta,overlay_skipped,frame_cb_timeouts,zero_copy_feedback
         //   (scanout_zero_copy·plane_color_ok = 1/0/unverified — debugfs state 판정, hvs_underrun_delta 는 읽지 못하면 unverified)
         const char* sync_s = "-";
