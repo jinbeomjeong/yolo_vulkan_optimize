@@ -201,7 +201,7 @@ cat /sys/bus/pci/devices/0001:01:00.0/current_link_width   # Pi 5 슬롯은 1
 
 [01_big_picture.md](01_big_picture.md) §1.2 (3)의 컨베이어 벨트 이야기와 정확히 같은
 처리량–지연 맞바꿈이다. 이 프로젝트 실측이 그것을 그대로 보여 준다
-([`07_results/npu_benchmark/gen3/summary.md`](../07_results/npu_benchmark/gen3/summary.md)).
+([`07_results/npu_benchmark/runs/gen3/summary.md`](../07_results/npu_benchmark/runs/gen3/summary.md)).
 
 | batch | FPS(처리량) | HW 지연 |
 |---:|---:|---:|
@@ -212,7 +212,7 @@ cat /sys/bus/pci/devices/0001:01:00.0/current_link_width   # Pi 5 슬롯은 1
 
 그리고 배치를 계속 키운다고 계속 좋아지지 않는다. batch 16에서는 오히려 FPS가 떨어졌고
 (43.72), `hailort.log`에 `Desc page size value (1024) is not optimal for performance` 경고가
-찍혔다([같은 summary](../07_results/npu_benchmark/gen3/summary.md)).
+찍혔다([같은 summary](../07_results/npu_benchmark/runs/gen3/summary.md)).
 
 > **미리 말해 두는 반전**: 위 표는 `hailortcli` 로 잰 **NPU 단독** 값이다.
 > 실제 파이프라인에서는 **배치가 거의 무의미하고 슬롯이 지배한다.** §4.6 (6)에서 다룬다.
@@ -424,7 +424,7 @@ Python(`hailo_platform`)에서도 똑같다. `VDevice.create_params()`의 기본
 
 한편 더 이른 시점의 벤치마크도 같은 것을 이미 말하고 있었다.
 `hw_only`(NPU만)와 `streaming`(호스트 처리 포함) FPS가 **0.2% 미만으로 같았다**
-([`07_results/npu_benchmark/gen3/summary.md`](../07_results/npu_benchmark/gen3/summary.md)).
+([`07_results/npu_benchmark/runs/gen3/summary.md`](../07_results/npu_benchmark/runs/gen3/summary.md)).
 호스트 NMS가 아무리 비싸도 **처리량을 제한하지는 않고 있었다** — CPU 코어가 놀고 있었을 뿐이다.
 
 > **그래서 얻은 것은 FPS가 아니라 CPU다.** 이 프로젝트 전체의 주제와 같다
@@ -433,7 +433,7 @@ Python(`hailo_platform`)에서도 똑같다. `VDevice.create_params()`의 기본
 ### (6) 큐 모델 `T(B) = 24.8 + 16.2·B` 와 PCIe 병목의 증거
 
 배치 크기 B를 바꿔 가며 **한 배치를 처리하는 데 걸리는 시간**을 재고 직선으로 맞추면
-이렇게 된다([`07_results/op_point/latency_gen3_cooled/summary.md`](../07_results/op_point/latency_gen3_cooled/summary.md) §4).
+이렇게 된다([`07_results/op_point/runs/latency_gen3_cooled/summary.md`](../07_results/op_point/runs/latency_gen3_cooled/summary.md) §4).
 
 > **T(B) = 24.8 + 16.2 · B  [ms]**    (PCIe Gen3 x1, 냉각 상태)
 
@@ -670,7 +670,7 @@ DMA 엔진이 주소의 하위 비트를 무시하거나 페이지 단위로만 
 
 PCIe를 Gen3으로 올리고 나서 새 문제가 생겼다. **Hailo 칩이 최고 92.7 °C까지 올라갔고**,
 `hailort.log`에 이 경고가 찍혔다
-([`07_results/npu_benchmark/gen3/summary.md`](../07_results/npu_benchmark/gen3/summary.md)).
+([`07_results/npu_benchmark/runs/gen3/summary.md`](../07_results/npu_benchmark/runs/gen3/summary.md)).
 
 ```
 HEF was compiled assuming clock rate of 400 MHz, while the device clock rate is 250 MHz
@@ -680,7 +680,7 @@ HEF was compiled assuming clock rate of 400 MHz, while the device clock rate is 
 SoC 쪽 `vcgencmd get_throttled`는 계속 0이었으므로 **Pi가 아니라 Hailo 칩 쪽의 클럭 저하**다.
 
 과열 상태에서 잰 값은 지연을 **4~7% 부풀렸다**
-([`07_results/op_point/latency_gen3_cooled/summary.md`](../07_results/op_point/latency_gen3_cooled/summary.md) §3).
+([`07_results/op_point/runs/latency_gen3_cooled/summary.md`](../07_results/op_point/runs/latency_gen3_cooled/summary.md) §3).
 그래서 이 프로젝트의 측정 프로토콜에는 **냉각 규칙**이 들어가 있다.
 
 - 측정 전 칩 온도를 기준(65~68 °C) 이하로 내릴 때까지 대기
@@ -744,7 +744,7 @@ SoC 쪽 `vcgencmd get_throttled`는 계속 0이었으므로 **Pi가 아니라 Ha
 모델이 칩 메모리에 한 번에 안 들어가서 네 조각으로 잘렸다는 뜻이고,
 **조각을 바꿀 때마다 가중치가 PCIe를 건너온다.** 측정된 큐 모델
 `T(B) = 24.8 + 16.2·B`의 **배치당 고정비 24.8 ms**가 이 재적재로 해석된다
-([`07_results/op_point/latency_gen3_cooled/summary.md`](../07_results/op_point/latency_gen3_cooled/summary.md) §4).
+([`07_results/op_point/runs/latency_gen3_cooled/summary.md`](../07_results/op_point/runs/latency_gen3_cooled/summary.md) §4).
 
 **Q3. PCIe를 Gen2에서 Gen3으로 바꿨을 때 고정비와 프레임당 비용이 둘 다 절반이 됐다.
 이것이 "PCIe가 병목"의 증거가 되는 이유는?**

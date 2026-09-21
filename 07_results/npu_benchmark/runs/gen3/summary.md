@@ -1,6 +1,6 @@
 # yolov11m.hef NPU benchmark — PCIe Gen3 x1
 
-Gen2 x1 기준선은 [../gen2/summary.md](../gen2/summary.md)에, 두 조건 비교 개요는 [../summary.md](../summary.md)에 있다.
+Gen2 x1 기준선은 [../gen2/summary.md](../gen2/summary.md)에, 두 조건 비교 개요는 [../../summary.md](../../summary.md)에 있다.
 
 - 측정 일시: 2026-09-20 00:24~00:44 KST
 - 설정 변경: `/boot/firmware/config.txt`의 `[all]` 섹션에 `dtparam=pciex1_gen=3` 추가 후 재부팅 (원본 백업: `config.txt.bak-gen2`)
@@ -20,7 +20,7 @@ Gen2 x1 기준선은 [../gen2/summary.md](../gen2/summary.md)에, 두 조건 비
 
 - FPS는 streaming 값이다. hw_only 값과 차이가 0.2% 미만이다
 - 프레임당 주기 = 1000 / FPS
-- batch 16은 칩을 식힌 뒤 다시 잰 값이다 (`cooled/benchmark_b16.*`). 첫 측정(43.60 FPS)은 클럭 저하 경고가 찍힌 상태였다
+- batch 16은 칩을 식힌 뒤 다시 잰 값이다 (`../gen3_cooled/benchmark_b16.*`). 첫 측정(43.60 FPS)은 클럭 저하 경고가 찍힌 상태였다
 - batch 8 재현성: 식힌 뒤 두 번 더 재서 51.71, 51.64 FPS. 과열 상태에서 연달아 잰 반복값은 50.64 FPS였다
 - batch 16의 하락은 Gen2와 같은 원인으로 보인다: `Desc page size value (1024) is not optimal for performance` 경고
 
@@ -44,7 +44,7 @@ Gen2 x1 기준선은 [../gen2/summary.md](../gen2/summary.md)에, 두 조건 비
 ## 전체 지연 (overall latency) — ✅ 재측정 완료 (2026-09-20)
 
 > **이 절의 아래 Gen3 표는 대체됐다. 인용하지 마라.**
-> 냉각 상태 재측정 결과는 [`07_results/op_point/latency_gen3_cooled/summary.md`](../../op_point/latency_gen3_cooled/summary.md) 에 있다.
+> 냉각 상태 재측정 결과는 [`07_results/op_point/runs/latency_gen3_cooled/summary.md`](../../../op_point/runs/latency_gen3_cooled/summary.md) 에 있다.
 > 요약: b1 overall **40.894 ms**(과열값 42.78 대비 −4.4%), b8 overall **144.863 ms**(155.75 대비 −7.0%).
 > 3회 중앙값, 15회 전부 온도·클럭 경고 0건. 아래 표는 과열 상태 기록으로 남겨 둔다.
 
@@ -62,5 +62,5 @@ Gen3 값은 클럭이 250 MHz로 떨어진 상태에서 잰 것이다. benchmark
 - `benchmark_b{1,2,4,8,16}.*`, `benchmark_b8_repeat.*` — 첫 측정 묶음
 - `run_b{1,8}_latency.txt` — 지연 측정 (과열 상태)
 - `thermal_{before,after}_*.txt`, `chip_temp_cooldown.txt` — 온도 기록
-- `cooled/` — 식힌 뒤 다시 잰 batch 8(2회), batch 16
+- `../gen3_cooled/` — 식힌 뒤 다시 잰 batch 8(2회), batch 16
 - `console.txt`, `hailort.log` — 콘솔 출력과 런타임 로그

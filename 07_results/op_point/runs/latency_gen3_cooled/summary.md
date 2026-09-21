@@ -1,6 +1,6 @@
-# Gen3 지연 재측정 (냉각 상태) — `npu_benchmark/gen3` 의 "신뢰 불가" 표 대체
+# Gen3 지연 재측정 (냉각 상태) — `npu_benchmark/runs/gen3` 의 "신뢰 불가" 표 대체
 
-`07_results/npu_benchmark/gen3/summary.md` 의 **"전체 지연(overall latency) — 재측정 필요"** TODO 를 닫는다.
+`07_results/npu_benchmark/runs/gen3/summary.md` 의 **"전체 지연(overall latency) — 재측정 필요"** TODO 를 닫는다.
 그 표는 칩이 92.7 °C 까지 올라 `HEF was compiled assuming clock rate of 400 MHz, while the device
 clock rate is 250 MHz` 경고가 찍힌 상태에서 잰 값이라 "신뢰 불가"로 표시돼 있었다.
 

@@ -177,7 +177,7 @@ PCIe는 세대(Gen2 / Gen3)와 레인 수(x1)로 대역폭이 정해진다. (→
 > **병목이 아닌 자원을 아무리 확보해도 병목은 그대로다.**
 
 **근거**: [`npu_benchmark/summary.md`](../07_results/npu_benchmark/summary.md),
-[`op_point/latency_gen3_cooled/summary.md`](../07_results/op_point/latency_gen3_cooled/summary.md),
+[`op_point/runs/latency_gen3_cooled/summary.md`](../07_results/op_point/runs/latency_gen3_cooled/summary.md),
 [`op_point/summary.md`](../07_results/op_point/summary.md) §8.2
 
 ---

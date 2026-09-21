@@ -64,42 +64,35 @@ build/bin/yvo_pipeline \
 
 ---
 
-## 실험 목록 (파이프라인 순서)
+## 실험 목록 (실험 등록부)
 
-| 폴더 | 무엇을 쟀나 | 핵심 결론 |
-|---|---|---|
-| [`npu_benchmark/`](npu_benchmark/summary.md) | NPU 단독 처리량·지연 (Gen2 vs Gen3, batch 1~32) | batch 8 에서 **51.71 FPS**. Gen2→Gen3 로 두 항이 정확히 반씩 줄어 **PCIe 가 병목**임이 확정. ⚠ overall latency 표는 [`op_point/latency_gen3_cooled/`](op_point/latency_gen3_cooled/summary.md) 가 대체 |
-| [`decode_benchmark/`](decode_benchmark/summary.md) | 디코드 경로 비교 (SW/HW × H.264/H.265) | GStreamer `v4l2slh265dec` 는 HW 를 쓰고도 32.7 FPS(CPU 30.6 ms/f, ORC 복사). 같은 HW 를 ffmpeg CLI `-hwaccel drm` 로 쓰면 **332.8 FPS / CPU 2.0 ms/f**. (앱에 직접 넣은 libavcodec DRM_PRIME 은 **398.5 FPS / CPU 0.23~0.28 ms/f** — 이 값의 출처는 이 폴더가 아니라 [`pipeline_ffmpeg_vulkan_hailo/REPORT.md`](pipeline_ffmpeg_vulkan_hailo/REPORT.md) §4.1 이다) |
-| [`isp_resize/`](isp_resize/summary.md) | PiSP BE(ISP) 전처리 vs GPU 셰이더 | ISP 가 wall 로 23% 빠르고 V3D 를 비운다. **단 검출 −2.33% 로 게이트 불합격 → 통합 보류.** 재검토 조건 3개 명시(그중 하나가 CSI 카메라) |
-| [`pipeline_ffmpeg_vulkan_hailo/`](pipeline_ffmpeg_vulkan_hailo/REPORT.md) | 디코드 → GPU 전처리 → NPU 통합 | **51.63 FPS**(NPU 상한의 99.9%). **NHCW 직접 출력으로 CPU 17.6 → 3.5 ms/f.** 비싼 것은 전치가 아니라 **CPU 가 V3D 메모리를 읽는 것**이었다 |
-| [`nms_host_cost/`](nms_host_cost/summary.md) | 호스트 NMS 비용 | `yolov8_nms_postprocess` 는 **온칩이 아니라 호스트 CPU** 실행. **2.2~3.2 ms/f 고정비**(검출 수와 무관). 원시 출력으로 바꿔도 **PCIe 트래픽은 안 늘어난다** |
-| [`gpu_postprocess/`](gpu_postprocess/summary.md) | GPU 후처리 프로브 (P1/P2/P3) + **[F0] 관문** | 텐서 해석 4변수 전수 확정. pass1 **0.5625 ms**, CPU 억제 3~11 µs. **[F0]: 입력·출력 dma-buf 동시 사용 동작 확인**(`evidence/f0_in_dmabuf.txt`) |
-| [`display_vulkan_hdmi/`](display_vulkan_hdmi/summary.md) | 표시 프로브 (P4~P10) | 컴퓨트가 **스왑체인에 직접 STORAGE 쓰기** 가능(blit 불필요). 1080p 1:1 **4.229 ms**. ⚠ 창 모드는 **조용히 2.6배 느려진다** |
-| [`dmaheap_unify/`](dmaheap_unify/summary.md) | dma-heap → V3DV import 관문 (별도 트랙) | V3DV 가 dma-heap fd 를 import 한다. **단 `range = size − 256`** 함정. GPU 읽기 성능(B.2)과 3자 일관성은 **미검증** |
+**이 표가 "무엇이 실험인가"의 정본이다.** 한 행 = 실험 하나 = `07_results/` 아래 폴더 하나.
+`check_structure.py` 가 이 표를 읽어 폴더 ↔ 행 1:1 과 **유형**별 필수 항목(스윕: `results.csv`·`results_raw.csv`·`raw/`, 프로브: `evidence/`)을 검사한다.
+**상태**의 인용 제한은 아래 "⛔ 인용 금지 구간" 이 정본이다. 행 순서는 파이프라인 단계 순, 그다음 2026-09-20 통합 작업이다.
 
-### 이번 통합 작업 (2026-09-20)
-
-| 폴더 | 무엇을 쟀나 | 핵심 결론 |
-|---|---|---|
-| [`op_point/`](op_point/summary.md) ⭐ | **운용점 결정 (O1~O4)** + 냉각 Gen3 지연 재측정 + 지연 스윕 | **이 폴더가 최종 결론이다(§8).** slots 가 지배 변수임을 정량 확인. `b4/s8` vs `b8/s8` 동률로 계획서 F1 가설 기각 |
-| [`gpu_postproc_e2e/`](gpu_postproc_e2e/summary.md) | `--postproc gpu` 통합 정확도·CPU | **매칭 @ IoU 0.9 = 0.9990, 검출 9457 로 host 와 완전 동일.** perf 에서 호스트 NMS 45.10% → **0건**. ⚠ 이 폴더의 FPS·지연은 **결함 상태 값이라 인용 금지**(문서 안에 표시) |
-| [`raw_runner_backpressure/`](raw_runner_backpressure/summary.md) | 러너 백프레셔 이중 계수 결함 규명·수정 | 수동 `increase_ongoing_callbacks()` 가 `infer_async` 내부 계수와 겹쳐 **in-flight 가 슬롯의 절반**. 제거 후 gpu `b2/s4` 24.48 → **34.96 FPS**(host 대비 −0.03%) |
-| [`display_e2e/`](display_e2e/summary.md) | 표시 통합 e2e (M5a 기준선 + M4) | **glass-to-glass 101 ms**(계획서 추정 217 의 절반). GPU 4패스 합 **6.995 ms = 주기의 24.5%**. 표시 켜도 **검출 3369 불변**, 드롭 0 |
-
----
+| 폴더 | 유형 | 상태 | 단계 | 회차 | 무엇을 쟀나 | 핵심 결론 |
+|---|---|---|---|---|---|---|
+| [`npu_benchmark/`](npu_benchmark/summary.md) | 레거시 | 부분 대체 | 1 NPU | `runs/{gen2,gen3,gen3_cooled}` | NPU 단독 처리량·지연 (Gen2 vs Gen3, batch 1~32) | batch 8 에서 **51.71 FPS**. Gen2→Gen3 로 두 항이 정확히 반씩 줄어 **PCIe 가 병목**임이 확정. ⚠ overall latency 표는 [`op_point/runs/latency_gen3_cooled/`](op_point/runs/latency_gen3_cooled/summary.md) 가 대체 |
+| [`decode_benchmark/`](decode_benchmark/summary.md) | 스윕 | 유효 | 2 디코드 | — | 디코드 경로 비교 (SW/HW × H.264/H.265) | GStreamer `v4l2slh265dec` 는 HW 를 쓰고도 32.7 FPS(CPU 30.6 ms/f, ORC 복사). 같은 HW 를 ffmpeg CLI `-hwaccel drm` 로 쓰면 **332.8 FPS / CPU 2.0 ms/f**. (앱에 직접 넣은 libavcodec DRM_PRIME 은 **398.5 FPS / CPU 0.23~0.28 ms/f** — 이 값의 출처는 이 폴더가 아니라 [`pipeline_ffmpeg_vulkan_hailo/REPORT.md`](pipeline_ffmpeg_vulkan_hailo/REPORT.md) §4.1 이다) |
+| [`isp_resize/`](isp_resize/summary.md) | 스윕 | 보류 | 3 전처리(ISP) | `runs/{pipeline,pipeline_rerun}` | PiSP BE(ISP) 전처리 vs GPU 셰이더 | ISP 가 wall 로 23% 빠르고 V3D 를 비운다. **단 검출 −2.33% 로 게이트 불합격 → 통합 보류.** 재검토 조건 3개 명시(그중 하나가 CSI 카메라) |
+| [`pipeline_ffmpeg_vulkan_hailo/`](pipeline_ffmpeg_vulkan_hailo/summary.md) | 스윕 | 유효 | 4 통합 | — | 디코드 → GPU 전처리 → NPU 통합 | **51.63 FPS**(NPU 상한의 99.9%). **NHCW 직접 출력으로 CPU 17.6 → 3.5 ms/f.** 비싼 것은 전치가 아니라 **CPU 가 V3D 메모리를 읽는 것**이었다 (상세: [`REPORT.md`](pipeline_ffmpeg_vulkan_hailo/REPORT.md)) |
+| [`nms_host_cost/`](nms_host_cost/summary.md) | 스윕 | 유효 | 5 후처리(호스트) | — | 호스트 NMS 비용 | `yolov8_nms_postprocess` 는 **온칩이 아니라 호스트 CPU** 실행. **2.2~3.2 ms/f 고정비**(검출 수와 무관). 원시 출력으로 바꿔도 **PCIe 트래픽은 안 늘어난다** |
+| [`gpu_postprocess/`](gpu_postprocess/summary.md) | 프로브 | 유효 | 6 후처리(GPU) | — | GPU 후처리 프로브 (P1/P2/P3) + **[F0] 관문** | 텐서 해석 4변수 전수 확정. pass1 **0.5625 ms**, CPU 억제 3~11 µs. **[F0]: 입력·출력 dma-buf 동시 사용 동작 확인**(`evidence/f0_in_dmabuf.txt`) |
+| [`display_vulkan_hdmi/`](display_vulkan_hdmi/summary.md) | 프로브 | 유효 | 7 표시 | — | 표시 프로브 (P4~P10) | 컴퓨트가 **스왑체인에 직접 STORAGE 쓰기** 가능(blit 불필요). 1080p 1:1 **4.229 ms**. ⚠ 창 모드는 **조용히 2.6배 느려진다** |
+| [`dmaheap_unify/`](dmaheap_unify/summary.md) | 프로브 | 별도 트랙 | — 별도 트랙 | — | dma-heap → V3DV import 관문 (별도 트랙) | V3DV 가 dma-heap fd 를 import 한다. **단 `range = size − 256`** 함정. GPU 읽기 성능(B.2)과 3자 일관성은 **미검증** |
+| [`op_point/`](op_point/summary.md) ⭐ | 스윕 | ⭐최종 | 통합 2026-09-20 | `runs/{latency_gen3_cooled,latency_sweep}` | **운용점 결정 (O1~O4)** + 냉각 Gen3 지연 재측정 + 지연 스윕 | **이 폴더가 최종 결론이다(§8).** slots 가 지배 변수임을 정량 확인. `b4/s8` vs `b8/s8` 동률로 계획서 F1 가설 기각 |
+| [`gpu_postproc_e2e/`](gpu_postproc_e2e/summary.md) | 스윕 | 일부 인용금지 | 통합 2026-09-20 | — | `--postproc gpu` 통합 정확도·CPU | **매칭 @ IoU 0.9 = 0.9990, 검출 9457 로 host 와 완전 동일.** perf 에서 호스트 NMS 45.10% → **0건**. ⚠ 이 폴더의 FPS·지연은 **결함 상태 값이라 인용 금지**(문서 안에 표시) |
+| [`raw_runner_backpressure/`](raw_runner_backpressure/summary.md) | 스윕 | 유효 | 통합 2026-09-20 | — | 러너 백프레셔 이중 계수 결함 규명·수정 | 수동 `increase_ongoing_callbacks()` 가 `infer_async` 내부 계수와 겹쳐 **in-flight 가 슬롯의 절반**. 제거 후 gpu `b2/s4` 24.48 → **34.96 FPS**(host 대비 −0.03%) |
+| [`display_e2e/`](display_e2e/summary.md) | 스윕 | 일부 인용금지 | 통합 2026-09-20 | — | 표시 통합 e2e (M5a 기준선 + M4) | **glass-to-glass 101 ms**(계획서 추정 217 의 절반). GPU 4패스 합 **6.995 ms = 주기의 24.5%**. 표시 켜도 **검출 3369 불변**, 드롭 0 |
 
 ## 폴더 규약
 
-**위 표가 "무엇이 실험인가"의 정본이다.** 표에 한 행으로 오르는 것이 실험이고,
-그 아래 하위 폴더는 **같은 실험의 측정 회차·변종**이다 — 새 실험이 아니다.
-회차 폴더가 자기 `summary.md` 를 갖기도 한다(`npu_benchmark/{gen2,gen3}`,
-`op_point/latency_gen3_cooled`). 그래도 별도 실험으로 올리지 않는다.
+레이아웃·evidence/verification 경계·이동 원칙의 정본은 [`STRUCTURE.md`](../STRUCTURE.md) §3 이다. 요점만:
 
-레이아웃은 두 변종이 있다. **스윕형**(설정을 바꿔 수치를 비교)은 `results.csv`·`results_raw.csv`·`raw/` 가
-필수이고, **프로브형**(관문 통과 여부를 가름)은 `evidence/` 가 필수다.
-양쪽 공통 필수는 `summary.md` 와 `env_bench.txt` 뿐이다.
-`evidence/` 는 *관문 통과 증거*, `verification/` 은 *verify 스킬 6단계 로그*(검증 레이어·ASan·perf·ctest)다.
-전문은 [`.claude/skills/measure/SKILL.md`](../.claude/skills/measure/SKILL.md) §5.
+- 공통 필수는 `summary.md`·`env_bench.txt`. 실행 로그는 `raw/<설정>_run<N>/`, 세션 부산물은 `raw/_session/`.
+- 같은 실험의 회차·변종은 `runs/<회차>/` — 새 실험이 아니다(위 표의 "회차" 열).
+- 결과 파일의 **내용**은 고치지 않는다. 위치를 옮길 때는 `relocate.py` 와 `STRUCTURE.md` §6 매핑표를 쓴다(2026-09-22 R1 이동 이력이 거기 있다).
+- 구조 검사: `python3 06_tools/python/check_structure.py`
 
 ### 중복 산출물
 

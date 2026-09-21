@@ -102,7 +102,7 @@ CPU를 괴롭힌 레이아웃이 GPU에는 유리하다.
 ## 7. 파일
 
 - `results.csv`(모드별 중앙값), `results_raw.csv`(실행별), `env_bench.txt`
-- `raw/{full_async,raw_async}_run{1,2,3}.log` — hailortcli 출력
+- `raw/{full_async,raw_async}_run{1,2,3}/stdout.log` — hailortcli 출력
 - `evidence/hef_stream_infos.txt` — 원시 스트림 6개 사양
 - `evidence/gdb_backtrace.txt` — 0x30ffac이 HailoRT 워커 스레드임을 확인
 - `evidence/score_sweep.txt` — 고정 비용임을 보이는 threshold 스윕

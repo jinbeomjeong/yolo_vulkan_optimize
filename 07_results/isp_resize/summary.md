@@ -140,7 +140,7 @@ PSNR·max\|err\|·비율은 보고만 한다.
   `HailoRunner`의 `parse_nms_by_class` + letterbox 역변환을 그대로 쓴다(완전히 같은 경로)
 - 스크립트: `06_tools/bench/isp_pipeline_bench.sh`
 
-## 표 4 — 전체 파이프라인 (`pipeline/results.csv`, 6회 중앙값)
+## 표 4 — 전체 파이프라인 (`runs/pipeline/results.csv`, 6회 중앙값)
 
 | 설정 | 전처리 | Hailo 입력 | fps_median (min–max) | cpu_ms_per_frame (min–max) | 전처리 ms (축) | npu_ms_mean | e2e_ms_mean | 검출 수 |
 |---|---|---|---|---|---|---|---|---|
@@ -182,7 +182,7 @@ A안과 C안의 검출은 **바이트 단위로 완전히 같다**(레이아웃�
 | 매칭 비율 @ IoU 0.9 | 보고만 | 0.5897 | — |
 
 클래스별(상위): car +0.19 %, traffic light **-9.79 %**, person -1.69 %, truck **-12.72 %**,
-bicycle -2.67 %, chair -10.13 %. 전체 표는 `detections/compare_isp_A_nhwc_b8.csv`.
+bicycle -2.67 %, chair -10.13 %. 전체 표는 `evidence/compare_isp_A_nhwc_b8.csv`.
 
 ### 왜 떨어지는가 — 원인은 점수 임계 부근의 약한 검출이다
 
@@ -194,7 +194,7 @@ bicycle -2.67 %, chair -10.13 %. 전체 표는 `detections/compare_isp_A_nhwc_b8
 - 반대쪽(ISP에만 있는) 여분 검출 1168건도 중앙 점수 0.229로 대칭이다
 
 임계 비대칭 인위성을 제거하고 **"강한 검출이 상대 쪽에서 재현되는가"**만 보면
-(`detections/strong_match_diagnostic.txt`):
+(`evidence/strong_match_diagnostic.txt`):
 
 | 참조 점수 하한 | IoU 0.5: GPU→ISP | IoU 0.5: ISP→GPU | IoU 0.7: GPU→ISP |
 |---|---|---|---|
@@ -268,16 +268,16 @@ HailoRT 입력 경로가 현행과 같아 되돌리기도 쉽다. A안의 유일
 - `samples/isp_letterbox_frame100.png`, `samples/letterbox_frame100_nhcw.png` — ISP·GPU 출력 비교용
 - `samples/quality_isp_vs_cpu.csv` — 표 3의 원시 수치
 ### 2부 (전체 파이프라인)
-- `pipeline/env_bench.txt` — 환경 스냅샷 + 소스 트리 오염 점검(md5)
-- `pipeline/results_raw.csv`(18행 = 1차 9 + 2차 9) / `pipeline/results.csv` — 설정별 6회 중앙값
-- `pipeline/raw/<설정>_run<N>/{stdout.log,hailort.log}`, `pipeline_rerun/` — 2차 원시 로그
-- `detections/<설정>/detections.jsonl` + 박스 PNG(300프레임마다).
+- `runs/pipeline/env_bench.txt` — 환경 스냅샷 + 소스 트리 오염 점검(md5)
+- `runs/pipeline/results_raw.csv`(18행 = 1차 9 + 2차 9) / `runs/pipeline/results.csv` — 설정별 6회 중앙값
+- `runs/pipeline/raw/<설정>_run<N>/{stdout.log,hailort.log}`, `runs/pipeline_rerun/` — 2차 원시 로그
+- `samples/detections/<설정>/detections.jsonl` + 박스 PNG(300프레임마다).
   `gpu_nhcw_b8/` 의 PNG·jsonl 은 `../pipeline_ffmpeg_vulkan_hailo/samples/` 와, `isp_C_nhcw_b8/`·`isp_A_filter_lanczos3/` 의 PNG·jsonl 은 `isp_A_nhwc_b8/` 와 **바이트 일치**라 정본만 남겼다
 > 2026-09-21 중복 정리: 바이트 일치 PNG 를 정본만 남기고 지웠다. 어느 파일이 어디로 합쳐졌는지는 [`../duplicate_png.md`](../duplicate_png.md) 의 md5 대조표에 있다. 바이트 일치 `detections.jsonl` 사본도 같은 표에 기록하고 지웠다(정본 1부는 남아 있다).
 
-- `detections/compare_*.csv` — 매칭 비율·클래스별 개수
-- `detections/strong_match_diagnostic.txt` — 점수 하한별 강한 검출 재현율
-- `detections/isp_A_filter_*/` — 리샘플 필터 비교
+- `evidence/compare_*.csv` — 매칭 비율·클래스별 개수
+- `evidence/strong_match_diagnostic.txt` — 점수 하한별 강한 검출 재현율
+- `samples/detections/isp_A_filter_*/` — 리샘플 필터 비교
 
 ### 검증
 - `verification/build_clean_warnings0.log` — 클린 빌드 67타깃, 경고 0

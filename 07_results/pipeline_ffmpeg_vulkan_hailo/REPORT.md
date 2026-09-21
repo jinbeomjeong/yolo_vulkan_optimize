@@ -163,7 +163,7 @@ NHCW 기준값은 `cpu_letterbox_nv12_bt709()` 결과를 `rgb_packed_to_nhcw()`�
 - Vulkan 검증 레이어(`VK_LOADER_LAYERS_ENABLE='*validation'`): 전처리 벤치 1816프레임, 동기화 검증 300프레임, yvo_pipeline 200프레임 × 2모드 모두 에러 0
 - ASan/UBSan: 디코더, 전처리, yvo_pipeline(100프레임 × 2모드), test_detections 모두 에러·누수 0
 - fd 누수: 디코더 도구가 시작 전후 fd 수를 세고, 모든 실행에서 같았다.
-- 시각 확인: `samples/frame00000.png` 등 7장, `selftest/frame0_detections.png`, `preproc/letterbox_frame100.png`
+- 시각 확인: `samples/frame00000.png` 등 7장, `evidence/frame0_detections.png`, `samples/letterbox_frame100.png`
   (`selftest/b4/`·`b8/` 의 같은 이름 PNG 와 `preproc/letterbox_frame100_nhcw.png` 은 위 파일들과 **바이트 일치**였다 — batch 와 레이아웃이 결과를 바꾸지 않는다는 뜻이다. 2026-09-21 에 정본만 남겼고 md5 는 `../duplicate_png.md` 에 있다)
 
 ## 4. 실험 결과
@@ -369,7 +369,7 @@ NHCW 1.78 GHz). NHCW는 프로세스가 코어의 20%만 써서 거버너가 클
 - 지연을 최적화하는 설정(b8/s8, b4/s4 등)은 아직 측정하지 않았다.
 - 연속 운용 시 Hailo 칩이 90 °C대까지 오른다. 방열 대책이 필요하다.
 - GPU를 단발로 실행하면 DVFS 때문에 셰이더 시간이 5.5 ms까지 늘어난다. 연속 스트림에서는 2.1 ms다.
-- 별도 보류 과제: Gen3에서 칩을 식힌 상태로 overall latency를 다시 재야 한다(`07_results/npu_benchmark/gen3/summary.md`).
+- 별도 보류 과제: Gen3에서 칩을 식힌 상태로 overall latency를 다시 재야 한다(`07_results/npu_benchmark/runs/gen3/summary.md`).
 
 ## 7. 재현 방법
 ```bash
@@ -388,6 +388,6 @@ RUNS=1 FRAMES=300 bash 06_tools/bench/pipeline_bench.sh     # 짧게
 - `raw/<설정>_run<N>/{stdout.log,hailort.log}`
 - `samples/`: `detections.jsonl`, 박스를 그린 PNG 7장 (NHWC 경로로 생성. NHCW 경로의 PNG·JSONL과 바이트 단위로 같음을 확인했다)
 - `verification/`: 검증 레이어 로그, ASan 로그, `perf_{ptr,dmabuf,nhcw_dmabuf}_top.txt`, 정식 NHCW 경로의 `perf_nhcw_b8_top.txt`
-- `selftest/`: HailoRT 러너 단독 검증, `preproc/`: 전처리 샘플
+- `evidence/`: HailoRT 러너 단독 검증, `samples/`: 전처리 샘플
 
 관련 실험: [`07_results/nms_host_cost/`](../nms_host_cost/summary.md) — 호스트 NMS 비용 확정과 원시 출력 전환 타당성

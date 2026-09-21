@@ -2,8 +2,8 @@
 
 `hailortcli benchmark`로 잰 순수 NPU 처리량이다. PCIe 링크 속도를 바꿔 두 번 측정했다.
 
-- [gen2/summary.md](gen2/summary.md) — PCIe Gen2 x1 (`dtparam=pciex1_gen`을 설정하지 않았을 때의 값), 2026-09-20 00:08~00:17 KST
-- [gen3/summary.md](gen3/summary.md) — PCIe Gen3 x1 (`dtparam=pciex1_gen=3`), 2026-09-20 00:24~00:44 KST
+- [runs/gen2/summary.md](runs/gen2/summary.md) — PCIe Gen2 x1 (`dtparam=pciex1_gen`을 설정하지 않았을 때의 값), 2026-09-20 00:08~00:17 KST
+- [runs/gen3/summary.md](runs/gen3/summary.md) — PCIe Gen3 x1 (`dtparam=pciex1_gen=3`), 2026-09-20 00:24~00:44 KST
 
 > 두 폴더 이름은 **그 측정 당시의 링크 세대**를 가리킨다. 지금 보드가 어느 세대로 도는지는
 > 여기서 추론하지 말고 읽는다:
@@ -33,4 +33,4 @@
 ## 주의와 남은 일
 
 - Gen3에서는 Hailo 칩이 최고 92.7 °C까지 올라 클럭이 400 MHz에서 250 MHz로 떨어졌다. 연속 부하에서 FPS를 유지하려면 방열 대책이 필요하다
-- **TODO:** Gen3 overall latency는 과열 상태에서 잰 값이라 칩을 식힌 뒤 batch 1/8을 다시 재야 한다 (자세한 내용은 gen3/summary.md)
+- **TODO:** Gen3 overall latency는 과열 상태에서 잰 값이라 칩을 식힌 뒤 batch 1/8을 다시 재야 한다 (자세한 내용은 runs/gen3/summary.md)

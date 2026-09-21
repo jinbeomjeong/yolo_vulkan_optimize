@@ -70,7 +70,7 @@
 
 ### 4.3 `hailortcli` 의 배치 모델은 파이프라인에 적용되지 않는다
 
-`latency_gen3_cooled/summary.md` 가 확정한 `T(B) = 24.8 + 16.2·B` 는 **CLI 의 랜덤 입력 경로**를 설명한다.
+`runs/latency_gen3_cooled/summary.md` 가 확정한 `T(B) = 24.8 + 16.2·B` 는 **CLI 의 랜덤 입력 경로**를 설명한다.
 파이프라인에서는 batch 가 아니라 slots 이 처리량을 정하므로 이 식으로 `b4/s4`·`b8/s8` 을 예측하면 틀린다
 (예측 44.5 vs 실측 33.4 / 44.55). **두 모델을 섞지 마라.**
 
@@ -101,7 +101,7 @@
 덤으로 `b2/s4` 는 `slots+gpu_depth = 6` 이라 13프레임 제약에 **여유가 4**다
 (`b8/s8` 은 10 으로 **경계에 딱 붙는다** — 여유 0).
 
-## 5.5 지연 최소화 스윕 (추가 측정, `latency_sweep/`)
+## 5.5 지연 최소화 스윕 (추가 측정, `runs/latency_sweep/`)
 
 O2(최소 지연)를 제대로 답하기 위해 슬롯·`gpu_depth` 를 더 줄여 재측정했다.
 600프레임 ×3회, `--postproc host`, 15회 전부 경고 0·에러 0, **검출 2090 전 설정 동일**.
@@ -188,8 +188,8 @@ O3(30 FPS 실시간 표시) = **`b2/s4`** 로 변동 없다.
 - `results.csv` — 설정별 중앙값 + min/max
 - `env_bench.txt` — 환경 스냅샷(측정 전후), 바이너리 md5·mtime
 - `raw/<설정>_run<N>/{stdout.log,hailort.log}`
-- `latency_gen3_cooled/` — Mb: 냉각 상태 Gen3 지연 재측정(`npu_benchmark/gen3` 의 TODO 해소)
-- `latency_sweep/` — §5.5 지연 최소화 스윕(`USE_LAT=1 bash 06_tools/bench/op_point_bench.sh`)
+- `runs/latency_gen3_cooled/` — Mb: 냉각 상태 Gen3 지연 재측정(`npu_benchmark/runs/gen3` 의 TODO 해소)
+- `runs/latency_sweep/` — §5.5 지연 최소화 스윕(`USE_LAT=1 bash 06_tools/bench/op_point_bench.sh`)
 - 관련: [`07_results/raw_runner_backpressure/summary.md`](../raw_runner_backpressure/summary.md) — §5.6 의 원자료와 백프레셔 결함 규명
 
 ## 8. 최종 결론

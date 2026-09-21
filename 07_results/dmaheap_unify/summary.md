@@ -140,6 +140,7 @@ clean window에서 다시 쟀다.
   CI에 넣으려면 "실패해야 통과"로 뒤집어야 한다
 - **`--probe heapimport`의 기본 출력 파일명이 `p0_heapimport.txt`라 1단계 증거를 덮는다.**
   옵션 없이 돌리면 또 덮는다. `--out-file`을 쓸 것
+  > 주(2026-09-22): C8 이후 기본 출력은 build/out/yvo_postproc_probe/ 라 보관본을 덮지 않는다. 07_results 에 쓰려면 --out-dir 을 명시한다.
 - **`01_src/isp/dma_heap_buffer.*` 흡수는 소유 세션 조율 대기다.** 그 파일에 결함 둘이 남아 있다:
   **16384 정렬을 확인하지 않는데 그 버퍼가 HailoRT `set_dma_buffer`로 간다**(부록 A.4 요구),
   **`begin/end_cpu_read`가 없다**(D2H 용도로 그대로 쓸 수 없다). `dma_heap_alloc.hpp` 머리말에 기록해 두었다

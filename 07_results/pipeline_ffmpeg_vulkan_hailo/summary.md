@@ -54,4 +54,4 @@
   약 4.8% 과소평가된다(기본 300프레임/16슬롯). REPORT.md §4.1 표의 "NPU만 50.0 FPS"는 보정하면 약 52.5이고
   benchmark 상한 51.7과 정합한다. **`yvo_pipeline`의 51.63 FPS는 wall-clock 기반이라 영향이 없다.**
   자세한 내용은 [REPORT.md](REPORT.md)의 "정정 1".
-- 보류 과제: Gen3에서 칩을 식힌 상태의 overall latency 재측정 (`07_results/npu_benchmark/gen3/summary.md`).
+- 보류 과제: Gen3에서 칩을 식힌 상태의 overall latency 재측정 (`07_results/npu_benchmark/runs/gen3/summary.md`).

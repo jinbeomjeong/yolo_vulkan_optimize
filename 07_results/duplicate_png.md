@@ -25,16 +25,16 @@ md5sum 07_results/pipeline_ffmpeg_vulkan_hailo/samples/frame00000.png
 | `5831e43bb5d430cf13e0f8c6578cee38` | `07_results/pipeline_ffmpeg_vulkan_hailo/samples/frame01200.png` | `07_results/isp_resize/detections/gpu_nhcw_b8/frame01200.png` |
 | `a835f4b02891a54b914bb02c475eb387` | `07_results/pipeline_ffmpeg_vulkan_hailo/samples/frame01500.png` | `07_results/isp_resize/detections/gpu_nhcw_b8/frame01500.png` |
 | `decf115347901bdc5716b2f388628e5f` | `07_results/pipeline_ffmpeg_vulkan_hailo/samples/frame01800.png` | `07_results/isp_resize/detections/gpu_nhcw_b8/frame01800.png` |
-| `fba498d1ecafab5545018a3f4ee9fea3` | `07_results/pipeline_ffmpeg_vulkan_hailo/preproc/letterbox_frame100.png`<br>`07_results/isp_resize/samples/letterbox_frame100_nhcw.png` | `07_results/pipeline_ffmpeg_vulkan_hailo/preproc/letterbox_frame100_nhcw.png` |
-| `cde8768ac83510fa2104fdfadc8f7ff6` | `07_results/pipeline_ffmpeg_vulkan_hailo/selftest/frame0_detections.png` | `07_results/pipeline_ffmpeg_vulkan_hailo/selftest/b4/frame0_detections.png`<br>`07_results/pipeline_ffmpeg_vulkan_hailo/selftest/b8/frame0_detections.png` |
-| `e5f1589658e3c9dc23beb50b8fd2092a` | `07_results/pipeline_ffmpeg_vulkan_hailo/selftest/frame0_letterbox_input.png` | `07_results/pipeline_ffmpeg_vulkan_hailo/selftest/b4/frame0_letterbox_input.png`<br>`07_results/pipeline_ffmpeg_vulkan_hailo/selftest/b8/frame0_letterbox_input.png` |
-| `c5bf0ce477fe778efa358b10b1bc1768` | `07_results/isp_resize/detections/isp_A_nhwc_b8/frame00000.png` | `07_results/isp_resize/detections/isp_A_filter_lanczos3/frame00000.png`<br>`07_results/isp_resize/detections/isp_C_nhcw_b8/frame00000.png` |
-| `c376c66d588729d279da9024686f2092` | `07_results/isp_resize/detections/isp_A_nhwc_b8/frame00300.png` | `07_results/isp_resize/detections/isp_C_nhcw_b8/frame00300.png` |
-| `7d8a2f1a46e3419c10081ea828d43375` | `07_results/isp_resize/detections/isp_A_nhwc_b8/frame00600.png` | `07_results/isp_resize/detections/isp_C_nhcw_b8/frame00600.png` |
-| `d2d1861ed526cbfa05eebd46afd90209` | `07_results/isp_resize/detections/isp_A_nhwc_b8/frame00900.png` | `07_results/isp_resize/detections/isp_C_nhcw_b8/frame00900.png` |
-| `a31486f5f9d5be3d891211757987ae72` | `07_results/isp_resize/detections/isp_A_nhwc_b8/frame01200.png` | `07_results/isp_resize/detections/isp_C_nhcw_b8/frame01200.png` |
-| `cc6e0b943471aa941b954644ad4aa0a1` | `07_results/isp_resize/detections/isp_A_nhwc_b8/frame01500.png` | `07_results/isp_resize/detections/isp_C_nhcw_b8/frame01500.png` |
-| `ce33cad429361a2d6bd6aca5ab8ea794` | `07_results/isp_resize/detections/isp_A_nhwc_b8/frame01800.png` | `07_results/isp_resize/detections/isp_C_nhcw_b8/frame01800.png` |
+| `fba498d1ecafab5545018a3f4ee9fea3` | `07_results/pipeline_ffmpeg_vulkan_hailo/samples/letterbox_frame100.png`<br>`07_results/isp_resize/samples/letterbox_frame100_nhcw.png` | `07_results/pipeline_ffmpeg_vulkan_hailo/preproc/letterbox_frame100_nhcw.png` |
+| `cde8768ac83510fa2104fdfadc8f7ff6` | `07_results/pipeline_ffmpeg_vulkan_hailo/evidence/frame0_detections.png` | `07_results/pipeline_ffmpeg_vulkan_hailo/selftest/b4/frame0_detections.png`<br>`07_results/pipeline_ffmpeg_vulkan_hailo/selftest/b8/frame0_detections.png` |
+| `e5f1589658e3c9dc23beb50b8fd2092a` | `07_results/pipeline_ffmpeg_vulkan_hailo/evidence/frame0_letterbox_input.png` | `07_results/pipeline_ffmpeg_vulkan_hailo/selftest/b4/frame0_letterbox_input.png`<br>`07_results/pipeline_ffmpeg_vulkan_hailo/selftest/b8/frame0_letterbox_input.png` |
+| `c5bf0ce477fe778efa358b10b1bc1768` | `07_results/isp_resize/samples/detections/isp_A_nhwc_b8/frame00000.png` | `07_results/isp_resize/detections/isp_A_filter_lanczos3/frame00000.png`<br>`07_results/isp_resize/detections/isp_C_nhcw_b8/frame00000.png` |
+| `c376c66d588729d279da9024686f2092` | `07_results/isp_resize/samples/detections/isp_A_nhwc_b8/frame00300.png` | `07_results/isp_resize/detections/isp_C_nhcw_b8/frame00300.png` |
+| `7d8a2f1a46e3419c10081ea828d43375` | `07_results/isp_resize/samples/detections/isp_A_nhwc_b8/frame00600.png` | `07_results/isp_resize/detections/isp_C_nhcw_b8/frame00600.png` |
+| `d2d1861ed526cbfa05eebd46afd90209` | `07_results/isp_resize/samples/detections/isp_A_nhwc_b8/frame00900.png` | `07_results/isp_resize/detections/isp_C_nhcw_b8/frame00900.png` |
+| `a31486f5f9d5be3d891211757987ae72` | `07_results/isp_resize/samples/detections/isp_A_nhwc_b8/frame01200.png` | `07_results/isp_resize/detections/isp_C_nhcw_b8/frame01200.png` |
+| `cc6e0b943471aa941b954644ad4aa0a1` | `07_results/isp_resize/samples/detections/isp_A_nhwc_b8/frame01500.png` | `07_results/isp_resize/detections/isp_C_nhcw_b8/frame01500.png` |
+| `ce33cad429361a2d6bd6aca5ab8ea794` | `07_results/isp_resize/samples/detections/isp_A_nhwc_b8/frame01800.png` | `07_results/isp_resize/detections/isp_C_nhcw_b8/frame01800.png` |
 
 ## detections.jsonl 대조표
 
@@ -44,9 +44,9 @@ md5sum 07_results/pipeline_ffmpeg_vulkan_hailo/samples/frame00000.png
 | md5 | 남긴 파일 | 지운 파일 (내용 동일) |
 |---|---|---|
 | `867a9d9636c614cddd60cf1fe769d0a4` | `07_results/pipeline_ffmpeg_vulkan_hailo/samples/detections.jsonl` | `07_results/gpu_postproc_e2e/dump_host/detections.jsonl`<br>`07_results/isp_resize/detections/gpu_nhcw_b8/detections.jsonl` |
-| `73f264788404a66638c01ef1dd48520e` | `07_results/isp_resize/detections/isp_A_nhwc_b8/detections.jsonl` | `07_results/isp_resize/detections/isp_A_filter_lanczos3/detections.jsonl`<br>`07_results/isp_resize/detections/isp_C_nhcw_b8/detections.jsonl` |
+| `73f264788404a66638c01ef1dd48520e` | `07_results/isp_resize/samples/detections/isp_A_nhwc_b8/detections.jsonl` | `07_results/isp_resize/detections/isp_A_filter_lanczos3/detections.jsonl`<br>`07_results/isp_resize/detections/isp_C_nhcw_b8/detections.jsonl` |
 
-`dump_gpu/detections.jsonl` 은 크기는 같지만 박스 순서가 달라 바이트 일치가 아니므로 남겼다.
+`gpu_postproc_e2e/samples/detections.jsonl`(옛 `dump_gpu/detections.jsonl`)은 크기는 같지만 박스 순서가 달라 바이트 일치가 아니므로 남겼다.
 
 ## 기타 파일 대조표
 

@@ -258,7 +258,7 @@ HailoRT(Hailo의 런타임 라이브러리)를 어떻게 쓰는지는 [04_npu_ha
 배율이 1.9~2.0배로 나온 것만으로는 부족하다. 더 강한 증거는 **시간을 분해했을 때**다.
 한 배치를 처리하는 시간 `T`를 "배치당 고정비 + 프레임당 비용"으로 나누면
 ([`paper_ko.md`](../10_paper/paper_ko.md) §3.3 제약 2,
-[`latency_gen3_cooled/summary.md`](../07_results/op_point/latency_gen3_cooled/summary.md) 결론 3):
+[`latency_gen3_cooled/summary.md`](../07_results/op_point/runs/latency_gen3_cooled/summary.md) 결론 3):
 
 | | 배치당 고정비 | 프레임당 |
 |---|---:|---:|
@@ -441,7 +441,7 @@ NHCW 레이아웃의 상세는 → [06_zerocopy_dmabuf.md](06_zerocopy_dmabuf.md
 실제로 Hailo-8 칩은 연속 부하에서 **최고 92.7 °C**까지 올랐고, 그러면 칩 클럭이
 **400 MHz → 250 MHz**로 떨어진다. 이때 런타임 로그에
 `HEF was compiled assuming clock rate of 400 MHz, while the device clock rate is 250 MHz`
-경고가 찍힌다 ([`npu_benchmark/gen3/summary.md`](../07_results/npu_benchmark/gen3/summary.md)).
+경고가 찍힌다 ([`npu_benchmark/runs/gen3/summary.md`](../07_results/npu_benchmark/runs/gen3/summary.md)).
 
 ### 그래서 이 프로젝트는 측정 전에 냉각 게이트를 둔다
 
@@ -456,7 +456,7 @@ NHCW 레이아웃의 상세는 → [06_zerocopy_dmabuf.md](06_zerocopy_dmabuf.md
 ### 과열 측정이 실제로 얼마나 틀렸는가 — 숫자로
 
 이 프로젝트에는 과열 상태에서 잰 탓에 **버려진 측정**이 있다. 냉각 상태에서 다시 재서 차이를 직접
-보여 준 문서가 [`latency_gen3_cooled/summary.md`](../07_results/op_point/latency_gen3_cooled/summary.md) 다.
+보여 준 문서가 [`latency_gen3_cooled/summary.md`](../07_results/op_point/runs/latency_gen3_cooled/summary.md) 다.
 
 | batch | 항목 | 과열 (신뢰 불가) | **냉각 (재측정)** | 차이 |
 |---:|---|---:|---:|---:|
@@ -502,7 +502,7 @@ NHCW 레이아웃의 상세는 → [06_zerocopy_dmabuf.md](06_zerocopy_dmabuf.md
 
 파이프라인 전체 FPS가 **34.960**인데(§3 `reg_host_off`), 같은 batch 2로 NPU **단독**을 잰 값이
 **34.926 FPS**다
-([`op_point/latency_gen3_cooled/summary.md`](../07_results/op_point/latency_gen3_cooled/summary.md) §2).
+([`op_point/runs/latency_gen3_cooled/summary.md`](../07_results/op_point/runs/latency_gen3_cooled/summary.md) §2).
 **차이가 0.1%다.** 파이프라인이 NPU 단독 상한과 사실상 같은 속도로 돈다 —
 즉 **다른 모든 단계가 NPU를 기다리고 있다.** 이보다 명확한 병목 증거는 없다.
 
@@ -590,7 +590,7 @@ Gen3에서 `약 24.8 + 16.2 ms`로 **두 항이 모두 정확히 절반**이 됐
 **시간의 거의 전부가 전송에 쓰인다**는 뜻이다. 다만 그것이 순수한 대역폭 포화인지
 전송 고정 오버헤드인지는 **확정되지 않았다**(논문도 "전송 지배적임을 **시사한다**"라고만 쓴다).
 → [`npu_benchmark/summary.md`](../07_results/npu_benchmark/summary.md),
-[`op_point/latency_gen3_cooled/summary.md`](../07_results/op_point/latency_gen3_cooled/summary.md) 결론 3
+[`op_point/runs/latency_gen3_cooled/summary.md`](../07_results/op_point/runs/latency_gen3_cooled/summary.md) 결론 3
 
 **Q3. "하드웨어 디코더를 쓰면 CPU가 안 든다"는 참인가?**
 
@@ -618,8 +618,8 @@ write-combine 매핑은 **쓰기는 모아서 빠르지만 읽기는 매번 DRAM
 이 상태에서 잰 지연은 냉각 상태보다 **4~7% 부풀려져 있었다**(b1 HW −6.1%, b8 Overall −7.0%).
 게다가 이 프로젝트에는 그 탓에 "신뢰 불가"로 **버려진 측정 표가 실제로 있다.** 그래서 프로토콜이
 "75 °C 초과면 65 °C까지 대기", "로그에 온도·클럭 경고가 1건이라도 있으면 신뢰 불가 표시"를 못박아 뒀다.
-→ [`op_point/latency_gen3_cooled/summary.md`](../07_results/op_point/latency_gen3_cooled/summary.md) §3·§4,
-[`npu_benchmark/gen3/summary.md`](../07_results/npu_benchmark/gen3/summary.md),
+→ [`op_point/runs/latency_gen3_cooled/summary.md`](../07_results/op_point/runs/latency_gen3_cooled/summary.md) §3·§4,
+[`npu_benchmark/runs/gen3/summary.md`](../07_results/npu_benchmark/runs/gen3/summary.md),
 [`.claude/skills/measure/SKILL.md`](../.claude/skills/measure/SKILL.md) §2
 
 ---

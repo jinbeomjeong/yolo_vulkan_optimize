@@ -20,7 +20,7 @@
 | 변수 | 얼마나 바뀌나 |
 |---|---|
 | PCIe 링크 세대 (Gen2 vs Gen3) | **거의 2배** ([`npu_benchmark/summary.md`](../07_results/npu_benchmark/summary.md)) |
-| 칩 온도 (냉각 vs 과열) | 지연 4~7% ([`op_point/latency_gen3_cooled/summary.md`](../07_results/op_point/latency_gen3_cooled/summary.md)) |
+| 칩 온도 (냉각 vs 과열) | 지연 4~7% ([`op_point/runs/latency_gen3_cooled/summary.md`](../07_results/op_point/runs/latency_gen3_cooled/summary.md)) |
 | batch / slots 설정 | FPS 24 ~ 51, 지연 82 ~ 325 ms ([`op_point/summary.md`](../07_results/op_point/summary.md)) |
 | 전체화면 vs 창 모드 | 표시 변환이 **2.6배** ([`display_vulkan_hdmi/summary.md`](../07_results/display_vulkan_hdmi/summary.md)) |
 | 측정 중에 다른 작업이 돌았는지 | CPU 측정이 조용히 오염됨 |
@@ -115,7 +115,7 @@ HailoRT 런타임은 `hailort.log` 에 온도·클럭 경고를 남긴다.
 > 실제로 그렇게 버려진 측정이 있다.
 > [`07_results/npu_benchmark/`](../07_results/npu_benchmark/summary.md) 의 지연 표가
 > 과열 상태에서 측정돼 "신뢰 불가"로 표시됐고,
-> 나중에 [`op_point/latency_gen3_cooled/`](../07_results/op_point/latency_gen3_cooled/summary.md)
+> 나중에 [`op_point/runs/latency_gen3_cooled/`](../07_results/op_point/runs/latency_gen3_cooled/summary.md)
 > 가 냉각 상태로 다시 재서 대체했다. **과열 측정이 지연을 4~7% 부풀리고 있었다.**
 
 ---
