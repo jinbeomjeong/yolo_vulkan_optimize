@@ -2,6 +2,13 @@
 
 Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행하며, Vulkan(Pi 5 VideoCore VII GPU)을 활용해 전/후처리 등 파이프라인 가속화를 연구하는 프로젝트.
 
+## 언어
+- **코드 주석·출력 문구는 영어**다(`01_src/`, `02_shaders/`, `05_tests/`, `06_tools/`, CMake, `.claude/hooks/`).
+  printf·`--help`·예외·gtest 메시지·셸 echo·docstring 포함. 식별자도 영어.
+- **문서(`.md`)와 사용자 응답은 한국어**다(`08_learn/`, `07_results/**/summary.md`, README, 논문 등).
+- 예외: `06_tools/python/check_structure.py`·`relocate.py` 안에서 한국어 문서의 표 머리·제목을 찾는 파싱 문자열은 한국어로 둔다.
+- 코드 줄 번호를 문서가 `file:line`으로 많이 인용하므로, 주석을 고칠 때 괜히 줄을 늘리거나 줄이지 않는다.
+
 ## 폴더 구조
 **배치 규칙의 정본은 [`STRUCTURE.md`](STRUCTURE.md)다**(기계용은 `06_tools/structure_rules.toml`). 여기는 요약만 둔다.
 파일 단위의 자세한 지도(학습용)는 [`08_learn/09_code_map.md`](08_learn/09_code_map.md).
