@@ -3,8 +3,8 @@
 > **선수 지식**: [01_big_picture.md](01_big_picture.md) (glass-to-glass·처리량·지연),
 > [05_vulkan_compute.md](05_vulkan_compute.md) (컴퓨트 셰이더·spec constant·배리어),
 > [06_zerocopy_dmabuf.md](06_zerocopy_dmabuf.md) (dma-buf·import)
-> **다 읽으면 읽을 수 있는 것**: [`01_src/common/sand.hpp`](../01_src/common/sand.hpp),
-> [`01_src/common/cpu_letterbox.hpp`](../01_src/common/cpu_letterbox.hpp) 상단 수식 주석,
+> **다 읽으면 읽을 수 있는 것**: [`01_src/ref/sand.hpp`](../01_src/ref/sand.hpp),
+> [`01_src/ref/cpu_letterbox.hpp`](../01_src/ref/cpu_letterbox.hpp) 상단 수식 주석,
 > [`01_src/display/vk_swapchain.hpp`](../01_src/display/vk_swapchain.hpp),
 > [`01_src/display/wayland_window.hpp`](../01_src/display/wayland_window.hpp),
 > [`07_results/display_vulkan_hdmi/summary.md`](../07_results/display_vulkan_hdmi/summary.md)
@@ -172,7 +172,7 @@ if (st->codecpar->codec_id != AV_CODEC_ID_HEVC) return fail("video stream is not
 "어? 색이 좀 이상한데?" 정도라서 눈치채기 어렵다. 그래서 반드시 명시해야 한다.
 
 이 프로젝트는 **BT.709 limited range** 로 확정했고, 그 변환식이
-[`cpu_letterbox.hpp`](../01_src/common/cpu_letterbox.hpp) 상단 주석 5)에 적혀 있다:
+[`cpu_letterbox.hpp`](../01_src/ref/cpu_letterbox.hpp) 상단 주석 5)에 적혀 있다:
 
 ```
    Y' = (Y - 16) × 255/219       ← 16~235 를 0~255 로 펴는 것
@@ -240,7 +240,7 @@ HW 디코더가 내놓는 NV12는 **평범한 NV12가 아니다.** 행이 연속
     1920 B = 15 열
 ```
 
-주소 식은 이렇게 된다 ([`sand.hpp`](../01_src/common/sand.hpp)):
+주소 식은 이렇게 된다 ([`sand.hpp`](../01_src/ref/sand.hpp)):
 
 ```
    Y(x, y)   = y_base [ y_offset  + (x / 128) × y_col_stride  + y  × 128 + (x % 128) ]
@@ -295,7 +295,7 @@ YOLO 모델은 **640×640 정사각형**만 받는다. 우리 영상은 1920×10
 - `pad_x = 0, pad_y = (640-360)/2 = 140`
 - **패딩 값은 114** — YOLO 계열의 관례값이다(중간 회색)
 
-계산은 [`frame_types.hpp`](../01_src/common/frame_types.hpp) 의 `make_letterbox()` 에 있다.
+계산은 [`frame_types.hpp`](../01_src/core/frame_types.hpp) 의 `make_letterbox()` 에 있다.
 
 ### ★ half-pixel 규칙 — 왜 `+0.5 / -0.5` 가 붙는가
 
@@ -315,7 +315,7 @@ YOLO 모델은 **640×640 정사각형**만 받는다. 우리 영상은 1920×10
    sx = (dx + 0.5) / scale - 0.5
 ```
 
-letterbox 여백까지 넣으면 [`cpu_letterbox.hpp`](../01_src/common/cpu_letterbox.hpp) 주석 2)의 식이 된다:
+letterbox 여백까지 넣으면 [`cpu_letterbox.hpp`](../01_src/ref/cpu_letterbox.hpp) 주석 2)의 식이 된다:
 
 ```
    sx = (dx - pad_x + 0.5) / scale - 0.5
@@ -753,7 +753,7 @@ Vulkan으로 import하고 SAND 주소 계산을 셰이더가 하게 한 것이�
 빼먹으면 이미지가 반 픽셀 밀린다 — 눈으로는 안 보이지만 박스 좌표가 틀어지고,
 무엇보다 **CPU 기준 구현과의 비트 일치가 깨져서 "GPU가 맞는지" 검증할 수단이 사라진다**
 (`test_preproc` 은 NHWC·NHCW 양쪽에서 **max 오차 0** 을 요구한다).
-근거: [`cpu_letterbox.hpp`](../01_src/common/cpu_letterbox.hpp) 상단 수식 주석 2)~4).
+근거: [`cpu_letterbox.hpp`](../01_src/ref/cpu_letterbox.hpp) 상단 수식 주석 2)~4).
 
 ---
 

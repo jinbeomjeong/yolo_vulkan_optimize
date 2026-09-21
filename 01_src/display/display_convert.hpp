@@ -21,7 +21,7 @@
 
 #include <vulkan/vulkan.h>
 
-#include "common/frame_types.hpp"
+#include "core/frame_types.hpp"
 #include "vulkan/dmabuf_import.hpp"
 
 namespace yvo::vk {

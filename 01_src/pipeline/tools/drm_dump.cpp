@@ -26,9 +26,9 @@ extern "C" {
 #include <libavutil/pixdesc.h>
 }
 
-#include "common/sand.hpp"
+#include "ref/sand.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
-#include "common/tool_util.hpp"
+#include "toolkit/tool_util.hpp"
 
 namespace {
 

@@ -1,7 +1,7 @@
 #version 450
 // SAND128 NV12 dma-buf → 표시용 RGBA storage image (BT.709 limited → sRGB, 감마 인코딩된 값 그대로)
 //
-// 기준 구현: 01_src/common/sand.hpp 의 주소 규칙 + 01_src/common/cpu_letterbox.hpp 의 색 수식.
+// 기준 구현: 01_src/ref/sand.hpp 의 주소 규칙 + 01_src/ref/cpu_letterbox.hpp 의 색 수식.
 // **BT.709 수식은 02_shaders/sand_letterbox.comp:94-101 을 그대로 옮긴 것이다**(precise 포함) —
 // 표시 색이 전처리 경로와 한 비트도 달라지면 안 된다.
 //

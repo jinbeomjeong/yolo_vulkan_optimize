@@ -2,7 +2,7 @@
 
 > **선수 지식**: [01_big_picture.md](01_big_picture.md) (처리량·지연·병목·슬롯·zero-copy 용어),
 > [02_hardware.md](02_hardware.md) (CPU / GPU / NPU 가 각각 무엇을 잘하는가)
-> **다 읽으면 읽을 수 있는 것**: [`01_src/common/cpu_yolov8_decode.hpp`](../01_src/common/cpu_yolov8_decode.hpp)
+> **다 읽으면 읽을 수 있는 것**: [`01_src/ref/cpu_yolov8_decode.hpp`](../01_src/ref/cpu_yolov8_decode.hpp)
 > 상단 주석 1)~7), [`02_shaders/yolo_decode.comp`](../02_shaders/yolo_decode.comp) 머리 주석,
 > [`10_paper/paper_ko.md`](../10_paper/paper_ko.md) §3.2 텐서 사양 표,
 > [`07_results/gpu_postprocess/summary.md`](../07_results/gpu_postprocess/summary.md)
@@ -282,7 +282,7 @@ anchor box)를 두고 "그 박스를 얼마나 늘이고 줄일지"를 예측했
 ```
 
 이 프로젝트 코드에서 쓰는 식은 이렇다
-([`cpu_yolov8_decode.hpp`](../01_src/common/cpu_yolov8_decode.hpp) 주석 5).
+([`cpu_yolov8_decode.hpp`](../01_src/ref/cpu_yolov8_decode.hpp) 주석 5).
 
 ```
 x1 = (w + 0.5 - d_left ) · stride        y1 = (h + 0.5 - d_top   ) · stride
@@ -315,7 +315,7 @@ x2 = (w + 0.5 + d_right) · stride        y2 = (h + 0.5 + d_bottom) · stride
 **DFL**(Distribution Focal Loss, 분포 초점 손실)은 답을 **하나의 숫자 대신 확률 분포**로
 내게 한다. 구체적으로는 거리를 0, 1, 2, ..., 15의 **16개 칸(bin, 빈)** 으로 쪼개고,
 각 칸에 얼마나 무게가 실리는지를 답하게 한다. 이 16이라는 수를 **`reg_max`** 라고 하고,
-이 프로젝트에서는 [`cpu_yolov8_decode.hpp`](../01_src/common/cpu_yolov8_decode.hpp)의
+이 프로젝트에서는 [`cpu_yolov8_decode.hpp`](../01_src/ref/cpu_yolov8_decode.hpp)의
 `kDflRegMax = 16`으로 박혀 있다.
 
 ```
@@ -351,7 +351,7 @@ d = Σ b · p[b]      (b = 0 .. 15)
 ```
 
 이 프로젝트 구현은 나눗셈을 한 번만 하려고 합쳐서 쓴다
-([같은 헤더](../01_src/common/cpu_yolov8_decode.hpp) 주석 4).
+([같은 헤더](../01_src/ref/cpu_yolov8_decode.hpp) 주석 4).
 
 ```
 m = max(v)                             ← ⚠ 반드시 최댓값을 빼고 시작한다
@@ -481,7 +481,7 @@ q         0    1    2    3          253  254  255
  IoU = 1.0  완전히 같은 박스다
 ```
 
-이 프로젝트 구현은 [`cpu_yolov8_decode.hpp`](../01_src/common/cpu_yolov8_decode.hpp)의
+이 프로젝트 구현은 [`cpu_yolov8_decode.hpp`](../01_src/ref/cpu_yolov8_decode.hpp)의
 `iou_xyxy()`다.
 
 ### greedy NMS
@@ -543,7 +543,7 @@ D 0.60  IoU(C,D)=0.75  0.7 초과 → 억제 ✘
 이 프로젝트에는 같은 디코드 수식이 **두 벌** 있다. CPU 기준 구현과 GPU 셰이더다.
 두 벌이 어긋나면 결과가 달라지므로, 수식의 **원문을 한 곳에만 둔다**는 규칙을 세웠다.
 
-> **원문은 [`01_src/common/cpu_yolov8_decode.hpp`](../01_src/common/cpu_yolov8_decode.hpp)
+> **원문은 [`01_src/ref/cpu_yolov8_decode.hpp`](../01_src/ref/cpu_yolov8_decode.hpp)
 > 상단 주석 1)~7) 이다.**
 
 - 1) NHCW 인덱싱 — 모든 텐서 접근은 `nhcw_index()` 하나만 쓴다
@@ -610,7 +610,7 @@ D 0.60  IoU(C,D)=0.75  0.7 초과 → 억제 ✘
 **sigmoid를 적용하지 않는 이유**를 조금 더 풀어 둔다. **sigmoid**는 임의의 실수를 0~1로
 눌러 확률로 만드는 함수다. 신경망의 클래스 출력은 보통 이 함수를 통과시켜야 한다.
 그런데 이 모델의 클래스 텐서는 **이미 통과한 뒤의 값**이다. 근거 두 가지가
-[`cpu_yolov8_decode.hpp`](../01_src/common/cpu_yolov8_decode.hpp) 주석 2에 적혀 있다.
+[`cpu_yolov8_decode.hpp`](../01_src/ref/cpu_yolov8_decode.hpp) 주석 2에 적혀 있다.
 
 1. sigmoid 이전의 값(로짓)이라면 음수가 있어야 하므로 표현 범위의 최솟값이 음수여야 하는데,
    클래스 텐서는 `zero_point = 0`, 최솟값 0.0이다. box 텐서는 실제로 최솟값이 음수다.
@@ -698,7 +698,7 @@ h, w, class가 전부 0~79라 각각 7비트에 들어가고 scale_id는 0~2다.
 > 결과: 출력 순서가 실행마다 달라도 **정렬 후에는 항상 같은 배열**이 된다.
 > 실측으로 **10회 반복 전부 바이트 단위 동일**이 확인됐다
 > ([`07_results/gpu_postprocess/summary.md`](../07_results/gpu_postprocess/summary.md) P3 G6).
-> 근거 코드는 [`cpu_yolov8_decode.hpp`](../01_src/common/cpu_yolov8_decode.hpp) 주석 7이다.
+> 근거 코드는 [`cpu_yolov8_decode.hpp`](../01_src/ref/cpu_yolov8_decode.hpp) 주석 7이다.
 
 ### (7) 마지막 한 걸음 — 원본 좌표로 되돌리기
 
@@ -714,7 +714,7 @@ y = clamp((y_640 − pad_y) / scale, 0, src_h)
 한 가지 **의도된 차이**가 있다. 이 프로젝트는 **클램프를 NMS 이전에** 적용하고
 HailoRT는 정규화 좌표로 NMS한 뒤 클램프한다. 균일 축소 + 평행이동은 IoU를 보존하므로
 대부분 차이가 없고, **프레임 경계에 걸친 박스에서만** IoU가 미세하게 달라질 수 있다
-([`cpu_yolov8_decode.hpp`](../01_src/common/cpu_yolov8_decode.hpp) 주석 6).
+([`cpu_yolov8_decode.hpp`](../01_src/ref/cpu_yolov8_decode.hpp) 주석 6).
 이런 것을 **모르고 넘어가지 않고 적어 두는 것**이 이 프로젝트의 규율이다.
 
 ---
@@ -754,7 +754,7 @@ NPU 원시 출력 6텐서 (UINT8 NHCW, 합계 1,221,120 B)
 ```
 
 ①~⑥은 GPU 셰이더([`yolo_decode.comp`](../02_shaders/yolo_decode.comp)),
-⑦은 CPU([`cpu_nms_greedy_by_class`](../01_src/common/cpu_yolov8_decode.hpp))다.
+⑦은 CPU([`cpu_nms_greedy_by_class`](../01_src/ref/cpu_yolov8_decode.hpp))다.
 **왜 이렇게 나눴는지**(전부 GPU로 하지 않은 이유)는
 [05_vulkan_compute.md](05_vulkan_compute.md)와 [10_why_this_design.md](10_why_this_design.md)에서 다룬다.
 
@@ -784,7 +784,7 @@ NPU 원시 출력 6텐서 (UINT8 NHCW, 합계 1,221,120 B)
 경계가 뚜렷할 때는 한 칸에 몰리고 흐릿할 때는 퍼진다. 최종 거리는 **softmax를 거친 확률의
 기대값** `d = Σ b·e[b] / Σ e[b]` (`e[b] = exp(v[b] − max(v))`)다. 최댓값을 빼는 것은
 역양자화 값이 최대 19.1까지 가서 `exp()`가 부풀기 때문이다
-([`cpu_yolov8_decode.hpp`](../01_src/common/cpu_yolov8_decode.hpp) 주석 4).
+([`cpu_yolov8_decode.hpp`](../01_src/ref/cpu_yolov8_decode.hpp) 주석 4).
 
 **Q4. `q >= floor(thr/scale)` 사전필터가 결과를 바꾸지 않는 이유는? 어떤 전제가 필요한가?**
 

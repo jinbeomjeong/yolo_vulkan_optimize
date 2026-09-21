@@ -3,7 +3,7 @@
 - 환경: Raspberry Pi 5 / BCM2712, **V3D 7.1.10.2 (V3DV Mesa 26.2.2, Vulkan 1.3.354)**, labwc(Wayland),
   kernel 6.18.50, g++ 14.2 Release, 칩 온도 64~73 °C (`get_throttled=0x80000` = 과거 기록 비트)
 - 대상: `02_shaders/overlay_boxes.comp` + `01_src/display/overlay_renderer.{hpp,cpp}` +
-  `01_src/display/overlay_reference.hpp`(규약·CPU 기준) + `05_tests/test_overlay.cpp`
+  `01_src/ref/overlay_reference.hpp`(규약·CPU 기준) + `05_tests/test_overlay.cpp`
 - 실행: `build/bin/yvo_display_probe --probe overlay [--frames N] [--overlay-local N]`
   (**NPU·디스플레이·디코더 전부 불필요** — 오프스크린 R8G8B8A8_UNORM 이미지)
 
@@ -13,7 +13,7 @@
 
 A.12 는 P5 테스트 패턴이 기대 400×300 대신 **399×299** 를 그린 포함/배제 off-by-one 을 근거로,
 오버레이는 GPU 와 CPU 가 경계 규약을 **정확히 같게** 정의해야 한다고 경고했다.
-그래서 **규칙을 먼저 글로 쓰고**(`01_src/display/overlay_reference.hpp` 상단 R0~R8 블록)
+그래서 **규칙을 먼저 글로 쓰고**(`01_src/ref/overlay_reference.hpp` 상단 R0~R8 블록)
 GPU 셰이더와 CPU 기준 구현을 그 글에 맞춰 작성했다. 요약:
 
 | # | 규칙 |
@@ -29,7 +29,7 @@ GPU 셰이더와 CPU 기준 구현을 그 글에 맞춰 작성했다. 요약:
 | R8 | CPU 는 검출 인덱스 오름차순. **GPU 는 검출당 워크그룹 하나라 순서가 없다** → 겹치는 박스의 교차 픽셀 색은 **순서 의존(허용 한계)** |
 
 글리프 렌더링(행·비트 순서, 정수 배율, 진행폭 8·s, 줄 높이 16·s, 배경 미터치)은
-`01_src/common/glyph_font_8x16.hpp` 의 규약 1)~8) 을 그대로 따랐다. **그 헤더는 고치지 않았고
+`01_src/ref/glyph_font_8x16.hpp` 의 규약 1)~8) 을 그대로 따랐다. **그 헤더는 고치지 않았고
 고쳐야 할 이유도 없었다** — `static_assert` 6개가 규약을 이미 자기검증한다.
 
 ---

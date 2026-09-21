@@ -39,7 +39,7 @@
 
 #include <vulkan/vulkan.h>
 
-#include "common/frame_types.hpp"
+#include "core/frame_types.hpp"
 #include "display/display_convert.hpp"
 #include "display/offscreen_backend.hpp"
 #include "display/overlay_renderer.hpp"

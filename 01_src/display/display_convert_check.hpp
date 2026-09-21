@@ -4,7 +4,7 @@
 // 쓰는 곳: 05_tests/test_display_convert.cpp (ctest 게이트), display/tools/display_probe.cpp (P8).
 //
 // 왜 필요한가 (2026-09-21):
-//   BT.709 limited → RGB 계수가 세 벌 있다 — common/cpu_letterbox.hpp(CPU 기준),
+//   BT.709 limited → RGB 계수가 세 벌 있다 — ref/cpu_letterbox.hpp(CPU 기준),
 //   sand_letterbox.comp(전처리), display_convert.comp(표시). 앞의 두 벌은 test_preproc 이
 //   비트 일치를 강제하는데 **표시 쪽 세 번째 벌은 ctest 가 없고 수동 프로브뿐**이었다.
 //   "CPU 기준 구현 + 비트 일치 테스트"가 이 프로젝트의 핵심 검증 장치인데 여기만 빠져 있었다.
@@ -18,10 +18,10 @@
 #include <stdexcept>
 #include <vector>
 
-#include "common/cpu_letterbox.hpp"
-#include "common/dmabuf_map.hpp"
-#include "common/frame_types.hpp"
-#include "common/sand.hpp"
+#include "ref/cpu_letterbox.hpp"
+#include "core/dmabuf_map.hpp"
+#include "core/frame_types.hpp"
+#include "ref/sand.hpp"
 #include "display/display_convert.hpp"
 #include "display/offscreen_target.hpp"
 #include "vulkan/vk_check.hpp"

@@ -42,10 +42,10 @@ Detection (원본 1920x1080 좌표) → JSON Lines / PNG
 
 | 경로 | 역할 | 담당 에이전트 |
 |---|---|---|
-| `01_src/common/frame_types.hpp` | 단계 간 인터페이스(DrmFrame, PreprocOutput, LetterboxParams, Detection, make_letterbox) | 메인 → cpp-expert 보완 |
-| `01_src/common/sand.hpp` | CPU de-SAND 기준 구현 | cpp-expert |
-| `01_src/common/cpu_letterbox.hpp` | CPU letterbox 기준 구현(GPU 셰이더와 같은 수식) | hailo-expert |
-| `01_src/common/dmabuf_map.hpp` | dma-buf CPU 읽기 매핑(DMA_BUF_IOCTL_SYNC) | vulkan-expert |
+| `01_src/core/frame_types.hpp` | 단계 간 인터페이스(DrmFrame, PreprocOutput, LetterboxParams, Detection, make_letterbox) | 메인 → cpp-expert 보완 |
+| `01_src/ref/sand.hpp` | CPU de-SAND 기준 구현 | cpp-expert |
+| `01_src/ref/cpu_letterbox.hpp` | CPU letterbox 기준 구현(GPU 셰이더와 같은 수식) | hailo-expert |
+| `01_src/core/dmabuf_map.hpp` | dma-buf CPU 읽기 매핑(DMA_BUF_IOCTL_SYNC) | vulkan-expert |
 | `01_src/decode/ffmpeg_drm_decoder.{hpp,cpp}` | libavcodec HW 디코더 → DrmFrame | cpp-expert |
 | `01_src/pipeline/tools/drm_dump.cpp` → `yvo_drm_dump` | descriptor 덤프, de-SAND 바이트 비교, 디코드 성능 | cpp-expert |
 | `01_src/vulkan/vulkan_context.{hpp,cpp}` | V3D 장치 선택, 확장, 검증 메시지 카운터 | vulkan-expert |

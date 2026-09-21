@@ -171,7 +171,7 @@ present 페이싱이 GPU 를 놀려 DVFS 로 시간이 부풀지 않게 **표시
 
 ### ② 픽셀 정확도 — CPU 기준과 비트 일치
 
-기준 구현: `01_src/common/sand.hpp` `desand_nv12()` + `01_src/common/cpu_letterbox.hpp`
+기준 구현: `01_src/ref/sand.hpp` `desand_nv12()` + `01_src/ref/cpu_letterbox.hpp`
 `cpu_letterbox_nv12_bt709()` (scale = 1.0, pad = 0). 프레임 100, 1920x1080.
 
 ```

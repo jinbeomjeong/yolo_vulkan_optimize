@@ -25,8 +25,8 @@
 #include <string>
 #include <vector>
 
-#include "common/cpu_yolov8_decode.hpp"  // iou_xyxy — IoU 식은 여기 하나뿐이다
-#include "common/frame_types.hpp"
+#include "ref/cpu_yolov8_decode.hpp"  // iou_xyxy — IoU 식은 여기 하나뿐이다
+#include "core/frame_types.hpp"
 
 namespace yvo::detmatch {
 

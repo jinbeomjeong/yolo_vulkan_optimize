@@ -4,7 +4,7 @@
 
 #include <arm_neon.h>
 
-#include "common/cpu_letterbox.hpp"
+#include "ref/cpu_letterbox.hpp"
 
 namespace yvo::isp {
 

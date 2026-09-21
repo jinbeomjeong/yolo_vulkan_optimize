@@ -40,7 +40,9 @@
 
 ```
 01_src/
-├── common/     헤더만 있음. CPU 기준 구현과 공용 타입 — 다른 모든 폴더가 여기에 의존
+├── core/       헤더만. 공용 계약 타입·OS 글루 — 다른 모든 폴더가 여기에 의존 (include 루트는 여기서만 지정)
+├── ref/        헤더만. CPU 기준 구현 — 수식의 단일 진실 원천 (셰이더는 이것의 번역본)
+├── toolkit/    헤더만. 도구·앱 전용 헬퍼(CLI·이미지 저장·통계) — 라이브러리는 include 하지 않는다
 ├── decode/     HW HEVC 디코더 (FFmpeg DRM_PRIME → DrmFrame)
 ├── hailo/      NPU (HailoRT)                    ┐ 이 둘은 서로
 ├── vulkan/     GPU (Vulkan 컴퓨트)              ┘ 링크하지 않는다
@@ -70,7 +72,7 @@ GPU 전처리를 테스트하는 `test_preproc`을 빌드할 때 Wayland 라이�
 
 ### 1단계 — 계약을 먼저 본다 (30분)
 
-**[`01_src/common/frame_types.hpp`](../01_src/common/frame_types.hpp)**
+**[`01_src/core/frame_types.hpp`](../01_src/core/frame_types.hpp)**
 
 파이프라인 단계 사이를 오가는 **자료형 네 개**가 여기 다 있다.
 
@@ -102,14 +104,14 @@ GPU 전처리를 테스트하는 `test_preproc`을 빌드할 때 Wayland 라이�
 ### 3단계 — 수식의 원문을 본다 (2시간)
 
 이 프로젝트에는 **"수식의 단일 진실 원천(single source of truth)"** 규칙이 있다.
-GPU 셰이더는 전부 CPU 기준 구현의 **번역본**이고, 원문은 `01_src/common/` 헤더의 상단 주석이다.
+GPU 셰이더는 전부 CPU 기준 구현의 **번역본**이고, 원문은 `01_src/ref/` 헤더의 상단 주석이다.
 
 | 원문 (읽어야 할 것) | 번역본 (GPU) |
 |---|---|
-| [`common/cpu_letterbox.hpp`](../01_src/common/cpu_letterbox.hpp) 주석 1)~5) | [`sand_letterbox.comp`](../02_shaders/sand_letterbox.comp) |
-| [`common/cpu_yolov8_decode.hpp`](../01_src/common/cpu_yolov8_decode.hpp) 주석 1)~7) | [`yolo_decode.comp`](../02_shaders/yolo_decode.comp) |
-| [`common/sand.hpp`](../01_src/common/sand.hpp) | 위 두 셰이더의 주소 계산 |
-| [`display/overlay_reference.hpp`](../01_src/display/overlay_reference.hpp) 규약 R0~R8 | [`overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) |
+| [`ref/cpu_letterbox.hpp`](../01_src/ref/cpu_letterbox.hpp) 주석 1)~5) | [`sand_letterbox.comp`](../02_shaders/sand_letterbox.comp) |
+| [`ref/cpu_yolov8_decode.hpp`](../01_src/ref/cpu_yolov8_decode.hpp) 주석 1)~7) | [`yolo_decode.comp`](../02_shaders/yolo_decode.comp) |
+| [`ref/sand.hpp`](../01_src/ref/sand.hpp) | 위 두 셰이더의 주소 계산 |
+| [`ref/overlay_reference.hpp`](../01_src/ref/overlay_reference.hpp) 규약 R0~R8 | [`overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) |
 
 **셰이더를 먼저 읽지 마라.** 셰이더는 최적화가 잔뜩 들어가 있어서 수식이 안 보인다.
 헤더의 주석을 읽고 나서 셰이더를 보면 "아, 이 수식을 이렇게 비튼 거구나"가 보인다.
@@ -167,7 +169,9 @@ cmake -S . -B build -G Ninja && cmake --build build
 
 | 이름 | 내용 | 특징 |
 |---|---|---|
-| `yvo_common` | 헤더만 (INTERFACE) | 공용 타입 + CPU 기준 구현 |
+| `yvo_core` | 헤더만 (INTERFACE) | 공용 타입 + OS 글루. include 루트 `01_src/` 를 지정하는 유일한 타깃 |
+| `yvo_ref` | 헤더만 (INTERFACE) | CPU 기준 구현 |
+| `yvo_toolkit` | 헤더만 (INTERFACE) | 도구·앱 전용 헬퍼. 라이브러리는 링크하지 않는다 |
 | `yvo_warnings` | 경고 플래그만 | `-Wall -Wextra -Wpedantic` |
 | `yvo_shaders` | 컴파일된 셰이더 헤더 | 링크하면 include 경로가 붙는다 |
 | `yvo_hailo` | NPU | **`yvo_vulkan`에 의존하지 않는다** |
@@ -226,7 +230,7 @@ ctest --test-dir build
 
 검출 결과를 직접 비교하는 스크립트도 있다:
 [`06_tools/python/compare_detections.py`](../06_tools/python/compare_detections.py).
-C++ 테스트의 판정 규칙([`01_src/common/detection_match.hpp`](../01_src/common/detection_match.hpp))과
+C++ 테스트의 판정 규칙([`01_src/ref/detection_match.hpp`](../01_src/ref/detection_match.hpp))과
 **일부러 같은 알고리즘**으로 구현돼 있다.
 
 ---
@@ -286,7 +290,7 @@ build/bin/yvo_pipeline --video ... --hef ...
 
 **Q1. GPU 셰이더의 계산이 맞는지 어떻게 확인하는가?**
 
-`01_src/common/`의 CPU 기준 구현과 비교한다. 셰이더는 그 수식의 번역본이고,
+`01_src/ref/`의 CPU 기준 구현과 비교한다. 셰이더는 그 수식의 번역본이고,
 `ctest`가 두 결과를 대조한다. 전처리 NHCW와 오버레이는 **바이트 완전 일치**가 합격 기준이다.
 
 **Q2. `hailo/`와 `vulkan/`이 서로 링크하지 않으면 데이터는 어떻게 주고받는가?**
@@ -306,8 +310,8 @@ build/bin/yvo_pipeline --video ... --hef ...
 
 **Q5. 처음 코드를 읽는다면 어디부터 봐야 하는가?**
 
-`01_src/common/frame_types.hpp`(자료형 4개) → `01_src/pipeline/main.cpp` 1~34행(운영 규칙 주석)
-→ `01_src/common/cpu_yolov8_decode.hpp` 상단 주석(수식 원문) 순서다.
+`01_src/core/frame_types.hpp`(자료형 4개) → `01_src/pipeline/main.cpp` 1~34행(운영 규칙 주석)
+→ `01_src/ref/cpu_yolov8_decode.hpp` 상단 주석(수식 원문) 순서다.
 **셰이더를 먼저 읽으면 안 된다** — 최적화 때문에 수식이 안 보인다.
 
 ---

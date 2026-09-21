@@ -23,11 +23,11 @@
 #include <gtest/gtest.h>
 #include <unistd.h>
 
-#include "common/detection_match.hpp"
+#include "ref/detection_match.hpp"
 
-#include "common/cpu_letterbox.hpp"
-#include "common/dmabuf_map.hpp"
-#include "common/sand.hpp"
+#include "ref/cpu_letterbox.hpp"
+#include "core/dmabuf_map.hpp"
+#include "ref/sand.hpp"
 #include "hailo/hailo_runner.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
 #include "vulkan/sand_letterbox.hpp"

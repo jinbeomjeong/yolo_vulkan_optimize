@@ -6,7 +6,7 @@
 //
 //   NHWC idx = (y * w + x) * 3 + c      NHCW idx = (y * 3 + c) * w + x
 //
-// 색 변환 기준 구현은 common/cpu_letterbox.hpp 하나뿐이고, 스칼라 버전은 그 안의
+// 색 변환 기준 구현은 ref/cpu_letterbox.hpp 하나뿐이고, 스칼라 버전은 그 안의
 // rgb_packed_to_nhcw()를 그대로 부른다. NEON 버전은 같은 결과를 내야 한다(비트 일치).
 //
 // 입력이 dma-buf(캐시 매핑)면 호출 전에 DMA_BUF_IOCTL_SYNC로 감쌀 것(IspResizer::OutputRead).

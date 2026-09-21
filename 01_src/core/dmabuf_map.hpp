@@ -2,7 +2,7 @@
 // CPU 기준 경로(테스트·벤치)에서 디코더 dma-buf를 읽을 때 쓴다.
 //
 // **남의 fd를 읽기 전용으로 매핑하는 별개 용도다** — 할당하지 않는다. 직접 할당하는 쪽은
-// common/dma_heap_alloc.hpp 의 DmaHeapPool 이다(부록 B.11 일원화).
+// core/dma_heap_alloc.hpp 의 DmaHeapPool 이다(부록 B.11 일원화).
 // ioctl 두 곳은 그 헤더의 dma_sync_begin/end 에 위임한다. strict=false 로 불러
 // **기존 동작(ioctl 실패를 무시)을 그대로 유지**한다 — 이 클래스의 공개 API와 동작은 바뀌지 않았다.
 #pragma once
@@ -12,7 +12,7 @@
 
 #include <sys/mman.h>
 
-#include "common/dma_heap_alloc.hpp"
+#include "core/dma_heap_alloc.hpp"
 
 namespace yvo {
 

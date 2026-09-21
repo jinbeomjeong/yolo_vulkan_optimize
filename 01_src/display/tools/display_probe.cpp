@@ -19,7 +19,7 @@
 //
 //   overlay (P7): OffscreenBackend 에 합성 검출로 overlay_boxes.comp 실행 → 리드백 → CPU 기준과 비교.
 //     ① 박스 테두리 비트 일치 ② 글리프 비트 일치 ③ GPU timestamp < 0.7 ms(검출 80개) ④ 검증 errors 0.
-//     **NPU·디스플레이·디코더 전부 불필요**(오프스크린). 경계 규약은 01_src/display/overlay_reference.hpp.
+//     **NPU·디스플레이·디코더 전부 불필요**(오프스크린). 경계 규약은 01_src/ref/overlay_reference.hpp.
 //
 //   convert (P8, ★원본 해상도 성립 여부): display_convert.comp 로 디코더 SAND dma-buf 를 RGBA 로 변환.
 //     (a) **오프스크린 연속 스트림** 300프레임 timestamp 중앙값·p90 — 1920x1080 / 1600x900 / 1280x720.
@@ -56,9 +56,9 @@
 #include "vulkan/vulkan_context.hpp"
 
 #ifdef YVO_HAVE_DECODER
-#include "common/cpu_letterbox.hpp"
-#include "common/dmabuf_map.hpp"
-#include "common/sand.hpp"
+#include "ref/cpu_letterbox.hpp"
+#include "core/dmabuf_map.hpp"
+#include "ref/sand.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
 #include "display/display_convert_check.hpp"
 #endif
@@ -66,9 +66,9 @@
 
 // 오버레이(OverlayRenderer·overlay_reference.hpp)가 쓰는 공용 헤더. 아래 static_assert 가 렌더링 규약
 // (행/비트 순서)과 색 공식을 **컴파일 시** 한 번 더 고정한다.
-#include "common/coco_labels.hpp"
-#include "common/glyph_font_8x16.hpp"
-#include "common/stats.hpp"
+#include "core/coco_labels.hpp"
+#include "ref/glyph_font_8x16.hpp"
+#include "toolkit/stats.hpp"
 
 using yvo::Stats;
 using yvo::stats;

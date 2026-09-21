@@ -25,15 +25,15 @@
 #include <opencv2/imgproc.hpp>
 #endif
 
-#include "common/cpu_letterbox.hpp"
-#include "common/dmabuf_map.hpp"
-#include "common/sand.hpp"
+#include "ref/cpu_letterbox.hpp"
+#include "core/dmabuf_map.hpp"
+#include "ref/sand.hpp"
 #include "isp/isp_resizer.hpp"
 #include "isp/nhcw_repack.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
-#include "common/stats.hpp"
-#include "common/tool_util.hpp"
-#include "common/tool_image.hpp"
+#include "toolkit/stats.hpp"
+#include "toolkit/tool_util.hpp"
+#include "toolkit/tool_image.hpp"
 
 using yvo::Stats;
 using yvo::stats;

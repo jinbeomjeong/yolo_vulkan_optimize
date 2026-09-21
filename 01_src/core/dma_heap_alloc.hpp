@@ -1,12 +1,12 @@
 // dma-heap 버퍼 할당·매핑·CPU 캐시 동기화 (헤더 전용, 순수 POSIX)
 //
 // 계획서 부록 B.11의 일원화 대상이다. 같은 일을 세 번 구현했던 것을 여기 하나로 모은다:
-//   · common/dmabuf_map.hpp  DmaBufReadMap   — 남의 fd를 읽기 전용 매핑 (할당 안 함). **그대로 남는다.**
+//   · core/dmabuf_map.hpp  DmaBufReadMap   — 남의 fd를 읽기 전용 매핑 (할당 안 함). **그대로 남는다.**
 //                                              내부 ioctl만 이 헤더의 dma_sync_* 로 위임한다.
 //   · hailo/tools/p2_out_buffers.hpp HeapOutPool — DmaHeapPool 위의 얇은 어댑터로 축소됐다.
 //   · (2026-09-21 흡수 완료) isp/dma_heap_buffer.hpp DmaHeapBuffers 는 제거하고 이 풀로 옮겼다.
 //
-// **Vulkan 심볼을 쓰지 않는다.** yvo_common은 INTERFACE 라이브러리라 이 헤더를 더해도 링크 그래프가
+// **Vulkan 심볼을 쓰지 않는다.** yvo_core는 INTERFACE 라이브러리라 이 헤더를 더해도 링크 그래프가
 // 한 변도 늘지 않고, yvo_hailo가 yvo_vulkan에 의존하지 않는다는 링크 격리(계획서 §5.2)가 그대로 지켜진다.
 // Vulkan import 글루(헤드룸 질의)는 01_src/vulkan/vk_storage_headroom.hpp 에 따로 있다.
 //
@@ -48,7 +48,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#include "common/hailo_align.hpp"
+#include "core/hailo_align.hpp"
 
 namespace yvo {
 

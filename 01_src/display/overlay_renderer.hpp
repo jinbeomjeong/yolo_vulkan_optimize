@@ -44,8 +44,8 @@
 
 #include <vulkan/vulkan.h>
 
-#include "common/frame_types.hpp"
-#include "display/overlay_reference.hpp"
+#include "core/frame_types.hpp"
+#include "ref/overlay_reference.hpp"
 
 namespace yvo::vk {
 class VulkanContext;

@@ -60,7 +60,7 @@
 #include <limits>
 #include <vector>
 
-#include "common/frame_types.hpp"
+#include "core/frame_types.hpp"
 
 namespace yvo {
 
@@ -133,7 +133,7 @@ inline std::uint32_t make_anchor_key(int scale_id, int h, int w, int cls) {
            (static_cast<std::uint32_t>(w) << 7) | static_cast<std::uint32_t>(cls);
 }
 
-// 저장소 유일의 IoU 식이다. common/detection_match.hpp 의 매칭 판정이 이 함수를 그대로 쓰고,
+// 저장소 유일의 IoU 식이다. ref/detection_match.hpp 의 매칭 판정이 이 함수를 그대로 쓰고,
 // 06_tools/python/compare_detections.py 가 float32 로 같은 식을 흉내 낸다.
 inline float iou_xyxy(const Detection& a, const Detection& b) {
     const float ix = std::max(0.0f, std::min(a.x2, b.x2) - std::max(a.x1, b.x1));

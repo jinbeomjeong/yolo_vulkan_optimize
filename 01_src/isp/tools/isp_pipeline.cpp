@@ -39,15 +39,15 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 
-#include "common/coco_labels.hpp"
-#include "common/cpu_letterbox.hpp"
+#include "core/coco_labels.hpp"
+#include "ref/cpu_letterbox.hpp"
 #include "hailo/hailo_runner.hpp"
-#include "common/dma_heap_alloc.hpp"
+#include "core/dma_heap_alloc.hpp"
 #include "isp/isp_resizer.hpp"
 #include "isp/nhcw_repack.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
-#include "common/stats.hpp"
-#include "common/tool_util.hpp"
+#include "toolkit/stats.hpp"
+#include "toolkit/tool_util.hpp"
 
 using yvo::Stats;
 using yvo::stats;
@@ -256,7 +256,7 @@ int run(const Args& a) {
     // C안: NHCW 전치 결과를 담을 dma-heap 버퍼(슬롯마다 하나) + 사전 DMA 매핑
     std::unique_ptr<yvo::DmaHeapPool> nhcw_bufs;
     if (nhcw) {
-        // common/dma_heap_alloc.hpp 의 풀을 쓴다. 2026-09-21 이전의 isp 전용 DmaHeapBuffers 에는
+        // core/dma_heap_alloc.hpp 의 풀을 쓴다. 2026-09-21 이전의 isp 전용 DmaHeapBuffers 에는
         // HailoRT read_async 가 요구하는 16384 정렬이 없었고 READ 방향 sync 도 없었다.
         yvo::DmaHeapConfig hc;
         hc.name = "yvo_nhcw";

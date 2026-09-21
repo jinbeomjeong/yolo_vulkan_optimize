@@ -41,7 +41,7 @@
       </data>
       <graph edgedefault="directed" id="n0:">
       <node id="n0::n0">
-        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:1-34 '메인 스레드: 디코드 → 빈 슬롯 확보 → GPU submit → wait → HailoRT submit'. 출력 구조체는 01_src/common/frame_types.hpp struct DrmFrame.</data>
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:1-34 '메인 스레드: 디코드 → 빈 슬롯 확보 → GPU submit → wait → HailoRT submit'. 출력 구조체는 01_src/core/frame_types.hpp struct DrmFrame.</data>
         <data key="d6">
           <y:GenericNode configuration="com.yworks.flowchart.process">
             <y:Geometry height="54.0" width="480.0" x="130.0" y="120.0"/>
@@ -301,7 +301,7 @@ VkQueue 는 외부 동기화 객체이고 이 프로젝트에 큐는 1개<y:Labe
       </data>
       <graph edgedefault="directed" id="n2:">
       <node id="n2::n0">
-        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/common/frame_types.hpp struct DrmFrame. Y 와 UV 는 서로 다른 dma-buf 객체다(nb_objects=2): fd/size 와 uv_fd/uv_size. SAND128 주소식은 같은 파일 상단 주석.</data>
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/core/frame_types.hpp struct DrmFrame. Y 와 UV 는 서로 다른 dma-buf 객체다(nb_objects=2): fd/size 와 uv_fd/uv_size. SAND128 주소식은 같은 파일 상단 주석.</data>
         <data key="d6">
           <y:GenericNode configuration="com.yworks.flowchart.data">
             <y:Geometry height="66.3" width="420.0" x="790.0" y="475.0"/>
@@ -320,7 +320,7 @@ keepalive = std::shared_ptr&lt;AVFrame&gt;<y:LabelModel>
         </data>
       </node>
       <node id="n2::n1">
-        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/common/frame_types.hpp struct PreprocOutput, enum TensorLayout::Nhcw. main.cpp:1-34 'dmabuf: 초기화 때 슬롯별 출력 메모리를 dma-buf fd 로 export → HailoRunner::map_dmabuf 사전 매핑 → PreprocOutput.dmabuf_fd 로 set_dma_buffer'.</data>
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/core/frame_types.hpp struct PreprocOutput, enum TensorLayout::Nhcw. main.cpp:1-34 'dmabuf: 초기화 때 슬롯별 출력 메모리를 dma-buf fd 로 export → HailoRunner::map_dmabuf 사전 매핑 → PreprocOutput.dmabuf_fd 로 set_dma_buffer'.</data>
         <data key="d6">
           <y:GenericNode configuration="com.yworks.flowchart.data">
             <y:Geometry height="54.0" width="420.0" x="790.0" y="571.3"/>
@@ -523,7 +523,7 @@ slots+gpu_depth ≤ 10 : 01_src/pipeline/main.cpp:224
 --postproc gpu 전제 : 01_src/pipeline/main.cpp:397-410
 스레드 규율      : 01_src/pipeline/infer_stage.hpp:9-17
 콜백 람다 :136 / NMS 호출 :182 : gpu_postproc_stage.cpp
-버퍼 계약       : 01_src/common/frame_types.hpp<y:LabelModel>
+버퍼 계약       : 01_src/core/frame_types.hpp<y:LabelModel>
               <y:SmartNodeLabelModel distance="4.0"/>
             </y:LabelModel>
             <y:ModelParameter>

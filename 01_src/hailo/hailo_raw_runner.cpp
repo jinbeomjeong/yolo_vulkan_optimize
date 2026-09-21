@@ -5,7 +5,7 @@
 #include <cstdio>
 #include <string>
 
-#include "common/cpu_yolov8_decode.hpp"   // kDflRegMax / kDflSides (레이아웃 파생 상수)
+#include "ref/cpu_yolov8_decode.hpp"   // kDflRegMax / kDflSides (레이아웃 파생 상수)
 
 namespace yvo {
 

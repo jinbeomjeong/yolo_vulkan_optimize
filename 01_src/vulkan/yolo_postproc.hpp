@@ -8,7 +8,7 @@
 // ── 무엇을 하고 무엇을 하지 않는가 ────────────────────────────────────────────────────────────
 // 한다  : dequantize → DFL softmax → threshold → letterbox 역변환 → **원본 좌표 후보 압축**
 // 안 한다: **NMS 억제**. 계획서 §4.4 A안(하이브리드)이 기본이므로 억제는 호스트의
-//          `cpu_nms_greedy_by_class()`(= `01_src/common/cpu_yolov8_decode.hpp`, 기준 구현과 같은 코드)가 한다.
+//          `cpu_nms_greedy_by_class()`(= `01_src/ref/cpu_yolov8_decode.hpp`, 기준 구현과 같은 코드)가 한다.
 //          프레임당 후보는 수십 개(≈1.6 KB)이고 CPU 억제 비용은 5~20 µs 다.
 //          완전 GPU NMS(`yolo_nms.comp`)는 계획서 [H] 단계이고 이 파일의 범위가 아니다.
 //
@@ -49,9 +49,9 @@
 
 #include <vulkan/vulkan.h>
 
-#include "common/cpu_yolov8_decode.hpp"
-#include "common/dma_heap_alloc.hpp"
-#include "common/frame_types.hpp"
+#include "ref/cpu_yolov8_decode.hpp"
+#include "core/dma_heap_alloc.hpp"
+#include "core/frame_types.hpp"
 
 namespace yvo::vk {
 
@@ -90,7 +90,7 @@ enum class YoloInputAlloc {
     Plain,          // 평범한 host-visible STORAGE 버퍼 (픽스처 모드. dma-buf 없음)
     ExportDmaBuf,   // DmaBufExporter (16384 정렬, export). Hailo 가 D2H 로 매핑한다
     // dma-heap(`/dev/dma_heap/system`) 에서 잡아 Vulkan 에 **import** 한다 — 계획서 부록 B 4단계.
-    //   · 할당·mmap·CPU 캐시 sync 는 `yvo::DmaHeapPool`(common/dma_heap_alloc.hpp) 이 한다
+    //   · 할당·mmap·CPU 캐시 sync 는 `yvo::DmaHeapPool`(core/dma_heap_alloc.hpp) 이 한다
     //   · `t.host` 는 **힙 fd 의 mmap 포인터**다(`vkMapMemory` 가 아니다 — import 메모리에서 실패할 수 있다)
     //   · 할당 크기는 `align_up(hw + device_headroom, 16384)` (B.12). 헤드룸은 `vk_storage_headroom.hpp`
     //     가 질의로 구한다 — 상수를 박지 않는다

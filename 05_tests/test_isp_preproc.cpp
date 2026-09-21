@@ -32,9 +32,9 @@
 #include <opencv2/imgproc.hpp>
 #endif
 
-#include "common/cpu_letterbox.hpp"
-#include "common/dmabuf_map.hpp"
-#include "common/sand.hpp"
+#include "ref/cpu_letterbox.hpp"
+#include "core/dmabuf_map.hpp"
+#include "ref/sand.hpp"
 #include "isp/isp_resizer.hpp"
 #include "isp/nhcw_repack.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"

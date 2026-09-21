@@ -1,6 +1,6 @@
 // 오버레이(박스·라벨·HUD) 렌더링 규약과 CPU 기준 구현 — 헤더 전용, OpenCV 불필요.
 //
-// `01_src/common/cpu_letterbox.hpp` 의 관례를 따른다: **수식과 경계 규칙을 상단 주석에 못 박고
+// `01_src/ref/cpu_letterbox.hpp` 의 관례를 따른다: **수식과 경계 규칙을 상단 주석에 못 박고
 // GPU 셰이더(`02_shaders/overlay_boxes.comp`)가 이 주석을 참조한다.** 아래 구현은 그 주석의
 // 기계적 번역일 뿐이며, `05_tests/test_overlay.cpp` 가 GPU 결과와 **max 오차 0** 으로 비교한다.
 //
@@ -56,7 +56,7 @@
 //     즉 **기본은 박스 좌상단 바로 위**, 위쪽에 16*s 픽셀이 없으면 **박스 안쪽 상단**으로 내린다.
 //     오른쪽으로 넘치는 부분은 자르지 않고 R5 의 화면 클리핑에 맡긴다(가로 재배치 없음).
 //     글리프 렌더링 자체(행/비트 순서, 정수 배율, 진행폭 8*s, 줄 높이 16*s, 배경 미터치)는
-//     `01_src/common/glyph_font_8x16.hpp` 의 규약 1)~8) 을 그대로 따른다.
+//     `01_src/ref/glyph_font_8x16.hpp` 의 규약 1)~8) 을 그대로 따른다.
 //     **라벨 배경 상자는 그리지 않는다** — 글리프 규약 5)가 "배경은 호출자가 따로"라고 했고,
 //     1080p 검출 80개에서 배경을 채우면 픽셀 수가 4배 늘어 P7 의 0.7 ms 예산을 위협한다.
 //
@@ -80,9 +80,9 @@
 #include <string_view>
 #include <vector>
 
-#include "common/coco_labels.hpp"
-#include "common/frame_types.hpp"
-#include "common/glyph_font_8x16.hpp"
+#include "core/coco_labels.hpp"
+#include "core/frame_types.hpp"
+#include "ref/glyph_font_8x16.hpp"
 
 namespace yvo::display {
 

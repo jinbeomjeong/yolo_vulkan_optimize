@@ -24,7 +24,7 @@
 //     read_async : 7개 스트림 전부에 HAILO_STREAM_FLAGS_ASYNC를 configure 시점에 세팅하고,
 //                  write_async 1회 + read_async 6회를 한 mutex 안에서 발행해 FIFO 짝을 직접 보장한다.
 //  3) 실제 프레임을 처리해 6 텐서를 픽스처로 덤프하고(04_data/raw_tensors/), CPU 기준 구현
-//     (common/cpu_yolov8_decode.hpp)의 검출을 **별도 패스로 얻은 HailoRT NMS 검출**과 match()로 비교한다.
+//     (ref/cpu_yolov8_decode.hpp)의 검출을 **별도 패스로 얻은 HailoRT NMS 검출**과 match()로 비교한다.
 //     텐서 해석 미확정 변수 4개(argmax_only / DFL 채널 순서 / sigmoid / > vs >=)를 전수 시도한다.
 //  4) (B)안 폐기 증거: InferModel의 출력 개수와, 출력에 NHCW format order를 걸었을 때의 configure() 실패 상태.
 //
@@ -55,17 +55,17 @@
 
 #include <hailo/hailort.hpp>
 
-#include "common/cpu_letterbox.hpp"
-#include "common/dma_heap_alloc.hpp"   // dma_sync_* (입력 dma-buf 가 캐시된 힙일 때만 쓴다)
-#include "common/cpu_yolov8_decode.hpp"
-#include "common/detection_match.hpp"
-#include "common/frame_types.hpp"
+#include "ref/cpu_letterbox.hpp"
+#include "core/dma_heap_alloc.hpp"   // dma_sync_* (입력 dma-buf 가 캐시된 힙일 때만 쓴다)
+#include "ref/cpu_yolov8_decode.hpp"
+#include "ref/detection_match.hpp"
+#include "core/frame_types.hpp"
 #include "hailo/hailo_raw_runner.hpp"
 #include "hailo/hailo_runner.hpp"
 #include "hailo/tools/p2_out_buffers.hpp"
-#include "common/stats.hpp"
-#include "common/tool_util.hpp"
-#include "common/hailo_align.hpp"
+#include "toolkit/stats.hpp"
+#include "toolkit/tool_util.hpp"
+#include "core/hailo_align.hpp"
 
 using yvo::percentile;
 
@@ -81,8 +81,8 @@ constexpr int kSrcH = 1080;
 // HailoRT의 vdma_stream.cpp:379가 read_async()에 **16384 B 정렬**을 요구한다. 4096 B로 주면
 // "unaligned buffer ... causes performance degradation" 경고가 프레임×스트림마다 뜨고
 // 실측으로 FPS가 48.5 → 51.7로 3 FPS 차이가 났다(계획서 §7 검증 기록).
-constexpr std::size_t kDmaAlign = yvo::kHailoAsyncAlign;  // common/hailo_align.hpp
-constexpr float kIouMatchThreshold = yvo::detmatch::kIouThreshold;  // common/detection_match.hpp
+constexpr std::size_t kDmaAlign = yvo::kHailoAsyncAlign;  // core/hailo_align.hpp
+constexpr float kIouMatchThreshold = yvo::detmatch::kIouThreshold;  // ref/detection_match.hpp
 constexpr float kHefScoreThreshold = 0.2f;   // HEF의 YOLOV8 post-process 설정
 constexpr float kHefIouThreshold = 0.7f;
 constexpr int kHefMaxPerClass = 100;
@@ -181,7 +181,7 @@ std::vector<std::vector<std::uint8_t>> make_nhcw_inputs(const std::vector<Nv12Fr
     return out;
 }
 
-// 매칭 기준은 common/detection_match.hpp 하나뿐이다(2026-09-21 이전에는 여기에 사본이 있었다).
+// 매칭 기준은 ref/detection_match.hpp 하나뿐이다(2026-09-21 이전에는 여기에 사본이 있었다).
 using yvo::detmatch::match;
 
 // ---------------------------------------------------------------- 원시 스트림 세션

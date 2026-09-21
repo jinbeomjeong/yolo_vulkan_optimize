@@ -12,7 +12,7 @@
 | 단계 | 무엇을 물었나 | 실측 | 판정 |
 |---|---|---|---|
 | **1 (P0)** | V3DV가 dma-heap fd를 import 하는가 | `memoryTypeBits = 0x1` 6/6, `vkAllocateMemory` SUCCESS 6/6, 왕복 일치 6/6. `requires/prefersDedicatedAllocation = 0` 6/6 | **조건부 합격** (`range = size−256` 6/6) |
-| **2** | 일원화 | `common/dma_heap_alloc.hpp`(헤더 전용·순수 POSIX) 신규. `DmaBufReadMap` 위임, `HeapOutPool` 어댑터화. **링크 그래프 변화 0변** | **완료** |
+| **2** | 일원화 | `core/dma_heap_alloc.hpp`(헤더 전용·순수 POSIX) 신규. `DmaBufReadMap` 위임, `HeapOutPool` 어댑터화. **링크 그래프 변화 0변** | **완료** |
 | **3** | −256 B 함정 | 헤드룸 질의 **256 B**(크기 무관 상수). `conv71_178` 409,600 → **425,984 B**, range **425,728 ≥ 409,600**. **6/6 `range ≥ hw`** | **S4 통과** |
 | **4** | **GPU가 캐시된 heap 버퍼를 읽어도 빠른가** | **heap/plain = 0.9994** (3라운드 인터리브, 300프레임/라운드). 독립 4회 전부 밴드 안 | **밴드 A: 손해 없음** |
 | **4 (G5)** | 정확성 | plain·heap 둘 다 후보 115/115, 점수 비트 불일치 **0**, 좌표 최대오차 **0.000122 px**. **두 경로 후보 집합이 바이트 단위 동일** | **S2 해당 없음** |

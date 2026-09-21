@@ -15,7 +15,7 @@
 //   → ②를 쓰던 두 도구의 출력은 이 변경으로 **아주 조금 달라질 수 있다**(n 이 짝수일 때).
 //     둘 다 단독 진단 도구이고 `07_results/` 의 표는 스크립트 집계가 만들므로 영향은 없다.
 //
-// 헤더 전용이다. `yvo_common` 에 링크하면 쓸 수 있다.
+// 헤더 전용이다. `yvo_toolkit` 에 링크하면 쓸 수 있다.
 #include <algorithm>
 #include <cstddef>
 #include <vector>

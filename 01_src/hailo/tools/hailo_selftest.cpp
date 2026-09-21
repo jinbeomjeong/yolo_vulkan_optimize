@@ -24,12 +24,12 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 
-#include "common/coco_labels.hpp"
-#include "common/cpu_letterbox.hpp"
-#include "common/frame_types.hpp"
+#include "core/coco_labels.hpp"
+#include "ref/cpu_letterbox.hpp"
+#include "core/frame_types.hpp"
 #include "hailo/hailo_runner.hpp"
-#include "common/stats.hpp"
-#include "common/tool_util.hpp"
+#include "toolkit/stats.hpp"
+#include "toolkit/tool_util.hpp"
 
 using yvo::percentile;
 
@@ -38,7 +38,7 @@ namespace {
 using yvo::tool::Nv12Frame;
 using yvo::tool::read_nv12_frames;
 
-// COCO 라벨은 common/coco_labels.hpp 에 하나로 모았다(중복 정의 제거).
+// COCO 라벨은 core/coco_labels.hpp 에 하나로 모았다(중복 정의 제거).
 using yvo::kCoco;
 
 struct Options {

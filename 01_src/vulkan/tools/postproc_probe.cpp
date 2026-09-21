@@ -53,10 +53,10 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
-#include "common/cpu_letterbox.hpp"
-#include "common/cpu_yolov8_decode.hpp"
-#include "common/dma_heap_alloc.hpp"
-#include "common/frame_types.hpp"
+#include "ref/cpu_letterbox.hpp"
+#include "ref/cpu_yolov8_decode.hpp"
+#include "core/dma_heap_alloc.hpp"
+#include "core/frame_types.hpp"
 #include "vulkan/dmabuf_export.hpp"
 #include "vulkan/dmabuf_import.hpp"
 #include "vulkan/vk_check.hpp"
@@ -65,9 +65,9 @@
 #include "vulkan/yolo_postproc.hpp"
 
 #include "heap_sum_spv.h"
-#include "common/tool_util.hpp"
+#include "toolkit/tool_util.hpp"
 #include "vulkan/postproc_fixture.hpp"
-#include "common/stats.hpp"
+#include "toolkit/stats.hpp"
 
 #ifdef YVO_HAVE_HAILO
 #include <atomic>
@@ -126,7 +126,7 @@ private:
 // 셸 한 줄 실행 결과 캡처. 정의는 heapimport 절에 있다(gpuab 가 온도·스로틀 기록에 먼저 쓴다).
 std::string run_capture(const char* cmd);
 
-// 빈 표본은 NaN("값 없음")으로 찍는다 — 0 과 구분하려고. 보간 자체는 common/stats.hpp 하나뿐이다.
+// 빈 표본은 NaN("값 없음")으로 찍는다 — 0 과 구분하려고. 보간 자체는 toolkit/stats.hpp 하나뿐이다.
 double percentile(std::vector<double> v, double q) {
     return v.empty() ? std::nan("") : yvo::percentile(std::move(v), q);
 }
@@ -1663,7 +1663,7 @@ int run_v3(const Options&, Tee& log) {
 //   ⑦ 왕복: CPU 가 mmap 으로 쓴 패턴의 바이트 합 == GPU(heap_sum.comp)가 계산한 합
 //
 // ── 2·3단계 이후 (부록 B.13) ────────────────────────────────────────────────────────────────
-// 할당·매핑·sync 는 전부 **`common/dma_heap_alloc.hpp` 의 `yvo::DmaHeapPool`** 이 한다(2단계 일원화).
+// 할당·매핑·sync 는 전부 **`core/dma_heap_alloc.hpp` 의 `yvo::DmaHeapPool`** 이 한다(2단계 일원화).
 // 프로브 안에 있던 인라인 구현(`HeapAlloc`/`HeapBuf`/`dma_sync`)은 없앴다.
 // 할당 크기는 **`align_up(hw + device_headroom, 16384)`** 다(3단계 B.12) — `device_headroom` 은
 // `vk::StorageHeadroomQuery` 가 질의로 구한다. **상수 256 을 박지 않는다.**
@@ -1686,7 +1686,7 @@ std::string run_capture(const char* cmd) {
 }
 
 // DMA_BUF_IOCTL_SYNC 를 non-strict 로 불러 errno 를 기록만 한다(프로브는 판정이 목적이다).
-// 실제 구현은 `yvo::dma_sync_*`(common/dma_heap_alloc.hpp)다 — 부록 B.10 R5.
+// 실제 구현은 `yvo::dma_sync_*`(core/dma_heap_alloc.hpp)다 — 부록 B.10 R5.
 int dma_sync_note(int fd, yvo::DmaSyncDir dir, bool start) {
     const std::uint64_t flags =
         (start ? DMA_BUF_SYNC_START : DMA_BUF_SYNC_END) | yvo::dma_sync_dir_bits(dir);

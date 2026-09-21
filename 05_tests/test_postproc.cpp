@@ -6,7 +6,7 @@
 //  PostprocFixture.*  (NPU 불필요, 수 초)
 //      `04_data/raw_tensors/`(5프레임 x 6텐서 + fixtures.json)를 `YoloPostproc`
 //      (input_alloc = Plain, input_sync = HostWrite)에 호스트 memcpy 로 먹이고
-//      `01_src/common/cpu_yolov8_decode.hpp` 의 `cpu_yolov8_candidates()` 와 비교한다.
+//      `01_src/ref/cpu_yolov8_decode.hpp` 의 `cpu_yolov8_candidates()` 와 비교한다.
 //      게이트(계획서 §4.5):
 //        G5 후보 개수 : CPU 와 **동일**(only_cpu = only_gpu = 0, overflow = 0)   알려진 값 115 / 115
 //        G5 점수      : **비트 일치**(불일치 0)                                   알려진 값 0
@@ -44,10 +44,10 @@
 #include <gtest/gtest.h>
 #include <unistd.h>
 
-#include "common/detection_match.hpp"
+#include "ref/detection_match.hpp"
 
-#include "common/cpu_yolov8_decode.hpp"
-#include "common/frame_types.hpp"
+#include "ref/cpu_yolov8_decode.hpp"
+#include "core/frame_types.hpp"
 #include "hailo/hailo_runner.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
 #include "pipeline/gpu_postproc_stage.hpp"

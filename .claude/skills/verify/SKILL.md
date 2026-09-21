@@ -33,7 +33,7 @@ cmake -S . -B build -G Ninja && cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-- `test_preproc` — GPU 전처리를 CPU 기준 구현(`01_src/common/cpu_letterbox.hpp`)과 비교한다.
+- `test_preproc` — GPU 전처리를 CPU 기준 구현(`01_src/ref/cpu_letterbox.hpp`)과 비교한다.
   합격 기준은 **max 오차 0**(근사가 아니라 비트 단위 일치)이다.
 - `test_detections` — CPU / GPU ptr / GPU dmabuf / GPU dmabuf NHCW 경로의 검출을 비교한다.
   NPU를 독점하므로 `RUN_SERIAL`이고 느리다(약 19초). 합격 기준은 **매칭 비율 1.0000**이다.

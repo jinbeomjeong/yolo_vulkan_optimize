@@ -68,8 +68,8 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 
-#include "common/coco_labels.hpp"
-#include "common/cpu_letterbox.hpp"
+#include "core/coco_labels.hpp"
+#include "ref/cpu_letterbox.hpp"
 #include "hailo/hailo_runner.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
 #include "pipeline/gpu_postproc_stage.hpp"
@@ -79,8 +79,8 @@
 
 #ifdef YVO_HAVE_DISPLAY
 #include "display/display_pipeline.hpp"
-#include "common/stats.hpp"
-#include "common/tool_util.hpp"
+#include "toolkit/stats.hpp"
+#include "toolkit/tool_util.hpp"
 
 using yvo::Stats;
 using yvo::stats;
@@ -130,7 +130,7 @@ bool install_stop_handlers() {
     return ok;
 }
 
-// COCO 라벨·클래스 색은 common/coco_labels.hpp 에 하나로 모았다(GPU 오버레이와 공유한다).
+// COCO 라벨·클래스 색은 core/coco_labels.hpp 에 하나로 모았다(GPU 오버레이와 공유한다).
 using yvo::class_name;
 
 enum class Mode { Ptr, Dmabuf };

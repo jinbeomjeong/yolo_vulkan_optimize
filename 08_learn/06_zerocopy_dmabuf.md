@@ -5,7 +5,7 @@
 > [05_vulkan_compute.md](05_vulkan_compute.md) (SSBO·배리어·큐)
 > **다 읽으면 읽을 수 있는 것**: [`01_src/vulkan/dmabuf_import.cpp`](../01_src/vulkan/dmabuf_import.cpp),
 > [`01_src/vulkan/dmabuf_export.hpp`](../01_src/vulkan/dmabuf_export.hpp),
-> [`01_src/common/dma_heap_alloc.hpp`](../01_src/common/dma_heap_alloc.hpp) 의 "3자 일관성 규약",
+> [`01_src/core/dma_heap_alloc.hpp`](../01_src/core/dma_heap_alloc.hpp) 의 "3자 일관성 규약",
 > [`01_src/vulkan/vk_storage_headroom.hpp`](../01_src/vulkan/vk_storage_headroom.hpp),
 > [`07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md) §4.3
 
@@ -199,7 +199,7 @@ libavcodec의 `AV_PIX_FMT_DRM_PRIME` 픽셀 포맷이 그것이고, 디스크립
 **(2) dma-heap** — 애플리케이션이 **직접 dma-buf를 할당**하고 싶을 때 쓰는 장치 파일이다.
 `/dev/dma_heap/system` 같은 경로를 열고 `ioctl(DMA_HEAP_IOCTL_ALLOC)` 을 하면 fd가 나온다.
 "어느 장치의 버퍼"가 아니라 **범용 공유 버퍼**를 만드는 수단이다.
-이 프로젝트에서는 [`dma_heap_alloc.hpp`](../01_src/common/dma_heap_alloc.hpp) 가 감싸고 있다.
+이 프로젝트에서는 [`dma_heap_alloc.hpp`](../01_src/core/dma_heap_alloc.hpp) 가 감싸고 있다.
 
 > 둘의 결정적 차이: **dma-heap 버퍼는 CPU에서 캐시된 매핑을 받는다.**
 > V3D가 준 버퍼는 그렇지 않다. 이 차이가 §6.11에서 다시 나온다.
@@ -533,7 +533,7 @@ dma-buf를 CPU가 `mmap` 해서 읽거나 쓸 때는, 커널에 **"지금부터 
 ### ★ 배리어와 sync ioctl은 대체재가 아니다
 
 이 구분이 이 챕터에서 가장 헷갈리는 지점이다.
-[`dma_heap_alloc.hpp`](../01_src/common/dma_heap_alloc.hpp) 가 한 문장으로 정리한다:
+[`dma_heap_alloc.hpp`](../01_src/core/dma_heap_alloc.hpp) 가 한 문장으로 정리한다:
 
 > "`DMA_BUF_IOCTL_SYNC` 는 **CPU 캐시만** 다루고 순서를 만들지 않는다.
 >  Vulkan 배리어는 **V3D 캐시만** 다루고 CPU 캐시를 건드리지 않는다. 둘은 대체재가 아니다."

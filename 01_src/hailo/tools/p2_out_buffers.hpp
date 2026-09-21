@@ -28,14 +28,14 @@
 #include <string>
 #include <vector>
 
-#include "common/dma_heap_alloc.hpp"
+#include "core/dma_heap_alloc.hpp"
 #include "vulkan/dmabuf_export.hpp"
 #include "vulkan/vulkan_context.hpp"
-#include "common/hailo_align.hpp"
+#include "core/hailo_align.hpp"
 
 namespace yvo::p2 {
 
-using yvo::kHailoAsyncAlign;  // 정의는 common/hailo_align.hpp 하나뿐이다
+using yvo::kHailoAsyncAlign;  // 정의는 core/hailo_align.hpp 하나뿐이다
 
 inline std::size_t align_up(std::size_t v, std::size_t a) { return a <= 1 ? v : (v + a - 1) / a * a; }
 
@@ -48,7 +48,7 @@ struct OutBufRef {
 };
 
 // CPU 읽기 구간을 여는/닫는다. heap 에서만 실제 ioctl 이 나간다.
-// 실제 동작은 common/dma_heap_alloc.hpp 의 dma_sync_* 에 위임한다(부록 B.11 일원화).
+// 실제 동작은 core/dma_heap_alloc.hpp 의 dma_sync_* 에 위임한다(부록 B.11 일원화).
 // **strict=true** 다 — 기존 구현은 반환값을 버렸다(부록 B.10 R5).
 inline void sync_cpu_read_begin(const OutBufRef& b) {
     if (!b.needs_sync || b.fd < 0) return;
@@ -92,7 +92,7 @@ private:
 // ── /dev/dma_heap (= vidbuf_cached → system 심볼릭 링크) ─────────────────────────────────────
 // 장치 노드는 video 그룹 권한이고 사용자 pi 는 video 그룹이다(실측).
 //
-// **`yvo::DmaHeapPool`(common/dma_heap_alloc.hpp) 위의 얇은 어댑터다**(부록 B.11 일원화).
+// **`yvo::DmaHeapPool`(core/dma_heap_alloc.hpp) 위의 얇은 어댑터다**(부록 B.11 일원화).
 // 직접 구현했던 것과 달라진 점 셋:
 //   · `memset` 이 **WRITE sync 로 감싸진다** — 부록 B.6(c) 의 결함이 여기서 자동으로 고쳐진다
 //   · 16384 정렬이 안 맞아도 **throw 하지 않는다** — 예약 후 MAP_FIXED 재매핑으로 맞춘다

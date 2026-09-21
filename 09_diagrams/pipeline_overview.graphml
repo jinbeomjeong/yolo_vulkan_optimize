@@ -30,7 +30,7 @@ HEVC 1920×1080@30 · 900프레임<y:LabelModel>
       </data>
     </node>
     <node id="n_dec">
-      <data key="d5">HW HEVC 디코드. 출력 계약은 /home/pi/workspace/yolo_vulkan_optimize/01_src/common/frame_types.hpp struct DrmFrame. 수치 출처: 07_results/display_e2e/raw/disp_source_run1/stdout.log 'decode call ms median 0.107'. README.md §1 도 'decode call 0.107 ms/f' 로 갱신됐다(이전 표기 'CPU 0.10 ms/f' 는 CPU 시간이 아니라 이 디코드 호출 시간이었다).</data>
+      <data key="d5">HW HEVC 디코드. 출력 계약은 /home/pi/workspace/yolo_vulkan_optimize/01_src/core/frame_types.hpp struct DrmFrame. 수치 출처: 07_results/display_e2e/raw/disp_source_run1/stdout.log 'decode call ms median 0.107'. README.md §1 도 'decode call 0.107 ms/f' 로 갱신됐다(이전 표기 'CPU 0.10 ms/f' 는 CPU 시간이 아니라 이 디코드 호출 시간이었다).</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="66.3" width="260.0" x="300.0" y="104.0"/>
@@ -49,7 +49,7 @@ decode call median 0.107 ms/f<y:LabelModel>
       </data>
     </node>
     <node id="n_drm">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/common/frame_types.hpp struct DrmFrame. modifier 0x0700000000000004(SAND128), Y 열 높이 1088 / UV 544, keepalive = std::shared_ptr&lt;AVFrame&gt;. README.md §1 18행.</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/core/frame_types.hpp struct DrmFrame. modifier 0x0700000000000004(SAND128), Y 열 높이 1088 / UV 544, keepalive = std::shared_ptr&lt;AVFrame&gt;. README.md §1 18행.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.data">
           <y:Geometry height="54.0" width="260.0" x="300.0" y="220.3"/>
@@ -86,7 +86,7 @@ de-SAND + letterbox + BT.709→sRGB<y:LabelModel>
       </data>
     </node>
     <node id="n_nhcw">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/common/frame_types.hpp struct PreprocOutput (enum TensorLayout::Nhcw). 바이트 배치 idx = (dy*3+c)*dst_w+dx. NHCW 로 넘기면 HailoRT 의 CPU 입력 변환(약 14 ms/f)이 사라진다.</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/core/frame_types.hpp struct PreprocOutput (enum TensorLayout::Nhcw). 바이트 배치 idx = (dy*3+c)*dst_w+dx. NHCW 로 넘기면 HailoRT 의 CPU 입력 변환(약 14 ms/f)이 사라진다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.data">
           <y:Geometry height="54.0" width="260.0" x="300.0" y="440.6"/>
@@ -178,7 +178,7 @@ dequant + DFL + threshold + 역변환<y:LabelModel>
       </data>
     </node>
     <node id="n_det">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/common/frame_types.hpp struct Detection (class_id, score, x1/y1/x2/y2 = 원본 프레임 픽셀). 검출 총수 3369 는 07_results/display_e2e/summary.md §3 의 4설정 전부 동일한 값이다.</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/core/frame_types.hpp struct Detection (class_id, score, x1/y1/x2/y2 = 원본 프레임 픽셀). 검출 총수 3369 는 07_results/display_e2e/summary.md §3 의 4설정 전부 동일한 값이다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.data">
           <y:Geometry height="54.0" width="260.0" x="300.0" y="985.1999999999999"/>

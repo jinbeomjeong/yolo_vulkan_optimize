@@ -1,7 +1,7 @@
 // SAND128 NV12 dma-buf → 640x640 packed RGB888 letterbox (Vulkan 컴퓨트, 1단계: host-visible 출력)
 //
 // 셰이더(02_shaders/sand_letterbox.comp)가 한 번의 디스패치로 de-SAND + bilinear 축소 + BT.709 limited → RGB
-// + 패딩 114를 처리한다. 수식은 common/cpu_letterbox.hpp(cpu_letterbox_nv12_bt709)와 같다.
+// + 패딩 114를 처리한다. 수식은 ref/cpu_letterbox.hpp(cpu_letterbox_nv12_bt709)와 같다.
 //
 // 슬롯 규약 (HailoRunner와 같은 슬롯 번호를 쓴다):
 //   submit(frame, slot) → [GPU 실행] → wait(slot)이 PreprocOutput을 돌려준다.
@@ -25,7 +25,7 @@
 
 #include <vulkan/vulkan.h>
 
-#include "common/frame_types.hpp"
+#include "core/frame_types.hpp"
 #include "vulkan/dmabuf_import.hpp"
 
 namespace yvo::vk {

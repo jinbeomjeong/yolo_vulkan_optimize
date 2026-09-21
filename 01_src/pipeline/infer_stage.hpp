@@ -23,7 +23,7 @@
 #include <memory>
 #include <utility>
 
-#include "common/frame_types.hpp"
+#include "core/frame_types.hpp"
 #include "hailo/hailo_runner.hpp"
 
 namespace yvo::pipeline {

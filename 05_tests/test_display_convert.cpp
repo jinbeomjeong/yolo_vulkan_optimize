@@ -2,7 +2,7 @@
 //
 // 왜 이 테스트가 있나 (2026-09-21):
 //   BT.709 limited → RGB 계수가 저장소에 세 벌 있다.
-//     ① common/cpu_letterbox.hpp  (CPU 기준, 수식의 원문)
+//     ① ref/cpu_letterbox.hpp  (CPU 기준, 수식의 원문)
 //     ② 02_shaders/sand_letterbox.comp  (전처리)  — test_preproc 이 비트 일치를 강제한다
 //     ③ 02_shaders/display_convert.comp (표시)    — **ctest 가 없었다**(수동 프로브 P8 뿐)
 //   ③ 을 고쳐도 아무 테스트도 실패하지 않는 상태였다. 이 테스트가 그 구멍을 막는다.

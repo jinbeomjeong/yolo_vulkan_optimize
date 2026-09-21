@@ -35,7 +35,7 @@
 #include <opencv2/imgproc.hpp>
 #endif
 
-#include "display/overlay_reference.hpp"
+#include "ref/overlay_reference.hpp"
 #include "display/overlay_renderer.hpp"
 #include "display/offscreen_target.hpp"
 #include "vulkan/vk_check.hpp"

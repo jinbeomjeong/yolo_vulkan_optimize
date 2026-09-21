@@ -63,7 +63,7 @@ SVG/PNG/PDF 내보내기는 yEd GUI 에서 사람이 한다(File ▸ Export). yE
 | `--postproc gpu` ⇒ `--mode dmabuf --layout nhcw` 강제 | `01_src/pipeline/main.cpp:413-418` |
 | 스레드 규율(VkQueue 1개 → Vulkan 은 메인 스레드만) | `01_src/pipeline/infer_stage.hpp:9-17` |
 | HailoRT 콜백 람다 / NMS 호출 | `01_src/pipeline/gpu_postproc_stage.cpp:136` / `:182` |
-| `DrmFrame` · `PreprocOutput` · `Detection` 계약 | `01_src/common/frame_types.hpp` |
+| `DrmFrame` · `PreprocOutput` · `Detection` 계약 | `01_src/core/frame_types.hpp` |
 
 ### `README.md` §1 과의 관계 (2026-09-20 정렬 완료)
 

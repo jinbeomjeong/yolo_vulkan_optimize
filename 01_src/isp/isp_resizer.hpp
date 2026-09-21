@@ -30,7 +30,7 @@
 #include <memory>
 #include <string>
 
-#include "common/frame_types.hpp"
+#include "core/frame_types.hpp"
 
 namespace yvo::isp {
 

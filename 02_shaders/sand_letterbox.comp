@@ -1,7 +1,7 @@
 #version 450
 // SAND128 NV12 → letterbox RGB888 (BT.709 limited range), 출력 레이아웃 NHWC 또는 NHCW
 //
-// 기준 구현: 01_src/common/cpu_letterbox.hpp (cpu_letterbox_nv12_bt709) + common/sand.hpp 주소 규칙.
+// 기준 구현: 01_src/ref/cpu_letterbox.hpp (cpu_letterbox_nv12_bt709) + ref/sand.hpp 주소 규칙.
 // invocation 하나가 출력 한 행의 연속 4픽셀(12바이트 = uint 3개)을 계산해 32bit 단위로 쓴다.
 //   gl_GlobalInvocationID.x = 4픽셀 묶음 번호(0..dst_w/4-1), .y = 출력 행
 // 출력 레이아웃은 specialization constant 2(kOutNhcw)로 고르며 픽셀 값 계산은 완전히 같다. 쓰기 주소·패킹만 다르다.

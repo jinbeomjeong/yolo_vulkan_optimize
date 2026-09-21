@@ -9,7 +9,7 @@
 // 스트림 name 필드와 max_score_err 가 없었으며, 반대로 프로브 쪽은 frames == 0 검사가 없었다.
 // 둘의 합집합을 여기 둔다. **게이트 판정(무엇을 합격으로 볼지)은 각 호출자에 남긴다.**
 //
-// 헤더 전용이다. 의존은 common/ 과 vulkan/yolo_postproc.hpp 뿐이다.
+// 헤더 전용이다. 의존은 core/·ref/ 와 vulkan/yolo_postproc.hpp 뿐이다.
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -27,8 +27,8 @@
 #include <utility>
 #include <vector>
 
-#include "common/cpu_yolov8_decode.hpp"
-#include "common/frame_types.hpp"
+#include "ref/cpu_yolov8_decode.hpp"
+#include "core/frame_types.hpp"
 #include "vulkan/yolo_postproc.hpp"
 
 namespace yvo::fixture {

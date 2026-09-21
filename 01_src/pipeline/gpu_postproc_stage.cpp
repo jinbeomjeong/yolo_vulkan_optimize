@@ -6,7 +6,7 @@
 
 #include <unistd.h>
 
-#include "common/cpu_yolov8_decode.hpp"
+#include "ref/cpu_yolov8_decode.hpp"
 #include "vulkan/vulkan_context.hpp"
 
 namespace yvo::pipeline {

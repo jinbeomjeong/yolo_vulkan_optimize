@@ -47,7 +47,7 @@ labwc 광고 전역: `wp_viewporter=1`, `wp_presentation=1`, `wl_subcompositor=1
    계획서가 "이 작업에서 가장 중요한 검증 단계"라고 한 판단이 맞았다.
 
 7. **오버레이는 경계 규약을 먼저 글로 정해 비트 일치를 얻었다.** P5 에서 한 번 어긋났던 off-by-one
-   (400x300 대신 399x299)이 재발하지 않았다. `01_src/display/overlay_reference.hpp` 상단의 R0~R8 이 그 규약이고,
+   (400x300 대신 399x299)이 재발하지 않았다. `01_src/ref/overlay_reference.hpp` 상단의 R0~R8 이 그 규약이고,
    GPU(`overlay_boxes.comp`)와 CPU 기준을 **그 글에 맞춰 각각** 썼다. R1(round half up + 닫힌 범위)이
    "399냐 400이냐"를 명시적으로 닫는다.
 8. **오버레이를 `DisplayConvert` 와 같은 커맨드 버퍼에 이어 붙여도 변환이 느려지지 않는다.**

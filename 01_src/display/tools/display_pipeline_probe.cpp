@@ -17,11 +17,11 @@
 #include <string>
 #include <vector>
 
-#include "common/coco_labels.hpp"
+#include "core/coco_labels.hpp"
 #include "display/display_pipeline.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
 #include "vulkan/vulkan_context.hpp"
-#include "common/stats.hpp"
+#include "toolkit/stats.hpp"
 
 using yvo::Stats;
 using yvo::stats;
