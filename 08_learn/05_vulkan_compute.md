@@ -5,7 +5,7 @@
 > **다 읽으면 읽을 수 있는 것**: [`02_shaders/sand_letterbox.comp`](../02_shaders/sand_letterbox.comp)
 > 와 [`02_shaders/yolo_decode.comp`](../02_shaders/yolo_decode.comp) 의 머리 주석,
 > [`01_src/vulkan/vulkan_context.hpp`](../01_src/vulkan/vulkan_context.hpp),
-> 최상위 [`CMakeLists.txt`](../CMakeLists.txt) 의 `yvo_add_shaders()` 함수
+> [`cmake/YvoShaders.cmake`](../cmake/YvoShaders.cmake) 의 `yvo_add_shaders()` 함수
 
 ---
 
@@ -644,7 +644,7 @@ RGBA 이미지 **쓰기** 쪽이고, 세로로 긴 영역이 이미지 타일에
 
 ### 빌드 파이프라인 — glslc → spirv-val → C++ 헤더 임베드
 
-셰이더는 빌드 시점에 세 단계를 지난다. 최상위 [`CMakeLists.txt`](../CMakeLists.txt) 의
+셰이더는 빌드 시점에 세 단계를 지난다. [`cmake/YvoShaders.cmake`](../cmake/YvoShaders.cmake) 의
 `yvo_add_shaders()` 함수가 그 전부다.
 
 ```

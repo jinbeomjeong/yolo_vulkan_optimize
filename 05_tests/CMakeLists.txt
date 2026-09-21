@@ -3,13 +3,12 @@ include(GoogleTest)
 
 if(TARGET yvo_vulkan AND EXISTS ${PROJECT_SOURCE_DIR}/01_src/pipeline/CMakeLists.txt)
   add_executable(test_preproc test_preproc.cpp)
-  target_link_libraries(test_preproc PRIVATE yvo_vulkan yvo_decoder GTest::gtest_main yvo_warnings)
-  target_compile_options(test_preproc PRIVATE -mcpu=cortex-a76)
+  target_link_libraries(test_preproc PRIVATE yvo_vulkan yvo_decoder GTest::gtest_main)
+  yvo_target_defaults(test_preproc)
   target_compile_definitions(test_preproc PRIVATE
     YVO_TEST_VIDEO="${PROJECT_SOURCE_DIR}/04_data/videos/video_h265.mp4")
-  if(OpenCV_FOUND)
-    target_link_libraries(test_preproc PRIVATE ${OpenCV_LIBS})
-    target_include_directories(test_preproc PRIVATE ${OpenCV_INCLUDE_DIRS})
+  if(TARGET yvo_opencv)
+    target_link_libraries(test_preproc PRIVATE yvo_opencv)
     target_compile_definitions(test_preproc PRIVATE YVO_HAVE_OPENCV=1)
   endif()
   # 실패 시 차이 이미지는 build/05_tests/preproc_diff/ 에 저장된다
@@ -24,13 +23,12 @@ endif()
 # /dev/media0을 독점하므로 RUN_SERIAL로 돌린다.
 if(TARGET yvo_isp AND TARGET yvo_vulkan AND TARGET yvo_decoder)
   add_executable(test_isp_preproc test_isp_preproc.cpp)
-  target_link_libraries(test_isp_preproc PRIVATE yvo_isp yvo_vulkan yvo_decoder GTest::gtest_main yvo_warnings)
-  target_compile_options(test_isp_preproc PRIVATE -mcpu=cortex-a76)
+  target_link_libraries(test_isp_preproc PRIVATE yvo_isp yvo_vulkan yvo_decoder GTest::gtest_main)
+  yvo_target_defaults(test_isp_preproc)
   target_compile_definitions(test_isp_preproc PRIVATE
     YVO_TEST_VIDEO="${PROJECT_SOURCE_DIR}/04_data/videos/video_h265.mp4")
-  if(OpenCV_FOUND)
-    target_link_libraries(test_isp_preproc PRIVATE ${OpenCV_LIBS})
-    target_include_directories(test_isp_preproc PRIVATE ${OpenCV_INCLUDE_DIRS})
+  if(TARGET yvo_opencv)
+    target_link_libraries(test_isp_preproc PRIVATE yvo_opencv)
     target_compile_definitions(test_isp_preproc PRIVATE YVO_HAVE_OPENCV=1)
   endif()
   # 실패 시 차이 이미지는 build/05_tests/isp_preproc_diff/ 에 저장된다
@@ -45,8 +43,8 @@ endif()
 # NPU를 독점하므로 RUN_SERIAL로 돌린다.
 if(TARGET yvo_vulkan AND TARGET yvo_hailo AND TARGET yvo_decoder)
   add_executable(test_detections test_detections.cpp)
-  target_link_libraries(test_detections PRIVATE yvo_vulkan yvo_hailo yvo_decoder GTest::gtest_main yvo_warnings)
-  target_compile_options(test_detections PRIVATE -mcpu=cortex-a76)
+  target_link_libraries(test_detections PRIVATE yvo_vulkan yvo_hailo yvo_decoder GTest::gtest_main)
+  yvo_target_defaults(test_detections)
   target_compile_definitions(test_detections PRIVATE
     YVO_TEST_VIDEO="${PROJECT_SOURCE_DIR}/04_data/videos/video_h265.mp4"
     YVO_TEST_HEF="${PROJECT_SOURCE_DIR}/03_models/yolov11m.hef")
@@ -64,8 +62,8 @@ endif()
 # NPU 가 다른 작업에 잡혀 있을 때 셰이더 회귀를 못 잡는다.
 if(TARGET yvo_stages AND TARGET yvo_decoder)
   add_executable(test_postproc test_postproc.cpp)
-  target_link_libraries(test_postproc PRIVATE yvo_stages yvo_decoder GTest::gtest_main yvo_warnings)
-  target_compile_options(test_postproc PRIVATE -mcpu=cortex-a76)
+  target_link_libraries(test_postproc PRIVATE yvo_stages yvo_decoder GTest::gtest_main)
+  yvo_target_defaults(test_postproc)
   target_compile_definitions(test_postproc PRIVATE
     YVO_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/04_data/raw_tensors"
     YVO_TEST_VIDEO="${PROJECT_SOURCE_DIR}/04_data/videos/video_h265.mp4"
@@ -89,11 +87,10 @@ endif()
 # OverlayVsOpenCV 는 참고용(느슨한 기하 기준)이고 OpenCV 가 있을 때만 빌드된다.
 if(TARGET yvo_display)
   add_executable(test_overlay test_overlay.cpp)
-  target_link_libraries(test_overlay PRIVATE yvo_display GTest::gtest_main yvo_warnings)
-  target_compile_options(test_overlay PRIVATE -mcpu=cortex-a76)
-  if(OpenCV_FOUND)
-    target_link_libraries(test_overlay PRIVATE ${OpenCV_LIBS})
-    target_include_directories(test_overlay PRIVATE ${OpenCV_INCLUDE_DIRS})
+  target_link_libraries(test_overlay PRIVATE yvo_display GTest::gtest_main)
+  yvo_target_defaults(test_overlay)
+  if(TARGET yvo_opencv)
+    target_link_libraries(test_overlay PRIVATE yvo_opencv)
     target_compile_definitions(test_overlay PRIVATE YVO_HAVE_OPENCV=1)
   endif()
   # 실패 시 차이 이미지는 build/05_tests/overlay_diff/ 에 저장된다
@@ -107,8 +104,8 @@ endif()
 # BT.709 계수의 세 번째 사본에 게이트가 없던 구멍을 막는다(2026-09-21). 판정은 display/display_convert_check.hpp.
 if(TARGET yvo_display AND TARGET yvo_decoder)
   add_executable(test_display_convert test_display_convert.cpp)
-  target_link_libraries(test_display_convert PRIVATE yvo_display yvo_decoder GTest::gtest_main yvo_warnings)
-  target_compile_options(test_display_convert PRIVATE -mcpu=cortex-a76)
+  target_link_libraries(test_display_convert PRIVATE yvo_display yvo_decoder GTest::gtest_main)
+  yvo_target_defaults(test_display_convert)
   target_compile_definitions(test_display_convert PRIVATE
     YVO_TEST_VIDEO="${PROJECT_SOURCE_DIR}/04_data/videos/video_h265.mp4")
   gtest_discover_tests(test_display_convert

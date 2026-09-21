@@ -149,7 +149,7 @@ GPU 셰이더는 전부 CPU 기준 구현의 **번역본**이고, 원문은 `01_
 - 워크그룹 크기는 셰이더에 박혀 있지 않고 **호스트가 정한다**(specialization constant).
   같은 셰이더로 여러 크기를 재 보고 고르기 위해서다
 - 빌드할 때 `glslc -Werror` → `spirv-val` 검증 → SPIR-V를 C++ 헤더로 변환까지 자동으로 돈다.
-  그래서 실행 파일이 `.spv` 파일을 따로 읽지 않는다 (규칙은 최상위 [`CMakeLists.txt`](../CMakeLists.txt)의 `yvo_add_shaders`)
+  그래서 실행 파일이 `.spv` 파일을 따로 읽지 않는다 (규칙은 [`cmake/YvoShaders.cmake`](../cmake/YvoShaders.cmake)의 `yvo_add_shaders`)
 
 ---
 
@@ -296,7 +296,7 @@ build/bin/yvo_pipeline --video ... --hef ...
 **Q3. 셰이더를 고쳤는데 빌드가 안 된다. 왜?**
 
 빌드 과정에 `glslc -Werror`(경고도 에러로 취급)와 `spirv-val`(SPIR-V 검증)이 들어 있다.
-둘 중 하나라도 걸리면 빌드가 실패한다. 규칙은 최상위 `CMakeLists.txt`의 `yvo_add_shaders`에 있다.
+둘 중 하나라도 걸리면 빌드가 실패한다. 규칙은 `cmake/YvoShaders.cmake`의 `yvo_add_shaders`에 있다.
 
 **Q4. NPU가 다른 사람에게 잡혀 있을 때도 돌릴 수 있는 테스트가 있는가?**
 
