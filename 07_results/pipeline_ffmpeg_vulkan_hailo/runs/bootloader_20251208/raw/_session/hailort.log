@@ -1,0 +1,1479 @@
+[2026-09-29 00:40:43.677] [8256] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:40:43.677] [8256] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:40:43.677] [8256] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:40:43.901] [8297] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:40:43.901] [8297] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:40:43.902] [8297] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:40:44.106] [8311] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:40:44.107] [8311] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:40:44.107] [8311] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:41:59.286] [8575] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:41:59.287] [8575] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:41:59.287] [8575] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:41:59.506] [8589] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:41:59.507] [8589] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:41:59.507] [8589] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:42:41.082] [8718] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:42:41.082] [8718] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:42:41.082] [8718] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:42:41.282] [8729] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:42:41.282] [8729] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:42:41.282] [8729] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:42:46.514] [8747] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:42:46.515] [8747] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:42:46.515] [8747] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:42:51.750] [8794] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:42:51.751] [8794] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:42:51.751] [8794] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:42:56.970] [8871] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:42:56.971] [8871] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:42:56.971] [8871] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:02.202] [8901] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:43:02.203] [8901] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:02.203] [8901] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:07.454] [8969] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:43:07.454] [8969] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:07.455] [8969] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:12.681] [9004] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:43:12.681] [9004] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:12.682] [9004] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:17.922] [9049] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:43:17.923] [9049] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:17.923] [9049] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:23.169] [9116] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:43:23.169] [9116] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:23.169] [9116] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:28.386] [9147] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:43:28.387] [9147] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:28.387] [9147] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:33.605] [9168] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:43:33.606] [9168] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:33.606] [9168] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:38.834] [9206] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:43:38.835] [9206] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:38.835] [9206] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:44.082] [9239] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:43:44.083] [9239] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:44.083] [9239] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:49.330] [9260] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:43:49.331] [9260] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:49.331] [9260] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:54.610] [9322] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:43:54.611] [9322] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:54.611] [9322] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:59.837] [9355] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:43:59.837] [9355] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:43:59.837] [9355] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:44:05.065] [9399] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:44:05.065] [9399] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:44:05.065] [9399] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:44:10.307] [9434] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:44:10.307] [9434] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:44:10.307] [9434] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:44:10.555] [9463] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:44:10.555] [9463] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:44:10.555] [9463] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:44:46.573] [9676] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:44:46.573] [9676] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:44:46.573] [9676] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:44:46.778] [9687] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:44:46.779] [9687] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:44:46.779] [9687] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:44:52.009] [9709] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:44:52.009] [9709] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:44:52.009] [9709] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:44:57.246] [9730] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:44:57.247] [9730] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:44:57.247] [9730] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:02.486] [9749] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:45:02.486] [9749] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:02.486] [9749] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:07.726] [9770] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:45:07.726] [9770] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:07.726] [9770] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:12.974] [9788] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:45:12.975] [9788] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:12.975] [9788] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:18.202] [9812] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:45:18.203] [9812] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:18.203] [9812] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:23.462] [9835] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:45:23.462] [9835] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:23.462] [9835] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:28.678] [9856] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:45:28.679] [9856] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:28.679] [9856] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:33.910] [9877] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:45:33.911] [9877] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:33.911] [9877] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:39.153] [9911] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:45:39.153] [9911] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:39.153] [9911] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:44.382] [9932] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:45:44.383] [9932] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:44.383] [9932] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:49.617] [9953] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:45:49.617] [9953] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:49.618] [9953] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:54.834] [9972] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:45:54.835] [9972] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:45:54.835] [9972] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:46:00.077] [9994] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:46:00.077] [9994] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:46:00.077] [9994] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:46:05.306] [10015] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:46:05.307] [10015] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:46:05.307] [10015] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:46:10.538] [10033] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:46:10.539] [10033] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:46:10.539] [10033] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:46:15.785] [10058] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:46:15.786] [10058] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:46:15.786] [10058] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:46:21.022] [10076] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:46:21.023] [10076] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:46:21.023] [10076] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:46:26.254] [10097] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:46:26.255] [10097] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:46:26.255] [10097] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:46:26.465] [10111] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:46:26.465] [10111] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:46:26.465] [10111] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:47:41.657] [10355] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:47:41.657] [10355] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:47:41.657] [10355] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:47:41.858] [10366] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:47:41.859] [10366] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:47:41.859] [10366] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:47:47.085] [10384] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:47:47.086] [10384] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:47:47.086] [10384] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:47:52.319] [10405] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:47:52.319] [10405] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:47:52.319] [10405] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:47:57.558] [10426] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:47:57.559] [10426] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:47:57.559] [10426] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:02.790] [10446] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:48:02.791] [10446] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:02.791] [10446] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:08.022] [10469] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:48:08.023] [10469] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:08.023] [10469] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:13.257] [10487] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:48:13.257] [10487] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:13.257] [10487] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:18.494] [10508] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:48:18.495] [10508] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:18.495] [10508] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:23.733] [10532] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:48:23.733] [10532] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:23.733] [10532] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:28.965] [10550] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:48:28.965] [10550] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:28.965] [10550] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:34.197] [10589] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:48:34.197] [10589] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:34.198] [10589] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:39.414] [10610] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:48:39.414] [10610] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:39.414] [10610] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:44.646] [10629] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:48:44.647] [10629] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:44.647] [10629] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:49.882] [10653] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:48:49.883] [10653] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:49.883] [10653] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:55.122] [10671] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:48:55.122] [10671] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:55.122] [10671] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:55.340] [10688] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:48:55.341] [10688] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:48:55.341] [10688] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:49:36.942] [10805] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:49:36.943] [10805] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:49:36.943] [10805] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:49:37.150] [10816] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:49:37.150] [10816] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:49:37.150] [10816] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:49:42.386] [10838] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:49:42.387] [10838] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:49:42.387] [10838] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:49:47.612] [10859] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:49:47.613] [10859] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:49:47.613] [10859] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:49:52.830] [10880] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:49:52.831] [10880] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:49:52.831] [10880] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:49:58.085] [10901] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:49:58.086] [10901] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:49:58.086] [10901] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:03.313] [10919] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:50:03.313] [10919] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:03.314] [10919] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:08.546] [10942] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:50:08.547] [10942] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:08.547] [10942] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:13.782] [10963] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:50:13.783] [10963] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:13.783] [10963] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:19.045] [10982] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:50:19.045] [10982] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:19.045] [10982] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:24.262] [11006] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:50:24.262] [11006] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:24.262] [11006] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:29.490] [11028] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:50:29.490] [11028] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:29.490] [11028] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:34.731] [11070] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:50:34.731] [11070] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:34.731] [11070] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:39.974] [11207] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:50:39.975] [11207] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:39.975] [11207] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:45.226] [11225] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:50:45.227] [11225] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:45.227] [11225] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:50.462] [11249] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:50:50.463] [11249] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:50.463] [11249] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:55.706] [11273] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:50:55.706] [11273] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:50:55.706] [11273] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:51:00.930] [11293] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:51:00.930] [11293] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:51:00.930] [11293] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:51:06.153] [11315] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:51:06.154] [11315] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:51:06.154] [11315] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:51:06.366] [11329] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:51:06.366] [11329] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:51:06.366] [11329] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:51:42.438] [11460] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:51:42.438] [11460] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:51:42.438] [11460] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:51:42.689] [11490] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:51:42.689] [11490] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:51:42.689] [11490] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:51:47.922] [11622] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:51:47.923] [11622] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:51:47.923] [11622] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:51:53.170] [11686] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:51:53.171] [11686] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:51:53.171] [11686] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:51:58.414] [11709] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:51:58.415] [11709] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:51:58.415] [11709] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:03.662] [11791] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:52:03.663] [11791] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:03.663] [11791] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:08.903] [11811] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:52:08.903] [11811] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:08.903] [11811] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:14.126] [11832] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:52:14.127] [11832] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:14.127] [11832] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:19.370] [11863] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:52:19.370] [11863] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:19.370] [11863] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:24.614] [11888] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:52:24.615] [11888] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:24.615] [11888] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:29.853] [11909] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:52:29.853] [11909] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:29.853] [11909] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:35.085] [11927] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:52:35.085] [11927] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:35.085] [11927] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:40.306] [11951] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:52:40.306] [11951] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:40.306] [11951] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:45.542] [11970] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:52:45.543] [11970] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:45.543] [11970] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:50.774] [11991] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:52:50.775] [11991] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:50.775] [11991] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:56.013] [12019] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:52:56.013] [12019] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:52:56.013] [12019] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:53:01.242] [12038] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:53:01.243] [12038] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:53:01.243] [12038] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:53:01.453] [12053] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:53:01.453] [12053] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:53:01.453] [12053] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:54:16.581] [12250] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:54:16.581] [12250] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:54:16.581] [12250] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:54:16.774] [12261] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:54:16.775] [12261] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:54:16.775] [12261] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:54:22.010] [12285] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:54:22.010] [12285] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:54:22.010] [12285] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:54:27.242] [12309] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:54:27.243] [12309] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:54:27.243] [12309] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:54:32.478] [12330] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:54:32.479] [12330] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:54:32.479] [12330] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:54:37.706] [12352] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:54:37.707] [12352] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:54:37.707] [12352] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:54:42.950] [12374] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:54:42.950] [12374] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:54:42.950] [12374] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:54:48.194] [12396] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:54:48.195] [12396] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:54:48.195] [12396] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:54:53.446] [12420] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:54:53.446] [12420] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:54:53.446] [12420] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:54:58.701] [12442] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:54:58.701] [12442] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:54:58.701] [12442] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:55:03.930] [12463] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:55:03.930] [12463] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:55:03.930] [12463] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:55:09.174] [12482] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:55:09.175] [12482] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:55:09.175] [12482] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:55:14.413] [12504] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:55:14.414] [12504] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:55:14.414] [12504] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:55:19.642] [12522] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:55:19.642] [12522] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:55:19.642] [12522] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:55:24.863] [12551] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:55:24.863] [12551] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:55:24.863] [12551] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:55:30.094] [12572] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:55:30.094] [12572] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:55:30.095] [12572] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:55:35.326] [12590] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:55:35.327] [12590] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:55:35.327] [12590] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:55:40.562] [12612] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:55:40.562] [12612] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:55:40.562] [12612] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:55:40.770] [12627] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:55:40.771] [12627] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:55:40.771] [12627] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:56:22.366] [12753] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:56:22.366] [12753] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:56:22.367] [12753] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:56:22.566] [12767] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:56:22.566] [12767] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:56:22.566] [12767] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:56:27.802] [12786] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:56:27.802] [12786] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:56:27.802] [12786] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:56:33.034] [12807] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:56:33.035] [12807] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:56:33.035] [12807] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:56:38.274] [12828] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:56:38.275] [12828] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:56:38.275] [12828] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:56:43.506] [12847] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:56:43.507] [12847] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:56:43.507] [12847] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:56:48.778] [12868] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:56:48.778] [12868] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:56:48.779] [12868] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:56:54.013] [12895] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:56:54.013] [12895] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:56:54.013] [12895] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:56:59.242] [12913] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:56:59.243] [12913] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:56:59.243] [12913] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:04.481] [12934] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:57:04.481] [12934] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:04.481] [12934] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:09.726] [12954] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:57:09.726] [12954] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:09.726] [12954] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:14.970] [12977] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:57:14.971] [12977] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:14.971] [12977] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:20.206] [12998] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:57:20.207] [12998] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:20.207] [12998] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:25.446] [13022] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:57:25.447] [13022] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:25.447] [13022] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:30.709] [13043] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:57:30.709] [13043] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:30.709] [13043] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:35.938] [13064] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:57:35.938] [13064] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:35.938] [13064] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:41.169] [13106] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:57:41.170] [13106] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:41.170] [13106] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:46.406] [13181] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:57:46.407] [13181] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:46.407] [13181] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:51.638] [13244] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:57:51.639] [13244] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:51.639] [13244] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:56.866] [13269] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:57:56.867] [13269] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:56.867] [13269] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:57.082] [13283] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:57:57.082] [13283] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:57:57.082] [13283] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:58:33.017] [13389] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:58:33.017] [13389] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:58:33.018] [13389] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:58:33.225] [13400] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:58:33.225] [13400] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:58:33.225] [13400] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:58:38.466] [13426] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:58:38.467] [13426] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:58:38.467] [13426] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:58:43.722] [13460] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:58:43.723] [13460] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:58:43.723] [13460] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:58:48.958] [13481] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:58:48.959] [13481] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:58:48.959] [13481] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:58:54.198] [13508] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:58:54.198] [13508] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:58:54.199] [13508] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:58:59.430] [13529] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:58:59.431] [13529] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:58:59.431] [13529] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:04.665] [13550] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:59:04.665] [13550] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:04.665] [13550] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:09.906] [13568] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:59:09.907] [13568] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:09.907] [13568] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:15.138] [13592] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:59:15.139] [13592] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:15.139] [13592] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:20.369] [13613] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:59:20.369] [13613] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:20.369] [13613] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:25.618] [13637] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:59:25.619] [13637] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:25.619] [13637] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:30.842] [13659] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:59:30.842] [13659] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:30.843] [13659] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:36.074] [13680] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:59:36.075] [13680] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:36.075] [13680] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:41.298] [13715] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:59:41.298] [13715] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:41.298] [13715] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:46.534] [13736] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:59:46.535] [13736] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:46.535] [13736] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:51.773] [13755] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:59:51.773] [13755] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:51.773] [13755] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:57.006] [13785] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 00:59:57.006] [13785] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 00:59:57.006] [13785] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:00:02.234] [13806] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:00:02.235] [13806] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:00:02.235] [13806] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:00:07.485] [13824] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:00:07.485] [13824] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:00:07.485] [13824] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:00:12.706] [13846] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:00:12.707] [13846] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:00:12.707] [13846] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:00:12.914] [13860] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:00:12.915] [13860] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:00:12.915] [13860] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:01:28.086] [14160] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:01:28.087] [14160] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:01:28.087] [14160] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:01:28.294] [14174] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:01:28.294] [14174] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:01:28.295] [14174] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:01:33.529] [14193] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:01:33.529] [14193] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:01:33.529] [14193] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:01:38.762] [14214] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:01:38.763] [14214] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:01:38.763] [14214] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:01:43.994] [14233] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:01:43.994] [14233] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:01:43.994] [14233] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:01:49.226] [14255] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:01:49.227] [14255] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:01:49.227] [14255] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:01:54.457] [14284] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:01:54.458] [14284] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:01:54.458] [14284] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:01:59.686] [14302] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:01:59.687] [14302] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:01:59.687] [14302] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:04.925] [14323] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:02:04.925] [14323] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:04.925] [14323] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:10.164] [14341] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:02:10.164] [14341] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:10.164] [14341] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:15.398] [14376] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:02:15.399] [14376] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:15.399] [14376] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:20.634] [14397] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:02:20.635] [14397] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:20.635] [14397] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:25.894] [14422] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:02:25.895] [14422] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:25.895] [14422] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:31.138] [14445] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:02:31.138] [14445] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:31.138] [14445] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:36.362] [14467] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:02:36.363] [14467] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:36.363] [14467] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:41.590] [14486] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:02:41.591] [14486] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:41.591] [14486] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:46.814] [14509] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:02:46.815] [14509] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:46.815] [14509] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:52.054] [14527] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:02:52.055] [14527] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:52.055] [14527] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:57.302] [14555] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:02:57.302] [14555] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:57.302] [14555] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:57.514] [14569] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:02:57.515] [14569] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:02:57.515] [14569] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:03:39.174] [14874] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:03:39.174] [14874] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:03:39.174] [14874] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:03:39.374] [14885] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:03:39.375] [14885] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:03:39.375] [14885] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:03:44.662] [14954] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:03:44.663] [14954] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:03:44.663] [14954] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:03:49.901] [14995] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:03:49.901] [14995] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:03:49.901] [14995] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:03:55.134] [15066] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:03:55.135] [15066] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:03:55.135] [15066] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:00.378] [15143] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:04:00.378] [15143] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:00.378] [15143] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:05.605] [15172] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:04:05.605] [15172] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:05.605] [15172] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:10.826] [15237] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:04:10.827] [15237] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:10.827] [15237] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:16.046] [15279] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:04:16.047] [15279] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:16.047] [15279] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:21.281] [15326] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:04:21.281] [15326] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:21.281] [15326] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:26.542] [15374] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:04:26.543] [15374] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:26.543] [15374] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:31.782] [15401] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:04:31.782] [15401] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:31.782] [15401] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:37.026] [15445] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:04:37.027] [15445] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:37.027] [15445] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:42.266] [15493] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:04:42.267] [15493] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:42.267] [15493] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:47.515] [15515] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:04:47.515] [15515] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:47.515] [15515] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:52.762] [15610] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:04:52.762] [15610] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:52.762] [15610] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:58.001] [15651] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:04:58.001] [15651] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:58.001] [15651] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:58.202] [15665] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:04:58.202] [15665] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:04:58.203] [15665] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:05:34.235] [15819] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:05:34.235] [15819] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:05:34.235] [15819] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:05:34.482] [15845] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:05:34.482] [15845] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:05:34.482] [15845] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:05:39.742] [15865] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:05:39.743] [15865] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:05:39.743] [15865] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:05:44.974] [15887] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:05:44.975] [15887] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:05:44.975] [15887] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:05:50.212] [15906] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:05:50.212] [15906] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:05:50.212] [15906] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:05:55.442] [15930] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:05:55.443] [15930] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:05:55.443] [15930] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:00.677] [15951] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:06:00.677] [15951] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:00.677] [15951] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:05.898] [15969] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:06:05.899] [15969] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:05.899] [15969] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:11.153] [15990] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:06:11.153] [15990] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:11.153] [15990] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:16.398] [16011] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:06:16.399] [16011] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:16.399] [16011] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:21.634] [16036] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:06:21.635] [16036] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:21.635] [16036] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:26.870] [16057] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:06:26.871] [16057] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:26.871] [16057] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:32.094] [16077] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:06:32.095] [16077] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:32.095] [16077] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:37.326] [16114] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:06:37.327] [16114] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:37.327] [16114] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:42.558] [16135] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:06:42.559] [16135] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:42.559] [16135] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:47.797] [16155] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:06:47.797] [16155] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:47.797] [16155] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:53.018] [16183] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:06:53.018] [16183] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:53.019] [16183] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:58.242] [16201] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:06:58.243] [16201] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:06:58.243] [16201] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:07:03.477] [16225] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:07:03.477] [16225] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:07:03.477] [16225] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:07:08.714] [16247] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:07:08.715] [16247] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:07:08.715] [16247] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:07:13.965] [16265] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:07:13.966] [16265] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:07:13.966] [16265] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:07:14.186] [16279] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:07:14.187] [16279] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:07:14.187] [16279] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:08:29.322] [16475] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:08:29.323] [16475] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:08:29.323] [16475] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:08:29.538] [16486] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:08:29.539] [16486] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:08:29.539] [16486] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:08:34.742] [16515] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:08:34.743] [16515] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:08:34.743] [16515] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:08:39.978] [16547] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:08:39.979] [16547] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:08:39.979] [16547] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:08:45.214] [16571] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:08:45.214] [16571] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:08:45.214] [16571] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:08:50.449] [16615] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:08:50.449] [16615] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:08:50.450] [16615] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:08:55.674] [16638] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:08:55.675] [16638] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:08:55.675] [16638] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:09:00.894] [16660] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:09:00.895] [16660] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:09:00.895] [16660] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:09:06.122] [16691] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:09:06.123] [16691] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:09:06.123] [16691] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:09:11.357] [16712] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:09:11.357] [16712] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:09:11.357] [16712] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:09:16.598] [16730] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:09:16.599] [16730] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:09:16.599] [16730] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:09:21.834] [16752] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:09:21.835] [16752] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:09:21.835] [16752] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:09:27.062] [16777] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:09:27.063] [16777] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:09:27.063] [16777] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:09:32.285] [16797] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:09:32.285] [16797] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:09:32.285] [16797] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:09:37.535] [16821] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:09:37.536] [16821] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:09:37.536] [16821] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:09:37.749] [16835] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:09:37.750] [16835] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:09:37.750] [16835] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:10:19.325] [16967] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:10:19.325] [16967] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:10:19.325] [16967] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:10:19.534] [16978] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:10:19.535] [16978] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:10:19.535] [16978] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:10:24.769] [17002] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:10:24.769] [17002] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:10:24.769] [17002] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:10:29.985] [17024] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:10:29.985] [17024] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:10:29.985] [17024] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:10:35.209] [17046] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:10:35.209] [17046] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:10:35.209] [17046] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:10:40.430] [17064] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:10:40.431] [17064] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:10:40.431] [17064] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:10:45.650] [17086] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:10:45.651] [17086] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:10:45.651] [17086] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:10:50.882] [17113] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:10:50.882] [17113] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:10:50.883] [17113] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:10:56.118] [17139] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:10:56.119] [17139] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:10:56.119] [17139] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:01.350] [17160] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:11:01.351] [17160] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:01.351] [17160] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:06.581] [17180] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:11:06.581] [17180] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:06.581] [17180] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:11.825] [17203] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:11:11.825] [17203] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:11.826] [17203] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:17.054] [17224] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:11:17.055] [17224] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:17.055] [17224] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:22.277] [17249] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:11:22.277] [17249] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:22.277] [17249] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:27.518] [17270] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:11:27.519] [17270] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:27.519] [17270] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:32.754] [17289] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:11:32.755] [17289] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:32.755] [17289] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:37.986] [17310] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:11:37.987] [17310] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:37.987] [17310] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:43.219] [17331] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:11:43.219] [17331] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:43.219] [17331] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:48.458] [17356] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:11:48.459] [17356] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:48.459] [17356] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:48.665] [17370] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:11:48.665] [17370] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:11:48.666] [17370] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:12:24.698] [17520] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:12:24.699] [17520] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:12:24.699] [17520] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:12:24.910] [17534] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:12:24.911] [17534] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:12:24.911] [17534] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:12:30.157] [17553] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:12:30.157] [17553] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:12:30.157] [17553] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:12:35.382] [17658] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:12:35.383] [17658] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:12:35.383] [17658] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:12:40.609] [17816] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:12:40.609] [17816] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:12:40.609] [17816] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:12:45.853] [17975] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:12:45.853] [17975] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:12:45.853] [17975] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:12:51.069] [18146] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:12:51.069] [18146] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:12:51.069] [18146] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:12:56.302] [18300] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:12:56.303] [18300] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:12:56.303] [18300] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:01.542] [18409] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:13:01.543] [18409] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:01.543] [18409] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:06.782] [18583] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:13:06.783] [18583] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:06.783] [18583] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:12.014] [18704] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:13:12.015] [18704] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:12.015] [18704] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:17.261] [18836] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:13:17.261] [18836] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:17.261] [18836] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:22.494] [18975] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:13:22.495] [18975] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:22.495] [18975] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:27.730] [19116] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:13:27.730] [19116] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:27.730] [19116] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:32.974] [19248] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:13:32.974] [19248] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:32.974] [19248] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:38.197] [19366] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:13:38.197] [19366] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:38.197] [19366] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:43.441] [19459] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:13:43.441] [19459] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:43.441] [19459] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:48.685] [19609] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:13:48.686] [19609] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:48.686] [19609] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:48.893] [19624] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:13:48.893] [19624] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:13:48.893] [19624] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:04.034] [21184] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:15:04.035] [21184] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:04.035] [21184] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:04.242] [21195] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:15:04.243] [21195] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:04.243] [21195] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:09.466] [21216] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:15:09.466] [21216] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:09.466] [21216] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:14.702] [21338] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:15:14.703] [21338] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:14.703] [21338] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:19.942] [21377] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:15:19.943] [21377] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:19.943] [21377] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:25.189] [21430] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:15:25.190] [21430] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:25.190] [21430] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:30.406] [21492] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:15:30.407] [21492] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:30.407] [21492] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:35.638] [21515] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:15:35.639] [21515] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:35.639] [21515] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:40.941] [21586] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:15:40.941] [21586] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:40.941] [21586] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:46.186] [21645] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:15:46.187] [21645] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:46.187] [21645] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:51.441] [21669] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:15:51.441] [21669] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:51.441] [21669] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:56.658] [21689] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:15:56.659] [21689] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:15:56.659] [21689] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:16:01.898] [21711] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:16:01.899] [21711] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:16:01.899] [21711] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:16:07.149] [21773] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:16:07.149] [21773] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:16:07.149] [21773] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:16:07.373] [21790] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:16:07.374] [21790] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:16:07.374] [21790] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:16:48.962] [21957] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:16:48.963] [21957] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:16:48.963] [21957] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:16:49.166] [21968] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:16:49.166] [21968] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:16:49.166] [21968] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:16:54.426] [21992] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:16:54.427] [21992] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:16:54.427] [21992] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:16:59.666] [22013] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:16:59.666] [22013] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:16:59.666] [22013] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:04.890] [22038] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:17:04.891] [22038] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:04.891] [22038] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:10.125] [22060] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:17:10.126] [22060] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:10.126] [22060] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:15.353] [22081] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:17:15.354] [22081] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:15.354] [22081] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:20.594] [22131] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:17:20.595] [22131] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:20.595] [22131] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:25.814] [22164] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:17:25.815] [22164] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:25.815] [22164] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:31.054] [22182] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:17:31.055] [22182] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:31.055] [22182] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:36.302] [22207] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:17:36.303] [22207] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:36.303] [22207] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:41.534] [22252] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:17:41.535] [22252] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:41.535] [22252] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:46.786] [22283] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:17:46.787] [22283] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:46.787] [22283] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:52.026] [22307] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:17:52.027] [22307] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:52.027] [22307] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:57.260] [22325] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:17:57.261] [22325] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:17:57.261] [22325] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:18:02.482] [22347] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:18:02.482] [22347] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:18:02.482] [22347] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:18:07.721] [22368] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:18:07.722] [22368] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:18:07.722] [22368] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:18:12.965] [22386] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:18:12.965] [22386] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:18:12.965] [22386] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:18:18.185] [22408] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:18:18.185] [22408] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:18:18.185] [22408] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:18:23.414] [22432] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:18:23.415] [22432] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:18:23.415] [22432] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:18:28.678] [22450] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:18:28.679] [22450] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:18:28.679] [22450] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:18:28.890] [22465] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:18:28.891] [22465] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:18:28.891] [22465] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:04.874] [22588] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:19:04.875] [22588] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:04.875] [22588] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:05.088] [22599] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:19:05.089] [22599] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:05.089] [22599] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:10.325] [22623] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:19:10.325] [22623] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:10.325] [22623] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:15.550] [22644] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:19:15.551] [22644] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:15.551] [22644] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:20.786] [22665] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:19:20.786] [22665] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:20.786] [22665] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:26.046] [22686] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:19:26.047] [22686] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:26.047] [22686] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:31.290] [22705] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:19:31.290] [22705] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:31.290] [22705] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:36.530] [22731] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:19:36.530] [22731] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:36.530] [22731] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:41.757] [22753] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:19:41.757] [22753] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:41.757] [22753] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:46.998] [22771] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:19:46.999] [22771] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:46.999] [22771] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:52.230] [22795] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:19:52.231] [22795] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:52.231] [22795] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:57.470] [22816] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:19:57.471] [22816] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:19:57.471] [22816] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:20:02.701] [22835] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:20:02.701] [22835] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:20:02.701] [22835] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:20:07.934] [22860] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:20:07.935] [22860] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:20:07.935] [22860] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:20:13.166] [22878] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:20:13.167] [22878] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:20:13.167] [22878] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:20:18.398] [22926] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:20:18.398] [22926] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:20:18.399] [22926] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:20:23.626] [22971] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:20:23.627] [22971] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:20:23.627] [22971] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:20:28.886] [23036] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:20:28.887] [23036] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:20:28.887] [23036] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:20:34.126] [23058] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:20:34.127] [23058] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:20:34.127] [23058] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:20:39.394] [23142] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:20:39.395] [23142] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:20:39.395] [23142] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:20:44.634] [23226] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:20:44.635] [23226] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:20:44.635] [23226] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:20:44.886] [23240] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:20:44.887] [23240] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:20:44.887] [23240] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:00.117] [23772] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:22:00.117] [23772] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:00.118] [23772] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:00.318] [23783] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:22:00.319] [23783] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:00.319] [23783] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:05.537] [23806] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:22:05.537] [23806] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:05.538] [23806] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:10.750] [23841] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:22:10.751] [23841] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:10.751] [23841] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:15.973] [23864] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:22:15.973] [23864] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:15.973] [23864] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:21.190] [23882] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:22:21.191] [23882] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:21.191] [23882] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:26.434] [23903] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:22:26.435] [23903] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:26.435] [23903] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:31.666] [23924] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:22:31.667] [23924] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:31.667] [23924] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:36.904] [23945] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:22:36.905] [23945] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:36.905] [23945] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:42.130] [23968] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:22:42.131] [23968] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:42.131] [23968] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:47.366] [23987] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:22:47.367] [23987] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:47.367] [23987] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:52.597] [24008] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:22:52.597] [24008] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:52.597] [24008] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:57.822] [24042] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:22:57.823] [24042] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:22:57.823] [24042] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:23:03.085] [24064] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:23:03.085] [24064] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:23:03.085] [24064] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:23:03.317] [24101] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:23:03.317] [24101] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:23:03.317] [24101] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:23:44.934] [24305] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:23:44.934] [24305] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:23:44.934] [24305] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:23:45.137] [24316] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:23:45.137] [24316] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:23:45.137] [24316] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:23:50.358] [24338] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:23:50.358] [24338] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:23:50.359] [24338] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:23:55.594] [24356] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:23:55.594] [24356] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:23:55.594] [24356] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:00.842] [24380] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:24:00.843] [24380] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:00.843] [24380] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:06.086] [24406] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:24:06.087] [24406] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:06.087] [24406] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:11.318] [24425] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:24:11.319] [24425] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:11.319] [24425] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:16.557] [24446] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:24:16.558] [24446] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:16.558] [24446] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:21.770] [24481] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:24:21.771] [24481] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:21.771] [24481] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:26.990] [24499] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:24:26.990] [24499] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:26.990] [24499] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:32.225] [24520] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:24:32.225] [24520] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:32.225] [24520] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:37.490] [24544] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:24:37.491] [24544] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:37.491] [24544] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:42.742] [24565] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:24:42.743] [24565] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:42.743] [24565] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:47.986] [24587] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:24:47.987] [24587] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:47.987] [24587] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:53.222] [24606] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:24:53.223] [24606] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:53.223] [24606] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:58.443] [24627] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:24:58.443] [24627] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:24:58.443] [24627] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:25:03.694] [24682] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:25:03.694] [24682] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:25:03.694] [24682] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:25:08.934] [24726] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:25:08.934] [24726] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:25:08.934] [24726] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:25:14.185] [24767] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:25:14.185] [24767] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:25:14.185] [24767] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:25:19.410] [24798] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:25:19.410] [24798] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:25:19.410] [24798] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:25:19.622] [24812] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:25:19.623] [24812] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:25:19.623] [24812] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:25:55.642] [24924] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:25:55.643] [24924] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:25:55.643] [24924] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:25:55.858] [24938] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:25:55.859] [24938] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:25:55.859] [24938] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:01.094] [24956] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:26:01.094] [24956] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:01.094] [24956] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:06.326] [24984] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:26:06.326] [24984] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:06.326] [24984] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:11.554] [25002] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:26:11.554] [25002] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:11.554] [25002] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:16.785] [25039] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:26:16.785] [25039] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:16.786] [25039] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:21.982] [25070] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:26:21.982] [25070] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:21.983] [25070] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:27.197] [25123] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:26:27.197] [25123] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:27.197] [25123] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:32.418] [25335] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:26:32.419] [25335] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:32.419] [25335] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:37.654] [25356] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:26:37.655] [25356] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:37.655] [25356] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:42.900] [25411] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:26:42.901] [25411] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:42.901] [25411] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:48.126] [25432] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:26:48.126] [25432] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:48.126] [25432] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:53.334] [25452] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:26:53.334] [25452] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:53.334] [25452] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:58.562] [25474] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:26:58.563] [25474] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:26:58.563] [25474] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:27:03.790] [25495] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:27:03.791] [25495] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:27:03.791] [25495] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:27:09.029] [25516] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:27:09.029] [25516] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:27:09.029] [25516] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:27:14.266] [25542] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:27:14.267] [25542] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:27:14.267] [25542] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:27:19.526] [25560] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:27:19.527] [25560] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:27:19.527] [25560] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:27:24.762] [25584] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:27:24.763] [25584] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:27:24.763] [25584] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:27:29.998] [25606] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:27:29.999] [25606] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:27:29.999] [25606] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:27:35.230] [25624] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:27:35.231] [25624] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:27:35.231] [25624] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:27:35.438] [25639] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:27:35.438] [25639] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:27:35.438] [25639] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:28:50.682] [25842] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:28:50.683] [25842] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:28:50.683] [25842] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:28:50.890] [25853] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:28:50.891] [25853] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:28:50.891] [25853] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:28:56.126] [25875] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:28:56.127] [25875] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:28:56.127] [25875] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:01.366] [25893] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:29:01.367] [25893] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:01.367] [25893] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:06.626] [25919] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:29:06.627] [25919] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:06.627] [25919] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:11.881] [25937] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:29:11.881] [25937] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:11.882] [25937] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:17.114] [25962] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:29:17.115] [25962] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:17.115] [25962] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:22.349] [25983] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:29:22.349] [25983] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:22.349] [25983] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:27.582] [26002] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:29:27.583] [26002] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:27.583] [26002] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:32.813] [26026] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:29:32.813] [26026] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:32.813] [26026] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:38.042] [26045] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:29:38.042] [26045] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:38.042] [26045] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:43.286] [26069] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:29:43.286] [26069] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:43.286] [26069] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:48.518] [26091] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:29:48.519] [26091] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:48.519] [26091] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:53.749] [26109] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:29:53.749] [26109] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:53.749] [26109] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:58.989] [26131] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:29:58.989] [26131] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:29:58.989] [26131] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:30:04.209] [26156] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:30:04.209] [26156] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:30:04.210] [26156] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:30:09.432] [26174] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:30:09.433] [26174] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:30:09.433] [26174] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:30:09.638] [26189] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:30:09.639] [26189] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:30:09.639] [26189] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:30:51.222] [26314] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:30:51.223] [26314] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:30:51.223] [26314] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:30:51.429] [26325] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:30:51.430] [26325] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:30:51.430] [26325] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:30:56.654] [26347] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:30:56.655] [26347] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:30:56.655] [26347] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:01.882] [26365] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:31:01.883] [26365] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:01.883] [26365] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:07.126] [26389] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:31:07.127] [26389] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:07.127] [26389] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:12.374] [26411] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:31:12.374] [26411] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:12.374] [26411] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:17.605] [26433] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:31:17.605] [26433] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:17.605] [26433] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:22.830] [26454] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:31:22.830] [26454] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:22.830] [26454] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:28.085] [26472] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:31:28.085] [26472] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:28.085] [26472] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:33.318] [26497] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:31:33.318] [26497] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:33.318] [26497] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:38.549] [26519] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:31:38.549] [26519] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:38.549] [26519] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:43.777] [26540] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:31:43.777] [26540] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:43.777] [26540] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:49.010] [26562] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:31:49.010] [26562] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:49.011] [26562] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:54.238] [26580] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:31:54.239] [26580] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:54.239] [26580] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:59.465] [26602] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:31:59.465] [26602] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:31:59.465] [26602] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:32:04.694] [26626] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:32:04.694] [26626] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:32:04.694] [26626] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:32:09.922] [26644] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:32:09.923] [26644] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:32:09.923] [26644] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:32:15.165] [26669] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:32:15.165] [26669] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:32:15.165] [26669] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:32:20.390] [26690] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:32:20.391] [26690] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:32:20.391] [26690] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:32:25.613] [26708] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:32:25.613] [26708] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:32:25.614] [26708] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:32:30.842] [26730] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:32:30.843] [26730] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:32:30.843] [26730] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:32:31.066] [26745] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:32:31.066] [26745] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:32:31.066] [26745] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:07.095] [26885] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:33:07.095] [26885] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:07.095] [26885] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:07.346] [26914] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:33:07.346] [26914] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:07.346] [26914] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:12.589] [26962] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:33:12.590] [26962] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:12.590] [26962] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:17.858] [27056] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:33:17.859] [27056] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:17.859] [27056] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:23.169] [27077] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:33:23.170] [27077] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:23.170] [27077] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:28.410] [27099] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:33:28.410] [27099] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:28.410] [27099] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:33.658] [27121] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:33:33.659] [27121] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:33.659] [27121] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:38.894] [27200] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:33:38.894] [27200] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:38.895] [27200] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:44.122] [27269] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:33:44.123] [27269] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:44.123] [27269] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:49.361] [27292] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:33:49.361] [27292] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:49.362] [27292] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:54.610] [27336] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:33:54.611] [27336] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:54.611] [27336] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:59.845] [27398] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:33:59.845] [27398] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:33:59.845] [27398] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:34:05.074] [27419] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:34:05.074] [27419] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:34:05.074] [27419] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:34:10.322] [27437] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:34:10.323] [27437] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:34:10.323] [27437] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:34:15.574] [27461] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:34:15.575] [27461] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:34:15.575] [27461] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:34:20.833] [27483] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:34:20.834] [27483] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:34:20.834] [27483] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:34:26.074] [27502] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:34:26.074] [27502] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:34:26.074] [27502] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:34:31.298] [27523] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:34:31.299] [27523] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:34:31.299] [27523] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:34:31.510] [27537] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:34:31.511] [27537] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:34:31.511] [27537] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:35:46.633] [27953] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:35:46.633] [27953] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:35:46.633] [27953] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:35:46.842] [27964] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:35:46.843] [27964] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:35:46.843] [27964] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:35:52.057] [28041] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:35:52.057] [28041] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:35:52.057] [28041] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:35:57.270] [28104] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:35:57.270] [28104] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:35:57.270] [28104] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:02.482] [28178] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:36:02.483] [28178] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:02.483] [28178] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:07.710] [28245] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:36:07.711] [28245] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:07.711] [28245] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:12.914] [28285] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:36:12.915] [28285] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:12.915] [28285] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:18.154] [28344] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:36:18.155] [28344] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:18.155] [28344] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:23.403] [28378] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:36:23.403] [28378] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:23.403] [28378] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:28.646] [28400] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:36:28.647] [28400] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:28.647] [28400] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:33.870] [28442] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:36:33.870] [28442] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:33.870] [28442] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:39.097] [28475] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:36:39.097] [28475] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:39.097] [28475] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:44.310] [28494] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:36:44.311] [28494] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:44.311] [28494] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:49.542] [28516] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:36:49.543] [28516] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:49.543] [28516] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:49.762] [28531] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:36:49.762] [28531] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:36:49.762] [28531] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:37:31.330] [28650] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:37:31.330] [28650] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:37:31.330] [28650] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:37:31.533] [28661] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:37:31.533] [28661] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:37:31.533] [28661] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:37:36.758] [28702] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:37:36.759] [28702] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:37:36.759] [28702] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:37:41.994] [28720] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:37:41.995] [28720] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:37:41.995] [28720] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:37:47.222] [28742] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:37:47.222] [28742] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:37:47.222] [28742] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:37:52.446] [28761] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:37:52.447] [28761] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:37:52.447] [28761] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:37:57.685] [28782] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:37:57.686] [28782] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:37:57.686] [28782] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:02.906] [28807] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:38:02.907] [28807] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:02.907] [28807] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:08.162] [28828] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:38:08.162] [28828] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:08.162] [28828] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:13.410] [28849] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:38:13.411] [28849] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:13.411] [28849] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:18.654] [28868] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:38:18.655] [28868] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:18.655] [28868] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:23.894] [28890] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:38:23.895] [28890] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:23.895] [28890] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:29.138] [28912] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:38:29.138] [28912] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:29.138] [28912] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:34.346] [28940] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:38:34.346] [28940] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:34.346] [28940] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:39.585] [28961] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:38:39.585] [28961] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:39.585] [28961] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:44.820] [28983] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:38:44.821] [28983] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:44.821] [28983] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:50.081] [29002] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:38:50.081] [29002] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:50.081] [29002] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:55.302] [29023] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:38:55.303] [29023] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:38:55.303] [29023] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:39:00.534] [29041] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:39:00.535] [29041] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:39:00.535] [29041] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:39:05.770] [29070] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:39:05.771] [29070] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:39:05.771] [29070] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:39:11.018] [29091] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:39:11.019] [29091] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:39:11.019] [29091] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:39:11.234] [29106] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:39:11.235] [29106] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:39:11.235] [29106] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:39:47.221] [29220] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-09-29 01:39:47.222] [29220] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-09-29 01:39:47.222] [29220] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
