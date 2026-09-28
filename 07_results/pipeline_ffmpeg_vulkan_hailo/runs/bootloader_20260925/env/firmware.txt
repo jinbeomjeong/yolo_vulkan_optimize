@@ -1,0 +1,61 @@
+# firmware/clock snapshot 2026-09-29T02:54:03+09:00 (boot 2026-09-29 02:51:21, after rpi-eeprom-update -a staged 2026-09-29 02:37 and applied on this reboot; before the measurement)
+## vcgencmd bootloader_version
+2026/09/25 15:59:09
+version 1accd6659983613cd104973ce2432da14f1a7682 (release)
+timestamp 1790351949
+update-time 1790617047
+capabilities 0x0000007f
+
+## vcgencmd version
+2026/09/25 15:59:09 
+Copyright (c) 2012 Broadcom
+version 1accd665 (release) (embedded)
+## rpi-eeprom-update
+BOOTLOADER: up to date
+   CURRENT: Fri 25 Sep 15:59:09 UTC 2026 (1790351949)
+    LATEST: Fri 25 Sep 15:59:09 UTC 2026 (1790351949)
+   RELEASE: default (/usr/lib/firmware/raspberrypi/bootloader-2712/default)
+            Use raspi-config to change the release.
+## clocks (Hz, idle)
+arm frequency(0)=1900029440
+core frequency(0)=682227904
+v3d frequency(0)=1150011520
+h264 frequency(0)=0
+isp frequency(0)=682227904
+hevc frequency(0)=682227904
+emmc frequency(0)=199800656
+## get_config
+arm_freq=2400
+arm_freq_min=1500
+core_freq=910
+core_freq_min=500
+gpu_freq_min=500
+hevc_freq=910
+hevc_freq_min=500
+isp_freq=910
+isp_freq_min=500
+over_voltage_avs=0x1e780
+pciex4_reset=1
+v3d_freq=1150
+v3d_freq_min=500
+## volts
+core volt=0.8948V
+sdram_c volt=0.6000V
+sdram_i volt=0.6000V
+sdram_p volt=1.1000V
+## packages
+gstreamer1.0-plugins-bad 1.26.2-3+rpt4+deb13u3
+hailort 4.24.0
+hailort-pcie-driver 4.24.0
+libavcodec61 8:7.1.5-0+deb13u1+rpt2
+linux-image-rpi-2712 1:6.18.50-1+rpt1
+mesa-vulkan-drivers 26.2.2-1~bpo13+0~rpt1
+raspi-firmware 1:1.20260915-1
+rpi-eeprom 28.33-1
+## bootloader config (vcgencmd bootloader_config)
+[all]
+BOOT_UART=1
+# Default BOOT_ORDER for provisioning
+# SD -> NVMe -> USB -> Network
+BOOT_ORDER=0xf2461
+

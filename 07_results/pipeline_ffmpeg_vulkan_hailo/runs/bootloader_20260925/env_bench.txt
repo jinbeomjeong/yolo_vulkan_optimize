@@ -1,0 +1,10 @@
+# pipeline_bench 2026-09-29T03:22:09+09:00
+kernel: 6.18.50+rpt-rpi-2712
+soc temp: 64.8 C, hailo temp: 54.7 C
+throttled=0x0
+frequency(0)=2400037120
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+video: /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 frames: 0 runs: 3
+# after 2026-09-29T04:14:13+09:00
+soc temp: 64.8 C, hailo temp: 81.0 C
+throttled=0x0
