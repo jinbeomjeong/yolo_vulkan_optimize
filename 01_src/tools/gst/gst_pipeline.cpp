@@ -455,6 +455,7 @@ int main(int argc, char** argv) {
         }
     }
     const double c0 = yvo::tool::cpu_ms();
+    yvo::tool::perf_window(true);  // perf -D -1 --control window: same interval as cpu_total
     const std::uint64_t t0 = mono_ns();
     if (!error && gst_element_set_state(pipeline, GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
         std::printf("set_state(PLAYING) failed\n");
@@ -513,6 +514,7 @@ int main(int argc, char** argv) {
         }
     }
     t_end = mono_ns();
+    yvo::tool::perf_window(false);
     const double cpu_total = yvo::tool::cpu_ms() - c0;
     if (caps_out.empty()) {
         caps_in = pad_caps(lb, "sink");

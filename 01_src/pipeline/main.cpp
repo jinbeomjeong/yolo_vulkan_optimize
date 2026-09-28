@@ -806,7 +806,7 @@ int run(const Args& a) {
         stage->pump();
     };
 
-    const double c0 = cpu_ms();
+    const double c0 = cpu_ms(); yvo::tool::perf_window(true);  // perf -D -1 --control window opens here
     const auto t0 = Clock::now();
     long n = 0;
     bool fail = false;
@@ -941,7 +941,7 @@ int run(const Args& a) {
     if (interrupted) fail = true;  // ok in RESULT_CSV/RESULT_CSV2 becomes 0 (must not mix into bench aggregation)
 
     const auto t1 = Clock::now();
-    const double c1 = cpu_ms();
+    yvo::tool::perf_window(false); const double c1 = cpu_ms();  // ...and closes here
 
     if (!dec.error().empty()) {
         std::fprintf(stderr, "decode error after %ld frames: %s\n", n, dec.error().c_str());
