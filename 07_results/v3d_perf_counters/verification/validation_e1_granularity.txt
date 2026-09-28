@@ -1,0 +1,329 @@
+physical device: V3D 7.1.10.2 (type 1)
+physical device: llvmpipe (LLVM 19.1.7, 128 bits) (type 4)
+selected: V3D 7.1.10.2, apiVersion 1.3.354, driverVersion 0x6802002, timestampPeriod 1 ns
+VK_KHR_performance_query rev 1: performanceCounterQueryPools=1 performanceCounterMultipleQueryPools=0 allowCommandBufferQueryCopies=1 hostQueryReset=1
+queue family 0, 93 counters enumerated, label val
+== E1 granularity: heap_sum 4 MiB per dispatch, warmup 30, iters 100, 21 counters (1 pass) ==
+  [onecb_k1]
+    metric                                     median            p90            min            max          stdev      cv%
+    gpu_ns                                  4915872.0      4927805.7      4898789.0      5618830.0        90026.6     1.83
+    host_submit_us                             4981.6         5012.2         4963.0        17222.3         1226.0    23.93
+    host_perf_read_us                             6.9            8.6            6.2           18.4            1.8    23.60
+    host_ts_read_us                               6.3            7.0            5.7           10.4            0.7    11.46
+    submits                                       1.0            1.0            1.0            1.0            0.0     0.00
+    sum_ok                                        1.0            1.0            1.0            1.0            0.0     0.00
+    cycle-count                             4750092.5      4767608.1      2231036.0     16501473.0      1208306.3    24.96
+    core-active                             4685109.5      4690894.0      2230348.0      5095054.0       259884.2     5.58
+    compute-active-cycles                   4685109.5      4690894.0      2230418.0      5095054.0       259875.6     5.58
+    QPU-active                              2110720.0      2110720.0       974354.0      2110720.0       121565.9     5.80
+    QPU-stalls                                 4719.0         4737.4         2321.0         5140.0          262.5     5.58
+    QPU-wait-bubble                         2541439.0      2546983.3      1239738.0      2951349.0       140345.9     5.55
+    QPU-stalls-TMU                             3584.0         3584.0         1652.0         3584.0          206.8     5.81
+    TMU-active-cycles                        294912.0       294912.0       136128.0       294912.0        16986.4     5.80
+    TMU-stalled-cycles                         2816.0         2816.0         1298.0         2816.0          162.4     5.81
+    L2T-total-cache-hit                       58126.0        58126.0        26839.0        58126.0         3347.0     5.80
+    L2T-total-cache-miss                      16396.0        16396.0         7576.0        16396.0          943.4     5.80
+    L2T-stalls-read-data                    1778146.0      1783704.7       888811.0      2190811.0       100012.8     5.64
+    core-memory-reads                         16396.0        16396.0         7577.0        16396.0          943.3     5.80
+    core-memory-writes                            5.0            5.0            3.0            5.0            0.2     4.02
+    AXI-read-wait-cycles                    6591796.5      6606978.7       919435.0     18347673.0      2407451.9    42.84
+    CLE-bin-thread-active-cycles                  0.0            0.0            0.0            0.0            0.0     0.00
+    CLE-render-thread-active-cycles               0.0            0.0            0.0            0.0            0.0     0.00
+    FEP-valid-quads                               0.0            0.0            0.0            0.0            0.0     0.00
+    FEP-valid-primitives-rendered-pixels            0.0            0.0            0.0            0.0            0.0     0.00
+    TLB-quads-written-to-color-buffer             0.0            0.0            0.0            0.0            0.0     0.00
+    PTB-primitives-binned                         0.0            0.0            0.0            0.0            0.0     0.00
+  gpu_stats delta [onecb_k1] (all V3D clients; per_iter = delta / 100):
+    queue              jobs     runtime_ms    jobs/iter runtime_us/iter
+    bin                   2          0.164         0.02           1.64
+    cache_clean         100          2.212         1.00          22.12
+    cpu                 200          0.408         2.00           4.08
+    csd                 100        489.688         1.00        4896.88
+    render                2          1.641         0.02          16.41
+    tfu                   0          0.000         0.00           0.00
+  [kcb_k1]
+    metric                                     median            p90            min            max          stdev      cv%
+    gpu_ns                                  4914603.5      4924282.3      4899049.0      5648849.0       104965.6     2.13
+    host_submit_us                             4981.4         5009.7         4961.6        11431.2          652.5    12.87
+    host_perf_read_us                             6.9            8.8            6.3           16.4            1.9    26.04
+    host_ts_read_us                               6.4            7.2            5.5           11.0            0.9    13.90
+    submits                                       1.0            1.0            1.0            1.0            0.0     0.00
+    sum_ok                                        1.0            1.0            1.0            1.0            0.0     0.00
+    cycle-count                             4747117.5      4758957.1      1890480.0      4866441.0       355834.3     7.61
+    core-active                             4683821.0      4687834.5      1889815.0      4762584.0       343870.5     7.45
+    compute-active-cycles                   4683821.0      4687834.5      1889885.0      4762584.0       343857.1     7.45
+    QPU-active                              2110720.0      2110720.0       832184.0      2110720.0       163159.2     7.85
+    QPU-stalls                                 4719.0         4744.0         2023.0         5065.0          350.5     7.51
+    QPU-wait-bubble                         2540058.0      2544160.4      1043005.0      2618000.0       180275.6     7.19
+    QPU-stalls-TMU                             3584.0         3584.0         1400.0         3584.0          278.7     7.90
+    TMU-active-cycles                        294912.0       294912.0       116240.0       294912.0        22800.9     7.85
+    TMU-stalled-cycles                         2816.0         2816.0         1100.0         2816.0          218.9     7.90
+    L2T-total-cache-hit                       58126.0        58126.0        22913.0        58126.0         4493.5     7.85
+    L2T-total-cache-miss                      16396.0        16396.0         6479.0        16396.0         1265.3     7.84
+    L2T-stalls-read-data                    1777796.0      1781310.3       743942.0      1877109.0       123053.3     7.01
+    core-memory-reads                         16396.0        16396.0         6479.0        16396.0         1265.3     7.84
+    core-memory-writes                            5.0            5.0            3.0            5.0            0.2     4.48
+    AXI-read-wait-cycles                   16087470.5     28230427.7      2661676.0     30437415.0      7332196.1    44.47
+    CLE-bin-thread-active-cycles                  0.0            0.0            0.0            0.0            0.0     0.00
+    CLE-render-thread-active-cycles               0.0            0.0            0.0            0.0            0.0     0.00
+    FEP-valid-quads                               0.0            0.0            0.0            0.0            0.0     0.00
+    FEP-valid-primitives-rendered-pixels            0.0            0.0            0.0            0.0            0.0     0.00
+    TLB-quads-written-to-color-buffer             0.0            0.0            0.0            0.0            0.0     0.00
+    PTB-primitives-binned                         0.0            0.0            0.0            0.0            0.0     0.00
+  gpu_stats delta [kcb_k1] (all V3D clients; per_iter = delta / 100):
+    queue              jobs     runtime_ms    jobs/iter runtime_us/iter
+    bin                   6          0.430         0.06           4.30
+    cache_clean         100          2.208         1.00          22.08
+    cpu                 200          0.446         2.00           4.46
+    csd                 100        490.224         1.00        4902.24
+    render                6          3.041         0.06          30.41
+    tfu                   0          0.000         0.00           0.00
+  [onecb_k2]
+    metric                                     median            p90            min            max          stdev      cv%
+    gpu_ns                                  9819708.0      9839272.9      9806393.0     10346600.0        86782.3     0.88
+    host_submit_us                             9891.6         9925.6         9867.1        10478.9           99.7     1.01
+    host_perf_read_us                             7.1            9.5            6.1           18.6            2.3    29.03
+    host_ts_read_us                               6.6            7.8            5.6           12.8            1.1    16.34
+    submits                                       1.0            1.0            1.0            1.0            0.0     0.00
+    sum_ok                                        1.0            1.0            1.0            1.0            0.0     0.00
+    cycle-count                             9458600.0      9479549.5      6564810.0      9939084.0       417886.2     4.45
+    core-active                             9361164.0      9377259.9      6470767.0      9759343.0       416130.5     4.47
+    compute-active-cycles                   9361164.0      9377259.9      6470837.0      9759343.0       416148.4     4.47
+    QPU-active                              4221440.0      4221440.0      2887074.0      4221440.0       191419.3     4.57
+    QPU-stalls                                 9486.0         9732.3         6968.0       250135.0        24068.8   202.57
+    QPU-wait-bubble                         5073427.0      5089422.3      3537012.0      5471908.0       221912.5     4.40
+    QPU-stalls-TMU                             7168.0         7168.0         4900.0         7168.0          328.8     4.62
+    TMU-active-cycles                        589824.0       589824.0       403376.0       589824.0        26478.9     4.52
+    TMU-stalled-cycles                         5632.0         5632.0         3850.0         5632.0          234.6     4.19
+    L2T-total-cache-hit                      116251.0       116251.0        79512.0       116251.0         5214.0     4.52
+    L2T-total-cache-miss                      32793.0        32793.0        22435.0        32793.0         1456.2     4.47
+    L2T-stalls-read-data                    3548598.5      3564923.6      2495960.0      3948706.0       154099.4     4.36
+    core-memory-reads                         32793.0        32793.0        22437.0        32793.0         1393.0     4.28
+    core-memory-writes                           10.0           10.0            8.0         2185.0          217.5   685.92
+    AXI-read-wait-cycles                   69950731.5     79447393.2     55120624.0     80756209.0      8106718.5    11.42
+    CLE-bin-thread-active-cycles                  0.0            0.0            0.0            0.0            0.0     0.00
+    CLE-render-thread-active-cycles               0.0            0.0            0.0       181721.0        18172.1  1000.00
+    FEP-valid-quads                               0.0            0.0            0.0        13612.0         1361.2  1000.00
+    FEP-valid-primitives-rendered-pixels            0.0            0.0            0.0           23.0            2.3  1000.00
+    TLB-quads-written-to-color-buffer             0.0            0.0            0.0        13676.0         1367.6  1000.00
+    PTB-primitives-binned                         0.0            0.0            0.0            0.0            0.0     0.00
+  gpu_stats delta [onecb_k2] (all V3D clients; per_iter = delta / 100):
+    queue              jobs     runtime_ms    jobs/iter runtime_us/iter
+    bin                   4          0.315         0.04           3.15
+    cache_clean         200          4.413         2.00          44.13
+    cpu                 200          0.479         2.00           4.79
+    csd                 200        977.913         2.00        9779.13
+    render                4          2.612         0.04          26.12
+    tfu                   0          0.000         0.00           0.00
+  [kcb_k2]
+    metric                                     median            p90            min            max          stdev      cv%
+    gpu_ns                                  9817494.5      9839509.2      9804746.0     10721343.0       112023.8     1.14
+    span_ns                                 9823550.5      9843819.1      9809764.0     10739620.0       113522.2     1.15
+    host_submit_us                             9901.7         9967.1         9886.8        15595.2          573.9     5.75
+    host_perf_read_us                             7.7            9.8            6.9           24.9            2.9    33.84
+    host_ts_read_us                               8.1            8.8            7.5           17.0            1.3    15.29
+    submits                                       1.0            1.0            1.0            1.0            0.0     0.00
+    sum_ok                                        1.0            1.0            1.0            1.0            0.0     0.00
+    cycle-count                             9463383.5      9479583.6      5055939.0      9820785.0       699733.0     7.48
+    core-active                             9362618.5      9373735.0      4951014.0      9667413.0       692202.0     7.48
+    compute-active-cycles                   9362618.5      9373735.0      4951104.0      9666285.0       692181.4     7.48
+    QPU-active                              4221440.0      4221440.0      2224037.0      4632762.0       325505.2     7.81
+    QPU-stalls                                 9485.0         9732.5         5311.0      1010945.0       100156.7   515.79
+    QPU-wait-bubble                         5075174.5      5085845.5      2690715.0      5444947.0       368351.1     7.33
+    QPU-stalls-TMU                             7168.0         7168.0         3766.0         7286.0          548.7     7.76
+    TMU-active-cycles                        589824.0       589824.0       310704.0       705956.0        46690.8     8.01
+    TMU-stalled-cycles                         5632.0         5632.0         2959.0        13513.0          904.8    16.06
+    L2T-total-cache-hit                      116251.0       116251.0        61246.0       138636.0         9187.6     7.99
+    L2T-total-cache-miss                      32793.0        32793.0        17290.0        41437.0         2660.0     8.20
+    L2T-stalls-read-data                    3550224.5      3561565.2      1887901.0      3847623.0       253528.6     7.20
+    core-memory-reads                         32793.0        32793.0        17291.0        52436.0         3206.8     9.85
+    core-memory-writes                           10.0           10.0            7.0        10378.0         1036.8   912.76
+    AXI-read-wait-cycles                   41718859.0     79454492.0     26980972.0     90632679.0     18584281.5    33.49
+    CLE-bin-thread-active-cycles                  0.0            0.0            0.0            0.0            0.0     0.00
+    CLE-render-thread-active-cycles               0.0            0.0            0.0       837802.0        83780.2  1000.00
+    FEP-valid-quads                               0.0            0.0            0.0       116030.0        11603.0  1000.00
+    FEP-valid-primitives-rendered-pixels            0.0            0.0            0.0          221.0           22.1  1000.00
+    TLB-quads-written-to-color-buffer             0.0            0.0            0.0       116062.0        11606.2  1000.00
+    PTB-primitives-binned                         0.0            0.0            0.0            0.0            0.0     0.00
+  gpu_stats delta [kcb_k2] (all V3D clients; per_iter = delta / 100):
+    queue              jobs     runtime_ms    jobs/iter runtime_us/iter
+    bin                   5          0.376         0.05           3.76
+    cache_clean         200          4.410         2.00          44.10
+    cpu                 400          0.928         4.00           9.28
+    csd                 200        978.590         2.00        9785.90
+    render                5          2.994         0.05          29.94
+    tfu                   0          0.000         0.00           0.00
+  [onecb_k4]
+    metric                                     median            p90            min            max          stdev      cv%
+    gpu_ns                                 19651471.5     19767225.7     19622620.0     20612495.0       155904.3     0.79
+    host_submit_us                            19765.6        19897.4        19689.2        20771.7          170.8     0.86
+    host_perf_read_us                            10.3           16.8            6.5           30.5            3.8    32.51
+    host_ts_read_us                               9.7           11.9            6.0           14.8            1.7    17.23
+    submits                                       1.0            1.0            1.0            1.0            0.0     0.00
+    sum_ok                                        1.0            1.0            1.0            1.0            0.0     0.00
+    cycle-count                            18917248.5     18944746.8     13429807.0     19431149.0       840277.7     4.48
+    core-active                            18727233.0     18737444.0     13217553.0     19149748.0       839477.9     4.52
+    compute-active-cycles                  18727233.0     18737444.0     13217722.0     19149748.0       839504.1     4.52
+    QPU-active                              8442880.0      8442880.0      5783300.0      8442880.0       390960.3     4.68
+    QPU-stalls                                18971.0        19227.1        13731.0        19772.0          803.1     4.26
+    QPU-wait-bubble                        10152195.5     10161819.0      7340957.0     10573599.0       445374.8     4.42
+    QPU-stalls-TMU                            14336.0        14336.0         9814.0        14336.0          665.6     4.69
+    TMU-active-cycles                       1179648.0      1179648.0       808054.0      1179648.0        54629.8     4.68
+    TMU-stalled-cycles                        11264.0        11264.0         7711.0        11264.0          522.8     4.69
+    L2T-total-cache-hit                      232504.0       232504.0       159289.0       232504.0        10764.0     4.68
+    L2T-total-cache-miss                      65584.0        65584.0        44947.0        65584.0         3033.2     4.67
+    L2T-stalls-read-data                    7101637.0      7111044.6      5256643.0      7530222.0       306302.7     4.34
+    core-memory-reads                         65584.0        65584.0        44948.0        65584.0         2999.0     4.62
+    core-memory-writes                           18.0           18.0           14.0         1853.0          183.5   505.67
+    AXI-read-wait-cycles                  196460637.5    196722147.2    117759138.0    202091136.0     23137314.0    12.93
+    CLE-bin-thread-active-cycles                  0.0            0.0            0.0        72485.0         7248.5  1000.00
+    CLE-render-thread-active-cycles               0.0            0.0            0.0            0.0            0.0     0.00
+    FEP-valid-quads                               0.0            0.0            0.0            0.0            0.0     0.00
+    FEP-valid-primitives-rendered-pixels            0.0            0.0            0.0            0.0            0.0     0.00
+    TLB-quads-written-to-color-buffer             0.0            0.0            0.0            0.0            0.0     0.00
+    PTB-primitives-binned                         0.0            0.0            0.0           16.0            1.6  1000.00
+  gpu_stats delta [onecb_k4] (all V3D clients; per_iter = delta / 100):
+    queue              jobs     runtime_ms    jobs/iter runtime_us/iter
+    bin                   9          0.656         0.09           6.56
+    cache_clean         400          9.164         4.00          91.64
+    cpu                 200          0.821         2.00           8.21
+    csd                 400       1956.255         4.00       19562.55
+    render                9          5.347         0.09          53.47
+    tfu                   0          0.000         0.00           0.00
+  [kcb_k4]
+    metric                                     median            p90            min            max          stdev      cv%
+    gpu_ns                                 19644221.0     19762181.9     19627470.0     21157408.0       195893.8     0.99
+    span_ns                                19667675.0     19782312.3     19651286.0     21192110.0       197739.0     1.00
+    host_submit_us                            19811.5        19968.0        19776.1        21401.7          215.3     1.08
+    host_perf_read_us                            13.8           20.8           11.7           26.6            3.4    22.34
+    host_ts_read_us                              17.8           20.5           16.1           37.7            2.5    13.64
+    submits                                       1.0            1.0            1.0            1.0            0.0     0.00
+    sum_ok                                        1.0            1.0            1.0            1.0            0.0     0.00
+    cycle-count                            18937293.0     18968255.3     13044720.0     20456771.0       977343.0     5.22
+    core-active                            18727394.5     18744649.2     12968516.0     19105840.0       948009.9     5.12
+    compute-active-cycles                  18727394.5     18744649.2     12968737.0     19105840.0       947977.5     5.12
+    QPU-active                              8442880.0      8442880.0      5825342.0      8442880.0       435355.7     5.22
+    QPU-stalls                                18979.0        19256.0        13505.0        19555.0          870.1     4.62
+    QPU-wait-bubble                        10152319.5     10169154.1      7049585.0     10529839.0       507972.0     5.06
+    QPU-stalls-TMU                            14336.0        14336.0         9884.0        14336.0          740.9     5.24
+    TMU-active-cycles                       1179648.0      1179648.0       813904.0      1179648.0        60833.0     5.22
+    TMU-stalled-cycles                        11264.0        11264.0         7766.0        11264.0          582.2     5.24
+    L2T-total-cache-hit                      232504.0       232504.0       160442.0       232504.0        11986.4     5.22
+    L2T-total-cache-miss                      65584.0        65584.0        45273.0        65584.0         3378.0     5.22
+    L2T-stalls-read-data                    7103247.5      7119898.9      4946880.0      7486529.0       352201.7     5.01
+    core-memory-reads                         65584.0        65584.0        45274.0        65584.0         3377.8     5.22
+    core-memory-writes                           18.0           18.0           14.0           18.0            0.6     3.59
+    AXI-read-wait-cycles                  253669854.0    272769059.4    175595914.0    279629039.0     22451653.0     8.88
+    CLE-bin-thread-active-cycles                  0.0            0.0            0.0            0.0            0.0     0.00
+    CLE-render-thread-active-cycles               0.0            0.0            0.0            0.0            0.0     0.00
+    FEP-valid-quads                               0.0            0.0            0.0            0.0            0.0     0.00
+    FEP-valid-primitives-rendered-pixels            0.0            0.0            0.0            0.0            0.0     0.00
+    TLB-quads-written-to-color-buffer             0.0            0.0            0.0            0.0            0.0     0.00
+    PTB-primitives-binned                         0.0            0.0            0.0            0.0            0.0     0.00
+  gpu_stats delta [kcb_k4] (all V3D clients; per_iter = delta / 100):
+    queue              jobs     runtime_ms    jobs/iter runtime_us/iter
+    bin                   9          0.630         0.09           6.30
+    cache_clean         400          9.233         4.00          92.33
+    cpu                 800          1.815         8.00          18.15
+    csd                 400       1957.089         4.00       19570.89
+    render                9          5.316         0.09          53.16
+    tfu                   0          0.000         0.00           0.00
+  [onecb_k8]
+    metric                                     median            p90            min            max          stdev      cv%
+    gpu_ns                                 39297432.5     39742986.9     39266497.0     40066539.0       201344.6     0.51
+    host_submit_us                            39428.5        39892.9        39368.6        40287.0          221.6     0.56
+    host_perf_read_us                            12.1           20.8            9.5           23.2            4.0    29.30
+    host_ts_read_us                              10.5           14.3            9.1           15.9            1.8    16.11
+    submits                                       1.0            1.0            1.0            1.0            0.0     0.00
+    sum_ok                                        1.0            1.0            1.0            1.0            0.0     0.00
+    cycle-count                            37778326.5     37821505.5     33127028.0     38543005.0       977051.5     2.61
+    core-active                            37453712.5     37479609.9     32810314.0     38109928.0       970289.3     2.61
+    compute-active-cycles                  37453712.5     37479609.9     32810403.0     38109928.0       970259.4     2.61
+    QPU-active                             16885760.0     16885760.0     14784388.0     16885760.0       447265.2     2.68
+    QPU-stalls                                38045.5        38353.3        33666.0        38887.0          946.8     2.50
+    QPU-wait-bubble                        20303425.5     20329120.0     17791626.0     20960211.0       521225.6     2.59
+    QPU-stalls-TMU                            28672.0        28672.0        25102.0        28672.0          762.0     2.68
+    TMU-active-cycles                       2359296.0      2359296.0      2065696.0      2359296.0        62499.2     2.68
+    TMU-stalled-cycles                        22528.0        22528.0        19723.0        22528.0          598.7     2.68
+    L2T-total-cache-hit                      465008.0       465008.0       407159.0       465008.0        12315.1     2.67
+    L2T-total-cache-miss                     131168.0       131168.0       114858.0       131168.0         3470.1     2.67
+    L2T-stalls-read-data                   14202238.0     14230901.6     12454821.0     14868032.0       363033.6     2.57
+    core-memory-reads                        131168.0       131168.0       114859.0       131168.0         3469.8     2.67
+    core-memory-writes                           35.0           35.0           32.0           35.0            0.7     1.90
+    AXI-read-wait-cycles                  718849691.5    959546961.0    575307679.0    967100774.0    129230267.1    16.91
+    CLE-bin-thread-active-cycles                  0.0            0.0            0.0            0.0            0.0     0.00
+    CLE-render-thread-active-cycles               0.0            0.0            0.0            0.0            0.0     0.00
+    FEP-valid-quads                               0.0            0.0            0.0            0.0            0.0     0.00
+    FEP-valid-primitives-rendered-pixels            0.0            0.0            0.0            0.0            0.0     0.00
+    TLB-quads-written-to-color-buffer             0.0            0.0            0.0            0.0            0.0     0.00
+    PTB-primitives-binned                         0.0            0.0            0.0            0.0            0.0     0.00
+  gpu_stats delta [onecb_k8] (all V3D clients; per_iter = delta / 100):
+    queue              jobs     runtime_ms    jobs/iter runtime_us/iter
+    bin                  17          1.195         0.17          11.95
+    cache_clean         800         18.367         8.00         183.67
+    cpu                 200          0.855         2.00           8.55
+    csd                 800       3911.672         8.00       39116.72
+    render               17          9.484         0.17          94.84
+    tfu                   0          0.000         0.00           0.00
+  [kcb_k8]
+    metric                                     median            p90            min            max          stdev      cv%
+    gpu_ns                                 39245571.0     39724535.4     39220328.0     40288467.0       253576.3     0.64
+    span_ns                                39279867.0     39774671.7     39253515.0     40341132.0       258226.8     0.66
+    host_submit_us                            39425.9        39987.3        39377.5        40574.4          284.7     0.72
+    host_perf_read_us                            13.5           22.6           10.9           26.8            4.2    28.30
+    host_ts_read_us                              19.1           23.6           17.7           26.4            2.2    11.11
+    submits                                       1.0            1.0            1.0            1.0            0.0     0.00
+    sum_ok                                        1.0            1.0            1.0            1.0            0.0     0.00
+    cycle-count                            37747891.5     37831239.1     29524692.0     38695460.0      1459441.7     3.91
+    core-active                            37452467.5     37505522.7     29229864.0     38298340.0      1460904.3     3.95
+    compute-active-cycles                  37452467.5     37505522.7     29230015.0     38298340.0      1460900.9     3.95
+    QPU-active                             16885760.0     16885760.0     13107439.0     16885760.0       678790.5     4.08
+    QPU-stalls                                38008.5        38267.4        30527.0        38589.0         1352.7     3.59
+    QPU-wait-bubble                        20302331.5     20354882.4     15913442.0     21147964.0       777350.0     3.87
+    QPU-stalls-TMU                            28672.0        28672.0        22246.0        28672.0         1155.9     4.09
+    TMU-active-cycles                       2359296.0      2359296.0      1831344.0      2359296.0        94854.4     4.08
+    TMU-stalled-cycles                        22528.0        22528.0        17479.0        22528.0          908.2     4.09
+    L2T-total-cache-hit                      465008.0       465008.0       360985.0       465008.0        18691.3     4.08
+    L2T-total-cache-miss                     131168.0       131168.0       101845.0       131168.0         5267.6     4.07
+    L2T-stalls-read-data                   14203502.5     14259284.9     11180854.0     15054311.0       536812.4     3.82
+    core-memory-reads                        131168.0       131168.0       101846.0       131168.0         5248.9     4.06
+    core-memory-writes                           35.0           35.0           29.0         1674.0          163.9   320.94
+    AXI-read-wait-cycles                 1208478621.5   1298721218.9    983635992.0   1412918659.0     93996234.9     7.85
+    CLE-bin-thread-active-cycles                  0.0            0.0            0.0        55333.0         5533.3  1000.00
+    CLE-render-thread-active-cycles               0.0            0.0            0.0            0.0            0.0     0.00
+    FEP-valid-quads                               0.0            0.0            0.0            0.0            0.0     0.00
+    FEP-valid-primitives-rendered-pixels            0.0            0.0            0.0            0.0            0.0     0.00
+    TLB-quads-written-to-color-buffer             0.0            0.0            0.0            0.0            0.0     0.00
+    PTB-primitives-binned                         0.0            0.0            0.0            2.0            0.2  1000.00
+  gpu_stats delta [kcb_k8] (all V3D clients; per_iter = delta / 100):
+    queue              jobs     runtime_ms    jobs/iter runtime_us/iter
+    bin                  17          1.283         0.17          12.83
+    cache_clean         800         17.590         8.00         175.90
+    cpu                1600          2.664        16.00          26.64
+    csd                 800       3915.454         8.00       39154.54
+    render               17         10.304         0.17         103.04
+    tfu                   0          0.000         0.00           0.00
+
+-- E1 ratios (median / median of onecb_k1) --
+  config                       gpu_ns            cycle-count  compute-active-cycles             QPU-active      core-memory-reads      TMU-active-cycles
+  kcb_k1                        1.000                  0.999                  1.000                  1.000                  1.000                  1.000
+  kcb_k2                        1.997                  1.992                  1.998                  2.000                  2.000                  2.000
+  kcb_k4                        3.996                  3.987                  3.997                  4.000                  4.000                  4.000
+  kcb_k8                        7.983                  7.947                  7.994                  8.000                  8.000                  8.000
+  onecb_k1                      1.000                  1.000                  1.000                  1.000                  1.000                  1.000
+  onecb_k2                      1.998                  1.991                  1.998                  2.000                  2.000                  2.000
+  onecb_k4                      3.998                  3.983                  3.997                  4.000                  4.000                  4.000
+  onecb_k8                      7.994                  7.953                  7.994                  8.000                  8.000                  8.000
+
+-- E1 effective clock (median of per-iteration ratio) --
+  config       cycle-count/gpu_ns MHz    compute-active/gpu_ns MHz
+  kcb_k1                        966.1                        953.1
+  kcb_k2                        964.0                        953.9
+  kcb_k4                        964.0                        953.4
+  kcb_k8                        961.9                        954.3
+  onecb_k1                      966.4                        953.0
+  onecb_k2                      963.4                        953.7
+  onecb_k4                      962.7                        953.0
+  onecb_k8                      961.5                        953.2
+
+heap_sum GPU/CPU mismatches (warm-up included): 0

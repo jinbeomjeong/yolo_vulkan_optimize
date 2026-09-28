@@ -1,0 +1,1 @@
+Selected GPU 0: V3D 7.1.10.2, type: IntegratedGpu

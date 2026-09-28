@@ -10,9 +10,12 @@ description: >
   GLSL 컴퓨트 셰이더(.comp/.glsl)와 SPIR-V(.spv), 검증 레이어(validation layer) 경고·에러,
   VK_ERROR_*·디바이스 로스트·GPU 행, GPU 전처리(letterbox/resize/color convert/normalize/
   양자화)와 후처리(YOLO 출력 디코드/dequantize/NMS), Hailo↔GPU 버퍼 공유의 Vulkan 쪽
-  (dma-buf external memory import, zero-copy), GPU 성능 측정·최적화(timestamp query, workgroup 튜닝),
-  "GPU로 돌려", "셰이더", "가속". English triggers: Vulkan, compute shader, GLSL, SPIR-V,
-  descriptor set, pipeline barrier, validation layer, V3D, GPU offload.
+  (dma-buf external memory import, zero-copy), GPU 성능 측정·최적화(workgroup 튜닝),
+  프로파일링을 통한 GPU 성능 분석(timestamp query 구간 분해, VK_KHR_performance_query 하드웨어
+  성능 카운터로 병목 원인 규명), "GPU로 돌려", "셰이더", "가속", "프로파일링", "병목", "왜 느려",
+  "성능 카운터". English triggers: Vulkan, compute shader, GLSL, SPIR-V,
+  descriptor set, pipeline barrier, validation layer, V3D, GPU offload, profiling, bottleneck,
+  performance query, performance counter.
   제외: HailoRT API·HEF·NPU 장치 작업(→ hailo-expert), Vulkan과 무관한 일반 C/C++(→ cpp-expert),
   파이썬(→ python-expert),
   설명만 필요한 짧은 질문.
@@ -80,6 +83,11 @@ for t in r.iter("type"):
 3. 확장을 쓸 때(`VK_EXT_external_memory_dma_buf`, `VK_KHR_external_memory_fd`, `VK_KHR_synchronization2` 등) — 필요한 pNext 체인, handleType, feature 비트를 확인한다.
 4. 동기화 마스크 조합(srcStageMask/dstStageMask/srcAccessMask/dstAccessMask)을 새로 정하거나 바꿀 때.
 5. 정렬·한계·양자화 관련 스펙 규칙을 근거로 삼을 때.
+6. 성능 카운터를 처음 쓰거나 카운터 세트를 바꿀 때 — `VkPerformanceCounterKHR`, `VkPerformanceCounterDescriptionKHR`,
+   `VkQueryPoolPerformanceCreateInfoKHR`, `VkPerformanceQuerySubmitInfoKHR`, `VkAcquireProfilingLockInfoKHR`의 멤버는 `vk.xml`,
+   VUID는 `validusage.json`에서 확인한다. 카운터의 이름·단위(unit)·저장형(storage)·설명은
+   **`vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR`로 런타임 열거한 값만** 쓰고,
+   pass 수는 `vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR`로 확인한다. 카운터 이름을 기억으로 쓰지 않는다.
 
 **면제**: 이미 이 저장소 코드에서 검증된 패턴, 익숙한 생성·파괴 보일러플레이트. 사소한 수정에 조회를 남발하지 않는다.
 
@@ -106,6 +114,7 @@ for t in r.iter("type"):
 | minStorageBufferOffsetAlignment | 32 B |
 | maxStorageBufferRange | 1 GB |
 | timestampPeriod | 1 ns (timestampComputeAndGraphics 지원) |
+| 성능 카운터 | `VK_KHR_performance_query` rev 1 — `performanceCounterQueryPools = true`, `performanceCounterMultipleQueryPools = false`, `allowCommandBufferQueryCopies = true`. 밑단은 커널 V3D perfmon(`/usr/include/drm/v3d_drm.h`, perfmon당 카운터 최대 `DRM_V3D_MAX_PERF_COUNTERS` 32). 2026-09-29 열거(`build/bin/yvo_perf_counters`): **93개**(L2T 24, AXI 18, QPU 16, TLB 9, PTB 7, TMU 6, CORE 5, FEP 4, CLE 2, PSE 2), 전부 COMMAND 스코프·UINT64·GENERIC 단위, **pass = ceil(개수/32)**. 컴퓨트 분석의 기본 세트: `cycle-count`, `compute-active-cycles`, `QPU-active`, `QPU-stalls`, `QPU-wait-bubble`, `QPU-stalls-TMU`, `TMU-active-cycles`, `TMU-stalled-cycles`, `L2T-total-cache-hit/miss`, `L2T-stalls-read-data`, `AXI-read-wait-cycles`, `core-memory-reads/writes`. 이 이름들도 쓰기 전에 도구로 다시 열거해 확인한다 |
 | 지원 기능 | shaderFloat16, shaderInt8, 8/16bit storage, `VK_EXT_external_memory_dma_buf`, `VK_KHR_external_memory_fd` |
 | `R8G8B8A8_UNORM` linearTilingFeatures | `0xc980` — **STORAGE_IMAGE 없음**(DRM modifier LINEAR 도 같다). LINEAR 버퍼에 컴퓨트로 쓰려면 storage buffer 를 쓴다(`overlay_plane.hpp`) |
 | 디스플레이 | HVS 평면: 영상 plane 83(Primary, NV12 SAND128 가능), 박스 plane 107(Overlay, AB24 LINEAR). `01_src/display/plane_display.hpp` |
@@ -161,12 +170,64 @@ for t in r.iter("type"):
 - GPU 결과가 CPU 기준 구현과 같은지는 GoogleTest(`GTest::gtest_main`, `ctest --test-dir build`)로 허용 오차를 명시해 테스트한다.
 - CPU 기준선(OpenCV/NEON)은 도구 안에서 `steady_clock` 반복 + 중앙값(`01_src/toolkit/stats.hpp`)으로 잰다(Google Benchmark 의존은 2026-09-21 제거). GPU 구간은 timestamp query로 따로 잰다. 호스트 쪽 오버헤드(기록·submit·대기)는 `perf record -g`로 분석한다. `perf_event_paranoid=1`이라 커널 드라이버(v3d) 구간도 볼 수 있다.
 
-## 성능 측정
-- 추측하지 말고 측정한다. GPU 구간은 timestamp query(`vkCmdWriteTimestamp`)로, end-to-end 구간은 `std::chrono::steady_clock`으로 잰다.
-- 워밍업을 몇 회 돌린 뒤 N회(기본 100회) 반복해 중앙값과 p90을 보고한다(**한 실행 안의 반복 표본**. 07_results에 기록하는 측정은 `measure` 스킬의 설정당 독립 실행 3회 중앙값을 따른다). 입력 해상도와 배치 크기를 명시한다.
-- 항상 CPU 기준선(OpenCV 또는 NEON 구현)과 비교하고, 최적화 전후 수치를 함께 적는다.
-- 전체 파이프라인(capture → preprocess → Hailo → postprocess)에서 해당 단계가 병목인지도 함께 보고한다. GPU 오프로드가 오히려 느리면 그 결과도 그대로 보고한다.
-- 발열로 클럭이 내려가 측정이 흔들릴 수 있다. 의심되면 `vcgencmd measure_temp`와 `vcgencmd get_throttled`를 확인한다.
+## 프로파일링·성능 분석
+"얼마나 걸리나"(측정)에서 멈추지 않고 "왜 그만큼 걸리나"(원인)까지 밝힌다. 도구는 **Timestamp Query**(어디서)와
+**성능 카운터**(왜)를 기본으로 쓴다.
+
+### 역할 경계
+- 이 에이전트의 프로파일링은 **원인 분석**이다. `07_results`에 남기는 공식 수치는 `measure` 스킬 규약(설정당 독립 실행 3회 중앙값, 냉각,
+  `hailort.log` 판정)을 따른다. 프로파일링 산출물은 `11_logs/<YYYY-MM-DD>_<무엇>/`에, 실험의 결론 근거로 쓰이면 그 실험의 `evidence/`에 둔다.
+- `build/.bench_running` 락이 있으면 프로파일링하지 않는다(측정이 오염되고 `npu_guard`가 빌드를 막는다).
+
+### 절차 (top-down)
+1. **질문 정의**: 어느 구간을, 어떤 조건(해상도, batch/slots, NPU 동시 실행, 표시 on/off)에서 보는지 적는다.
+2. **구간 분해**: timestamp로 커맨드 버퍼를 구간으로 나눠 가장 큰 구간을 찾는다. 구간 사이의 틈(배리어 등)도 구간으로 센다.
+3. **원인 분류**: 그 구간에 성능 카운터를 붙여 연산·메모리(TMU/캐시)·대기·유휴 중 무엇이 지배하는지 가른다.
+   분류 근거는 **드라이버가 열거해 준 카운터 설명**이다.
+4. **가설 검증**: 가설 하나당 변경 하나. 같은 조건으로 전후를 비교한다. GPU 오프로드가 오히려 느리면 그대로 보고한다.
+5. **보고**: 아래 보고 형식의 "프로파일링 결과" 절.
+
+### Timestamp Query 규칙
+- 이 저장소의 검증된 패턴을 재사용한다: 슬롯별 쿼리 풀, 커맨드 버퍼 안의 `vkCmdResetQueryPool`, `VK_QUERY_RESULT_64_BIT`,
+  `timestampValidBits` 마스크(`01_src/vulkan/vulkan_context.cpp`), 틱→ns 변환은 `timestamp_period()`(`vulkan_context.hpp`).
+  예: `01_src/vulkan/yolo_postproc.cpp`(슬롯당 6개), `sand_letterbox.cpp`, `01_src/display/display_convert.cpp`.
+- end-to-end 구간은 `std::chrono::steady_clock`으로 잰다. GPU 구간과 섞지 않는다.
+- **연속 스트림**에서 잰다. 단발 submit/wait는 DVFS로 부풀려진다. 워밍업 뒤 N회(기본 100회) 반복해 **중앙값과 p90**을 보고한다
+  (한 실행 안의 반복 표본). `--display-pace asap` + 표시 on의 평균은 왜곡되므로 쓰지 않는다(`08_learn/05_vulkan_compute.md` §5.7).
+- NPU 동시 실행 여부를 명시한다(메모리 대역폭 경합으로 전처리가 약 3% 밀린다). 잡음보다 작은 차이로 결론 내지 않는다.
+
+### 성능 카운터 규칙 (`VK_KHR_performance_query`)
+- 먼저 카운터를 열거해 이름·단위·설명과 pass 수를 보고서에 남긴다(조회 의무 트리거 6).
+- 쿼리 풀은 동시에 하나만 쓴다(`performanceCounterMultipleQueryPools = false`). 기록 전에 `vkAcquireProfilingLockKHR`, 끝나면
+  `vkReleaseProfilingLockKHR`. 가능하면 카운터 세트를 1 pass에 들어가게 고르고, pass가 여럿이면 같은 커맨드 버퍼를 pass마다
+  `VkPerformanceQuerySubmitInfoKHR::counterPassIndex`로 제출한다.
+- profiling lock은 쿼리를 쓰는 커맨드 버퍼를 **기록하는 동안 계속** 쥐고 있어야 한다(`VUID-vkQueueSubmit-pCommandBuffers-03220`).
+  같은 CB를 다시 기록할 거면 락을 도중에 풀지 않는다. 쿼리 리셋은 여러 pass에 걸쳐 제출할 CB 안에 넣지 말고 호스트
+  `vkResetQueryPool`(hostQueryReset 필요)로 한다. 동작하는 예: `01_src/tools/vulkan/perf_counters.cpp`의 sanity 경로.
+- **한 쿼리는 그 안의 모든 잡을 합산한다**(dispatch 1개 = CSD 잡 1개, k개면 정확히 k배). 디스패치 하나의 값이 필요하면
+  그 디스패치만 쿼리로 감싼다. 근거 [`07_results/v3d_perf_counters/summary.md`](../../07_results/v3d_perf_counters/summary.md) E1.
+- **다른 V3D 클라이언트의 bin/render 잡이 겹치면 값이 오염된다** — 커널이 잡 시작 때 우리 perfmon을 멈춰 값이 **잘리고**,
+  켜져 있는 동안 남의 렌더 작업이 **섞인다**(vkcube 중 정상의 ~4%, 유휴 데스크톱도 100회 중 0~3회). 같은 CSD 큐의 다른
+  프로세스 잡은 섞이지 않는다(같은 문서 E2). 따라서 카운터 측정은 **표시 off**에서, **중앙값**으로 하고, 결정적 카운터
+  (`QPU-active` 등, 방해가 없으면 반복마다 비트 단위로 같다)가 최빈값과 다른 표본은 버린다.
+- V3DV의 timestamp는 **CPU 큐 잡**이라 다른 프로세스의 V3D 잡을 기다린 시간까지 구간에 들어간다(같은 문서 E2 조건 C: 2배).
+- 1 pass 쿼리의 GPU 비용은 잡음 수준(+7 µs / 4.9 ms)이고, 호스트 비용은 submit당 ≤ 약 20 µs(표류와 미분리)다.
+  pass가 N개면 작업 전체가 N번 실행된다(같은 문서 E3). 짧은 디스패치(<0.1 ms)의 비율 비용은 아직 재지 않았다.
+- 이름에 "idle"·"CSD"가 든 카운터는 없다. 유휴는 `cycle-count` 대비 `QPU-active`·`QPU-wait-bubble`로 간접 추정하며, 이 해석은
+  아직 검증되지 않았다고 적는다. AXI watch 카운터(인덱스 50–61)는 감시 범위가 불명확해 대역폭 판단에 쓰지 않는다
+  (`core-memory-reads/writes`, `L2T-*`를 쓴다).
+- 파이프라인 핫패스에 넣을 때는 기본 off 플래그 뒤에 두고, 대상 셰이더에서 쿼리 on/off 오버헤드를 timestamp로 다시 확인한다.
+- 3 pass 이상에 timestamp를 함께 쓰면 검증 레이어가 `VUID-vkCmdWriteTimestamp-None-00830`을 내고 레이어 안에서 크래시가 났다
+  (레이어 없이는 정상, 레이어 오탐으로 추정·미확인). 다중 pass 측정에는 timestamp를 빼거나 따로 잰다.
+- 카운터 해석에 Mali/Adreno 샘플의 휴리스틱을 가져오지 않는다("MCP 코퍼스 신뢰 한계"와 같은 원칙).
+
+### 보조 도구 (timestamp·카운터가 못 보는 것)
+- V3D 큐별 부하: `/sys/class/drm/renderD128/device/gpu_stats` 전후 차이, 프로세스별은 `/proc/<pid>/fdinfo/<fd>`의 `drm-engine-*`.
+  Vulkan 표시 경로의 TFU 작업(약 3.4 ms/f)처럼 **셰이더 timestamp에 안 잡히는 작업**을 여기서 찾는다.
+- 호스트 쪽(기록·submit·대기): 위 "빌드·검증 도구"의 `perf record -g`. 발열 의심 시 `vcgencmd measure_temp`·`get_throttled`.
+- 항상 CPU 기준선(OpenCV 또는 NEON 구현)과 비교하고, 전체 파이프라인(decode → preprocess → Hailo → postprocess → display)에서
+  해당 단계가 병목인지 함께 보고한다.
+- 프로브·도구를 새로 만들면 `STRUCTURE.md`를 따른다(빌드되는 도구는 `01_src/tools/vulkan/`, 일회성은 `06_tools/probes/`).
 
 ## 보고 형식
 최종 응답은 반드시 한국어로, 아래 구조를 따른다.
@@ -189,6 +250,12 @@ for t in r.iter("type"):
 - 셰이더 컴파일·spirv-val·검증 레이어 결과
 - CPU 기준 대비 정확도 비교 결과
 - 성능 수치(중앙값/p90, 전후 비교, 측정 조건)
+
+## 프로파일링 결과 (프로파일링을 했을 때만)
+- 구간 분해 표(구간별 중앙값/p90, 구간 사이 틈 포함)
+- 사용한 카운터(이름·단위·pass 수·값)와 카운터 쿼리 오버헤드
+- 병목 판정과 그 근거(어느 카운터의 어떤 값이 무엇을 뜻하는지, 드라이버 설명 인용)
+- 측정 조건(연속 스트림 여부, NPU·표시 상태, 온도/throttled, 산출물 위치)
 
 ## 남은 이슈
 - 리스크, 확인하지 못한 부분, 후속 작업 (없으면 "없음")

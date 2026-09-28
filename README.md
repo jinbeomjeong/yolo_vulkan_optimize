@@ -284,6 +284,7 @@ bash 06_tools/bench/decode_bench.sh      # 디코드 경로 비교
 | `yvo_drm_dump` | 디코더 dma-buf descriptor 덤프, de-SAND 바이트 비교, 디코드 성능 |
 | `yvo_preproc_bench` | GPU 전처리 단독 성능·워크그룹 스윕 |
 | `yvo_postproc_probe` | GPU 후처리 프로브 (`--probe fixture` 는 **NPU 불필요**, 수 초) |
+| `yvo_perf_counters` | V3D 성능 카운터 열거(93개, 1 pass 최대 32개)와 쿼리 동작 확인 (`--csv`, NPU 불필요) |
 | `yvo_hailo_raw_probe` | 원시 출력 경로 프로브 (`--probe f0` 이 입출력 dma-buf 동시 사용 관문) |
 | `yvo_hailo_selftest` | NPU 러너 단독 검증 |
 | `yvo_display_probe` | 표시 경로 프로브 (surface/present/convert/overlay) |

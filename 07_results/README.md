@@ -87,6 +87,7 @@ build/bin/yvo_pipeline \
 | [`gpu_postproc_e2e/`](gpu_postproc_e2e/summary.md) | 스윕 | 일부 인용금지 | 통합 2026-09-20 | — | `--postproc gpu` 통합 정확도·CPU | **매칭 @ IoU 0.9 = 0.9990, 검출 9457 로 host 와 완전 동일.** perf 에서 호스트 NMS 45.10% → **0건**. ⚠ 이 폴더의 FPS·지연은 **결함 상태 값이라 인용 금지**(문서 안에 표시) |
 | [`raw_runner_backpressure/`](raw_runner_backpressure/summary.md) | 스윕 | 유효 | 통합 2026-09-20 | — | 러너 백프레셔 이중 계수 결함 규명·수정 | 수동 `increase_ongoing_callbacks()` 가 `infer_async` 내부 계수와 겹쳐 **in-flight 가 슬롯의 절반**. 제거 후 gpu `b2/s4` 24.48 → **34.96 FPS**(host 대비 −0.03%) |
 | [`display_e2e/`](display_e2e/summary.md) | 스윕 | 일부 인용금지 | 통합 2026-09-20 | — | 표시 통합 e2e (M5a 기준선 + M4) | **glass-to-glass 101 ms**(계획서 추정 217 의 절반). GPU 4패스 합 **6.995 ms = 주기의 24.5%**. 표시 켜도 **검출 3369 불변**, 드롭 0 |
+| [`v3d_perf_counters/`](v3d_perf_counters/summary.md) | 프로브 | 유효 | — 프로파일링 도구 | — | V3D `VK_KHR_performance_query` 카운터 동작 특성 (E1 분해 단위 · E2 혼입 · E3 오버헤드) | 카운터 93개, 1 pass 32개. **한 쿼리는 안의 모든 잡을 합산**(k배 정확). **다른 클라이언트의 bin/render 잡이 겹치면 값이 잘리고 섞인다**(vkcube 중 정상의 ~4%, 유휴 데스크톱도 100회 중 0~3회) → 표시 off·중앙값·최빈값 이탈 표본 제외. GPU 쪽 쿼리 비용은 잡음 안(+7 µs/4.9 ms) |
 
 ## 폴더 규약
 

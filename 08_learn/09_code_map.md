@@ -55,7 +55,7 @@
 ├── display/    화면 표시 (Vulkan 합성·스왑체인 + HVS 평면 스캔아웃: Wayland linux-dmabuf / KMS atomic)   — vulkan과 별도 라이브러리
 ├── isp/        ISP 전처리 — 구현됐지만 미사용
 ├── pipeline/   이 전부를 묶는 실행 파일 main.cpp
-└── tools/      빌드되는 진단·측정 도구 10개 ({hailo,vulkan,display,isp,decode}/ — 측정 대상 도메인 기준)
+└── tools/      빌드되는 진단·측정 도구 11개 ({hailo,vulkan,display,isp,decode}/ — 측정 대상 도메인 기준)
 ```
 
 ### 왜 일부러 갈라 뒀나
@@ -209,6 +209,7 @@ cmake -S . -B build -G Ninja && cmake --build build
 | `yvo_drm_dump` | 디코더가 내놓는 버퍼의 실제 모양 | 아니오 |
 | `yvo_preproc_bench` | GPU 전처리만, 워크그룹 크기 스윕 | 아니오 |
 | `yvo_postproc_probe` | GPU 후처리. `--probe fixture`는 저장된 텐서로 검증 | `fixture`는 불필요 |
+| `yvo_perf_counters` | V3D 성능 카운터(`VK_KHR_performance_query`) 열거·pass 분석, 작은 dispatch로 쿼리 동작 확인 | 아니오 |
 | `yvo_hailo_selftest` | NPU 러너만 | 예 |
 | `yvo_hailo_raw_probe` | 원시 출력 경로, dma-buf 동시 사용 관문 | 예 |
 | `yvo_display_probe` | 화면 경로만 | 아니오 |

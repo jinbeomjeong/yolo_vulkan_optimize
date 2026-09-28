@@ -1,0 +1,437 @@
+physical device: V3D 7.1.10.2 (type 1)
+physical device: llvmpipe (LLVM 19.1.7, 128 bits) (type 4)
+selected: V3D 7.1.10.2, apiVersion 1.3.354, driverVersion 0x6802002, timestampPeriod 1 ns
+VK_KHR_performance_query rev 1: performanceCounterQueryPools=1 performanceCounterMultipleQueryPools=0 allowCommandBufferQueryCopies=1 hostQueryReset=1
+
+== Queue family 0: flags=GRAPHICS|COMPUTE|TRANSFER, queueCount=1 ==
+counters: 93
+
+[  0] cycle-count
+      category=CORE unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=61afb46c-0f8f-4258-8418-3b061084c926
+      [CORE] Cycle counter
+[  1] core-active
+      category=CORE unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=8c72178d-868d-e4be-dcd3-bcdbbca893a9
+      [CORE] Bin/Render/Compute active cycles
+[  2] CLE-bin-thread-active-cycles
+      category=CLE unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=a16898c8-4262-5c9c-ea04-fa467ffe3cc6
+      [CLE] Bin thread active cycles
+[  3] CLE-render-thread-active-cycles
+      category=CLE unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=4f814a7d-6488-8e10-8fe3-7d3ccafcd0f7
+      [CLE] Render thread active cycles
+[  4] compute-active-cycles
+      category=CORE unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=c74456b3-52c6-c828-b9d7-c7345b02caf0
+      [CORE] Compute active cycles
+[  5] FEP-valid-primitives-no-rendered-pixels
+      category=FEP unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=656d18dc-e39f-241f-323a-4045af98a967
+      [FEP] Valid primitives that result in no rendered pixels, for all rendered tiles
+[  6] FEP-valid-primitives-rendered-pixels
+      category=FEP unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=033b6b1b-7080-df9f-66e8-0f0196524605
+      [FEP] Valid primitives for all rendered tiles (primitives may be counted in more than one tile)
+[  7] FEP-clipped-quads
+      category=FEP unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=fee7df2e-ef13-025f-bbe9-f2065ce30263
+      [FEP] Early-Z/Near/Far clipped quads
+[  8] FEP-valid-quads
+      category=FEP unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=d42db80a-75fd-3c74-1970-a18d70daebd4
+      [FEP] Valid quads
+[  9] TLB-quads-not-passing-stencil-test
+      category=TLB unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=07426cdd-aaf8-688c-0be9-29a601d3802b
+      [TLB] Quads with no pixels passing the stencil test
+[ 10] TLB-quads-not-passing-z-and-stencil-test
+      category=TLB unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=3888c949-098d-085f-2caa-8a04e0da6e87
+      [TLB] Quads with no pixels passing the Z and stencil tests
+[ 11] TLB-quads-passing-z-and-stencil-test
+      category=TLB unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=95864bd1-69fa-f2dc-971f-b10aa900260c
+      [TLB] Quads with any pixels passing the Z and stencil tests
+[ 12] TLB-quads-written-to-color-buffer
+      category=TLB unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=d2209f48-99ca-a88a-89a9-a6b14214a356
+      [TLB] Quads with valid pixels written to colour buffer
+[ 13] TLB-partial-quads-written-to-color-buffer
+      category=TLB unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=6c6ef3ad-e51b-e9cd-bec6-366c955fb0e2
+      [TLB] Partial quads written to the colour buffer
+[ 14] PTB-primitives-need-clipping
+      category=PTB unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=e979f644-120b-5d72-079a-1e21a3da7e2a
+      [PTB] Primitives that need clipping
+[ 15] PTB-primitives-discarded-outside-viewport
+      category=PTB unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=351d6628-a66e-eb66-3c09-2fca58d34b40
+      [PTB] Primitives discarded by being outside the viewport
+[ 16] PTB-primitives-binned
+      category=PTB unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=92da93b3-ceaf-17db-7e62-18034692adec
+      [PTB] Total primitives binned
+[ 17] PTB-primitives-discarded-reversed
+      category=PTB unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=6b00261b-da0a-4f3c-2ed7-5baa3f51be29
+      [PTB] Primitives that are discarded because they are reversed
+[ 18] QPU-total-instr-cache-hit
+      category=QPU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=ff31b648-315d-b6a6-aa8c-e2c6881e41de
+      [QPU] Total instruction cache hits for all slices
+[ 19] QPU-total-instr-cache-miss
+      category=QPU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=4b652035-988c-7213-2552-be01d0de8c1e
+      [QPU] Total instruction cache misses for all slices
+[ 20] QPU-total-uniform-cache-hit
+      category=QPU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=27ac96ed-c124-09d3-e20a-6a0a2f8840ff
+      [QPU] Total uniforms cache hits for all slices
+[ 21] QPU-total-uniform-cache-miss
+      category=QPU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=f48f429c-840d-db50-5a2f-955f89d330e2
+      [QPU] Total uniforms cache misses for all slices
+[ 22] TMU-active-cycles
+      category=TMU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=784bbf1c-698b-f556-3f78-5d1b3a886592
+      [TMU] Active cycles
+[ 23] TMU-stalled-cycles
+      category=TMU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=ce88063e-9aac-c895-ee99-8d55eedeaba7
+      [TMU] Stalled cycles
+[ 24] TMU-total-text-quads-access
+      category=TMU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=9aa00eda-8ba2-cc01-27d8-4f7963ea2afb
+      [TMU] Total texture cache accesses
+[ 25] TMU-cache-x4-active-cycles
+      category=TMU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=4ba38706-847d-7912-4395-fd1f507c043a
+      [TMU] Cache active cycles for x4 access
+[ 26] TMU-cache-x4-stalled-cycles
+      category=TMU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=640d3727-f9c8-0826-56d1-2d9ed9af6c19
+      [TMU] Cache stalled cycles for x4 access
+[ 27] TMU-total-text-quads-x4-access
+      category=TMU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=fb532b48-86f4-ef63-472f-dcda63caaeb1
+      [TMU] Total texture cache x4 access
+[ 28] L2T-total-cache-hit
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=d14e265d-4002-f181-e14b-9a6f180fe666
+      [L2T] Total Level 2 cache hits
+[ 29] L2T-total-cache-miss
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=39c844b2-6b68-00ed-78db-80335ef8fb64
+      [L2T] Total Level 2 cache misses
+[ 30] L2T-local
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=e55c56ca-5294-fc9c-a4c4-664eb8c4e87b
+      [L2T] Local mode access
+[ 31] L2T-writeback
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=5215e98c-99ea-8030-eccb-1f1287bcaaf1
+      [L2T] Writeback
+[ 32] L2T-zero
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=1ae0ff5f-d90c-f72c-d818-fdf8d5c55a46
+      [L2T] Zero
+[ 33] L2T-merge
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=0cb3d697-e11b-4db3-94e9-957d10a72ba5
+      [L2T] Merge
+[ 34] L2T-fill
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=03a6fff5-dd6a-0725-4777-65fd77a4962f
+      [L2T] Fill
+[ 35] L2T-stalls-no-wid
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=96ae5fa7-cd8c-4f74-31b4-6a0fc0054614
+      [L2T] Stalls because no WID available
+[ 36] L2T-stalls-no-rid
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=bd2f302f-78a5-4305-d697-22f004dff5ef
+      [L2T] Stalls because no RID available
+[ 37] L2T-stalls-queue-full
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=a1dfc7b1-4e0a-ac1d-e057-e07a7f15f6a3
+      [L2T] Stalls because internal queue full
+[ 38] L2T-stalls-wrightback
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=40759d1b-d507-e1ab-7e77-6cf2cd78eaf8
+      [L2T] Stalls because writeback in flight
+[ 39] L2T-stalls-mem
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=84b3da58-a25a-830d-eca6-37a8ad182494
+      [L2T] Stalls because AXI blocks read
+[ 40] L2T-stalls-fill
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=e6452f8f-e530-17ba-bda0-81d172a6f968
+      [L2T] Stalls because fill pending for victim cache-line
+[ 41] L2T-hitq
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=6d336f60-afb4-6c6a-0db6-04a55cdbef81
+      [L2T] Sent request via hit queue
+[ 42] L2T-hitq-full
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=531bc6ae-9014-50b2-fe7c-88152801c463
+      [L2T] Sent request via main queue because hit queue is full
+[ 43] L2T-stalls-read-data
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=aa23ce59-b461-db85-7c36-4121cc86e6c3
+      [L2T] Stalls because waiting for data from SDRAM
+[ 44] L2T-TMU-read-hits
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=e809eb1b-0df2-29f4-a3ff-43f10e1cf8df
+      [L2T] TMU read hits
+[ 45] L2T-TMU-read-miss
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=dce81826-3234-cd80-f963-df0ffd574965
+      [L2T] TMU read misses
+[ 46] L2T-VCD-read-hits
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=66a723ce-5c51-1af9-b877-4f9d27ab6384
+      [L2T] VCD read hits
+[ 47] L2T-VCD-read-miss
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=d7e9d9ee-2c02-488c-1055-56550aa7a254
+      [L2T] VCD read misses
+[ 48] L2T-SLC-read-hits
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=7c2c7054-ec88-c0cb-2359-7e7ecd374118
+      [L2T] SLC read hits (all slices)
+[ 49] L2T-SLC-read-miss
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=1e28fa8d-37ed-ef83-622f-df0c1a2987ce
+      [L2T] SLC read misses (all slices)
+[ 50] AXI-writes-seen-watch-0
+      category=AXI unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=8dc6bb0d-55ee-4974-c8b8-67ebe89dbdb0
+      [AXI] Writes seen by watch 0
+[ 51] AXI-reads-seen-watch-0
+      category=AXI unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=5958e339-0963-32c4-5cd7-48624fa94faf
+      [AXI] Reads seen by watch 0
+[ 52] AXI-writes-stalled-seen-watch-0
+      category=AXI unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=d435c05b-e5ba-7088-f121-67cde5e1fe5b
+      [AXI] Write stalls seen by watch 0
+[ 53] AXI-reads-stalled-seen-watch-0
+      category=AXI unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=71de3663-fc8a-dcf3-9bed-9aed2eb7c61b
+      [AXI] Read stalls seen by watch 0
+[ 54] AXI-write-bytes-seen-watch-0
+      category=AXI unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=04f4e544-222f-3044-eb63-4399742575d8
+      [AXI] Total bytes written seen by watch 0
+[ 55] AXI-read-bytes-seen-watch-0
+      category=AXI unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=14ecf701-4dfb-ff50-85cf-026581c8b114
+      [AXI] Total bytes read seen by watch 0
+[ 56] AXI-writes-seen-watch-1
+      category=AXI unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=5040fc34-194b-bfaa-91e2-28cd97fbe68d
+      [AXI] Writes seen by watch 1
+[ 57] AXI-reads-seen-watch-1
+      category=AXI unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=5d707759-da2f-c357-615b-2c1fd1ac2dac
+      [AXI] Reads seen by watch 1
+[ 58] AXI-writes-stalled-seen-watch-1
+      category=AXI unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=166db7b8-208f-d7a7-cade-8eaba00ad61c
+      [AXI] Write stalls seen by watch 1
+[ 59] AXI-reads-stalled-seen-watch-1
+      category=AXI unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=aa114b60-5df9-667d-5008-39005f6d40c5
+      [AXI] Read stalls seen by watch 1
+[ 60] AXI-write-bytes-seen-watch-1
+      category=AXI unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=f6291116-5ee1-bfd3-a2cf-67c7f7c275a3
+      [AXI] Total bytes written seen by watch 1
+[ 61] AXI-read-bytes-seen-watch-1
+      category=AXI unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=802fc081-fe41-7ce7-f782-cd638bb6e6d7
+      [AXI] Total bytes read seen by watch 1
+[ 62] core-memory-writes
+      category=CORE unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=9627fc26-2ab6-dd4a-ac9e-e1b31a4515de
+      [CORE] Total memory writes
+[ 63] L2T-memory-writes
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=3b7e27ee-9fd9-3f40-c7b9-163970b240d3
+      [L2T] Total memory writes
+[ 64] PTB-memory-writes
+      category=PTB unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=ce6fe483-b20b-0eb0-efb2-eb26303e3698
+      [PTB] Total memory writes
+[ 65] TLB-memory-writes
+      category=TLB unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=4e96c8c1-6c86-89c0-1754-21f71001d8ea
+      [TLB] Total memory writes
+[ 66] core-memory-reads
+      category=CORE unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=43e23359-558b-b20a-73f8-d80ee20d17cb
+      [CORE] Total memory reads
+[ 67] L2T-memory-reads
+      category=L2T unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=a64b7922-b3e0-45f9-4e76-9dfcf66a7b6b
+      [L2T] Total memory reads
+[ 68] PTB-memory-reads
+      category=PTB unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=5db8b2a1-419f-1555-4a5e-4208dee83bfb
+      [PTB] Total memory reads
+[ 69] PSE-memory-reads
+      category=PSE unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=9e893099-9cd7-5b45-f53b-c94e6b0dd09a
+      [PSE] Total memory reads
+[ 70] TLB-memory-reads
+      category=TLB unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=bd15102c-4bc0-edf1-3847-e02fe39651e9
+      [TLB] Total memory reads
+[ 71] PTB-memory-words-writes
+      category=PTB unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=27714b3c-4e65-5d09-aa29-dcd6e0e00a1a
+      [PTB] Total memory words written
+[ 72] TLB-memory-words-writes
+      category=TLB unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=61a30d52-eadc-7d3f-74c7-e74ec58da6d2
+      [TLB] Total memory words written
+[ 73] PSE-memory-words-reads
+      category=PSE unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=94cead42-7a11-0bd3-ea6d-0537a7af1368
+      [PSE] Total memory words read
+[ 74] TLB-memory-words-reads
+      category=TLB unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=aeb45c9a-211e-429c-87e0-a51288c01bd3
+      [TLB] Total memory words read
+[ 75] AXI-read-trans
+      category=AXI unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=5e243bba-799d-092d-64eb-6fdf2786660b
+      [AXI] Read transaction count
+[ 76] AXI-write-trans
+      category=AXI unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=5bf08d23-3ce0-3d66-f6f2-fe0959bce060
+      [AXI] Write transaction count
+[ 77] AXI-read-wait-cycles
+      category=AXI unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=f88c019f-3b01-58d7-a1ff-ab74a15486ef
+      [AXI] Read total wait cycles
+[ 78] AXI-write-wait-cycles
+      category=AXI unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=21ffb692-0f45-254d-bf2c-fe893f22d7ee
+      [AXI] Write total wait cycles
+[ 79] AXI-max-outstanding-reads
+      category=AXI unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=96b360c8-1331-29ce-e673-27f7b8d6335f
+      [AXI] Maximum outstanding read transactions
+[ 80] AXI-max-outstanding-writes
+      category=AXI unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=58d0465b-0364-2191-2539-a6529f1308d9
+      [AXI] Maximum outstanding write transactions
+[ 81] QPU-wait-bubble
+      category=QPU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=2673fb6f-d56b-0df7-c7f3-c7a82346a9df
+      [QPU] Pipeline bubble in qcycles due all threads waiting
+[ 82] QPU-ic-miss-bubble
+      category=QPU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=68a60f3d-4906-5c7b-b2c6-d1bc6c87aa7a
+      [QPU] Pipeline bubble in qcycles due instruction-cache miss
+[ 83] QPU-active
+      category=QPU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=57ae7765-4895-05ef-bb52-ad5b31c85d6c
+      [QPU] Executed shader instruction
+[ 84] QPU-total-active-clk-cycles-fragment-shading
+      category=QPU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=9c972662-f1e6-4b65-a0e3-ac1e3e620666
+      [QPU] Total active clock cycles for all QPUs doing fragment shading (counts only when QPU is not stalled)
+[ 85] QPU-stalls
+      category=QPU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=121fc45d-343f-d794-0416-a5fd88330150
+      [QPU] Stalled qcycles executing shader instruction
+[ 86] QPU-total-clk-cycles-waiting-fragment-shading
+      category=QPU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=ec488179-af51-ae3e-4fbf-a5985c1b383b
+      [QPU] Total stalled clock cycles for all QPUs doing fragment shading
+[ 87] QPU-stalls-TMU
+      category=QPU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=b5df846f-173b-303e-fa42-fa29cb8b847d
+      [QPU] Stalled qcycles waiting for TMU
+[ 88] QPU-stalls-TLB
+      category=QPU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=af66fcfb-fb6a-4749-b799-fd6537f35f71
+      [QPU] Stalled qcycles waiting for TLB
+[ 89] QPU-stalls-VPM
+      category=QPU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=8d89fed0-9f00-7d03-f073-3461fe4fbfc3
+      [QPU] Stalled qcycles waiting for VPM
+[ 90] QPU-stalls-uniforms
+      category=QPU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=fec33666-ab41-3e40-a565-531752e999fe
+      [QPU] Stalled qcycles waiting for uniforms
+[ 91] QPU-stalls-SFU
+      category=QPU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=3dcd3aff-1506-8eeb-0296-673dffccd89e
+      [QPU] Stalled qcycles waiting for SFU
+[ 92] QPU-stalls-other
+      category=QPU unit=GENERIC scope=COMMAND storage=UINT64 flags=none passes_alone=1
+      uuid=e5b3e262-7e0f-8c61-8033-50dc19b4159d
+      [QPU] Stalled qcycles waiting for any other reason (vary/W/Z)
+
+-- Summary (queue family 0) --
+  total    : 93
+  by category : AXI=18 CLE=2 CORE=5 FEP=4 L2T=24 PSE=2 PTB=7 QPU=16 TLB=9 TMU=6
+  by unit     : GENERIC=93
+  by scope    : COMMAND=93
+  by storage  : UINT64=93
+  by flags    : none=93
+
+-- Pass analysis (queue family 0) --
+  (a) passes per single counter: 1 pass=93 counters
+  (b) all 93 counters: 3 pass(es)
+  (c) longest index-order prefix in 1 pass: 32 counters (indices 0..31)
+      skip-greedy 1-pass set (index order): 32 counters
+  passes vs prefix length: n=1→1 n=33→2 n=65→3
+
+== Sanity check (queue family 0) ==
+counter set: 32 counters, 1 pass(es)
+run idle (no dispatch)       : VK_SUCCESS, gpu_sum=0x00000000 cpu_sum=0x00000000 groups=0/0 OK
+run small (1 MiB heap_sum)   : VK_SUCCESS, gpu_sum=0x07f98756 cpu_sum=0x07f98756 groups=256/256 OK
+run large (16 MiB heap_sum)  : VK_SUCCESS, gpu_sum=0x7f7cd1b3 cpu_sum=0x7f7cd1b3 groups=256/256 OK
+
+index  name                                     unit                         idle                small                large
+    0  cycle-count                              GENERIC                         0              1525262             18085008
+    1  core-active                              GENERIC                         0              1458489             18005325
+    2  CLE-bin-thread-active-cycles             GENERIC                         0                    0                    0
+    3  CLE-render-thread-active-cycles          GENERIC                         0                    0                    0
+    4  compute-active-cycles                    GENERIC                         0              1458489             18005325
+    5  FEP-valid-primitives-no-rendered-pixels  GENERIC                         0                    0                    0
+    6  FEP-valid-primitives-rendered-pixels     GENERIC                         0                    0                    0
+    7  FEP-clipped-quads                        GENERIC                         0                    0                    0
+    8  FEP-valid-quads                          GENERIC                         0                    0                    0
+    9  TLB-quads-not-passing-stencil-test       GENERIC                         0                    0                    0
+   10  TLB-quads-not-passing-z-and-stencil-test GENERIC                         0                    0                    0
+   11  TLB-quads-passing-z-and-stencil-test     GENERIC                         0                    0                    0
+   12  TLB-quads-written-to-color-buffer        GENERIC                         0                    0                    0
+   13  TLB-partial-quads-written-to-color-buffer GENERIC                         0                    0                    0
+   14  PTB-primitives-need-clipping             GENERIC                         0                    0                    0
+   15  PTB-primitives-discarded-outside-viewport GENERIC                         0                    0                    0
+   16  PTB-primitives-binned                    GENERIC                         0                    0                    0
+   17  PTB-primitives-discarded-reversed        GENERIC                         0                    0                    0
+   18  QPU-total-instr-cache-hit                GENERIC                         0               636103              8008903
+   19  QPU-total-instr-cache-miss               GENERIC                         0                   24                   24
+   20  QPU-total-uniform-cache-hit              GENERIC                         0                76284               813565
+   21  QPU-total-uniform-cache-miss             GENERIC                         0                    2                    2
+   22  TMU-active-cycles                        GENERIC                         0                98304              1081344
+   23  TMU-stalled-cycles                       GENERIC                         0                 2816                 2816
+   24  TMU-total-text-quads-access              GENERIC                         0               327680              4259840
+   25  TMU-cache-x4-active-cycles               GENERIC                         0                98304              1081344
+   26  TMU-cache-x4-stalled-cycles              GENERIC                         0                 2816                 2816
+   27  TMU-total-text-quads-x4-access           GENERIC                         0               327680              4259840
+   28  L2T-total-cache-hit                      GENERIC                         0                21262               205582
+   29  L2T-total-cache-miss                     GENERIC                         0                 4108                65548
+   30  L2T-local                                GENERIC                         0                    0                    0
+   31  L2T-writeback                            GENERIC                         0                    5                    5
+
+CSV written: /dev/null

@@ -1,4 +1,4 @@
-# Registers the 10 built diagnostic/measurement tools in one place (2026-09-22; previously tools/ was scattered per domain folder).
+# Registers the 11 built diagnostic/measurement tools in one place (2026-09-22; previously tools/ was scattered per domain folder).
 # Folders are by **measured domain** (a tool spanning several domains goes by what it measures). File names keep their old names.
 # All executables go to build/bin/. If a library target is missing (e.g. no libpisp or wayland), REQUIRES silently skips the tool.
 #
@@ -33,6 +33,11 @@ yvo_add_tool(yvo_preproc_bench vulkan/preproc_bench.cpp
 yvo_add_tool(yvo_postproc_probe vulkan/postproc_probe.cpp
   LIBS yvo_vulkan yvo_shaders_diag yvo_toolkit yvo_testkit_postproc
   OPTIONAL yvo_hailo=YVO_HAVE_HAILO)
+
+# VK_KHR_performance_query counter enumeration + pass analysis (+ query-pool sanity check with heap_sum.comp).
+# Creates its own VkDevice (the extension and hostQueryReset must be enabled); yvo_vulkan is linked only for vk_check.hpp.
+yvo_add_tool(yvo_perf_counters vulkan/perf_counters.cpp
+  LIBS yvo_vulkan yvo_shaders_diag yvo_toolkit)
 
 # ── display ────────────────────────────────────────────────────────────────────
 # Probes: plan §6.3 (P4 surface / P5 present / P6 context-regression / P8 convert).
