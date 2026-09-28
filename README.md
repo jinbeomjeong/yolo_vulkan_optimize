@@ -290,6 +290,7 @@ bash 06_tools/bench/decode_bench.sh      # 디코드 경로 비교
 | `yvo_display_probe` | 표시 경로 프로브 (surface/present/convert/overlay) |
 | `yvo_display_pipeline_probe` | `DisplayPipeline` 단독 검증 (`yvo_pipeline` 미사용) |
 | `yvo_isp_*` | PiSP BE(ISP) 전처리 — **통합 보류 상태** |
+| `yvo_gst_sand_probe` | (선택) GStreamer `v4l2slh265dec` DMABuf → `DrmFrame` → GPU 전처리(NHCW)가 FFmpeg 경로와 바이트 일치하는지 가르는 관문 |
 | `06_tools/probes/hvs_probe/` | (빌드 안 함) HVS 두 평면 스캔아웃 KMS/Wayland 프로브 소스. [`notes/kms_vs_wayland.md`](07_results/display_vulkan_hdmi/notes/kms_vs_wayland.md) 의 근거 |
 
 화면에 실제로 나왔는지는 사람 눈 없이 확인한다:

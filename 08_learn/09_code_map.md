@@ -56,7 +56,7 @@
 ├── isp/        ISP 전처리 — 구현됐지만 미사용
 ├── pipeline/   이 전부를 묶는 실행 파일 main.cpp
 ├── gstelem/    (선택) GStreamer 연구 경로 — v4l2 디코드 DMABuf를 받는 요소 2개. 앱 본체는 쓰지 않는다
-└── tools/      빌드되는 진단·측정 도구 11개 ({hailo,vulkan,display,isp,decode}/ — 측정 대상 도메인 기준)
+└── tools/      빌드되는 진단·측정 도구 12개 ({hailo,vulkan,display,isp,decode,gst}/ — 측정 대상 도메인 기준)
 ```
 
 ### 왜 일부러 갈라 뒀나
@@ -216,6 +216,7 @@ cmake -S . -B build -G Ninja && cmake --build build
 | `yvo_display_probe` | 화면 경로만 | 아니오 |
 | `yvo_display_pipeline_probe` | 표시 상태기계만 | 아니오 |
 | `yvo_isp_*` | ISP 경로 (보류 상태) | 아니오 |
+| `yvo_gst_sand_probe` | (선택, GStreamer 연구 경로) `v4l2slh265dec` DMABuf → `DrmFrame` → GPU 전처리가 FFmpeg 경로와 바이트 일치하는지 | 아니오 |
 
 > **이 도구들이 프로젝트의 방법론이다.** 새 기능을 바로 본체에 넣지 않고,
 > 먼저 프로브로 "이게 되는가"를 가른 다음 통과한 것만 승격한다.

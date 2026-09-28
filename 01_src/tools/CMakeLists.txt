@@ -1,4 +1,4 @@
-# Registers the 11 built diagnostic/measurement tools in one place (2026-09-22; previously tools/ was scattered per domain folder).
+# Registers the 12 built diagnostic/measurement tools in one place (2026-09-22; previously tools/ was scattered per domain folder).
 # Folders are by **measured domain** (a tool spanning several domains goes by what it measures). File names keep their old names.
 # All executables go to build/bin/. If a library target is missing (e.g. no libpisp or wayland), REQUIRES silently skips the tool.
 #
@@ -77,3 +77,10 @@ yvo_add_tool(yvo_isp_pipeline isp/isp_pipeline.cpp
 # Inspection tool: descriptor dump, de-SAND comparison, decode performance
 yvo_add_tool(yvo_drm_dump decode/drm_dump.cpp
   LIBS yvo_decoder yvo_toolkit)
+
+# ── gst ────────────────────────────────────────────────────────────────────────
+# GStreamer research path, stage-1 gate: v4l2slh265dec DMABuf (SAND128) → DrmFrame adapter → SandLetterbox NHCW,
+# byte-compared with the FfmpegDrmDecoder path. Skipped without GStreamer >= 1.24 dev (yvo_gstelem) or gstreamer-app.
+yvo_add_tool(yvo_gst_sand_probe gst/gst_sand_probe.cpp
+  REQUIRES yvo_gstelem PkgConfig::YVO_GST_APP
+  LIBS yvo_gstelem yvo_vulkan yvo_decoder yvo_toolkit PkgConfig::YVO_GST PkgConfig::YVO_GST_APP)
