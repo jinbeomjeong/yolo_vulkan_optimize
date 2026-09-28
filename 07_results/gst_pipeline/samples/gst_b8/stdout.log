@@ -1,0 +1,26 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+
+== yvo_gst_pipeline summary ==
+versions        GStreamer 1.26.2, v4l2codecs 1.26.2 (GStreamer Bad Plugins (Debian)), gstreamer1.0-plugins-bad 1.26.2-3+rpt4+deb13u3
+caps in         video/x-raw(memory:DMABuf), format=(string)DMA_DRM, width=(int)1920, height=(int)1080, interlace-mode=(string)progressive, multiview-mode=(string)mono, multiview-flags=(GstVideoMultiviewFlagsSet)0:ffffffff:/right-view-first/left-flipped/left-flopped/right-flipped/right-flopped/half-aspect/mixed-mono, pixel-aspect-ratio=(fraction)1/1, colorimetry=(string)bt709, framerate=(fraction)30000/1001, drm-format=(string)NV12:0x0700000000000004
+caps out        application/x-yvo-tensor, layout=(string)nhcw, format=(string)RGB8, width=(int)640, height=(int)640, framerate=(fraction)30000/1001
+sink            hailo (hold 0, max held 0), slots 16, queue 2, decoder-pool-min 4, batch 8
+frames          1816 at sink (expected 1816), element 1816
+wall            35.138 s, 51.68 FPS (PLAYING→EOS, after preroll); steady 52.09 FPS (first→last sink buffer)
+cpu             3.439 ms/frame (getrusage self user+sys, whole process incl. GStreamer threads)
+gpu ms          mean 1.925 median 1.908 p90 2.092 max 5.341 (n 1816; element mean 1.925)
+slot wait ms    mean 17.063 p90 134.488 max 145.403 (element blocked acquiring an output slot)
+elem->sink ms   mean 19.177 median 2.378 p90 136.806 (input arrival at element -> sink pad)
+slots           16 used, fd per slot stable: yes, tensor 1228800 B in dma-buf 1245184 B
+letterbox       src 1920x1080 scale 0.333333 pad 0,140 (make_letterbox: equal)
+open fds        8 before PAUSED, 6 after pipeline unref (all released: yes)
+vk validation   layer off, errors 0
+npu latency ms  mean 306.362  median 307.080  p90 307.597  max 326.048  (run_async → completion callback)
+e2e latency ms  mean 325.555  median 309.525  p90 443.650  max 454.475  (letterbox arrival → NPU completion callback)
+hailo           submitted 1816, completed 1816, errors 0, batch 8, async queue 16, in-flight max 16, mapped slots 16/16
+detections      9457 total, 5.21 / frame
+hailo chip temp 64.5 -> 81.6 C
+soc temp        65.3 -> 66.4 C
+result          PASS
+RESULT_GST_CSV,gst_b8,hailo,0,16,2,8,1816,35.138,51.68,52.09,3.439,1.925,1.908,2.092,17.063,19.177,136.806,0,0,1
+RESULT_CSV,gst_b8,dmabuf,nhcw,8,16,1816,35.138,51.68,3.439,nan,1.925,2.092,306.36,307.60,325.56,443.65,9457,64.5,81.6,65.3,66.4,1

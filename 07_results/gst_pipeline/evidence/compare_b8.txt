@@ -1,0 +1,31 @@
+label            : app_nhcw_b8_vs_gst_b8
+frames           : 1816
+detections ref   : 9457
+detections test  : 9457  (+0.00 %)
+match @ IoU 0.5 : 9457 / 9457 = 1.0000
+match @ IoU 0.7 : 9457 / 9457 = 1.0000
+match @ IoU 0.9 : 9457 / 9457 = 1.0000
+
+coord err px (max(|dx1|,|dy1|,|dx2|,|dy2|) of matched pairs)
+IoU    pairs          max         mean          p50          p90
+0.5     9457     0.000000     0.000000     0.000000     0.000000
+0.7     9457     0.000000     0.000000     0.000000     0.000000
+0.9     9457     0.000000     0.000000     0.000000     0.000000
+
+class                 ref   test    diff
+car                   5767   5767    +0.00 %
+traffic light         1654   1654    +0.00 %
+person                1483   1483    +0.00 %
+truck                  228    228    +0.00 %
+bicycle                150    150    +0.00 %
+chair                   79     79    +0.00 %
+bus                     33     33    +0.00 %
+fire hydrant            23     23    +0.00 %
+motorcycle              15     15    +0.00 %
+stop sign               10     10    +0.00 %
+airplane                 9      9    +0.00 %
+train                    4      4    +0.00 %
+bench                    1      1    +0.00 %
+bird                     1      1    +0.00 %
+
+saved: /home/pi/workspace/yolo_vulkan_optimize/07_results/gst_pipeline/evidence/compare_b8.csv

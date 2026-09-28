@@ -1,0 +1,7 @@
+label,mode,layout,batch,slots,runs,frames,fps_median,wall_s_median,cpu_ms_per_frame_median,decode_ms_mean_median,gpu_ms_mean_median,gpu_ms_p90_median,npu_ms_mean_median,npu_ms_p90_median,e2e_ms_mean_median,e2e_ms_p90_median,detections_median,hailo_t1_median,soc_t1_median,fps_min,fps_max,hailo_t1_max,hailort_warnings,hailort_errors,all_ok,tool,runs_ok,exit_codes,unreliable_runs,cool_wait_s_total,hailo_pre_c_max,gst_steady_fps_median,gst_slot_wait_ms_median
+app_nhcw_b1,dmabuf,nhcw,1,2,3,1816,24.420,74.356,3.358,0.122,1.817,1.858,79.860,80.040,122.520,122.750,9457.000,76.100,64.800,24.42,24.42,77.6,0,0,1,app,3,0;0;0,0,145,64.6,,
+gst_b1,dmabuf,nhcw,1,2,3,1816,24.430,74.326,3.142,nan,1.760,1.768,79.880,80.040,120.780,120.990,9457.000,76.200,64.800,24.43,24.43,77.6,0,0,1,gst,3,0;0;0,0,110,70.6,24.45,38.966
+app_nhcw_b4,dmabuf,nhcw,4,8,3,1816,44.510,40.797,3.266,0.130,1.981,2.158,176.930,177.470,201.270,262.090,9457.000,80.600,65.900,44.50,44.52,80.9,0,0,1,app,3,0;0;0,0,190,65.0,,
+gst_b4,dmabuf,nhcw,4,8,3,1816,44.550,40.761,3.060,nan,1.921,2.091,177.030,177.450,199.400,260.510,9457.000,81.000,65.900,44.55,44.55,81.1,0,0,1,gst,3,0;0;0,0,195,64.9,44.71,20.241
+app_nhcw_b8,dmabuf,nhcw,8,16,3,1816,51.640,35.164,3.254,0.147,1.978,2.139,306.130,307.420,327.280,444.930,9457.000,81.900,64.800,51.64,51.65,81.9,0,0,1,app,3,0;0;0,0,225,64.8,,
+gst_b8,dmabuf,nhcw,8,16,3,1816,51.690,35.135,3.050,nan,1.924,2.068,306.250,307.490,325.420,444.370,9457.000,81.800,67.500,51.69,51.69,82.8,0,0,1,gst,3,0;0;0,0,225,64.7,52.09,17.061

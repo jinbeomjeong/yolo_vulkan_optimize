@@ -180,8 +180,12 @@ csv.writer(f, lineterminator="\n")
 | NPU 상한 (`hailortcli benchmark`) | batch 8에서 **51.7 FPS** | 2026-09-20, PCIe **Gen3** x1 | `07_results/npu_benchmark/runs/gen3/` |
 | 같은 항목, 한 세대 아래 | batch 8에서 **26.1 FPS** | 2026-09-20, PCIe **Gen2** x1 | `07_results/npu_benchmark/runs/gen2/` |
 | HW HEVC 디코드만 (libavcodec DRM_PRIME) | **398.5 FPS**, CPU 0.23~0.28 ms/frame | 1080p30 | `07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md` §4.1 (**`decode_benchmark/` 아님**) |
-| GPU 전처리 셰이더 (1080p → 640×640) | 2.13 ms (연속 스트림) | V3D 7.1, local 32×8 | `07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md` |
-| 전체 파이프라인 (dmabuf, NHCW, b8/s16) | 51.6 FPS, CPU 약 3.5 ms/frame | 2026-09-20, PCIe **Gen3** x1 | 같은 폴더 `results.csv` |
+| GPU 전처리 셰이더 (1080p → 640×640) | 2.13 ms (연속 스트림) | V3D 7.1 **960 MHz**(부트로더 2025-12-08), local 32×8 | `07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md` |
+| 같은 항목, 파이프라인 안 | b1 1.81 ms, b8 평균 2.0 ms / p90 2.15 ms | 2026-09-29, V3D **1150 MHz**(부트로더 2026-09-25) | `pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/` |
+| 전체 파이프라인 (dmabuf, NHCW, b8/s16) | 51.6 FPS, CPU 약 3.3~3.5 ms/frame | 2026-09-20·09-29, PCIe **Gen3** x1 | 같은 폴더 `results.csv`, `runs/bootloader_*` |
+| GStreamer 연구 경로 (b8/s16) | 51.69 FPS, CPU 3.05 ms/frame, 검출 앱과 바이트 동일 | 2026-09-29, 1150 MHz, gst-plugins-bad rpt4 | `07_results/gst_pipeline/` |
+
+V3D 클럭은 **부트로더 펌웨어 기본값**이다(`vcgencmd get_config v3d_freq`). GPU ms를 비교하기 전에 이 값을 읽는다.
 
 Gen2와 Gen3가 두 배 가까이 차이 난다. **기준선을 인용하기 전에 지금 세대를 읽는다.**
 
