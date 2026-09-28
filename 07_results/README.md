@@ -159,7 +159,7 @@ python3 06_tools/python/check_links.py
 | 워크그룹 최적값의 **이유** | `yolo_decode` 가 60 invocation(10×6)에서 256보다 빠르고 `display_convert` 가 3×85 에서 16×16보다 1.83배 빠른 이유를 설명하지 못했다. **측정치만이 근거인 가설**이다 |
 | V3D 쪽 캐시 일관성 **기제** | Hailo 쪽은 드라이버가 관리함을 perf 로 확인했다. V3D 는 프레임마다 매핑하지 않는데도 오염이 관측되지 않는다 — 축출 완료인지 스누핑인지 **가르지 못했다**(결정적 실험에 root 필요) |
 | `pace=asap` 의 GPU timestamp 평균 왜곡 | 커맨드 버퍼 병합으로 **추정하나 미확인**. 해당 값은 위 "인용 금지 구간" 2번이다 |
-| GPU NMS·HVS 평면 표시 정식 측정 | `--nms gpu` 와 `--display-backend wayland-planes`/`kms` 는 구현·검증만 됐다. CPU·V3D·glass-to-glass 를 기존 경로와 같은 조건(추론 on, 냉각 규칙)으로 비교한 측정이 없다. kms 는 첫 모드셋 직후 프레임을 빼야 한다 |
+| GPU NMS·HVS 평면 표시 정식 측정 | `--nms gpu` 와 `--display-backend wayland-planes`/`kms` 는 구현·검증만 됐다. CPU·V3D·glass-to-glass 를 기존 경로와 같은 조건(추론 on, 냉각 규칙)으로 비교한 측정이 없다. kms 는 첫 모드셋 직후 프레임을 빼야 한다. 계획: [`display_vulkan_hdmi/notes/formal_measurement_plan.md`](display_vulkan_hdmi/notes/formal_measurement_plan.md) |
 | KMS 종료 시 이전 상태 복원 | 복원 커밋이 `EINVAL` 로 실패하고 평면 끄기로 폴백한다(labwc FB 가 바뀐 것으로 추정, 미확인). 데스크톱 복귀에는 영향 없음 |
 | Vulkan present 무기한 대기 | 컴포지터가 frame 콜백을 주지 않으면(labwc headless) 스왑체인 경로가 `vkQueuePresentKHR` 안에서 멈추고 SIGTERM 도 안 먹는다. 원인(Mesa WSI 대기)은 추정. 평면 백엔드는 해당 없음 |
 | labwc COLOR_RANGE 뒤집힘 의존 | `wayland-planes` 는 full 을 요청해 limited 를 얻는 우회("fullhack")에 기댄다. 컴포지터가 고쳐지면 조용히 틀어지므로 debugfs 판정(`plane_color_ok`)을 매번 본다 |
