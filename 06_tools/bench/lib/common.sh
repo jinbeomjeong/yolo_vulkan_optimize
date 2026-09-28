@@ -131,5 +131,6 @@ bench_lock_acquire() {
   BENCH_LOCK="${BENCH_LOCK:-$PROJ/build/.bench_running}"
   mkdir -p "$(dirname "$BENCH_LOCK")"
   printf '%s' "$$" > "$BENCH_LOCK"
-  trap 'rm -f "$BENCH_LOCK"' EXIT INT TERM
+  trap 'rm -f "$BENCH_LOCK"' EXIT
+  trap 'rm -f "$BENCH_LOCK"; exit 130' INT; trap 'rm -f "$BENCH_LOCK"; exit 143' TERM   # stop, don't continue
 }

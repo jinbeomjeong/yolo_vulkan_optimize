@@ -17,7 +17,11 @@ import sys
 # Commands that open the NPU. Only executables that link yvo_hailo (or yvo_stages) in 01_src/tools/CMakeLists.txt,
 # 01_src/pipeline or 05_tests and actually open a VDevice are listed. test_postproc opens the NPU via PostprocLive.*.
 NPU_CMDS = {"yvo_pipeline", "yvo_hailo_selftest", "yvo_hailo_raw_probe", "yvo_isp_pipeline",
-            "hailortcli", "test_detections", "test_postproc", "ctest"}
+            "hailortcli", "test_detections", "test_gst_detections", "test_postproc", "ctest"}
+# yvo_gst_pipeline depends on --sink (gst_pipeline.cpp): hailo (default) opens a VDevice; fake|hold only
+# decode + run the Vulkan letterbox, so they are classified as load.
+GST_PIPELINE = "yvo_gst_pipeline"
+_GST_SINK_RE = re.compile(r"--sink(?:\s+|=)(\S+)")
 # yvo_postproc_probe depends on the mode (postproc_probe.cpp main()):
 #   live, stale, v3 -> opens a VDevice (exclusive NPU)
 #   gpuab           -> uses only fixtures, but measures GPU/CPU time, so it is classified as load
@@ -30,7 +34,7 @@ _PROBE_MODE_RE = re.compile(r"--probe(?:\s+|=)(\S+)|--(live|stale|fixture|sweep|
 # The bench list is found by globbing 06_tools/bench/*_bench.sh. If root resolution fails, fall back to the list below.
 _BENCH_FALLBACK = ("pipeline_bench.sh", "decode_bench.sh", "op_point_bench.sh",
                    "display_bench.sh", "backpressure_bench.sh",
-                   "isp_bench.sh", "isp_pipeline_bench.sh")
+                   "isp_bench.sh", "isp_pipeline_bench.sh", "gst_pipeline_bench.sh")
 
 
 def _bench_scripts():
@@ -78,6 +82,13 @@ def classify(shell_cmd):
     for base, seg in leading_commands(shell_cmd):
         if base in NPU_CMDS:
             npu_hit = base
+        elif base == GST_PIPELINE:
+            sinks = _GST_SINK_RE.findall(seg)
+            sink = sinks[-1] if sinks else "hailo"
+            if sink in ("fake", "hold"):
+                load_hit = f"{base} --sink {sink}"
+            else:
+                npu_hit = f"{base} --sink {sink}"
         elif base == POSTPROC_PROBE:
             mode = postproc_probe_mode(seg)
             if mode in POSTPROC_NPU_MODES:

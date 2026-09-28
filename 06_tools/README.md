@@ -7,13 +7,14 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 나뉘어 있었는데, 파이썬 파일 2개가 서로 다른 폴더에 흩어져 경계가 무너진 상태였다.
 실제 구분선은 "언어"가 아니라 **"빌드에 들어가는가"** 다.
 
-## `bench/` — 측정 자동화 셸 7개
+## `bench/` — 측정 자동화 셸 8개
 
 | 스크립트 | 무엇을 재나 | 출력 |
 |---|---|---|
 | `op_point_bench.sh` | 운용점 스윕 (batch·slots) — 최종 결론의 근거 | `07_results/op_point/` |
 | `display_bench.sh` | 화면 표시 포함 종단간. `results_raw.csv` 59열(RESULT_CSV 22 + RESULT_CSV2 뒤 33 + 스크립트 4) — 48·53열 옛 CSV 와 `APPEND=1` 불가 | `07_results/display_e2e/` |
 | `pipeline_bench.sh` | 회귀 기준선 (고정 9설정) | `07_results/pipeline_ffmpeg_vulkan_hailo/` |
+| `gst_pipeline_bench.sh` | 앱(`yvo_pipeline` dmabuf/NHCW) 대 GStreamer 연구 경로(`yvo_gst_pipeline --sink hailo`), batch 1/4/8 × 같은 slots. `results_raw.csv`·`results.csv` 앞 26열은 `pipeline_bench.sh` 와 같고 뒤에 도구 열이 붙는다(gst `decode_ms_mean` = nan, NaN 안전 중앙값). 바이너리는 `APP_BIN`·`GST_BIN`, `DETS=1` 검출 비교(`evidence/compare_b<B>`), `DRYRUN=1` 명령줄만 출력 | `07_results/gst_pipeline/` |
 | `decode_bench.sh` | 디코드 경로 비교 | `07_results/decode_benchmark/` |
 | `backpressure_bench.sh` | 백프레셔 결함 전후 비교 | `07_results/raw_runner_backpressure/` |
 | `isp_bench.sh` | ISP 전처리 단독 | `07_results/isp_resize/` |
@@ -31,7 +32,7 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 
 ### 벤치 락
 
-일곱 스크립트 모두 시작할 때 `build/.bench_running` 에 자기 PID를 쓰고 `trap` 으로 지운다.
+여덟 스크립트 모두 시작할 때 `build/.bench_running` 에 자기 PID를 쓰고 `trap` 으로 지운다.
 [`.claude/hooks/npu_guard.sh`](../.claude/hooks/npu_guard.sh) 가 이 파일을 보고 **측정 중에는
 빌드·테스트 명령을 막는다.** 측정 중에 다른 작업이 돌면 CPU 시간 측정이 **에러 없이 조용히
 오염되기** 때문이다. 훅이 PID 생존 여부를 보므로 비정상 종료로 남은 락은 자동 무효가 된다.
