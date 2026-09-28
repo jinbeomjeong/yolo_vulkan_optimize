@@ -14,6 +14,8 @@ if(TARGET yvo_vulkan)
     target_compile_definitions(test_preproc PRIVATE YVO_HAVE_OPENCV=1)
   endif()
   # On failure, diff images are saved to build/05_tests/preproc_diff/
+  # SandRefVsFfmpeg.* (same executable, no GPU): ref/sand.hpp de-SAND vs rpi-ffmpeg av_hwframe_transfer_data(NV12),
+  # byte-identical. It reuses this target's decoder + DmaBufReadMap + ref/sand.hpp; FFmpeg comes PUBLIC via yvo_decoder.
   gtest_discover_tests(test_preproc
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     PROPERTIES TIMEOUT 300

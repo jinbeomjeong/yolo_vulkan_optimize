@@ -22,8 +22,8 @@
 | | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 — 본 파이프라인 5개 + `diag/` 진단 전용 2개 (`.comp`). `overlay_boxes.comp` 는 버퍼 변형까지 SPIR-V 2개로 빌드 |
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
 | | `04_data/` | 입력 영상(지금은 `video_h265.mp4` 하나)과 테스트용 원시 텐서 픽스처 (git에 없음) |
-| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 8개(`test_postproc_live` 를 따로 세면 9), ctest 항목 89개 |
-| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 7개), `python/`(5개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
+| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 8개(`test_postproc_live` 를 따로 세면 9), ctest 항목 94개 |
+| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 8개), `python/`(5개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
 | | [`07_results/`](../07_results/) | 실험별 측정 원시 출력과 `summary.md` |
 | **문서** | [`08_learn/`](00_README.md) | 지금 읽고 있는 이 자습 교재 12장 |
 | | [`09_diagrams/`](../09_diagrams/) | yEd로 여는 파이프라인 다이어그램 2장 |
@@ -233,7 +233,7 @@ ctest --test-dir build
 
 | 테스트 | NPU | 합격 기준 |
 |---|---|---|
-| `test_preproc` | 불필요 | GPU 전처리가 CPU 기준과 **NHCW에서 바이트 완전 일치** |
+| `test_preproc` | 불필요 | GPU 전처리가 CPU 기준과 **NHCW에서 바이트 완전 일치**. `SandRefVsFfmpeg.*`: 기준 de-SAND가 rpi-ffmpeg SAND→NV12 변환과 **바이트 일치** — GPU ↔ `ref/` ↔ rpi-ffmpeg 사슬을 닫는다 |
 | `PostprocFixture.*` (5개) | **불필요** | 후보 수 동일, 점수 **비트 일치**, 좌표 오차 < 0.25 px, 10회 결정성, GPU NMS 결과 **비트 일치**(score 0.2·0.01) |
 | `EfficientNms.*` (7개) | **불필요** | 합성 DetBuf: 동점, 클래스 정원, 클래스 간 겹침, 용량 초과·IoU 보호대 신호, 0/1개, 결정성 |
 | `test_postproc_live` | 필요 | host 경로 vs GPU 경로 검출 매칭 ≥ 0.95 |
@@ -261,13 +261,14 @@ C++ 테스트의 판정 규칙([`01_src/ref/detection_match.hpp`](../01_src/ref/
 
 ## 9.7 측정 스크립트
 
-[`06_tools/bench/`](../06_tools/bench/) 의 셸 스크립트 7개가 `07_results/` 의 결과를 만들어 낸다.
+[`06_tools/bench/`](../06_tools/bench/) 의 셸 스크립트 8개가 `07_results/` 의 결과를 만들어 낸다.
 
 | 스크립트 | 무엇을 재나 |
 |---|---|
 | `op_point_bench.sh` | **운용점 스윕** (batch·slots 조합) — 최종 결론의 근거 |
 | `display_bench.sh` | 화면 표시 포함 종단간 |
 | `pipeline_bench.sh` | 회귀 기준선 (고정 9설정) |
+| `gst_pipeline_bench.sh` | 앱 대 GStreamer 연구 경로(`yvo_gst_pipeline`) 비교 |
 | `decode_bench.sh` | 디코드 경로 비교 |
 | `backpressure_bench.sh` | 백프레셔 결함 전후 비교 |
 | `isp_bench.sh` / `isp_pipeline_bench.sh` | ISP 경로 |
@@ -277,7 +278,7 @@ C++ 테스트의 판정 규칙([`01_src/ref/detection_match.hpp`](../01_src/ref/
 > `pipeline_bench.sh`의 설정 형식은 **바꾸면 안 된다.** 다른 스크립트들이
 > 이걸 대조군 기준으로 쓴다.
 
-일곱 스크립트 모두 시작할 때 `build/.bench_running` 에 자기 PID를 쓰고 끝날 때 지운다.
+여덟 스크립트 모두 시작할 때 `build/.bench_running` 에 자기 PID를 쓰고 끝날 때 지운다.
 [`.claude/hooks/npu_guard.sh`](../.claude/hooks/npu_guard.sh) 가 이 파일을 보고 **측정 중에는
 빌드·테스트 명령을 막는다** — 측정 중 다른 작업이 돌면 CPU 시간이 에러 없이 오염되기 때문이다.
 

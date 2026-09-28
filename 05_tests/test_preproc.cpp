@@ -6,6 +6,8 @@
 // Criteria: content region max error <= 2, mean error <= 0.5, padding region exactly 114.
 // The NHCW case must be byte-for-byte identical (zero error) to the CPU reference transposed with rgb_packed_to_nhcw().
 // On failure, GPU / CPU / diff (x32) images are saved to build/05_tests/preproc_diff/ (NHCW is converted back to packed before saving).
+// SandRefVsFfmpeg.* (no GPU): desand_nv12 (ref/sand.hpp) vs rpi-ffmpeg's own SAND→NV12 (av_hwframe_transfer_data),
+// byte-identical over the visible frame. Closes the chain GPU shader ↔ ref/ ↔ rpi-ffmpeg (promoted from yvo_drm_dump --desand).
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
@@ -18,6 +20,12 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+
+extern "C" {
+#include <libavutil/frame.h>
+#include <libavutil/hwcontext.h>
+#include <libavutil/pixdesc.h>
+}
 
 #ifdef YVO_HAVE_OPENCV
 #include <opencv2/imgcodecs.hpp>
@@ -283,6 +291,190 @@ TEST_P(PreprocTest, NhcwMatchesCpuReference) {
 }
 
 INSTANTIATE_TEST_SUITE_P(Frames, PreprocTest, ::testing::ValuesIn(kTestFrames),
+                         [](const ::testing::TestParamInfo<int>& i) { return "frame" + std::to_string(i.param); });
+
+// ── SandRefVsFfmpeg: ref/sand.hpp de-SAND vs rpi-ffmpeg av_hwframe_transfer_data(NV12) ─────────────────────────
+// Same comparison as yvo_drm_dump --desand (one frame), promoted to a ctest gate over kTestFrames. No GPU needed.
+// Only the visible width x height (Y) and width x height/2 (UV) are compared. The SAND column padding rows
+// (coded_height 1088 > 1080, i.e. rows 1080..1087 of Y / 540..543 of UV) are not part of the transfer output and are
+// skipped, exactly as yvo_drm_dump does. 1920 is a multiple of the 128-byte column width, so there is no column padding.
+
+struct PlaneDiff {
+    std::size_t count = 0;  // differing bytes
+    long first_row = -1;    // first mismatch (row-major), -1 if none
+    long first_col = -1;
+    int ref_val = -1;       // desand_nv12 byte at the first mismatch
+    int ffmpeg_val = -1;    // av_hwframe_transfer_data byte at the first mismatch
+};
+
+struct SandRefResult {
+    int width = 0, height = 0;       // DrmFrame visible size
+    int sw_width = 0, sw_height = 0; // transfer output size
+    PlaneDiff y, uv;
+    std::string error;               // non-empty = comparison could not be made
+};
+
+PlaneDiff compare_plane(const std::uint8_t* ref, std::size_t ref_stride, const std::uint8_t* ff, std::size_t ff_stride,
+                        std::size_t cols, std::size_t rows) {
+    PlaneDiff d;
+    for (std::size_t r = 0; r < rows; ++r)
+        for (std::size_t c = 0; c < cols; ++c) {
+            const std::uint8_t a = ref[r * ref_stride + c], b = ff[r * ff_stride + c];
+            if (a == b) continue;
+            if (d.count == 0) {
+                d.first_row = static_cast<long>(r);
+                d.first_col = static_cast<long>(c);
+                d.ref_val = a;
+                d.ffmpeg_val = b;
+            }
+            ++d.count;
+        }
+    return d;
+}
+
+// f must still hold its AVFrame (keepalive) — the transfer reads the same DRM_PRIME frame that was de-SANDed.
+SandRefResult sand_ref_vs_ffmpeg(const yvo::DrmFrame& f) {
+    SandRefResult res;
+    res.width = f.width;
+    res.height = f.height;
+    const std::size_t w = static_cast<std::size_t>(f.width), h = static_cast<std::size_t>(f.height);
+    std::vector<std::uint8_t> y(w * h), uv(w * h / 2);
+    {
+        DmaBufReadMap my(f.fd, f.size);
+        std::unique_ptr<DmaBufReadMap> muv_own;
+        const DmaBufReadMap* muv = &my;
+        const bool two = f.uv_fd >= 0 && f.uv_fd != f.fd;
+        if (two) {
+            muv_own = std::make_unique<DmaBufReadMap>(f.uv_fd, f.uv_size);
+            muv = muv_own.get();
+        }
+        if (!my.data() || !muv->data()) {
+            res.error = "dma-buf mmap failed";
+            return res;
+        }
+        if (!yvo::desand_nv12(my.data(), f.size, muv->data(), two ? f.uv_size : f.size, yvo::make_sand_layout(f),
+                              y.data(), w, uv.data(), w)) {
+            res.error = "desand_nv12: layout out of bounds";
+            return res;
+        }
+    }
+
+    AVFrame* hw = yvo::FfmpegDrmDecoder::av_frame(f);
+    if (!hw || !hw->hw_frames_ctx) {
+        res.error = "DrmFrame has no hw AVFrame / hw_frames_ctx";
+        return res;
+    }
+    // NV12 must be among the download formats (rpi-ffmpeg lists "yuv420p nv12" for SAND128 frames)
+    AVPixelFormat* fmts = nullptr;
+    bool nv12_ok = false;
+    std::string listed;
+    if (av_hwframe_transfer_get_formats(hw->hw_frames_ctx, AV_HWFRAME_TRANSFER_DIRECTION_FROM, &fmts, 0) >= 0 && fmts) {
+        for (const AVPixelFormat* p = fmts; *p != AV_PIX_FMT_NONE; ++p) {
+            if (*p == AV_PIX_FMT_NV12) nv12_ok = true;
+            const char* n = av_get_pix_fmt_name(*p);
+            listed += std::string(" ") + (n ? n : "?");
+        }
+        av_free(fmts);
+    }
+    if (!nv12_ok) {
+        res.error = "av_hwframe_transfer_get_formats does not list nv12 (got:" + listed + ")";
+        return res;
+    }
+    std::unique_ptr<AVFrame, void (*)(AVFrame*)> sw(av_frame_alloc(), [](AVFrame* p) { av_frame_free(&p); });
+    if (!sw) {
+        res.error = "av_frame_alloc failed";
+        return res;
+    }
+    sw->format = AV_PIX_FMT_NV12;
+    const int ret = av_hwframe_transfer_data(sw.get(), hw, 0);
+    if (ret < 0) {
+        char e[AV_ERROR_MAX_STRING_SIZE] = {};
+        av_strerror(ret, e, sizeof(e));
+        res.error = std::string("av_hwframe_transfer_data(NV12) failed: ") + e;
+        return res;
+    }
+    res.sw_width = sw->width;
+    res.sw_height = sw->height;
+    if (sw->format != AV_PIX_FMT_NV12 || sw->width < f.width || sw->height < f.height || !sw->data[0] ||
+        !sw->data[1] || sw->linesize[0] < f.width || sw->linesize[1] < f.width) {
+        const char* n = av_get_pix_fmt_name(static_cast<AVPixelFormat>(sw->format));
+        res.error = std::string("unexpected transfer result: ") + (n ? n : "?") + " " + std::to_string(sw->width) +
+                    "x" + std::to_string(sw->height) + " linesize=" + std::to_string(sw->linesize[0]) + "/" +
+                    std::to_string(sw->linesize[1]);
+        return res;
+    }
+    res.y = compare_plane(y.data(), w, sw->data[0], static_cast<std::size_t>(sw->linesize[0]), w, h);
+    res.uv = compare_plane(uv.data(), w, sw->data[1], static_cast<std::size_t>(sw->linesize[1]), w, h / 2);
+    return res;
+}
+
+// Decode once per process up to the last target frame; compare while each target frame is still alive.
+// Skipped when the video is missing or the HW HEVC decoder cannot be opened / produces no DRM_PRIME frame.
+class SandRefVsFfmpeg : public ::testing::TestWithParam<int> {
+protected:
+    static void SetUpTestSuite() {
+        const char* env = std::getenv("YVO_TEST_VIDEO");
+        video_ = env && *env ? env : YVO_TEST_VIDEO;
+        if (!std::filesystem::exists(video_)) {
+            skip_reason_ = "video not found: " + video_;
+            return;
+        }
+        yvo::FfmpegDrmDecoder dec;
+        if (!dec.open(video_)) {
+            skip_reason_ = "HW HEVC decoder unavailable (open failed): " + dec.error();
+            return;
+        }
+        const int last = *std::max_element(kTestFrames.begin(), kTestFrames.end());
+        for (int i = 0; i <= last; ++i) {
+            auto f = dec.next();
+            if (!f) {
+                if (i == 0)
+                    skip_reason_ = "HW HEVC decoder produced no DRM_PRIME frame: " + dec.error();
+                else
+                    setup_error_ = "decoder stopped at frame " + std::to_string(i) + ": " + dec.error();
+                return;
+            }
+            if (std::find(kTestFrames.begin(), kTestFrames.end(), i) == kTestFrames.end()) continue;
+            results_[i] = sand_ref_vs_ffmpeg(*f);
+        }
+    }
+    static void TearDownTestSuite() { results_.clear(); }
+    void SetUp() override {
+        if (!skip_reason_.empty()) GTEST_SKIP() << skip_reason_;
+        ASSERT_TRUE(setup_error_.empty()) << setup_error_;
+    }
+
+    static std::string video_;
+    static std::string skip_reason_;
+    static std::string setup_error_;
+    static std::map<int, SandRefResult> results_;
+};
+
+std::string SandRefVsFfmpeg::video_;
+std::string SandRefVsFfmpeg::skip_reason_;
+std::string SandRefVsFfmpeg::setup_error_;
+std::map<int, SandRefResult> SandRefVsFfmpeg::results_;
+
+std::string describe_first(const char* plane, const PlaneDiff& d) {
+    return std::string(plane) + " first mismatch at row " + std::to_string(d.first_row) + " col(byte) " +
+           std::to_string(d.first_col) + ": desand_nv12=" + std::to_string(d.ref_val) +
+           " av_hwframe_transfer_data=" + std::to_string(d.ffmpeg_val);
+}
+
+TEST_P(SandRefVsFfmpeg, ByteIdentical) {
+    const int idx = GetParam();
+    const auto it = results_.find(idx);
+    ASSERT_NE(it, results_.end()) << "frame " << idx << " was not decoded";
+    const SandRefResult& r = it->second;
+    ASSERT_TRUE(r.error.empty()) << "frame " << idx << ": " << r.error;
+    const std::size_t w = static_cast<std::size_t>(r.width), h = static_cast<std::size_t>(r.height);
+    std::printf("[frame %d] %dx%d (transfer %dx%d)  Y diff %zu/%zu  UV diff %zu/%zu\n", idx, r.width, r.height,
+                r.sw_width, r.sw_height, r.y.count, w * h, r.uv.count, w * h / 2);
+    EXPECT_EQ(r.y.count, 0u) << describe_first("Y", r.y);
+    EXPECT_EQ(r.uv.count, 0u) << describe_first("UV", r.uv);
+}
+
+INSTANTIATE_TEST_SUITE_P(Frames, SandRefVsFfmpeg, ::testing::ValuesIn(kTestFrames),
                          [](const ::testing::TestParamInfo<int>& i) { return "frame" + std::to_string(i.param); });
 
 } // namespace

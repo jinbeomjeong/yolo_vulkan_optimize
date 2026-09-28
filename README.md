@@ -234,7 +234,7 @@ median 을 써라(V3D 가 커맨드 버퍼를 합치면서 한쪽 구간이 0에
 ## 6. 검증
 
 ```bash
-ctest --test-dir build        # 89/89 통과해야 한다
+ctest --test-dir build        # 94/94 통과해야 한다
 ```
 
 | 테스트 | NPU | 무엇을 보는가 |
@@ -243,7 +243,7 @@ ctest --test-dir build        # 89/89 통과해야 한다
 | `EfficientNms.*` (7개) | 불필요 | 합성 입력: 동점, 클래스 정원 100 초과, 클래스 간 겹침, 용량 초과·IoU 보호대 → CPU 처리 신호, 결정성 |
 | `test_postproc_live` | 필요 | host 경로 vs GPU 경로 검출 매칭 (≥ 0.95) |
 | `test_detections` | 필요 | CPU/GPU 전처리 경로 검출 일치 |
-| `test_preproc` | 불필요 | GPU 전처리가 CPU 기준과 **비트 일치**(max 오차 0) |
+| `test_preproc` | 불필요 | GPU 전처리가 CPU 기준과 **비트 일치**(max 오차 0). `SandRefVsFfmpeg.*`(GPU 불필요): 기준 de-SAND(`ref/sand.hpp`)가 rpi-ffmpeg `av_hwframe_transfer_data`(NV12)와 **바이트 일치**(프레임 0/100/500/900/1815, 보이는 1920×1080) |
 | `test_overlay` | 불필요 | 오버레이 셰이더 vs CPU 기준 비트 일치. 박스 평면 dma-buf(`OverlayPlane.*`, 잔상 0), debugfs 파서(`DrmState.*`), KMS 탐색·AddFB2(`KmsScanout.*` — card1 사용, master 는 가져가지 않는다) |
 | `test_display_convert` | 불필요 | 표시 변환 셰이더(1:1) vs CPU 기준 **비트 일치**. BT.709 계수 세 번째 사본의 게이트 |
 | `test_isp_preproc` | 불필요(ISP 필요) | ISP 전처리 vs CPU 기준. **비트 일치가 아니다**(리샘플 커널이 다르다) — 패딩만 오차 0, 내용은 MAE ≤ 3.0 |
