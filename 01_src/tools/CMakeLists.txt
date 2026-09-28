@@ -1,4 +1,4 @@
-# Registers the 12 built diagnostic/measurement tools in one place (2026-09-22; previously tools/ was scattered per domain folder).
+# Registers the 13 built diagnostic/measurement tools in one place (2026-09-22; previously tools/ was scattered per domain folder).
 # Folders are by **measured domain** (a tool spanning several domains goes by what it measures). File names keep their old names.
 # All executables go to build/bin/. If a library target is missing (e.g. no libpisp or wayland), REQUIRES silently skips the tool.
 #
@@ -84,3 +84,9 @@ yvo_add_tool(yvo_drm_dump decode/drm_dump.cpp
 yvo_add_tool(yvo_gst_sand_probe gst/gst_sand_probe.cpp
   REQUIRES yvo_gstelem PkgConfig::YVO_GST_APP
   LIBS yvo_gstelem yvo_vulkan yvo_decoder yvo_toolkit PkgConfig::YVO_GST PkgConfig::YVO_GST_APP)
+
+# Stage 2a: v4l2slh265dec → queue → yvosandletterbox (statically registered, Vulkan NHCW into exported slot dma-bufs)
+# → queue → fakesink / hold appsink (slot backpressure check). Watchdog for silent stalls. Stage 2b adds --sink hailo.
+yvo_add_tool(yvo_gst_pipeline gst/gst_pipeline.cpp
+  REQUIRES yvo_gstelem PkgConfig::YVO_GST_APP
+  LIBS yvo_gstelem yvo_toolkit PkgConfig::YVO_GST PkgConfig::YVO_GST_APP)

@@ -1,4 +1,5 @@
-# GStreamer research path (optional): v4l2 stateless decode DMABuf (NV12 + SAND128) → DrmFrame adapter.
+# GStreamer research path (optional): v4l2 stateless decode DMABuf (NV12 + SAND128) → DrmFrame adapter,
+# yvosandletterbox (stage 2a) and the tensor meta; elements are registered statically by the tools (register.hpp).
 # Without GStreamer >= 1.24 dev packages, the whole folder is skipped (the existing build must not break),
 # and tools that REQUIRE yvo_gstelem are skipped too.
 find_package(PkgConfig QUIET)
@@ -19,9 +20,13 @@ pkg_check_modules(YVO_GSTELEM_DRM REQUIRED IMPORTED_TARGET libdrm)   # drm_fourc
 message(STATUS "GStreamer ${YVO_GST_gstreamer-1.0_VERSION} - building yvo_gstelem.")
 
 add_library(yvo_gstelem STATIC
-  gst_drm_frame.cpp)
-# GStreamer stays PRIVATE: the public header only forward-declares GstBuffer/GstCaps.
+  gst_drm_frame.cpp
+  tensor_meta.cpp
+  sand_letterbox_element.cpp
+  register.cpp)
+# GStreamer stays PRIVATE: the public headers only forward-declare GstBuffer/GstCaps/GstMemory/GstPlugin.
+# yvo_vulkan is PRIVATE too (the element owns its VulkanContext/SandLetterbox; no Vulkan type in the public headers).
 target_link_libraries(yvo_gstelem
   PUBLIC yvo_core
-  PRIVATE PkgConfig::YVO_GST PkgConfig::YVO_GSTELEM_DRM)
+  PRIVATE yvo_vulkan PkgConfig::YVO_GST PkgConfig::YVO_GSTELEM_DRM)
 yvo_target_defaults(yvo_gstelem)

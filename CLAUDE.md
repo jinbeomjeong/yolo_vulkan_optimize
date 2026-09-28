@@ -18,7 +18,7 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행�
 |---|---|
 | 코드 | `01_src/` — 라이브러리 `{core,ref,toolkit,testkit,decode,hailo,vulkan,display,isp,pipeline,gstelem}/`, 빌드되는 도구 `tools/<도메인>/`. `02_shaders/` (진단용은 `diag/`) |
 | 자산 | `03_models/` (HEF), `04_data/{videos,raw_tensors}/` |
-| 검증·측정 | `05_tests/` (GoogleTest 실행 파일 6개 + live 1, ctest 78), `06_tools/{bench,python,probes}/`, `07_results/<실험>/` |
+| 검증·측정 | `05_tests/` (GoogleTest 실행 파일 7개 + live 1, ctest 88), `06_tools/{bench,python,probes}/`, `07_results/<실험>/` |
 | 문서 | `08_learn/` (자습 교재), `09_diagrams/` (yEd `.graphml`), `10_paper/` (논문 초고) |
 | 로그 | `11_logs/` 07_results에 기록하지 않는 실행의 런타임 로그(git 밖) |
 

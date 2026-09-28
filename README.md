@@ -234,7 +234,7 @@ median 을 써라(V3D 가 커맨드 버퍼를 합치면서 한쪽 구간이 0에
 ## 6. 검증
 
 ```bash
-ctest --test-dir build        # 78/78 통과해야 한다
+ctest --test-dir build        # 88/88 통과해야 한다
 ```
 
 | 테스트 | NPU | 무엇을 보는가 |
@@ -247,6 +247,7 @@ ctest --test-dir build        # 78/78 통과해야 한다
 | `test_overlay` | 불필요 | 오버레이 셰이더 vs CPU 기준 비트 일치. 박스 평면 dma-buf(`OverlayPlane.*`, 잔상 0), debugfs 파서(`DrmState.*`), KMS 탐색·AddFB2(`KmsScanout.*` — card1 사용, master 는 가져가지 않는다) |
 | `test_display_convert` | 불필요 | 표시 변환 셰이더(1:1) vs CPU 기준 **비트 일치**. BT.709 계수 세 번째 사본의 게이트 |
 | `test_isp_preproc` | 불필요(ISP 필요) | ISP 전처리 vs CPU 기준. **비트 일치가 아니다**(리샘플 커널이 다르다) — 패딩만 오차 0, 내용은 MAE ≤ 3.0 |
+| `test_gst_adapter` | 불필요 | (선택, GStreamer 연구 경로) 어댑터 `DrmFrame`·`yvosandletterbox` 출력이 FFmpeg 경로 NHCW와 **바이트 일치**(프레임 0/100/1815), 텐서 메타·슬롯 fd 고정, sink caps 는 SAND DMA_DRM 만, 슬롯 메모리를 다른 버퍼로 옮겨도 덮어쓰지 않고 메모리 교체로 슬롯이 새지 않음(`GstElementSlots.*`) |
 
 두 경로의 검출을 직접 비교하려면:
 
@@ -291,6 +292,7 @@ bash 06_tools/bench/decode_bench.sh      # 디코드 경로 비교
 | `yvo_display_pipeline_probe` | `DisplayPipeline` 단독 검증 (`yvo_pipeline` 미사용) |
 | `yvo_isp_*` | PiSP BE(ISP) 전처리 — **통합 보류 상태** |
 | `yvo_gst_sand_probe` | (선택) GStreamer `v4l2slh265dec` DMABuf → `DrmFrame` → GPU 전처리(NHCW)가 FFmpeg 경로와 바이트 일치하는지 가르는 관문 |
+| `yvo_gst_pipeline` | (선택) GStreamer 연구 경로 단계 2a: `v4l2slh265dec` → `yvosandletterbox`(정적 등록 요소, Vulkan NHCW) → fakesink/hold 싱크. 슬롯 역압·정지 감시 |
 | `06_tools/probes/hvs_probe/` | (빌드 안 함) HVS 두 평면 스캔아웃 KMS/Wayland 프로브 소스. [`notes/kms_vs_wayland.md`](07_results/display_vulkan_hdmi/notes/kms_vs_wayland.md) 의 근거 |
 
 화면에 실제로 나왔는지는 사람 눈 없이 확인한다:

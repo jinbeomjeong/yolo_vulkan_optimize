@@ -37,7 +37,7 @@ ctest --test-dir build --output-on-failure
   합격 기준은 **max 오차 0**(근사가 아니라 비트 단위 일치)이다.
 - `test_detections` — CPU / GPU ptr / GPU dmabuf / GPU dmabuf NHCW 경로의 검출을 비교한다.
   NPU를 독점하므로 `RUN_SERIAL`이고 느리다(약 19초). 합격 기준은 **매칭 비율 1.0000**이다.
-- 전체 개수는 **78**이다(2026-09-22). `test_overlay`의 `KmsScanout.*`는 `/dev/dri/card1`을 열지만 **DRM master를
+- 전체 개수는 **88**이다(2026-09-29, `test_gst_adapter` 10개 추가 — HW HEVC 디코더와 GPU가 필요하고 없으면 skip). `test_overlay`의 `KmsScanout.*`는 `/dev/dri/card1`을 열지만 **DRM master를
   가져가지 않는다** — 다른 프로세스(labwc)가 master일 때만 돌고, 아무도 master가 아니면 skip한다.
 
 ## 3. Vulkan 검증 레이어 — errors 0

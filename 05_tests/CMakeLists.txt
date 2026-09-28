@@ -117,3 +117,23 @@ if(TARGET yvo_display AND TARGET yvo_decoder)
     PROPERTIES TIMEOUT 300
     DISCOVERY_TIMEOUT 60)
 endif()
+
+# GStreamer research path, stage 2a (GPU + HEVC HW decoder, no NPU). Built only with yvo_gstelem (GStreamer >= 1.24 dev)
+# and gstreamer-app. Same registration style as test_preproc: one ctest entry per test, runs skipped without the video or
+# v4l2slh265dec. Each entry decodes the file up to frame 1815 twice (FFmpeg reference + GStreamer).
+#   GstAdapter.*          adapter DrmFrame vs FFmpeg DrmFrame (addressing) and NHCW bytes through SandLetterbox
+#   GstElementPath*.*     yvosandletterbox output slot dma-buf vs the same reference; TensorMeta/slot/fd checks
+#   GstElementCaps.*      sink pad accepts only DMA_DRM NV12 SAND128 (no GPU needed)
+#   GstElementSlots.*     slot-lifetime misuse: moved slot memory is never overwritten, replaced memory does not leak
+if(TARGET yvo_gstelem AND TARGET PkgConfig::YVO_GST_APP AND TARGET yvo_decoder)
+  add_executable(test_gst_adapter test_gst_adapter.cpp)
+  target_link_libraries(test_gst_adapter PRIVATE yvo_gstelem yvo_vulkan yvo_decoder yvo_toolkit yvo_assets
+    PkgConfig::YVO_GST PkgConfig::YVO_GST_APP GTest::gtest_main)
+  yvo_target_defaults(test_gst_adapter)
+  target_compile_definitions(test_gst_adapter PRIVATE
+    YVO_TEST_VIDEO=YVO_DEFAULT_VIDEO)
+  gtest_discover_tests(test_gst_adapter
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    PROPERTIES TIMEOUT 300
+    DISCOVERY_TIMEOUT 60)
+endif()
