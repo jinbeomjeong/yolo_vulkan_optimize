@@ -1,0 +1,48 @@
+physical device: V3D 7.1.10.2 (type 1)
+physical device: llvmpipe (LLVM 19.1.7, 128 bits) (type 4)
+selected: V3D 7.1.10.2, apiVersion 1.3.354, driverVersion 0x6802002, timestampPeriod 1 ns
+VK_KHR_performance_query rev 1: performanceCounterQueryPools=1 performanceCounterMultipleQueryPools=0 allowCommandBufferQueryCopies=1 hostQueryReset=1
+queue family 0, 93 counters enumerated, label A2_idle
+== E2 contention [label A2_idle]: heap_sum 4 MiB x1, warmup 30, iters 100, 21 counters (1 pass) ==
+  [fixed]
+    metric                                     median            p90            min            max          stdev      cv%
+    gpu_ns                                  4461887.0      4601988.3      4442896.0     17634400.0      1317931.5    28.49
+    host_submit_us                             4484.8         4627.2         4463.6        17658.8         1318.3    28.34
+    host_perf_read_us                             3.4            4.6            2.1           10.5            1.2    32.99
+    host_ts_read_us                               2.7            3.5            2.0            6.0            0.8    27.23
+    submits                                       1.0            1.0            1.0            1.0            0.0     0.00
+    sum_ok                                        1.0            1.0            1.0            1.0            0.0     0.00
+    cycle-count                             5133614.0      5170417.1       608674.0     20289420.0      1729231.2    33.76
+    core-active                             5088771.0      5106562.0       607755.0      5500433.0       791367.0    16.07
+    compute-active-cycles                   5088771.0      5106562.0       607851.0      5500433.0       791347.0    16.07
+    QPU-active                              2110720.0      2110720.0       222306.0      2110720.0       335217.8    16.47
+    QPU-stalls                                 4736.0         4789.5         1009.0         5051.0          704.9    15.31
+    QPU-wait-bubble                         2944689.0      2962428.6       380745.0      3356406.0       452576.5    15.84
+    QPU-stalls-TMU                             3584.0         3584.0          686.0         3587.0          541.6    15.65
+    TMU-active-cycles                        294912.0       294912.0        31032.0       294912.0        46840.7    16.47
+    TMU-stalled-cycles                         2816.0         2816.0          290.0         2816.0          448.1    16.50
+    L2T-total-cache-hit                       58126.0        58126.0         6125.0        58126.0         9229.9    16.47
+    L2T-total-cache-miss                      16396.0        16396.0         1740.0        16396.0         2601.5    16.45
+    L2T-stalls-read-data                    2202365.0      2220640.4       303605.0      2615231.0       335751.6    15.68
+    core-memory-reads                         16396.0        16396.0         1741.0        16396.0         2601.4    16.45
+    core-memory-writes                            5.0            5.0            2.0            5.0            0.5    11.01
+    AXI-read-wait-cycles                   12544090.5     18425388.0       920828.0     83435699.0      8524284.4    61.37
+    CLE-bin-thread-active-cycles                  0.0            0.0            0.0            0.0            0.0     0.00
+    CLE-render-thread-active-cycles               0.0            0.0            0.0            0.0            0.0     0.00
+    FEP-valid-quads                               0.0            0.0            0.0            0.0            0.0     0.00
+    FEP-valid-primitives-rendered-pixels            0.0            0.0            0.0            0.0            0.0     0.00
+    TLB-quads-written-to-color-buffer             0.0            0.0            0.0            0.0            0.0     0.00
+    PTB-primitives-binned                         0.0            0.0            0.0            0.0            0.0     0.00
+  gpu_stats raw [before]: bin=63061/5409966935 cache_clean=20972/592995479 cpu=5780/16657283 csd=4913/22708368662 render=63061/68629571201 tfu=10274/3299689282  (queue=jobs/runtime_ns)
+  gpu_stats raw [after]: bin=63066/5410339230 cache_clean=21072/595213737 cpu=5980/17145518 csd=5013/23154220048 render=63066/68632750200 tfu=10274/3299689282  (queue=jobs/runtime_ns)
+  gpu_stats delta [fixed] (all V3D clients; per_iter = delta / 100):
+    queue              jobs     runtime_ms    jobs/iter runtime_us/iter
+    bin                   5          0.372         0.05           3.72
+    cache_clean         100          2.218         1.00          22.18
+    cpu                 200          0.488         2.00           4.88
+    csd                 100        445.851         1.00        4458.51
+    render                5          3.179         0.05          31.79
+    tfu                   0          0.000         0.00           0.00
+
+heap_sum GPU/CPU mismatches (warm-up included): 0
+CSV written: /home/pi/workspace/yolo_vulkan_optimize/07_results/v3d_perf_counters/runs/bootloader_20260925/evidence/e2_A2_idle_samples.csv

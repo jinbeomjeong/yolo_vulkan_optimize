@@ -1,0 +1,25 @@
+# perf record (no call graph) of: ffmpeg -hide_banner -nostdin -loglevel error -hwaccel drm -hwaccel_output_format drm_prime -i /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 -vf hwdownload,format=nv12 -f null -
+# 2026-09-29T03:18:46+09:00, rpi-ffmpeg 7.1.5-0+deb13u1+rpt2
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 17K of event 'cycles:P'
+# Event count (approx.): 9630536048
+#
+# Overhead  Shared Object             Symbol                                     
+# ........  ........................  ...........................................
+#
+    24.72%  libavutil.so.59.39.100    [.] 0x000000000002115c
+    18.96%  libavutil.so.59.39.100    [.] 0x0000000000021160
+     6.86%  [kernel.kallsyms]         [k] __pi_dcache_inval_poc
+     4.30%  libc.so.6                 [.] __memset_zva64
+     4.16%  libavutil.so.59.39.100    [.] 0x0000000000021168
+     3.85%  libavutil.so.59.39.100    [.] 0x0000000000021164
+     1.73%  ld-linux-aarch64.so.1     [.] do_lookup_x
+     1.36%  [kernel.kallsyms]         [k] _raw_spin_unlock_irqrestore
+     1.29%  libc.so.6                 [.] __memcpy_generic
+#
+# (Tip: To see call chains by final symbol taking CPU time (bottom up) use perf report -G)
+#

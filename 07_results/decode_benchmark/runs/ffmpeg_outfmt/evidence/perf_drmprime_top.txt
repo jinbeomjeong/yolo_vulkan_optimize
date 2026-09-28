@@ -1,0 +1,29 @@
+# perf record (no call graph) of: ffmpeg -hide_banner -nostdin -loglevel error -hwaccel drm -hwaccel_output_format drm_prime -i /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 -f null -
+# 2026-09-29T03:18:51+09:00, rpi-ffmpeg 7.1.5-0+deb13u1+rpt2
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 3K of event 'cycles:P'
+# Event count (approx.): 2407902879
+#
+# Overhead  Shared Object               Symbol                                                              
+# ........  ..........................  ....................................................................
+#
+    12.62%  libc.so.6                   [.] __memset_zva64
+     6.89%  ld-linux-aarch64.so.1       [.] do_lookup_x
+     4.68%  [kernel.kallsyms]           [k] _raw_spin_unlock_irqrestore
+     4.55%  libc.so.6                   [.] __memcpy_generic
+     4.19%  [kernel.kallsyms]           [k] __arch_copy_to_user
+     2.04%  libavutil.so.59.39.100      [.] av_buffer_unref
+     1.82%  [kernel.kallsyms]           [k] finish_task_switch.isra.0
+     1.13%  libc.so.6                   [.] __aarch64_cas4_acq
+     1.12%  [kernel.kallsyms]           [k] __pi_dcache_clean_poc
+     1.07%  [kernel.kallsyms]           [k] el0_svc
+     1.05%  [kernel.kallsyms]           [k] __pi_clear_page
+     1.03%  libavutil.so.59.39.100      [.] av_frame_unref
+     1.02%  libavcodec.so.61.19.101     [.] 0x00000000003d43bc
+#
+# (Tip: To see how parallelism changes over time, try: perf report -F time,latency,parallelism --time-quantum=1s)
+#

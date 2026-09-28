@@ -8,6 +8,10 @@
 #   COOL_C=65 COOL_MAX_S=120 bash ...             # pre-run cool-down conditions
 #   OUT_DIR=/path bash 06_tools/bench/decode_bench.sh   # change output dir (FORCE=1 needed if not empty)
 #   ONLY='^h265_E_' bash 06_tools/bench/decode_bench.sh # run only the ffmpeg HW HEVC decode -> pipe -> GStreamer combos (E)
+#   ONLY='^h265_Cref_ffmpeg_' bash ...                  # ffmpeg CLI reference: baseline + the 4 output-format (outfmt) combos
+#
+# Opt-in combos (added with add_optin) are skipped when ONLY is not set, so a default full run keeps
+# reproducing the original decode_benchmark matrix. They run only when an explicit ONLY pattern matches them.
 #
 # Output: $OUT_DIR/raw/<combo>_run<N>/run.log (named run.log since it is an excerpt of caps/error/last lines of the gst-launch -v log),
 #       $OUT_DIR/results_raw.csv (per run), $OUT_DIR/results.csv (per-combo median/spread),
@@ -26,6 +30,11 @@
 #   max_rss_mb is not a sum but the max of the three processes (kernel cmaxrss rule). Verified empirically.
 #   With pipefail, the exit code is non-zero if either process fails.
 #   ffmpeg gets -fps_mode passthrough. Without it, CFR handling of rawvideo output duplicates one frame (dup=1 -> 1817).
+# - ffmpeg CLI reference combos (pipeline field "FFMPEG" or "FFMPEG <pre-input args> [-- <post-input args>]"):
+#   argv = ffmpeg -hide_banner -nostdin -hwaccel drm <pre-input args> -i <video> <post-input args> -f null -
+#   Both segments are shlex-split; "--" separates input-side options (e.g. -hwaccel_output_format) from
+#   output-side options (e.g. -vf). Plain "FFMPEG" is exactly the original reference command.
+#   Frames are counted from the last "frame=" progress value on ffmpeg's stderr; run.log records the full argv.
 set -euo pipefail
 
 PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -35,6 +44,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 VID="$PROJ/04_data/videos"
 OUT_DIR="${OUT_DIR:-$PROJ/07_results/decode_benchmark}"
 RUNS="${RUNS:-3}"
+ONLY_SET="${ONLY:+1}"         # non-empty only when the caller passed an explicit ONLY pattern (gates opt-in combos)
 ONLY="${ONLY:-.}"
 PY=/usr/bin/python3
 COOL_C="${COOL_C:-65}"        # target temperature before each run (°C)
@@ -59,7 +69,10 @@ SINK_FS='fakesink name=sink sync=false silent=false'
 SINK_FVS='fakevideosink name=sink sync=false silent=false'
 
 combos=()
+optin_ids=" "
 add() { combos+=("$1|$2|$3|$4"); }
+# Same as add, but the combo runs only when an explicit ONLY pattern matches it (not in the default full run).
+add_optin() { add "$@"; optin_ids+="$1 "; }
 
 src264="filesrc location=$H264 ! qtdemux ! h264parse"
 src265="filesrc location=$H265 ! qtdemux ! h265parse"
@@ -94,8 +107,17 @@ for nt in 1 4; do
   add "urban_A_t0_S2_nt${nt}" "$URBAN" $NURB "$srcurb ! avdec_h264 max-threads=0 ! videoconvertscale n-threads=$nt add-borders=true ! $S2CAPS ! $SINK_FS num-buffers=$NURB"
 done
 
-# --- Reference: raw HW HEVC decoder throughput outside GStreamer (ffmpeg -hwaccel drm, frames not downloaded to CPU)
+# --- Reference: HW HEVC decoder throughput outside GStreamer (ffmpeg -hwaccel drm, -f null).
+#     Baseline with the output format left unspecified: ffmpeg then downloads SAND frames to CPU memory as
+#     yuv420p (~1.5 of its 2.0 ms/frame CPU; 07_results/decode_benchmark/runs/ffmpeg_outfmt, 2026-09-29).
 add "h265_Cref_ffmpeg_drm_S1" "$H265" $N265 "FFMPEG"
+#     outfmt (opt-in): drm_prime keeps frames as DRM PRIME (no download); the others add an explicit
+#     hwdownload (+ format conversion). The unsand combo fails in rpi-ffmpeg 7.1.5+rpt2 (filter declares 2 inputs).
+ffdrm="FFMPEG -hwaccel_output_format drm_prime"
+add_optin "h265_Cref_ffmpeg_outfmt_drmprime_S1"    "$H265" $N265 "$ffdrm"
+add_optin "h265_Cref_ffmpeg_outfmt_unsand_S1"      "$H265" $N265 "$ffdrm -- -vf hwdownload,format=sand128,unsand,format=yuv420p"
+add_optin "h265_Cref_ffmpeg_outfmt_dl_nv12_S1"     "$H265" $N265 "$ffdrm -- -vf hwdownload,format=nv12"
+add_optin "h265_Cref_ffmpeg_outfmt_dl_yuv420p_S1"  "$H265" $N265 "$ffdrm -- -vf hwdownload,format=yuv420p"
 
 # --- H.265 1080p: E ffmpeg HW decode (-hwaccel drm) -> I420 rawvideo pipe -> gst-launch (fdsrc)
 #     After "FFPIPE " is the gst-side pipeline. CPU is ffmpeg + gst-launch summed (see measurement method).
@@ -129,6 +151,7 @@ echo "combo,run,expected_frames,frames,frames_ok,exit_code,wall_s,user_s,sys_s,f
 for c in "${combos[@]}"; do
   IFS='|' read -r id video expected pipe <<< "$c"
   echo "$id" | grep -qE "$ONLY" || continue
+  [[ -z "$ONLY_SET" && "$optin_ids" == *" $id "* ]] && continue   # opt-in combos need an explicit ONLY
   for r in $(seq 1 "$RUNS"); do
     # Wait until the SoC temperature is at or below COOL_C to reduce thermal effects.
     # There used to be an inline loop here; if the temperature couldn't be read, `|| echo 0` made it 0, so it
@@ -141,8 +164,13 @@ for c in "${combos[@]}"; do
 import os, re, shlex, subprocess, sys, time
 cid, run, expected, log, video, pipe = sys.argv[1:7]
 expected = int(expected)
-if pipe == "FFMPEG":
-    cmd = ["ffmpeg", "-hide_banner", "-nostdin", "-hwaccel", "drm", "-i", video, "-f", "null", "-"]
+is_ffmpeg = pipe == "FFMPEG" or pipe.startswith("FFMPEG ")
+if is_ffmpeg:
+    # "FFMPEG [<pre-input args>] [-- <post-input args>]"; plain "FFMPEG" gives the original reference argv
+    toks = shlex.split(pipe[len("FFMPEG"):])
+    pre, post = (toks[:toks.index("--")], toks[toks.index("--") + 1:]) if "--" in toks else (toks, [])
+    cmd = (["ffmpeg", "-hide_banner", "-nostdin", "-hwaccel", "drm"] + pre + ["-i", video] + post
+           + ["-f", "null", "-"])
 elif pipe.startswith("FFPIPE "):
     # bash waits on both processes, so bash's wait4 rusage sums ffmpeg + gst-launch CPU
     gst = pipe[len("FFPIPE "):]
@@ -158,7 +186,7 @@ keep = []          # keep only caps/error/summary lines in the log
 tail = []
 for raw in p.stdout:
     line = raw.decode("utf-8", "replace").rstrip("\n")
-    if pipe == "FFMPEG":
+    if is_ffmpeg:
         for seg in line.split("\r"):
             m = re.search(r"frame=\s*(\d+)", seg)
             if m:
