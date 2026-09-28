@@ -78,9 +78,11 @@ BCM2712(Pi 5 / CM5)에는 **HEVC(H.265) 디코더 회로만** 들어 있다. **H
 |---|---:|---:|
 | `avdec_h264` 자동 스레드 (SW) | 164.6 | 20.2 ms |
 | `avdec_h265` 자동 스레드 (SW) | 109.1 | 31.8 ms |
-| **ffmpeg `-hwaccel drm` HEVC (HW)** | **332.8** | **2.0 ms** |
+| **ffmpeg `-hwaccel drm` HEVC (HW, CLI)** | **332.8** | **2.0 ms** |
 
 HW 디코더는 1080p를 **약 11배속**으로 푼다. CPU는 거의 놀고 있다.
+(2.0 ms도 대부분 CLI가 프레임을 CPU로 내려받는 비용이다. DRM_PRIME을 유지하면 0.55 ms,
+[`runs/ffmpeg_outfmt`](../07_results/decode_benchmark/runs/ffmpeg_outfmt/summary.md))
 
 그래서 이 프로젝트는 **입력을 HEVC로 못 박았다.**
 [`ffmpeg_drm_decoder.cpp`](../01_src/decode/ffmpeg_drm_decoder.cpp) 는 아예 코드로 거부한다:
@@ -450,8 +452,14 @@ Vulkan은 플랫폼 중립이라 "창"을 모른다. 그래서 다리가 둘 필
 
 | 경로 | FPS | CPU ms/frame |
 |---|---:|---:|
-| GStreamer `v4l2slh265dec` (HW 디코더 사용) | **32.7** | **30.6** |
-| ffmpeg `-hwaccel drm` (같은 HW 디코더) | **332.8** | **2.0** |
+| GStreamer `v4l2slh265dec` (HW 디코더 사용, gst-plugins-bad rpt3) | **32.7** | **30.6** |
+| ffmpeg `-hwaccel drm` (같은 HW 디코더, CLI는 CPU로 내려받음) | **332.8** | **2.0** |
+
+> **2026-09-29 갱신.** 위 GStreamer 값은 rpt3 패키지 기준이다. 이 복사는 upstream 1.26.4에서 고쳐진 버그였고
+> ([RPi-Distro/repo#406](https://github.com/RPi-Distro/repo/issues/406)), rpt4가 수정을 들여온 뒤 DMABuf 경로는
+> **381.5 FPS / 0.24 ms**다([`runs/gst_rpt4`](../07_results/decode_benchmark/runs/gst_rpt4/summary.md)).
+> ffmpeg 행의 2.0 ms도 대부분 CPU 내려받기이고, DRM_PRIME을 유지하면 386.9 FPS / 0.55 ms다
+> ([`runs/ffmpeg_outfmt`](../07_results/decode_benchmark/runs/ffmpeg_outfmt/summary.md)). 아래 결론(병목은 복사)은 그대로다.
 
 **같은 하드웨어 회로를 쓰는데 10배 차이다.** 게다가 GStreamer 경로는 CPU 코어 하나가 100% 찬다.
 HW 디코드를 쓰고도 CPU 비용(30.6 ms)이 SW H.265 디코드(31.8 ms)와 거의 같았다.
@@ -823,7 +831,7 @@ loginctl activate <데스크톱 세션 id>      # 또는 sudo chvt 7 — labwc �
 **Q1. 이 보드에서 H.264 영상을 쓰면 왜 느린가?**
 
 BCM2712에는 **HEVC(H.265) 디코더 회로만** 있고 H.264 회로가 없다. H.264는 CPU가 소프트웨어로
-풀어야 해서 1080p 기준 **20.2 ms/frame** 이 든다(HW HEVC는 **2.0 ms/frame**).
+풀어야 해서 1080p 기준 **20.2 ms/frame** 이 든다(HW HEVC는 ffmpeg CLI로 **2.0 ms/frame**, 복사 없는 앱 경로는 0.23~0.28 ms).
 그래서 이 프로젝트의 디코더는 아예 HEVC가 아니면 거부한다
 (`ffmpeg_drm_decoder.cpp`: `if (st->codecpar->codec_id != AV_CODEC_ID_HEVC) return fail(...)`).
 근거: [`decode_benchmark/summary.md`](../07_results/decode_benchmark/summary.md).
@@ -832,7 +840,7 @@ BCM2712에는 **HEVC(H.265) 디코더 회로만** 있고 H.264 회로가 없다.
 
 디코더 출력이 **SAND128 타일 배치**인데, GStreamer의 일반 경로가 그것을 linear NV12로
 되돌리려고 **CPU 한 스레드로 프레임 전체를 복사**했다(perf에서 CPU 시간의 약 90%가 ORC 생성 복사 코드).
-32.7 FPS / CPU 30.6 ms/frame이었고, **HW 디코드를 쓰고도 SW H.265(31.8 ms)와 CPU 비용이 같았다.**
+32.7 FPS / CPU 30.6 ms/frame이었고, **HW 디코드를 쓰고도 SW H.265(31.8 ms)와 CPU 비용이 같았다**(rpt3 기준, rpt4에서는 복사가 사라져 0.24 ms).
 해법은 GStreamer를 거치지 않고 **앱에 libavcodec DRM_PRIME 디코더를 직접 넣어** dma-buf fd를
 Vulkan으로 import하고 SAND 주소 계산을 셰이더가 하게 한 것이다 → 398.5 FPS / 0.23~0.28 ms.
 

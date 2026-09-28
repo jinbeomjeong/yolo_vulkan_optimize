@@ -302,19 +302,23 @@ CPU가 소프트웨어로 풀 수밖에 없다. 추측이 아니라 측정으로
 |---|---|---:|---:|
 | `avdec_h264` (소프트웨어, 4코어) | H.264 | 164.6 FPS | **20.2 ms** |
 | `avdec_h265` (소프트웨어, 4코어) | HEVC | 109.1 FPS | **31.8 ms** |
-| **ffmpeg `-hwaccel drm` (하드웨어)** | **HEVC** | **332.8 FPS** | **2.0 ms** |
+| **ffmpeg `-hwaccel drm` (하드웨어, CLI)** | **HEVC** | **332.8 FPS** | **2.0 ms** |
 
-하드웨어 디코더를 제대로 쓰면 CPU가 **2.0 ms**로 끝난다 — 소프트웨어의 10~16분의 1이다.
+하드웨어 디코더를 쓰면 CPU가 **2.0 ms**로 끝난다 — 소프트웨어의 10~16분의 1이다.
+단 이 2.0 ms도 대부분(약 1.5 ms)은 CLI가 프레임을 CPU로 내려받아 변환하는 비용이다. DRM_PRIME을 유지하면 0.55 ms다
+([`decode_benchmark/runs/ffmpeg_outfmt`](../07_results/decode_benchmark/runs/ffmpeg_outfmt/summary.md), 2026-09-29).
 그래서 이 프로젝트의 기본 입력 영상이 [`04_data/videos/video_h265.mp4`](../04_data/videos/)
 (HEVC 1080p30)다.
 
 ### 함정 하나 — "하드웨어를 쓰는데 왜 안 빠르지"
 
-같은 하드웨어 디코더를 GStreamer의 `v4l2slh265dec`로 쓰면 **32.7 FPS, CPU 30.6 ms/frame**이 나온다.
+같은 하드웨어 디코더를 GStreamer의 `v4l2slh265dec`로 쓰면 **32.7 FPS, CPU 30.6 ms/frame**이 나왔다(2026-09-20, gst-plugins-bad rpt3).
 하드웨어를 쓰는데도 소프트웨어 디코드와 CPU 비용이 거의 같다. 원인은 디코더가 아니라
 **그 뒤의 복사**다. `perf` 프로파일에서 CPU 시간의 약 90%가 프레임 복사·변환 코드였다 —
 디코더가 내놓는 **SAND 타일 포맷**을 CPU 한 스레드가 일반 메모리로 옮기고 있었다
 (같은 문서 해석 1 — 문서는 이 원인을 "추정한다"고 적는다).
+이 복사는 알려진 upstream 버그(1.26.4에서 수정)였고, 2026-09-29 rpt4 패키지가 수정을 들여오자 DMABuf 경로가
+**381.5 FPS / 0.24 ms/frame**이 됐다([`decode_benchmark/runs/gst_rpt4`](../07_results/decode_benchmark/runs/gst_rpt4/summary.md)).
 
 **교훈: 하드웨어 블록을 썼다는 사실만으로는 아무것도 보장되지 않는다.
 그 출력이 다음 단계까지 복사 없이 가느냐가 실제 비용을 정한다.**
@@ -595,11 +599,12 @@ Gen3에서 `약 24.8 + 16.2 ms`로 **두 항이 모두 정확히 절반**이 됐
 **Q3. "하드웨어 디코더를 쓰면 CPU가 안 든다"는 참인가?**
 
 **거짓이다. 그 출력을 어떻게 받느냐가 정한다.** 같은 BCM2712 HEVC 하드웨어 디코더를
-GStreamer `v4l2slh265dec`로 쓰면 **32.7 FPS / CPU 30.6 ms/frame**으로 소프트웨어 디코드
+GStreamer `v4l2slh265dec`(rpt3)로 쓰면 **32.7 FPS / CPU 30.6 ms/frame**으로 소프트웨어 디코드
 (`avdec_h265` 31.8 ms)와 거의 같다. CPU 시간의 약 90%가 프레임 복사·변환이었다
-(원인은 문서가 "추정"으로 표시). 같은 하드웨어를 ffmpeg `-hwaccel drm`으로 쓰면
-**332.8 FPS / CPU 2.0 ms**다. **차이는 디코더가 아니라 복사의 유무다.**
-→ [`decode_benchmark/summary.md`](../07_results/decode_benchmark/summary.md) 해석 1
+(원인은 문서가 "추정"으로 표시). 같은 하드웨어를 ffmpeg `-hwaccel drm`(CLI)으로 쓰면
+**332.8 FPS / CPU 2.0 ms**이고, 이것도 대부분 CPU 내려받기다. 복사가 없으면 0.2~0.5 ms대다
+(rpt4 GStreamer DMABuf 0.24, ffmpeg DRM_PRIME 유지 0.55, 앱 0.23~0.28). **차이는 디코더가 아니라 복사의 유무다.**
+→ [`decode_benchmark/summary.md`](../07_results/decode_benchmark/summary.md) 해석 1, 회차 `runs/gst_rpt4`·`runs/ffmpeg_outfmt`
 
 **Q4. CPU와 GPU가 "같은 메모리"를 쓰는데, 왜 GPU가 쓴 결과를 CPU로 읽으면 비싼가?**
 
