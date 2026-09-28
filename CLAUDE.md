@@ -16,7 +16,7 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행�
 
 | 대역 | 폴더 |
 |---|---|
-| 코드 | `01_src/` — 라이브러리 `{core,ref,toolkit,testkit,decode,hailo,vulkan,display,isp,pipeline}/`, 빌드되는 도구 `tools/<도메인>/`. `02_shaders/` (진단용은 `diag/`) |
+| 코드 | `01_src/` — 라이브러리 `{core,ref,toolkit,testkit,decode,hailo,vulkan,display,isp,pipeline,gstelem}/`, 빌드되는 도구 `tools/<도메인>/`. `02_shaders/` (진단용은 `diag/`) |
 | 자산 | `03_models/` (HEF), `04_data/{videos,raw_tensors}/` |
 | 검증·측정 | `05_tests/` (GoogleTest 실행 파일 6개 + live 1, ctest 78), `06_tools/{bench,python,probes}/`, `07_results/<실험>/` |
 | 문서 | `08_learn/` (자습 교재), `09_diagrams/` (yEd `.graphml`), `10_paper/` (논문 초고) |
@@ -64,7 +64,8 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행�
   - **필수**: `HailoRT`(→ `HailoRT::libhailort`), `Vulkan`(→ `Vulkan::Vulkan`),
     `PkgConfig` → `libavformat`·`libavcodec`·`libavutil`·`libdrm` (`01_src/decode/CMakeLists.txt`)
   - **선택**: `OpenCV`(**REQUIRED 아님** — 없으면 경고만 내고 OpenCV를 쓰는 타깃이 빠진다),
-    `wayland-client`+`wayland-protocols`(없으면 표시 경로가 kms 백엔드까지 조용히 빠진다. staging `color-representation` XML은 있으면 쓴다), `libpisp`(없으면 `yvo_isp` 전체가 빠진다)
+    `wayland-client`+`wayland-protocols`(없으면 표시 경로가 kms 백엔드까지 조용히 빠진다. staging `color-representation` XML은 있으면 쓴다), `libpisp`(없으면 `yvo_isp` 전체가 빠진다),
+    `gstreamer-1.0`·`-base`·`-video`·`-allocators` ≥1.24(없으면 `yvo_gstelem`과 `tools/gst/` 도구가 빠진다)
   - **`YVO_BUILD_TESTS`일 때**: `GTest`(→ `GTest::gtest_main`)
   - `pybind11`·`nlohmann_json`은 **쓰지 않는다.** `find_package` 호출이 없다.
     nlohmann_json은 conda prefix에만 있어 다른 시스템 헤더를 가릴 위험이 있어 의도적으로 뺐다
@@ -87,7 +88,8 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행�
   `11_logs/<YYYY-MM-DD>_<무엇>.log`로 옮긴다. 저장소 루트의 `hailort.log`는 잔재다.
 - MCP 서버 (프로젝트 `.mcp.json`):
   - `gstreamer` (`/home/pi/workspace/gstreamer-mcp`) → 도구 `mcp__gstreamer__*`.
-    **단 앱 본체는 GStreamer를 쓰지 않는다** — `decode_bench.sh`의 디코드 비교에서만 외부 프로세스로 호출한다.
+    **단 앱 본체(`yvo_pipeline`)는 GStreamer를 쓰지 않는다** — `decode_bench.sh`의 디코드 비교에서 외부 프로세스로 호출하고,
+    `01_src/gstelem/`(선택)은 GStreamer 디코드 → Vulkan 전처리 → Hailo 를 비교하는 **연구 경로**다(도구 `tools/gst/`에 정적 등록).
   - `vulkan-docs` (`/home/pi/workspace/mcp-Vulkan`) → 도구 `mcp__vulkan-docs__*`.
     VUID 원문·구조체는 로컬 레지스트리 `/usr/share/vulkan/registry/{validusage.json,vk.xml}`가 더 정확하고,
     MCP는 서술적 설명에 쓴다.
@@ -104,6 +106,7 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행�
 | `01_src/ref/` | 그 원문을 쓰는 셰이더·경로의 전문가 | **바꾸면 `verify` ctest 필수**(비트 일치 테스트의 기준이다) |
 | `01_src/toolkit/` | `cpp-expert` | 라이브러리가 include하면 안 된다 |
 | `01_src/pipeline/` | 바뀌는 단계의 전문가 | 디코더 연결은 `cpp-expert`, `gpu_postproc_stage`는 `vulkan-expert`, `infer_stage`는 `hailo-expert` |
+| `01_src/gstelem/`, `01_src/tools/gst/` | `gstreamer-expert` | `SandLetterbox` 사용·dma-buf 수명은 `vulkan-expert`, `HailoRunner` 바인딩은 `hailo-expert`, CMake 선택 의존은 `cpp-expert` 검토 |
 | `05_tests/` | 테스트 대상 도메인의 전문가 + `verify` 스킬 | |
 | `06_tools/bench/` | 실행은 `measure` 스킬, 수정은 측정 대상 도메인의 전문가 | 추가·삭제 시 `npu_guard`가 자동으로 찾는지 확인(검사기 C10) |
 | `06_tools/python/` | `python-expert` | |

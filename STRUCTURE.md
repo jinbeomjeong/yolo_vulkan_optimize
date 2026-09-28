@@ -60,6 +60,7 @@
 | `display/` | `yvo_display` | 표시: Vulkan 합성(Wayland 창, 스왑체인, 표시 변환, 오버레이)과 HVS 평면 스캔아웃(`PlaneDisplay`, Wayland linux-dmabuf / KMS atomic, 박스 평면, debugfs 판정) | |
 | `isp/` | `yvo_isp` | PiSP BE 전처리 (파이프라인 미연결, 보류) | |
 | `pipeline/` | `yvo_stages`, `yvo_pipeline` | 단계 조립과 앱 본체 `main.cpp` | |
+| `gstelem/` | `yvo_gstelem` (선택: GStreamer ≥1.24 dev가 없으면 빠진다) | 연구용 GStreamer 요소(도구에 정적 등록, .so 없음): SAND DMABuf → `DrmFrame` 어댑터, `yvosandletterbox`, `yvohailosink` | `yvo_pipeline` 본체 경로 코드 |
 | `tools/<도메인>/` | `yvo_*` 실행파일 | **빌드되는** 프로브·벤치·자가시험. 파일당 `main()` 1개 | 라이브러리 코드 |
 
 - `01_src/` 바로 아래에는 이 표의 폴더만 둔다. 이름은 `/usr/include`의 폴더명과 겹치면 안 된다(`hailo`·`vulkan`은 허용 예외, 파일명은 겹치지 않게 한다).
@@ -83,10 +84,11 @@
 | `isp` | core, ref |
 | `testkit` | core, ref, vulkan, display, testkit |
 | `pipeline` | core, ref, hailo, vulkan, display, decode |
+| `gstelem` | core, ref, hailo, vulkan |
 | `tools` | 전부 |
 | `05_tests` | tools를 뺀 전부 |
 
-라이브러리 폴더(`core ref decode hailo vulkan display isp pipeline`)는 `toolkit`·`testkit`·`tools`를 include하지 않는다.
+라이브러리 폴더(`core ref decode hailo vulkan display isp pipeline gstelem`)는 `toolkit`·`testkit`·`tools`를 include하지 않는다.
 
 ### 2.3 셰이더
 
@@ -188,6 +190,7 @@ HailoRT는 **실행한 디렉터리(CWD)**에 `hailort.log`를 쓴다.
 | `01_src/{core,toolkit,decode,isp,tools/isp,tools/decode}`, `CMakeLists.txt`, `cmake/` | cpp-expert |
 | `01_src/ref` | 그 원문을 쓰는 셰이더·경로의 전문가 (바꾸면 verify ctest 필수) |
 | `01_src/pipeline` | 바뀌는 단계의 전문가 |
+| `01_src/{gstelem,tools/gst}` | gstreamer-expert (SandLetterbox 사용은 vulkan-expert, HailoRunner 바인딩은 hailo-expert 검토) |
 | `05_tests` | 테스트 대상 도메인의 전문가 + verify 스킬 |
 | `06_tools/bench` | 실행은 measure 스킬, 수정은 측정 대상 도메인의 전문가 |
 | `06_tools/python` | python-expert |

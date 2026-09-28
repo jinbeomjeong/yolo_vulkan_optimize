@@ -37,12 +37,12 @@ dump_globs = ["*.data", "perf.data*", "core", "vgcore.*"]
 src_root = "01_src"
 # 01_src 바로 아래 허용 폴더 (C1)
 allowed_dirs = ["core", "ref", "toolkit", "testkit", "decode", "hailo", "vulkan",
-                "display", "isp", "pipeline", "tools"]
+                "display", "isp", "pipeline", "gstelem", "tools"]
 # 01_src 바로 아래 허용 파일
 root_files = ["CMakeLists.txt"]
 # 라이브러리 폴더: toolkit/testkit/tools include 금지(DAG 로 표현됨),
 # YVO_REPO_ROOT·YVO_DEFAULT_* 사용 금지(C7). library_exclude 의 파일은 실행파일 본체라 뺀다.
-library_dirs = ["core", "ref", "decode", "hailo", "vulkan", "display", "isp", "pipeline"]
+library_dirs = ["core", "ref", "decode", "hailo", "vulkan", "display", "isp", "pipeline", "gstelem"]
 library_exclude = ["01_src/pipeline/main.cpp"]
 # 라이브러리 폴더 안에 두면 안 되는 하위 폴더 (C1) — 도구는 01_src/tools/<도메인>/
 library_forbidden_subdirs = ["tools"]
@@ -70,9 +70,10 @@ display   = ["core", "ref", "vulkan"]
 isp       = ["core", "ref"]
 testkit   = ["core", "ref", "vulkan", "display", "testkit"]
 pipeline  = ["core", "ref", "hailo", "vulkan", "display", "decode"]
+gstelem   = ["core", "ref", "hailo", "vulkan"]
 tools     = ["*"]
 "05_tests" = ["core", "ref", "toolkit", "testkit", "decode", "hailo", "vulkan",
-              "display", "isp", "pipeline"]
+              "display", "isp", "pipeline", "gstelem"]
 
 [code.include_unprefixed]
 # 접두사 없이 써도 되는 include (빌드 산출물·외부 라이브러리)

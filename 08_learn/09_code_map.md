@@ -55,6 +55,7 @@
 ├── display/    화면 표시 (Vulkan 합성·스왑체인 + HVS 평면 스캔아웃: Wayland linux-dmabuf / KMS atomic)   — vulkan과 별도 라이브러리
 ├── isp/        ISP 전처리 — 구현됐지만 미사용
 ├── pipeline/   이 전부를 묶는 실행 파일 main.cpp
+├── gstelem/    (선택) GStreamer 연구 경로 — v4l2 디코드 DMABuf를 받는 요소 2개. 앱 본체는 쓰지 않는다
 └── tools/      빌드되는 진단·측정 도구 11개 ({hailo,vulkan,display,isp,decode}/ — 측정 대상 도메인 기준)
 ```
 
