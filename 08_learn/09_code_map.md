@@ -22,7 +22,7 @@
 | | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 — 본 파이프라인 5개 + `diag/` 진단 전용 2개 (`.comp`). `overlay_boxes.comp` 는 버퍼 변형까지 SPIR-V 2개로 빌드 |
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
 | | `04_data/` | 입력 영상(지금은 `video_h265.mp4` 하나)과 테스트용 원시 텐서 픽스처 (git에 없음) |
-| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 7개(`test_postproc_live` 를 따로 세면 8), ctest 항목 88개 |
+| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 8개(`test_postproc_live` 를 따로 세면 9), ctest 항목 89개 |
 | | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 7개), `python/`(5개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
 | | [`07_results/`](../07_results/) | 실험별 측정 원시 출력과 `summary.md` |
 | **문서** | [`08_learn/`](00_README.md) | 지금 읽고 있는 이 자습 교재 12장 |
@@ -55,7 +55,7 @@
 ├── display/    화면 표시 (Vulkan 합성·스왑체인 + HVS 평면 스캔아웃: Wayland linux-dmabuf / KMS atomic)   — vulkan과 별도 라이브러리
 ├── isp/        ISP 전처리 — 구현됐지만 미사용
 ├── pipeline/   이 전부를 묶는 실행 파일 main.cpp
-├── gstelem/    (선택) GStreamer 연구 경로 — v4l2 디코드 DMABuf를 받는 요소 2개. 앱 본체는 쓰지 않는다
+├── gstelem/    (선택) GStreamer 연구 경로 — 레터박스 요소 + HailoRT 싱크(`yvohailosink`). 앱 본체는 쓰지 않는다
 └── tools/      빌드되는 진단·측정 도구 13개 ({hailo,vulkan,display,isp,decode,gst}/ — 측정 대상 도메인 기준)
 ```
 
@@ -217,7 +217,7 @@ cmake -S . -B build -G Ninja && cmake --build build
 | `yvo_display_pipeline_probe` | 표시 상태기계만 | 아니오 |
 | `yvo_isp_*` | ISP 경로 (보류 상태) | 아니오 |
 | `yvo_gst_sand_probe` | (선택, GStreamer 연구 경로) `v4l2slh265dec` DMABuf → `DrmFrame` → GPU 전처리가 FFmpeg 경로와 바이트 일치하는지 | 아니오 |
-| `yvo_gst_pipeline` | (선택, GStreamer 연구 경로) `v4l2slh265dec` → `yvosandletterbox`(Vulkan NHCW, 링 슬롯 dma-buf) → fakesink/hold 싱크. 처리량·슬롯 역압·정지 감시 | 아니오 |
+| `yvo_gst_pipeline` | (선택, GStreamer 연구 경로) `v4l2slh265dec` → `yvosandletterbox`(Vulkan NHCW, 링 슬롯 dma-buf) → `yvohailosink`(기본, `yvo_pipeline --mode dmabuf --layout nhcw`와 같은 추론·후처리, 같은 `RESULT_CSV`·`detections.jsonl`) 또는 fakesink/hold 싱크. 슬롯 역압·정지 감시 | hailo 싱크(기본)는 예 |
 
 > **이 도구들이 프로젝트의 방법론이다.** 새 기능을 바로 본체에 넣지 않고,
 > 먼저 프로브로 "이게 되는가"를 가른 다음 통과한 것만 승격한다.
@@ -242,6 +242,7 @@ ctest --test-dir build
 | `test_display_convert` | 불필요 | 표시 변환(1:1)이 CPU 기준과 **오차 0**. BT.709 계수의 세 번째 사본을 지킨다 |
 | `test_isp_preproc` | 불필요(ISP 필요) | 패딩은 오차 0, 내용은 MAE ≤ 3.0 |
 | `test_gst_adapter` | 불필요 | (선택, GStreamer) 어댑터·`yvosandletterbox` 출력이 FFmpeg 경로 NHCW와 **바이트 일치**, 텐서 메타·슬롯 fd 고정, SAND 외 caps 거부, 슬롯 수명 오용 회귀(`GstElementSlots.*`) |
+| `test_gst_detections` | 필요 | (선택, GStreamer) `yvohailosink` 검출이 `yvo_pipeline` 추론 경로(NHCW dma-buf, 같은 배치)와 **프레임마다 동일**(앞 120프레임, 배치 4) |
 
 주목할 점 둘:
 

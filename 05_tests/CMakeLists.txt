@@ -137,3 +137,24 @@ if(TARGET yvo_gstelem AND TARGET PkgConfig::YVO_GST_APP AND TARGET yvo_decoder)
     PROPERTIES TIMEOUT 300
     DISCOVERY_TIMEOUT 60)
 endif()
+
+# GStreamer research path, stage 2b (Hailo-8 + GPU + HEVC HW decoder): yvohailosink detections vs the yvo_pipeline
+# inference path (SandLetterbox NHCW dma-buf → HailoRunner, same batch) on the first YVO_GST_DET_FRAMES frames (default
+# 120, batch YVO_GST_DET_BATCH default 4) — every frame's detection list must be equal. One ctest entry (the NPU work
+# runs once), RUN_SERIAL because it takes the NPU exclusively. Skipped without /dev/hailo0, the video, v4l2slh265dec,
+# or when the Hailo device is held by another process.
+if(TARGET yvo_gstelem AND TARGET yvo_hailo AND TARGET yvo_vulkan AND TARGET yvo_decoder)
+  add_executable(test_gst_detections test_gst_detections.cpp)
+  target_link_libraries(test_gst_detections PRIVATE yvo_gstelem yvo_hailo yvo_vulkan yvo_decoder yvo_ref yvo_assets
+    PkgConfig::YVO_GST GTest::gtest_main)
+  yvo_target_defaults(test_gst_detections)
+  target_compile_definitions(test_gst_detections PRIVATE
+    YVO_TEST_VIDEO=YVO_DEFAULT_VIDEO
+    YVO_TEST_HEF=YVO_DEFAULT_HEF)
+  add_test(NAME test_gst_detections COMMAND test_gst_detections)
+  set_tests_properties(test_gst_detections PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    TIMEOUT 600
+    RUN_SERIAL TRUE
+    LABELS "npu;gst")
+endif()

@@ -5,6 +5,9 @@
 #include <mutex>
 
 #include "gstelem/sand_letterbox_element.hpp"
+#ifdef YVO_GSTELEM_HAVE_HAILO
+#include "gstelem/hailo_infer_sink.hpp"
+#endif
 
 namespace yvo::gst {
 
@@ -13,7 +16,9 @@ bool register_elements() {
     static bool ok = false;
     std::call_once(once, [] {
         ok = register_sand_letterbox(nullptr);
-        // stage 2b: ok = register_hailo_sink(nullptr) && ok;
+#ifdef YVO_GSTELEM_HAVE_HAILO
+        ok = register_hailo_sink(nullptr) && ok;
+#endif
     });
     return ok;
 }

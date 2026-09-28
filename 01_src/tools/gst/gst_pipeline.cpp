@@ -1,17 +1,22 @@
-// yvo_gst_pipeline: GStreamer research path, stage 2a (GStreamer + Vulkan half of the B plan)
+// yvo_gst_pipeline: GStreamer research path (B plan) — the yvo_pipeline comparison tool
 //   filesrc ! qtdemux ! h265parse ! v4l2slh265dec ! queue ! yvosandletterbox ! queue ! <sink>
-//   The element is registered statically (yvo::gst::register_elements, no plugin .so).
+//   The elements are registered statically (yvo::gst::register_elements, no plugin .so).
 //
 // Sinks
+//   hailo : yvohailosink (stage 2b, default). Same inference + postprocessing as `yvo_pipeline --mode dmabuf --layout
+//           nhcw` (HailoRunner, InferModel batch --batch, HEF NMS parsed on the host). --dump-dir writes detections.jsonl
+//           in the yvo_pipeline format; --csv-label also prints RESULT_CSV with yvo_pipeline's 22 columns.
 //   fake  : fakesink sync=false (throughput of decode + Vulkan letterbox)
 //   hold  : appsink whose callback keeps the newest --hold N samples before releasing the oldest.
 //           Exercises the ring-slot backpressure: with N >= --slots every slot is held, the element blocks in
 //           prepare_output_buffer and the watchdog must fire.
-//   hailo : extension point for stage 2b (yvohailosink, --batch forwarded). Not built in this stage.
+// Timing: the pipeline is prerolled in PAUSED first (Vulkan + HailoRT init, first buffers), then wall/CPU are measured
+//   from PLAYING to the EOS message (the hailo sink posts EOS only after its last NPU completion).
 // Watchdog: no buffer at the sink pad for --stall-timeout seconds → STALL diagnostic (queue levels, slots in use),
 //   exit 4. A starved decoder pool also stalls silently, so this is the only detection.
 // Exit codes: 0 pass, 1 runtime error, 2 bad arguments, 3 checks failed, 4 stall.
-// Nothing is written to disk (the summary goes to stdout; RESULT_GST_CSV with --csv-label).
+// Nothing is written to disk except --dump-dir (and hailort.log, which HailoRT writes to the CWD; the tool never
+// changes the CWD). The summary goes to stdout; RESULT_GST_CSV (+ RESULT_CSV for the hailo sink) with --csv-label.
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -31,6 +36,9 @@
 #include <gst/app/gstappsink.h>
 #include <gst/gst.h>
 
+#ifdef YVO_GSTELEM_HAVE_HAILO
+#include "gstelem/hailo_infer_sink.hpp"
+#endif
 #include "gstelem/register.hpp"
 #include "gstelem/tensor_meta.hpp"
 #include "toolkit/stats.hpp"
@@ -42,13 +50,16 @@ enum class SinkKind { Fake, Hold, Hailo };
 
 struct Args {
     std::string video = YVO_DEFAULT_VIDEO;
+    std::string hef = YVO_DEFAULT_HEF;
     int frames = 0;           // 0 = whole file
     int expect_frames = 1816; // used when --frames is 0; 0 = no check
-    int slots = 16;
-    int batch = 1;            // forwarded to the stage-2b hailo sink; ignored by fake/hold
+    int slots = 0;            // 0 = default: hailo max(4, 2*batch) (= yvo_pipeline default), fake/hold 16
+    int batch = 1;            // hailo sink: InferModel batch size (= yvo_pipeline --batch); ignored by fake/hold
+    double score = -1.0;      // hailo sink: < 0 keeps the HEF value (0.2), = yvo_pipeline --score default
+    std::string dump_dir;     // hailo sink: detections.jsonl
     int queue = 2;            // decoder-side queue max-size-buffers
     int decoder_pool_min = 4;
-    SinkKind sink = SinkKind::Fake;
+    SinkKind sink = SinkKind::Hailo;
     int hold = 2;
     int stall_timeout_s = 5;
     bool validation = false;
@@ -58,25 +69,32 @@ struct Args {
 
 void usage(const char* argv0) {
     std::printf(
-        "usage: %s [--video PATH] [--frames N] [--expect-frames N] [--slots N] [--batch N] [--queue N]\n"
-        "          [--decoder-pool-min N] [--sink fake|hold|hailo] [--hold N] [--stall-timeout S] [--validation]\n"
-        "          [--quiet] [--csv-label L]\n"
+        "usage: %s [--video PATH] [--hef PATH] [--frames N] [--expect-frames N] [--slots N] [--batch N] [--score T]\n"
+        "          [--dump-dir DIR] [--queue N] [--decoder-pool-min N] [--sink hailo|fake|hold] [--hold N]\n"
+        "          [--stall-timeout S] [--validation] [--quiet] [--csv-label L]\n"
         "  GStreamer HW decode (v4l2slh265dec, DMA_DRM NV12 SAND128) -> yvosandletterbox (Vulkan, NHCW 640x640) -> sink\n"
         "  --video          input (default %s)\n"
+        "  --hef            HEF for the hailo sink (default %s)\n"
         "  --frames         stop after N frames at the sink (default 0 = whole file)\n"
         "  --expect-frames  expected frame count when --frames is 0 (default 1816, 0 = no check)\n"
-        "  --slots          output ring slots of yvosandletterbox (default 16, 2..32)\n"
-        "  --batch          NPU batch for the stage-2b hailo sink (accepted, ignored by fake/hold)\n"
+        "  --slots          output ring slots of yvosandletterbox (2..32; default hailo max(4, 2*batch) = the\n"
+        "                   yvo_pipeline --slots default, fake/hold 16). The hailo sink returns each slot in its\n"
+        "                   completion callback, so up to <slots> frames are in flight on the NPU as in yvo_pipeline:\n"
+        "                   the same --slots gives the same NPU queue depth (latency); the ring blocks, never stalls\n"
+        "  --batch          hailo sink: InferModel batch size 1..16 (default 1, = yvo_pipeline --batch)\n"
+        "  --score          hailo sink: NMS score threshold (default -1 = HEF value 0.2, = yvo_pipeline --score)\n"
+        "  --dump-dir       hailo sink: write DIR/detections.jsonl (yvo_pipeline --dump-dir line format, no PNGs)\n"
         "  --queue          max-size-buffers of the queue between decoder and element (default 2)\n"
         "  --decoder-pool-min  min buffers proposed to the decoder pool (default 4)\n"
-        "  --sink           fake = fakesink sync=false (default), hold = appsink keeping the newest --hold N samples,\n"
-        "                   hailo = stage 2b (not available yet)\n"
+        "  --sink           hailo = yvohailosink (default), fake = fakesink sync=false,\n"
+        "                   hold = appsink keeping the newest --hold N samples\n"
         "  --hold           samples kept by --sink hold (default 2). N >= --slots must stall (backpressure check)\n"
         "  --stall-timeout  seconds without a buffer at the sink before the watchdog fires (default 5)\n"
         "  --validation     enable VK_LAYER_KHRONOS_validation in the element (VK_LOADER_LAYERS_ENABLE also works)\n"
-        "  --csv-label      print RESULT_GST_CSV,<label>,... at the end\n"
+        "  --csv-label      print RESULT_GST_CSV,<label>,... at the end (hailo sink: also RESULT_CSV in the\n"
+        "                   yvo_pipeline 22-column format; decode_ms_mean = nan, see the summary note)\n"
         "Exit codes: 0 pass, 1 runtime error, 2 bad arguments, 3 checks failed, 4 stall.\n",
-        argv0, YVO_DEFAULT_VIDEO);
+        argv0, YVO_DEFAULT_VIDEO, YVO_DEFAULT_HEF);
 }
 
 // 0 = ok, 1 = --help, 2 = error
@@ -99,10 +117,26 @@ int parse(int argc, char** argv, Args& a) {
             const char* v = next();
             ok = v != nullptr;
             if (ok) a.video = v;
+        } else if (s == "--hef") {
+            const char* v = next();
+            ok = v != nullptr;
+            if (ok) a.hef = v;
+        } else if (s == "--dump-dir") {
+            const char* v = next();
+            ok = v != nullptr && *v;
+            if (ok) a.dump_dir = v;
+        } else if (s == "--score") {
+            const char* v = next();
+            char* end = nullptr;
+            ok = v != nullptr;
+            if (ok) {
+                a.score = std::strtod(v, &end);
+                ok = *end == '\0' && a.score <= 1.0;
+            }
         } else if (s == "--frames") ok = next_int(a.frames, 0, 1 << 30);
         else if (s == "--expect-frames") ok = next_int(a.expect_frames, 0, 1 << 30);
         else if (s == "--slots") ok = next_int(a.slots, 2, 32);
-        else if (s == "--batch") ok = next_int(a.batch, 1, 64);
+        else if (s == "--batch") ok = next_int(a.batch, 1, 16);
         else if (s == "--queue") ok = next_int(a.queue, 1, 64);
         else if (s == "--decoder-pool-min") ok = next_int(a.decoder_pool_min, 1, 32);
         else if (s == "--hold") ok = next_int(a.hold, 0, 64);
@@ -128,6 +162,7 @@ int parse(int argc, char** argv, Args& a) {
             return 2;
         }
     }
+    if (a.slots == 0) a.slots = a.sink == SinkKind::Hailo ? std::max(4, 2 * a.batch) : 16;
     return 0;
 }
 
@@ -141,14 +176,16 @@ const char* sink_name(SinkKind k) {
 }
 
 // Sink part of the launch description. Every sink is named "sink" (the watchdog probe sits on its sink pad).
-// Stage 2b: SinkKind::Hailo → "yvohailosink name=sink batch=<N> ..." once register_elements() provides it.
 std::string sink_description(const Args& a) {
     switch (a.sink) {
     case SinkKind::Fake: return "fakesink name=sink sync=false enable-last-sample=false";
     case SinkKind::Hold:
         return "appsink name=sink sync=false emit-signals=false max-buffers=2 drop=false enable-last-sample=false "
                "wait-on-eos=false";
-    case SinkKind::Hailo: return "";
+    case SinkKind::Hailo:
+        return yvo::tool::fmt("yvohailosink name=sink hef=\"%s\" batch=%d score-threshold=%g", a.hef.c_str(), a.batch,
+                              a.score) +
+               (a.dump_dir.empty() ? std::string() : " dump-dir=\"" + a.dump_dir + "\"");
     }
     return "";
 }
@@ -312,10 +349,12 @@ int main(int argc, char** argv) {
         usage(argv[0]);
         return 2;
     }
+#ifndef YVO_GSTELEM_HAVE_HAILO
     if (a.sink == SinkKind::Hailo) {
-        std::fprintf(stderr, "--sink hailo: yvohailosink is stage 2b and is not built yet (use fake or hold).\n");
+        std::fprintf(stderr, "--sink hailo: yvohailosink was not built (yvo_gstelem without yvo_hailo); use fake or hold.\n");
         return 2;
     }
+#endif
     gst_init(&argc, &argv);
     if (!yvo::gst::register_elements()) {
         std::fprintf(stderr, "register_elements failed\n");
@@ -349,6 +388,10 @@ int main(int argc, char** argv) {
         std::printf("sink=%s hold=%d slots=%d batch=%d queue=%d decoder-pool-min=%d stall-timeout=%d s expected=%d\n",
                     sink_name(a.sink), a.hold, a.slots, a.batch, a.queue, a.decoder_pool_min, a.stall_timeout_s,
                     expected);
+        if (a.sink == SinkKind::Hailo)
+            std::printf("hailo: hef=%s batch=%d score=%g dump-dir=%s (ring slots %d = max frames in flight on the NPU)\n",
+                        a.hef.c_str(), a.batch, a.score, a.dump_dir.empty() ? "-" : a.dump_dir.c_str(), a.slots);
+        std::fflush(stdout);
     }
 
     GError* perr = nullptr;
@@ -380,16 +423,45 @@ int main(int argc, char** argv) {
 
     GstBus* bus = gst_element_get_bus(pipeline);
     const long fds_before = yvo::tool::count_open_fds();
-    const double c0 = yvo::tool::cpu_ms();
-    const std::uint64_t t0 = mono_ns();
+    [[maybe_unused]] const double soc_t0 = yvo::tool::soc_temperature();
     bool eos = false, error = false, stalled = false, eos_sent = false;
     std::string caps_in, caps_out;
-    if (gst_element_set_state(pipeline, GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
+    // Preroll first: element start() (VulkanContext, HailoRT VDevice + configure) and the first buffers happen
+    // before t0, like yvo_pipeline's init before its timed loop. The sink holds one prerolled buffer; the ring fills.
+    if (gst_element_set_state(pipeline, GST_STATE_PAUSED) == GST_STATE_CHANGE_FAILURE) {
+        std::printf("set_state(PAUSED) failed\n");
+        error = true;
+    }
+    const std::uint64_t preroll_deadline = mono_ns() + 60'000'000'000ull;
+    bool prerolled = false;
+    while (!error && !prerolled) {
+        GstMessage* m = gst_bus_timed_pop_filtered(
+            bus, 100 * GST_MSECOND,
+            static_cast<GstMessageType>(GST_MESSAGE_ERROR | GST_MESSAGE_WARNING | GST_MESSAGE_ASYNC_DONE |
+                                        GST_MESSAGE_EOS));
+        if (m) {
+            const GstMessageType ty = GST_MESSAGE_TYPE(m);
+            if (ty == GST_MESSAGE_ASYNC_DONE && GST_MESSAGE_SRC(m) == GST_OBJECT(pipeline)) prerolled = true;
+            else if (ty == GST_MESSAGE_EOS) prerolled = eos = true;  // empty input: EOS prerolls too
+            else if (ty == GST_MESSAGE_ERROR || ty == GST_MESSAGE_WARNING) {
+                print_message(m);
+                if (ty == GST_MESSAGE_ERROR) error = true;
+            }
+            gst_message_unref(m);
+        }
+        if (!prerolled && !error && mono_ns() > preroll_deadline) {
+            std::printf("preroll: no ASYNC_DONE within 60 s\n");
+            error = true;
+        }
+    }
+    const double c0 = yvo::tool::cpu_ms();
+    const std::uint64_t t0 = mono_ns();
+    if (!error && gst_element_set_state(pipeline, GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
         std::printf("set_state(PLAYING) failed\n");
         error = true;
     }
     std::uint64_t t_end = t0;
-    while (!error) {
+    while (!error && !eos) {
         GstMessage* m = gst_bus_timed_pop_filtered(
             bus, 100 * GST_MSECOND,
             static_cast<GstMessageType>(GST_MESSAGE_ERROR | GST_MESSAGE_WARNING | GST_MESSAGE_EOS));
@@ -457,6 +529,11 @@ int main(int argc, char** argv) {
     guint64 val_errors = 0;
     gboolean val_active = FALSE;
     g_object_get(lb, "validation-errors", &val_errors, "validation-active", &val_active, nullptr);
+#ifdef YVO_GSTELEM_HAVE_HAILO
+    // The sink keeps its statistics after stop() (NULL): runner released, chip temperature t1 read before that.
+    yvo::gst::HailoSinkStats hs;
+    const bool have_hs = a.sink == SinkKind::Hailo && yvo::gst::hailo_sink_get_stats(sink, hs);
+#endif
     while (GstMessage* m = gst_bus_pop_filtered(bus, static_cast<GstMessageType>(GST_MESSAGE_ERROR | GST_MESSAGE_WARNING))) {
         print_message(m);
         if (GST_MESSAGE_TYPE(m) == GST_MESSAGE_ERROR && !stalled) error = true;
@@ -471,6 +548,7 @@ int main(int argc, char** argv) {
     // After the pipeline is finalized: slot fds, import-cache dups, Vulkan and decoder fds must all be gone.
     // (Right after NULL a stalled v4l2 decoder may still hold its fds until finalize.)
     const long fds_after = yvo::tool::count_open_fds();
+    [[maybe_unused]] const double soc_t1 = yvo::tool::soc_temperature();
 
     // ── summary ──
     const int frames = st.frames.load();
@@ -500,6 +578,20 @@ int main(int argc, char** argv) {
     if (frames > 0 && !lb_ok) fails.push_back("letterbox params differ from make_letterbox(src)");
     if (fds_after > fds_before) fails.push_back(yvo::tool::fmt("fd leak: %ld -> %ld", fds_before, fds_after));
     if (val_errors > 0) fails.push_back(yvo::tool::fmt("Vulkan validation errors %llu", static_cast<unsigned long long>(val_errors)));
+#ifdef YVO_GSTELEM_HAVE_HAILO
+    if (a.sink == SinkKind::Hailo) {
+        if (!have_hs) fails.push_back("hailo sink statistics unavailable");
+        else {
+            if (hs.completed != static_cast<std::uint64_t>(frames) || hs.submitted != hs.completed)
+                fails.push_back(yvo::tool::fmt("hailo frame count mismatch: at sink %d, submitted %llu, completed %llu",
+                                               frames, static_cast<unsigned long long>(hs.submitted),
+                                               static_cast<unsigned long long>(hs.completed)));
+            if (hs.errors) fails.push_back(yvo::tool::fmt("HailoRT completion errors %llu",
+                                                          static_cast<unsigned long long>(hs.errors)));
+            if (hs.drain_timeout) fails.push_back("hailo drain timeout (inferences still in flight at EOS/stop)");
+        }
+    }
+#endif
     const bool pass = fails.empty();
 
     std::printf("\n== yvo_gst_pipeline summary%s ==\n", stalled ? " [stalled]" : "");
@@ -511,7 +603,7 @@ int main(int argc, char** argv) {
                 a.decoder_pool_min, a.batch);
     std::printf("frames          %d at sink (expected %d), element %llu\n", frames, expected,
                 static_cast<unsigned long long>(elem_frames));
-    std::printf("wall            %.3f s, %.2f FPS (PLAYING→EOS); steady %.2f FPS (first→last sink buffer)\n", wall_s, fps,
+    std::printf("wall            %.3f s, %.2f FPS (PLAYING→EOS, after preroll); steady %.2f FPS (first→last sink buffer)\n", wall_s, fps,
                 steady_fps);
     std::printf("cpu             %.3f ms/frame (getrusage self user+sys, whole process incl. GStreamer threads)\n",
                 cpu_per_frame);
@@ -526,10 +618,31 @@ int main(int argc, char** argv) {
                 static_cast<unsigned long long>(st.dmabuf_bytes));
     std::printf("letterbox       src %dx%d scale %.6f pad %d,%d (make_letterbox: %s)\n", st.src_w, st.src_h,
                 static_cast<double>(st.lb_first.scale), st.lb_first.pad_x, st.lb_first.pad_y, lb_ok ? "equal" : "DIFFERENT");
-    std::printf("open fds        %ld before PLAYING, %ld after pipeline unref (all released: %s)\n", fds_before,
+    std::printf("open fds        %ld before PAUSED, %ld after pipeline unref (all released: %s)\n", fds_before,
                 fds_after, fds_after <= fds_before ? "yes" : "NO");
     std::printf("vk validation   layer %s, errors %llu\n", val_active ? "on" : "off",
                 static_cast<unsigned long long>(val_errors));
+#ifdef YVO_GSTELEM_HAVE_HAILO
+    yvo::Stats sn, se, shg;
+    if (have_hs) {
+        sn = yvo::stats(hs.npu_ms);
+        se = yvo::stats(hs.e2e_ms);
+        shg = yvo::stats(hs.gpu_ms);
+        const double per = hs.completed ? static_cast<double>(hs.detections) / static_cast<double>(hs.completed) : 0.0;
+        std::printf("npu latency ms  mean %.3f  median %.3f  p90 %.3f  max %.3f  (run_async → completion callback)\n",
+                    sn.mean, sn.median, sn.p90, sn.max);
+        std::printf("e2e latency ms  mean %.3f  median %.3f  p90 %.3f  max %.3f  (letterbox arrival → NPU completion "
+                    "callback)\n", se.mean, se.median, se.p90, se.max);
+        std::printf("hailo           submitted %llu, completed %llu, errors %llu, batch %d, async queue %zu, in-flight "
+                    "max %d, mapped slots %d/%d\n",
+                    static_cast<unsigned long long>(hs.submitted), static_cast<unsigned long long>(hs.completed),
+                    static_cast<unsigned long long>(hs.errors), hs.batch, hs.async_queue_size, hs.in_flight_max,
+                    hs.mapped_slots, hs.ring_slots);
+        std::printf("detections      %llu total, %.2f / frame\n", static_cast<unsigned long long>(hs.detections), per);
+        std::printf("hailo chip temp %.1f -> %.1f C\n", static_cast<double>(hs.hailo_t0), static_cast<double>(hs.hailo_t1));
+        std::printf("soc temp        %.1f -> %.1f C\n", soc_t0, soc_t1);
+    }
+#endif
     std::printf("result          %s\n", pass ? "PASS" : "FAIL");
     for (const auto& f : fails) std::printf("  - %s\n", f.c_str());
     if (!a.csv_label.empty()) {
@@ -539,6 +652,25 @@ int main(int argc, char** argv) {
                     a.csv_label.c_str(), sink_name(a.sink), a.sink == SinkKind::Hold ? a.hold : 0, a.slots, a.queue,
                     a.batch, frames, wall_s, fps, steady_fps, cpu_per_frame, sg.mean, sg.median, sg.p90, sw.mean,
                     sl.mean, sl.p90, static_cast<unsigned long long>(val_errors), stalled ? 1 : 0, pass ? 1 : 0);
+#ifdef YVO_GSTELEM_HAVE_HAILO
+        if (have_hs) {
+            // Same 22 columns and printf formats as yvo_pipeline (pipeline/main.cpp RESULT_CSV), parsed by
+            // 06_tools/bench/pipeline_bench.sh. Differences in meaning (documented in the tool header / report):
+            //   mode,layout      always dmabuf,nhcw (the only yvosandletterbox output)
+            //   slots            yvosandletterbox ring size (yvo_pipeline: GPU+NPU slots)
+            //   decode_ms_mean   nan — there is no blocking decode call in the GStreamer path
+            //   e2e_*            letterbox arrival → completion (yvo_pipeline: decode return → completion)
+            //   wall_s,cpu       PLAYING → EOS after preroll (yvo_pipeline: first decode → drain)
+            const long completed = static_cast<long>(hs.completed);
+            const double fps_c = wall_s > 0 ? static_cast<double>(completed) / wall_s : 0.0;
+            const double cpu_c = completed ? cpu_total / static_cast<double>(completed) : 0.0;
+            std::printf(
+                "RESULT_CSV,%s,%s,%s,%d,%d,%ld,%.3f,%.2f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%ld,%.1f,%.1f,%.1f,%.1f,%d\n",
+                a.csv_label.c_str(), "dmabuf", "nhcw", a.batch, a.slots, completed, wall_s, fps_c, cpu_c, std::nan(""),
+                shg.mean, shg.p90, sn.mean, sn.p90, se.mean, se.p90, static_cast<long>(hs.detections),
+                static_cast<double>(hs.hailo_t0), static_cast<double>(hs.hailo_t1), soc_t0, soc_t1, pass ? 1 : 0);
+        }
+#endif
     }
     std::fflush(stdout);
     gst_deinit();
