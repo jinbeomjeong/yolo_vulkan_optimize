@@ -1,0 +1,70 @@
+# env_bench — vulkan_compute_codecs (FFmpeg 8.1.3 Vulkan compute codecs on V3DV), snapshot taken during the session (2026-09-30 ~00:41 KST)
+date: 2026-09-30T00:41:44+09:00
+model: Raspberry Pi Compute Module 5 Rev 1.0
+kernel: 6.18.50+rpt-rpi-2712 (#1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11))
+bootloader: 2026/09/25 15:59:09 version 1accd6659983613cd104973ce2432da14f1a7682 (release) 
+v3d_freq (config): v3d_freq=1150
+v3d clock at snapshot (during timing runs): frequency(0)=1150018048
+arm clock at snapshot: frequency(0)=2311034624
+soc temp (end of session, idle): temp=64.2'C; throttled=0xe0000
+thermal during runs: FFmpeg build reached 84-85C (0xe0006); timing runs started below 75C each; llvmpipe_ffv1_range runs 2-3 hit the soft temperature limit (0xe0008, ARM 1.5-2.4 GHz) - see evidence/thermal_trace.txt
+cpu governor: ondemand
+NPU: not used by this experiment
+
+## Vulkan (vulkaninfo --summary)
+  GPU0:
+  	apiVersion         = 1.3.354
+  	driverVersion      = 26.2.2
+  	deviceName         = V3D 7.1.10.2
+  	driverName         = V3DV Mesa
+  	driverInfo         = Mesa 26.2.2-1~bpo13+0~rpt1
+  	conformanceVersion = 1.3.8.3
+  GPU1:
+  	apiVersion         = 1.4.354
+  	driverVersion      = 26.2.2
+  	deviceName         = llvmpipe (LLVM 19.1.7, 128 bits)
+  	driverName         = llvmpipe
+  	driverInfo         = Mesa 26.2.2-1~bpo13+0~rpt1 (LLVM 19.1.7)
+  	conformanceVersion = 1.3.1.1
+  Vulkan loader/headers: 1.4.309
+
+## V3DV features relevant to FFmpeg compute codecs (vulkaninfo, GPU0)
+  maxPushConstantsSize                            = 256
+  maxPerStageDescriptorStorageImages              = 4
+  maxComputeSharedMemorySize                      = 32768
+  maxComputeWorkGroupInvocations                  = 256
+  subgroupSize                      = 16
+  shaderStorageImageReadWithoutFormat     = true
+  shaderStorageImageWriteWithoutFormat    = false
+  shaderFloat64                           = false
+  shaderInt64                             = false
+  shaderInt16                             = true
+  storageBuffer16BitAccess           = true
+  storageBuffer8BitAccess                            = true
+  shaderBufferInt64Atomics                           = false
+  shaderInt8                                         = true
+  descriptorIndexing                                 = false
+  shaderStorageImageArrayNonUniformIndexing          = false
+  runtimeDescriptorArray                             = false
+  timelineSemaphore                                  = true
+  bufferDeviceAddress                                = true
+  vulkanMemoryModel                                  = true
+  VK_EXT_external_memory_host: 0 (0 = absent); VK_EXT_descriptor_buffer: 0; VK_KHR_video_queue: 0
+  external semaphore OPAQUE_FD/SYNC_FD: exportable for BINARY, not for TIMELINE (evidence/blocker1_timeline_semaphore_export.txt)
+
+## FFmpeg
+system: ffmpeg version 7.1.5-0+deb13u1+rpt2 Copyright (c) 2000-2026 the FFmpeg developers  (/usr/bin/ffmpeg, untouched)
+upstream: ffmpeg version 8.1.3 Copyright (c) 2000-2026 the FFmpeg developers  (release tarball ffmpeg-8.1.3.tar.xz, sha256 7138d28c96d9d3e3af4ee3d8cad72741f8ffb40da90c1112235dea3ecd3178a3, GPG good sig key FCF986EA15E6E293A5644F10B4322F04D67658D8; no git commit, release tarball)
+upstream build: /home/pi/build-ffmpeg-upstream/build (static libav*, --enable-vulkan --enable-libshaderc --enable-libdrm --disable-doc; not installed)
+  binaries: ffmpeg_8.1.3_pristine (unmodified), ffmpeg_8.1.3_semfix (+1-line research patch: timeline semaphore export query, see evidence/blocker1_timeline_semaphore_export.txt)
+compiler: gcc (Debian 14.2.0-19) 14.2.0; glslc: shaderc 2025.2-1; spirv-tools: 2025.1.1; shaderc (pkg-config): 2023.8.1
+mesa: 26.2.2-1~bpo13+0~rpt1
+
+## inputs
+  source: 04_data/videos/video_h265.mp4 (1080p30 HEVC), first 300 frames (DPX: first 30)
+  media dir (outside repo): /home/pi/build-ffmpeg-upstream/media/
+    116761505 /home/pi/build-ffmpeg-upstream/media/ffv1_l3_s24_rc_yuv420p.mkv
+    127937267 /home/pi/build-ffmpeg-upstream/media/ffv1_l3_s24_yuv420p.mkv
+    167919766 /home/pi/build-ffmpeg-upstream/media/prores_ks_p2_422p10.mov
+    dpx_rgb24/ 30 files, dpx_gbrp10/ 30 files
+

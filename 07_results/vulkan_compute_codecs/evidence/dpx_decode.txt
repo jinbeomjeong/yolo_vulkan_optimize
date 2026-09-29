@@ -1,0 +1,38 @@
+# DPX Vulkan hwaccel decode (dpx_vulkan hwaccel), FFmpeg 8.1.3
+# clips: 30 frames of video_h265.mp4 as DPX image sequences (CPU dpx encoder): rgb24 (8-bit -> dpx_copy shader, no Int64) and gbrp10le (10-bit -> dpx_unpack shader, Int64)
+# Vulkan frames sw_format remap (vulkan_decode.c): rgb24 -> rgb0, gbrp10 -> x2bgr10; download: -vf hwdownload,format=rgb0,format=rgb24 | hwdownload,format=x2bgr10le,format=gbrp10le
+# (hwdownload,format=rgb24 directly fails: 'Invalid output format rgb24 for hwframe download')
+
+## dpx_rgb24_pristine_dev1  (dev0=V3D semfix binary, dev1=llvmpipe pristine): frames=30, md5 vs CPU decoder: SAME
+[dpx @ 0x5555774ab9e0] [vk @ 0x7fff280065c0] Shader linked, size: 6054 compressed, 21720 SPIR-V, 21720 binary
+[in#0/image2 @ 0x5555773f11c0]   Input stream #0:0 (video): 30 packets read (186673920 bytes); 30 frames decoded; 0 decode errors; 
+ first 3 md5 (cpu | vulkan):
+   1ffe1de37b67978d5ba7349d400aeb05  | 1ffe1de37b67978d5ba7349d400aeb05
+   b95d6535388e772585f1111fd5dcd10c  | b95d6535388e772585f1111fd5dcd10c
+   bed05311c68b3c1fcd0c189767a544e3  | bed05311c68b3c1fcd0c189767a544e3
+## dpx_rgb24_semfix_dev0  (dev0=V3D semfix binary, dev1=llvmpipe pristine): frames=30, md5 vs CPU decoder: DIFF
+[dpx @ 0x55563b3e1ed0] [vk @ 0x7ffecc0065c0] Shader linked, size: 6054 compressed, 21720 SPIR-V, 21720 binary
+[in#0/image2 @ 0x55563b37c9f0]   Input stream #0:0 (video): 30 packets read (186673920 bytes); 30 frames decoded; 0 decode errors; 
+ first 3 md5 (cpu | vulkan):
+   1ffe1de37b67978d5ba7349d400aeb05  | b6032379b3e111d93d72270e480e17d3
+   b95d6535388e772585f1111fd5dcd10c  | 054388fe1054838f3cdb00a9281f1606
+   bed05311c68b3c1fcd0c189767a544e3  | 7dfc974664c25e3501b48025d9d25e39
+## dpx_gbrp10_pristine_dev1  (dev0=V3D semfix binary, dev1=llvmpipe pristine): frames=30, md5 vs CPU decoder: SAME
+[dpx @ 0x5555a25a7a80] [vk @ 0x7fff540065c0] Shader linked, size: 5984 compressed, 21448 SPIR-V, 21448 binary
+[in#0/image2 @ 0x5555a24ed1c0]   Input stream #0:0 (video): 30 packets read (248881920 bytes); 30 frames decoded; 0 decode errors; 
+ first 3 md5 (cpu | vulkan):
+   20178fd4d8fba45aa382bd0fa87dbc44  | 20178fd4d8fba45aa382bd0fa87dbc44
+   9899610818871df6832bfc0c73016003  | 9899610818871df6832bfc0c73016003
+   c139214e1f7fadb216e2f388a94d4a5e  | c139214e1f7fadb216e2f388a94d4a5e
+## dpx_gbrp10_semfix_dev0  (dev0=V3D semfix binary, dev1=llvmpipe pristine): frames=30, md5 vs CPU decoder: DIFF
+[dpx @ 0x55563caa4770] [vk @ 0x7fff7c0065c0] Shader linked, size: 5984 compressed, 21448 SPIR-V, 21448 binary
+[in#0/image2 @ 0x55563ca6c300]   Input stream #0:0 (video): 30 packets read (248881920 bytes); 30 frames decoded; 0 decode errors; 
+ first 3 md5 (cpu | vulkan):
+   20178fd4d8fba45aa382bd0fa87dbc44  | 5899c2c50e2935259514bc2bc90f865a
+   9899610818871df6832bfc0c73016003  | 484422fa78d6c4212a1a2759ac193f0d
+   c139214e1f7fadb216e2f388a94d4a5e  | 1552f1ab2b87a2acc3be8d9993ad7816
+
+## V3D rgb24 pixel analysis (frame 0, numpy): frac_diff=0.667, V3D writes only the R component; G and B are 0
+  cpu px[0,0:4] = [[27,45,73], ...]   v3d px[0,0:4] = [[27,0,0], ...]   V3D zero fraction = 0.667
+  -> dpx_copy.comp.spv does not declare Int64, but declares StorageImageWriteWithoutFormat (V3D shaderStorageImageWriteWithoutFormat=false) and RuntimeDescriptorArray (false).
+     A format-less imageStore on V3D stores only the first component: the second, Int64-independent feature gap is enough to break output.

@@ -1,0 +1,158 @@
+# Capabilities of upstream FFmpeg 8.1.3 build (/home/pi/build-ffmpeg-upstream/build/ffmpeg)
+## -hwaccels
+Hardware acceleration methods:
+drm
+vulkan
+
+
+## -decoders | grep ffv1|prores|dpx|vulkan
+ VF...D dpx                  DPX (Digital Picture Exchange) image
+ VFS..D ffv1                 FFmpeg video codec #1
+ VFS..D prores               Apple ProRes (iCodec Pro)
+ VFS..D prores_raw           Apple ProRes RAW
+
+## -encoders | grep ffv1|prores|vulkan
+ V.S..D ffv1                 FFmpeg video codec #1
+ V....D ffv1_vulkan          FFmpeg video codec #1 (Vulkan) (codec ffv1)
+ V....D h264_vulkan          H.264/AVC (Vulkan) (codec h264)
+ V....D hevc_vulkan          H.265/HEVC (Vulkan) (codec hevc)
+ VF...D prores               Apple ProRes
+ VF...D prores_aw            Apple ProRes (codec prores)
+ VFS... prores_ks            Apple ProRes (iCodec Pro) (codec prores)
+ V..... prores_ks_vulkan     Apple ProRes (iCodec Pro) (codec prores)
+
+## -h decoder=ffv1
+Decoder ffv1 [FFmpeg video codec #1]:
+    General capabilities: dr1 threads 
+    Threading capabilities: frame and slice
+    Supported hardware devices: vulkan 
+Exiting with exit code 0
+
+## -h decoder=prores
+Decoder prores [Apple ProRes (iCodec Pro)]:
+    General capabilities: dr1 threads 
+    Threading capabilities: frame and slice
+    Supported hardware devices: vulkan 
+Exiting with exit code 0
+
+## -h decoder=prores_raw
+Decoder prores_raw [Apple ProRes RAW]:
+    General capabilities: dr1 threads 
+    Threading capabilities: frame and slice
+    Supported hardware devices: vulkan 
+Exiting with exit code 0
+
+## -h decoder=dpx
+Decoder dpx [DPX (Digital Picture Exchange) image]:
+    General capabilities: dr1 threads 
+    Threading capabilities: frame
+    Supported hardware devices: vulkan 
+Exiting with exit code 0
+
+## -h encoder=ffv1_vulkan
+Encoder ffv1_vulkan [FFmpeg video codec #1 (Vulkan)]:
+    General capabilities: dr1 delay hardware 
+    Threading capabilities: none
+    Supported hardware devices: vulkan 
+    Supported pixel formats: vulkan
+ffv1_vulkan AVOptions:
+  -slicecrc          <int>        E..V....... Protect slices with CRCs (from -1 to 2) (default -1)
+  -context           <int>        E..V....... Context model (from 0 to 1) (default 0)
+  -coder             <int>        E..V....... Coder type (from -2 to 2) (default range_tab)
+     rice            0            E..V....... Golomb rice
+     range_def       -2           E..V....... Range with default table
+     range_tab       2            E..V....... Range with custom table
+  -qtable            <int>        E..V....... Quantization table (from -1 to 2) (default default)
+     default         -1           E..V.......
+     8bit            0            E..V.......
+     greater8bit     1            E..V.......
+  -slices_h          <int>        E..V....... Number of horizontal slices (from -1 to 1024) (default -1)
+  -slices_v          <int>        E..V....... Number of vertical slices (from -1 to 1024) (default -1)
+  -force_pcm         <boolean>    E..V....... Code all slices with no prediction (default false)
+  -rct_search        <boolean>    E..V....... Run a search for RCT parameters (level 4 only) (default true)
+  -async_depth       <int>        E..V....... Internal parallelization depth (from 1 to INT_MAX) (default 1)
+Exiting with exit code 0
+
+## -h encoder=prores_ks_vulkan
+Encoder prores_ks_vulkan [Apple ProRes (iCodec Pro)]:
+    General capabilities: delay hardware 
+    Threading capabilities: none
+    Supported hardware devices: vulkan vulkan 
+    Supported pixel formats: vulkan
+ProRes vulkan encoder AVOptions:
+  -mbs_per_slice     <int>        E..V....... macroblocks per slice (from 1 to 8) (default 8)
+  -profile           <int>        E..V....... (from -1 to 5) (default auto)
+     auto            -1           E..V.......
+     proxy           0            E..V.......
+     lt              1            E..V.......
+     standard        2            E..V.......
+     hq              3            E..V.......
+     4444            4            E..V.......
+     4444xq          5            E..V.......
+  -vendor            <string>     E..V....... vendor ID (default "Lavc")
+  -bits_per_mb       <int>        E..V....... desired bits per macroblock (from 0 to 8192) (default 0)
+  -quant_mat         <int>        E..V....... quantiser matrix (from -1 to 6) (default auto)
+     auto            -1           E..V.......
+     proxy           0            E..V.......
+     lt              2            E..V.......
+     standard        3            E..V.......
+     hq              4            E..V.......
+     default         6            E..V.......
+  -alpha_bits        <int>        E..V....... bits for alpha plane (from 0 to 16) (default 16)
+  -async_depth       <int>        E..V....... Internal parallelization depth (from 1 to INT_MAX) (default 1)
+Exiting with exit code 0
+
+## device init: -init_hw_device vulkan=vk:0 -v verbose (excerpt)
+[Vulkan @ 0x555633d86850] Supported layers:
+[Vulkan @ 0x555633d86850] GPU listing:
+[Vulkan @ 0x555633d86850]     0: V3D 7.1.10.2 (integrated) (0x55701c33)
+[Vulkan @ 0x555633d86850]     1: llvmpipe (LLVM 19.1.7, 128 bits) (software) (0x0)
+[Vulkan @ 0x555633d86850] Device 0 selected: V3D 7.1.10.2 (integrated) (0x55701c33)
+[Vulkan @ 0x555633d86850] Using device extension VK_EXT_physical_device_drm
+[Vulkan @ 0x555633d86850] Using device extension VK_KHR_shader_subgroup_rotate
+[Vulkan @ 0x555633d86850] Using device extension VK_KHR_workgroup_memory_explicit_layout
+[Vulkan @ 0x555633d86850] Using device extension VK_KHR_shader_relaxed_extended_instruction
+[Vulkan @ 0x555633d86850] Using device extension VK_KHR_shader_expect_assume
+[Vulkan @ 0x555633d86850] Using device extension VK_KHR_external_memory_fd
+[Vulkan @ 0x555633d86850] Using device extension VK_EXT_external_memory_dma_buf
+[Vulkan @ 0x555633d86850] Using device extension VK_EXT_image_drm_format_modifier
+[Vulkan @ 0x555633d86850] Using device extension VK_KHR_external_semaphore_fd
+[Vulkan @ 0x555633d86850] Queue families:
+[Vulkan @ 0x555633d86850]     0: graphics compute transfer (queues: 1)
+[Vulkan @ 0x555633d86850] Using device: V3D 7.1.10.2
+[Vulkan @ 0x555633d86850] Alignments:
+[Vulkan @ 0x555633d86850]     optimalBufferCopyRowPitchAlignment: 32
+[Vulkan @ 0x555633d86850]     minMemoryMapAlignment:              4096
+[Vulkan @ 0x555633d86850]     nonCoherentAtomSize:                256
+[Vulkan @ 0x555633d86850] Using queue family 0 (queues: 1) for graphics compute transfers
+
+## device init: -init_hw_device vulkan=vk:1 -v verbose (excerpt)
+[Vulkan @ 0x555639072850] Supported layers:
+[Vulkan @ 0x555639072850] GPU listing:
+[Vulkan @ 0x555639072850]     0: V3D 7.1.10.2 (integrated) (0x55701c33)
+[Vulkan @ 0x555639072850]     1: llvmpipe (LLVM 19.1.7, 128 bits) (software) (0x0)
+[Vulkan @ 0x555639072850] Device 1 selected: llvmpipe (LLVM 19.1.7, 128 bits) (software) (0x0)
+[Vulkan @ 0x555639072850] Using device extension VK_KHR_push_descriptor
+[Vulkan @ 0x555639072850] Using device extension VK_EXT_shader_atomic_float
+[Vulkan @ 0x555639072850] Using device extension VK_KHR_cooperative_matrix
+[Vulkan @ 0x555639072850] Using device extension VK_EXT_shader_object
+[Vulkan @ 0x555639072850] Using device extension VK_KHR_shader_subgroup_rotate
+[Vulkan @ 0x555639072850] Using device extension VK_EXT_host_image_copy
+[Vulkan @ 0x555639072850] Using device extension VK_KHR_workgroup_memory_explicit_layout
+[Vulkan @ 0x555639072850] Using device extension VK_KHR_shader_relaxed_extended_instruction
+[Vulkan @ 0x555639072850] Using device extension VK_EXT_shader_replicated_composites
+[Vulkan @ 0x555639072850] Using device extension VK_KHR_shader_expect_assume
+[Vulkan @ 0x555639072850] Using device extension VK_KHR_external_memory_fd
+[Vulkan @ 0x555639072850] Using device extension VK_EXT_external_memory_dma_buf
+[Vulkan @ 0x555639072850] Using device extension VK_EXT_image_drm_format_modifier
+[Vulkan @ 0x555639072850] Using device extension VK_KHR_external_semaphore_fd
+[Vulkan @ 0x555639072850] Using device extension VK_EXT_external_memory_host
+[Vulkan @ 0x555639072850] Queue families:
+[Vulkan @ 0x555639072850]     0: graphics compute transfer sparse (queues: 1)
+[Vulkan @ 0x555639072850] Using device: llvmpipe (LLVM 19.1.7, 128 bits)
+[Vulkan @ 0x555639072850] Alignments:
+[Vulkan @ 0x555639072850]     optimalBufferCopyRowPitchAlignment: 128
+[Vulkan @ 0x555639072850]     minMemoryMapAlignment:              64
+[Vulkan @ 0x555639072850]     nonCoherentAtomSize:                64
+[Vulkan @ 0x555639072850]     minImportedHostPointerAlignment:    4096
+[Vulkan @ 0x555639072850] Using queue family 0 (queues: 1) for graphics compute transfers

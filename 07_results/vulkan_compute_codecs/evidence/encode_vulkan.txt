@@ -1,0 +1,53 @@
+# Vulkan compute ENCODERS, FFmpeg 8.1.3: ffv1_vulkan, prores_ks_vulkan
+# input: first 10 frames of video_h265.mp4, CPU decode -> -vf format=<fmt>,hwupload (-filter_hw_device vk) -> -c:v <enc>
+# dev0 = V3D, dev1 = llvmpipe; pristine = unmodified 8.1.3; semfix = timeline-semaphore export patch
+
+## ffv1_vulkan, default options (yuv420p, 1920x1080)
+- enc_ffv1_vulkan_pristine_dev0:
+  Failed to create semaphore: VK_ERROR_INVALID_EXTERNAL_HANDLE
+- enc_ffv1_vulkan_pristine_dev1:
+  [ffv1_vulkan @ 0x5555974ff030] Encoding frames with subsampling and unaligned dimensions is only supported in version 4 (-level 4)
+- enc_ffv1_vulkan_semfix_dev0:
+  [ffv1_vulkan @ 0x555682760560] Encoding frames with subsampling and unaligned dimensions is only supported in version 4 (-level 4)
+- enc_ffv1_vulkan_semfix_dev1:
+  [ffv1_vulkan @ 0x5556732b6670] Encoding frames with subsampling and unaligned dimensions is only supported in version 4 (-level 4)
+
+## ffv1_vulkan -level 4 -strict experimental (required by the message above; level 4 is experimental in 8.1.3)
+- enc_ffv1_vulkan_l4_semfix_dev0: frame=   10
+[ffv1_vulkan @ 0x55561f342b50] Async buffers: 3MiB per context, 3MiB total, depth: 1
+[ffv1_vulkan @ 0x55561f342b50] [vk @ 0x55561f378f10] Shader linked, size: 26980 compressed, 105216 SPIR-V, 105216 binary
+[ffv1_vulkan @ 0x55561f342b50] [vk @ 0x55561f378f10] Shader linked, size: 7797 compressed, 31896 SPIR-V, 31896 binary
+[ffv1_vulkan @ 0x55561f342b50] [vk @ 0x55561f378f10] Shader linked, size: 22138 compressed, 82272 SPIR-V, 82272 binary
+- enc_ffv1_vulkan_l4_semfix_dev1: frame=   10
+[ffv1_vulkan @ 0x5556139e7270] Async buffers: 3MiB per context, 3MiB total, depth: 1
+[ffv1_vulkan @ 0x5556139e7270] [vk @ 0x555613a533b0] Shader linked, size: 26980 compressed, 105216 SPIR-V, 105216 binary
+[ffv1_vulkan @ 0x5556139e7270] [vk @ 0x555613a533b0] Shader linked, size: 7797 compressed, 31896 SPIR-V, 31896 binary
+[ffv1_vulkan @ 0x5556139e7270] [vk @ 0x555613a533b0] Shader linked, size: 22138 compressed, 82272 SPIR-V, 82272 binary
+verification: decode each output with the CPU ffv1 decoder and compare framemd5 with the source (yuv420p) frames:
+  V3D (semfix)  : NOT lossless, CPU decoder reports 'bytestream end mismatching by -7', 'quant_table_index out of range' (x19) -> corrupt bitstream
+  llvmpipe      : lossless, all 10 frames md5-identical to the source
+
+## prores_ks_vulkan (yuv422p10le)
+- enc_prores_ks_vulkan_pristine_dev0: frame=    0
+Failed to create semaphore: VK_ERROR_INVALID_EXTERNAL_HANDLE
+- enc_prores_ks_vulkan_pristine_dev1: frame=   10
+[prores_ks_vulkan @ 0x55560420aa50] [vk @ 0x555604275c50] Shader linked, size: 12415 compressed, 45612 SPIR-V, 45612 binary
+[prores_ks_vulkan @ 0x55560420aa50] [vk @ 0x555604275c50] Shader linked, size: 12415 compressed, 45612 SPIR-V, 45612 binary
+[prores_ks_vulkan @ 0x55560420aa50] [vk @ 0x555604275c50] Shader linked, size: 13636 compressed, 49776 SPIR-V, 49776 binary
+[prores_ks_vulkan @ 0x55560420aa50] [vk @ 0x555604275c50] Shader linked, size: 5119 compressed, 16016 SPIR-V, 16016 binary
+[prores_ks_vulkan @ 0x55560420aa50] [vk @ 0x555604275c50] Shader linked, size: 31370 compressed, 113200 SPIR-V, 113200 binary
+- enc_prores_ks_vulkan_semfix_dev0: 
+[prores_ks_vulkan @ 0x55563a55f470] [vk @ 0x55563a5a7c60] Shader linked, size: 12415 compressed, 45612 SPIR-V, 45612 binary
+[prores_ks_vulkan @ 0x55563a55f470] [vk @ 0x55563a5a7c60] Shader linked, size: 12415 compressed, 45612 SPIR-V, 45612 binary
+[prores_ks_vulkan @ 0x55563a55f470] [vk @ 0x55563a5a7c60] Shader linked, size: 13636 compressed, 49776 SPIR-V, 49776 binary
+[prores_ks_vulkan @ 0x55563a55f470] [vk @ 0x55563a5a7c60] Shader linked, size: 5119 compressed, 16016 SPIR-V, 16016 binary
+MESA: error: Unknown NIR ALU inst: 64    %587 = i2i64 %584
+- enc_prores_ks_vulkan_semfix_dev1: frame=   10
+[prores_ks_vulkan @ 0x55565856ee20] [vk @ 0x5556585da0b0] Shader linked, size: 12415 compressed, 45612 SPIR-V, 45612 binary
+[prores_ks_vulkan @ 0x55565856ee20] [vk @ 0x5556585da0b0] Shader linked, size: 12415 compressed, 45612 SPIR-V, 45612 binary
+[prores_ks_vulkan @ 0x55565856ee20] [vk @ 0x5556585da0b0] Shader linked, size: 13636 compressed, 49776 SPIR-V, 49776 binary
+[prores_ks_vulkan @ 0x55565856ee20] [vk @ 0x5556585da0b0] Shader linked, size: 5119 compressed, 16016 SPIR-V, 16016 binary
+[prores_ks_vulkan @ 0x55565856ee20] [vk @ 0x5556585da0b0] Shader linked, size: 31370 compressed, 113200 SPIR-V, 113200 binary
+  V3D (semfix): 4 shaders link, the 5th (prores_ks_encode_slice.comp.spv, 113200 B, Int64) aborts the V3D compiler: rc=134 SIGABRT
+  llvmpipe    : runs 10 frames, but the bitstream is corrupt: CPU prores decoder prints 'ac tex damaged' for many slices;
+                PSNR(decoded, source) = 11.74 dB average (CPU prores_ks reference output: 58.34 dB) -> FFmpeg/llvmpipe issue, not V3D

@@ -1,0 +1,134 @@
+# FFmpeg upstream build for Vulkan compute codec probe
+source: https://ffmpeg.org/releases/ffmpeg-8.1.3.tar.xz
+tarball_size_bytes: 11732036
+tarball_sha256: 7138d28c96d9d3e3af4ee3d8cad72741f8ffb40da90c1112235dea3ecd3178a3
+gpg_verify (sig ffmpeg-8.1.3.tar.xz.asc, key https://ffmpeg.org/ffmpeg-devel.asc imported into a temp GNUPGHOME):
+  gpg: Signature made Mon 21 Sep 2026 09:52:10 KST
+  gpg:                using RSA key FCF986EA15E6E293A5644F10B4322F04D67658D8
+  gpg: Good signature from "FFmpeg release signing key <ffmpeg-devel@ffmpeg.org>" [unknown]
+  Primary key fingerprint: FCF9 86EA 15E6 E293 A564  4F10 B432 2F04 D676 58D8
+source dir: /home/pi/build-ffmpeg-upstream/ffmpeg-8.1.3 ; build dir: /home/pi/build-ffmpeg-upstream/build (out of tree; no make install; system ffmpeg untouched)
+build: make -j4, rc=0, elapsed 618 s (Raspberry Pi CM5, 4x Cortex-A76)
+compiler: gcc (Debian 14.2.0-19) 14.2.0; glslc: shaderc 2025.2-1
+compiler warnings in make stderr: 77 (none in libavcodec/vulkan*, libavutil/vulkan*: 2)
+
+## configure command
+# ../ffmpeg-8.1.3/configure --prefix=/home/pi/build-ffmpeg-upstream/install --disable-doc --disable-shared --enable-static --enable-vulkan --enable-libshaderc --enable-libdrm
+
+## relevant config (ffbuild/config.mak)
+CONFIG_LIBSHADERC=yes
+!CONFIG_VULKAN_STATIC=yes
+CONFIG_LIBDRM=yes
+CONFIG_VULKAN=yes
+!CONFIG_SHARED=yes
+CONFIG_STATIC=yes
+!CONFIG_VULKAN_1_4=yes
+CONFIG_VULKAN_ENCODE=yes
+CONFIG_FFV1_VULKAN_ENCODER=yes
+CONFIG_PRORES_KS_VULKAN_ENCODER=yes
+CONFIG_DPX_VULKAN_HWACCEL=yes
+CONFIG_FFV1_VULKAN_HWACCEL=yes
+CONFIG_PRORES_VULKAN_HWACCEL=yes
+CONFIG_PRORES_RAW_VULKAN_HWACCEL=yes
+GLSLC=glslc
+GLSLCFLAGS= --target-env=vulkan1.4 --target-spv=spv1.6 -std=460 -O -g
+GLSLC_O=-o $@
+GLSLC_DEPFLAGS=-MD -MF $(@:.spv=.d) -MT $@
+note: GLSL shaders are compiled to SPIR-V at BUILD time by glslc (spirv_compiler); libshaderc is linked for runtime compilation.
+note: CONFIG_VULKAN_1_4 disabled because the system Vulkan headers are 1.4.309 (< 1.4.317 required); affects only vp9_vulkan hwaccel and av1_vulkan encoder, not the compute codecs.
+
+## configure summary (excerpt)
+install prefix            /home/pi/build-ffmpeg-upstream/install
+source path               /home/pi/build-ffmpeg-upstream/ffmpeg-8.1.3
+C compiler                gcc
+C library                 glibc
+ARCH                      aarch64 (generic)
+big-endian                no
+runtime cpu detection     yes
+NEON enabled              yes
+DOTPROD enabled           yes
+I8MM enabled              yes
+SVE enabled               yes
+SVE2 enabled              yes
+SME enabled               yes
+SME-I16I64 enabled        yes
+SME2 enabled              yes
+debug symbols             yes
+strip symbols             yes
+optimize for size         no
+optimizations             yes
+static                    yes
+shared                    no
+network support           yes
+threading support         pthreads
+safe bitstream reader     yes
+texi2html enabled         no
+perl enabled              yes
+pod2man enabled           yes
+makeinfo enabled          no
+makeinfo supports HTML    no
+experimental features     yes
+xmllint enabled           yes
+
+External libraries:
+iconv                   libxcb                  zlib
+libshaderc              lzma
+
+External libraries providing hardware acceleration:
+libdrm                  v4l2_m2m                vulkan
+
+Libraries:
+avcodec                 avformat                swscale
+avdevice                avutil
+avfilter                swresample
+
+Programs:
+ffmpeg                  ffprobe
+
+Enabled hwaccels:
+av1_vulkan              h264_vulkan             prores_vulkan
+dpx_vulkan              hevc_vulkan
+ffv1_vulkan             prores_raw_vulkan
+
+Enabled encoders (vulkan-related):
+h264_vulkan prores hevc_vulkan prores_aw prores_ks prores_ks_vulkan ffv1 ffv1_vulkan 
+
+## ffmpeg -version -buildconf
+ffmpeg version 8.1.3 Copyright (c) 2000-2026 the FFmpeg developers
+built with gcc 14 (Debian 14.2.0-19)
+configuration: --prefix=/home/pi/build-ffmpeg-upstream/install --disable-doc --disable-shared --enable-static --enable-vulkan --enable-libshaderc --enable-libdrm
+libavutil      60. 26.103 / 60. 26.103
+libavcodec     62. 28.103 / 62. 28.103
+libavformat    62. 12.103 / 62. 12.103
+libavdevice    62.  3.103 / 62.  3.103
+libavfilter    11. 14.103 / 11. 14.103
+libswscale      9.  5.103 /  9.  5.103
+libswresample   6.  3.103 /  6.  3.103
+
+Exiting with exit code 0
+
+  configuration:
+    --prefix=/home/pi/build-ffmpeg-upstream/install
+    --disable-doc
+    --disable-shared
+    --enable-static
+    --enable-vulkan
+    --enable-libshaderc
+    --enable-libdrm
+
+Exiting with exit code 0
+
+## ldd (dynamic deps; libav*/libsw* are linked statically; libvulkan is dlopen'ed at runtime)
+  linux-vdso.so.1
+  libm.so.6
+  libdrm.so.2
+  libxcb.so.1
+  libz.so.1
+  libshaderc.so.1
+  liblzma.so.5
+  libc.so.6
+  /lib/ld-linux-aarch64.so.1
+  libXau.so.6
+  libXdmcp.so.6
+  libstdc++.so.6
+  libgcc_s.so.1

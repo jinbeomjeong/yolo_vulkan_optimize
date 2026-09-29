@@ -1,0 +1,62 @@
+# SPIR-V capabilities declared by FFmpeg 8.1.3 compute-codec shaders vs V3DV (V3D 7.1.10.2, Mesa 26.2.2) features
+# shaders: build-time glslc output (--target-env=vulkan1.4 --target-spv=spv1.6 -O), dumped with spirv-dis (OpCapability lines)
+
+dpx_copy.comp.spv                     21720 B  Shader Int16 Int8 ImageQuery StorageImageWriteWithoutFormat StorageBuffer16BitAccess StorageBuffer8BitAccess RuntimeDescriptorArray VulkanMemoryModel PhysicalStorageBufferAddresses 
+dpx_unpack.comp.spv                   21448 B  Shader Int64 Int16 Int8 ImageQuery StorageImageWriteWithoutFormat RuntimeDescriptorArray VulkanMemoryModel PhysicalStorageBufferAddresses 
+ffv1_dec.comp.spv                     72524 B  Shader Int64 Int16 Int8 StorageImageReadWithoutFormat StorageImageWriteWithoutFormat StorageBuffer16BitAccess UniformAndStorageBuffer16BitAccess StoragePushConstant16 StorageBuffer8BitAccess RuntimeDescriptorArray VulkanMemoryModel PhysicalStorageBufferAddresses ExpectAssumeKHR 
+ffv1_dec_golomb.comp.spv              86364 B  Shader Int64 Int16 Int8 StorageImageReadWithoutFormat StorageImageWriteWithoutFormat StorageBuffer16BitAccess UniformAndStorageBuffer16BitAccess StoragePushConstant16 StorageBuffer8BitAccess UniformAndStorageBuffer8BitAccess RuntimeDescriptorArray VulkanMemoryModel PhysicalStorageBufferAddresses ExpectAssumeKHR 
+ffv1_dec_reset.comp.spv               33500 B  Shader Int16 Int8 StorageBuffer16BitAccess StoragePushConstant16 StorageBuffer8BitAccess UniformAndStorageBuffer8BitAccess VulkanMemoryModel PhysicalStorageBufferAddresses 
+ffv1_dec_reset_golomb.comp.spv        38732 B  Shader Int16 Int8 StorageBuffer16BitAccess StoragePushConstant16 StorageBuffer8BitAccess UniformAndStorageBuffer8BitAccess VulkanMemoryModel PhysicalStorageBufferAddresses 
+ffv1_dec_rgb.comp.spv                 79276 B  Shader Int64 Int16 Int8 StorageImageReadWithoutFormat StorageImageWriteWithoutFormat StorageBuffer16BitAccess UniformAndStorageBuffer16BitAccess StoragePushConstant16 StorageBuffer8BitAccess RuntimeDescriptorArray VulkanMemoryModel PhysicalStorageBufferAddresses ExpectAssumeKHR 
+ffv1_dec_rgb_golomb.comp.spv          91188 B  Shader Int64 Int16 Int8 StorageImageReadWithoutFormat StorageImageWriteWithoutFormat StorageBuffer16BitAccess UniformAndStorageBuffer16BitAccess StoragePushConstant16 StorageBuffer8BitAccess UniformAndStorageBuffer8BitAccess RuntimeDescriptorArray VulkanMemoryModel PhysicalStorageBufferAddresses ExpectAssumeKHR 
+ffv1_dec_setup.comp.spv               83752 B  Shader Int64 Int16 Int8 StorageBuffer16BitAccess StoragePushConstant16 StorageBuffer8BitAccess UniformAndStorageBuffer8BitAccess VulkanMemoryModel PhysicalStorageBufferAddresses ExpectAssumeKHR 
+ffv1_enc.comp.spv                     82272 B  Shader Int64 Int16 Int8 StorageImageReadWithoutFormat StorageBuffer16BitAccess UniformAndStorageBuffer16BitAccess StoragePushConstant16 StorageBuffer8BitAccess UniformAndStorageBuffer8BitAccess RuntimeDescriptorArray VulkanMemoryModel PhysicalStorageBufferAddresses ExpectAssumeKHR 
+ffv1_enc_golomb.comp.spv              92816 B  Shader Int64 Int16 Int8 StorageImageReadWithoutFormat StorageBuffer16BitAccess UniformAndStorageBuffer16BitAccess StoragePushConstant16 StorageBuffer8BitAccess UniformAndStorageBuffer8BitAccess RuntimeDescriptorArray VulkanMemoryModel PhysicalStorageBufferAddresses ExpectAssumeKHR 
+ffv1_enc_rct_search.comp.spv          44776 B  Shader Int16 Int8 ImageQuery StorageImageReadWithoutFormat StorageBuffer16BitAccess UniformAndStorageBuffer16BitAccess StoragePushConstant16 StorageBuffer8BitAccess UniformAndStorageBuffer8BitAccess RuntimeDescriptorArray VulkanMemoryModel PhysicalStorageBufferAddresses 
+ffv1_enc_reset.comp.spv               31896 B  Shader Int16 Int8 StorageBuffer16BitAccess StoragePushConstant16 StorageBuffer8BitAccess UniformAndStorageBuffer8BitAccess VulkanMemoryModel PhysicalStorageBufferAddresses 
+ffv1_enc_reset_golomb.comp.spv        37144 B  Shader Int16 Int8 StorageBuffer16BitAccess StoragePushConstant16 StorageBuffer8BitAccess UniformAndStorageBuffer8BitAccess VulkanMemoryModel PhysicalStorageBufferAddresses 
+ffv1_enc_rgb.comp.spv                 87256 B  Shader Int64 Int16 Int8 StorageImageReadWithoutFormat StorageImageWriteWithoutFormat StorageBuffer16BitAccess UniformAndStorageBuffer16BitAccess StoragePushConstant16 StorageBuffer8BitAccess UniformAndStorageBuffer8BitAccess RuntimeDescriptorArray VulkanMemoryModel PhysicalStorageBufferAddresses ExpectAssumeKHR 
+ffv1_enc_rgb_golomb.comp.spv          96560 B  Shader Int64 Int16 Int8 StorageImageReadWithoutFormat StorageImageWriteWithoutFormat StorageBuffer16BitAccess UniformAndStorageBuffer16BitAccess StoragePushConstant16 StorageBuffer8BitAccess UniformAndStorageBuffer8BitAccess RuntimeDescriptorArray VulkanMemoryModel PhysicalStorageBufferAddresses ExpectAssumeKHR 
+ffv1_enc_setup.comp.spv              105216 B  Shader Int64 Int16 Int8 StorageBuffer16BitAccess StoragePushConstant16 StorageBuffer8BitAccess UniformAndStorageBuffer8BitAccess VulkanMemoryModel PhysicalStorageBufferAddresses ExpectAssumeKHR 
+prores_vld.comp.spv                   79216 B  Shader Int64 Int16 Int8 StorageImageWriteWithoutFormat StoragePushConstant16 StorageBuffer8BitAccess StoragePushConstant8 ShaderNonUniform RuntimeDescriptorArray StorageImageArrayNonUniformIndexing VulkanMemoryModel PhysicalStorageBufferAddresses 
+prores_idct.comp.spv                  45692 B  Shader Int16 Int8 StorageImageReadWithoutFormat StorageImageWriteWithoutFormat StoragePushConstant16 StorageBuffer8BitAccess StoragePushConstant8 ShaderNonUniform RuntimeDescriptorArray StorageImageArrayNonUniformIndexing VulkanMemoryModel PhysicalStorageBufferAddresses 
+prores_raw_decode.comp.spv            73660 B  Shader Int64 Int16 Int8 ImageQuery StorageImageWriteWithoutFormat StorageBuffer8BitAccess VulkanMemoryModel PhysicalStorageBufferAddresses ExpectAssumeKHR 
+prores_raw_idct.comp.spv              48984 B  Shader Int64 Int16 Int8 ImageQuery StorageImageReadWithoutFormat StorageImageWriteWithoutFormat StorageBuffer8BitAccess StoragePushConstant8 VulkanMemoryModel PhysicalStorageBufferAddresses ExpectAssumeKHR 
+prores_ks_alpha_data.comp.spv          7676 B  Shader Int16 ImageQuery StorageImageReadWithoutFormat StorageBuffer16BitAccess 
+prores_ks_encode_slice.comp.spv      113200 B  Shader Int64 Int16 Int8 StorageBuffer16BitAccess UniformAndStorageBuffer16BitAccess StorageBuffer8BitAccess VulkanMemoryModel PhysicalStorageBufferAddresses 
+prores_ks_estimate_slice.comp.spv     49776 B  Shader Int16 Int8 GroupNonUniform GroupNonUniformShuffle GroupNonUniformClustered StorageBuffer16BitAccess UniformAndStorageBuffer16BitAccess VulkanMemoryModel PhysicalStorageBufferAddresses 
+prores_ks_slice_data.comp.spv         45612 B  Shader Int16 Int8 ImageQuery StorageImageReadWithoutFormat StorageBuffer16BitAccess VulkanMemoryModel PhysicalStorageBufferAddresses 
+prores_ks_trellis_node.comp.spv       16016 B  Shader GroupNonUniform GroupNonUniformArithmetic 
+
+## capability -> required V3DV feature (value from vulkaninfo, GPU0 = V3D 7.1.10.2)
+SPIR-V capability                        Vulkan feature                                     V3D
+Int64                                    shaderInt64                                        false
+StorageImageWriteWithoutFormat           shaderStorageImageWriteWithoutFormat               false
+StorageImageReadWithoutFormat            shaderStorageImageReadWithoutFormat                true
+RuntimeDescriptorArray                   runtimeDescriptorArray                             false
+ShaderNonUniform+StorageImageArrayNonUniformIndexing shaderStorageImageArrayNonUniformIndexing          false
+PhysicalStorageBufferAddresses           bufferDeviceAddress                                true
+VulkanMemoryModel                        vulkanMemoryModel                                  true
+Int16                                    shaderInt16                                        true
+Int8                                     shaderInt8                                         true
+StorageBuffer8BitAccess                  storageBuffer8BitAccess                            true
+StorageBuffer16BitAccess                 storageBuffer16BitAccess                           true
+UniformAndStorageBuffer16BitAccess       uniformAndStorageBuffer16BitAccess                 true
+StoragePushConstant16                    storagePushConstant16                              true
+StoragePushConstant8                     storagePushConstant8                               true
+ExpectAssumeKHR                          shaderExpectAssume (VK_KHR_shader_expect_assume)   true
+GroupNonUniform{Arithmetic,Shuffle,Clustered} subgroupSupportedOperations                        ARITHMETIC,SHUFFLE,CLUSTERED present (subgroupSize 16)
+
+## other V3D limits relevant to these shaders
+  maxPushConstantsSize                            = 256
+  maxPerStageDescriptorStorageImages              = 4
+  maxComputeSharedMemorySize                      = 32768
+  maxComputeWorkGroupInvocations                  = 256
+  shaderFloat64                           = false
+  descriptorIndexing                                 = false
+
+## summary
+Every FFv1 decode/encode main shader, ProRes vld, ProRes RAW and dpx_unpack declare Int64 (V3D shaderInt64=false).
+All decode output shaders declare StorageImageWriteWithoutFormat (V3D shaderStorageImageWriteWithoutFormat=false).
+FFv1 decode, ProRes vld/idct and DPX declare RuntimeDescriptorArray; ProRes also ShaderNonUniform/StorageImageArrayNonUniformIndexing (V3D descriptorIndexing=false, runtimeDescriptorArray=false).
+=> Using these modules on V3DV is invalid Vulkan usage (VUID-VkShaderModuleCreateInfo-pCode-08740: a declared capability's required feature must be supported/enabled); FFmpeg 8.1.3 does not check these features before creating the pipelines.

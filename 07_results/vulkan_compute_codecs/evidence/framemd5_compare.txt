@@ -1,0 +1,20 @@
+# framemd5 comparison: Vulkan hwaccel output (hwdownload) vs the CPU software decoder of the same 8.1.3 build
+# CPU framemd5 over the whole clip; Vulkan runs as listed. md5 = last column of -f framemd5.
+format                             device      cpu_frames vk_frames identical
+FFv1 range (level3, 24 slices)     llvmpipe           300        30        30
+FFv1 range (level3, 24 slices)     V3D semfix         300        10         0
+FFv1 golomb (level3, 24 slices)    llvmpipe           300         0         0
+FFv1 golomb (level3, 24 slices)    V3D semfix         300         0         0
+ProRes 422 Standard 10-bit         llvmpipe           300       300         0
+DPX rgb24 (copy shader)            llvmpipe            30        30        30
+DPX rgb24 (copy shader)            V3D semfix          30        30         0
+DPX gbrp10 (unpack shader)         llvmpipe            30        30        30
+DPX gbrp10 (unpack shader)         V3D semfix          30        30         0
+
+notes:
+- FFv1 golomb: llvmpipe crashed (SIGSEGV in JIT code) and V3D aborted in the shader compiler -> 0 frames.
+- ProRes V3D: pipeline compile never finished -> no frames.
+- ProRes llvmpipe: 0/300 md5-identical but within rounding: psnr filter (Vulkan vs CPU decoder), 300 frames:
+    psnr_avg min 76.57 dB, mean 77.14 dB, max 77.91 dB; first 10 frames by numpy: max |diff| = 1 LSB (10-bit), 1.90% of samples differ
+- FFv1 range V3D: first 3 frames: 99.99% of samples differ, 97.4% zeros, 'Decode status: 24 slices overread' on every frame.
+- DPX rgb24 V3D: only R written, G=B=0 (67% of samples differ).

@@ -1,0 +1,39 @@
+# ProRes Vulkan hwaccel decode (prores_vulkan hwaccel), FFmpeg 8.1.3
+# clip: -c:v prores_ks -profile:v 2 (Standard, apcn) -pix_fmt yuv422p10le, 1920x1080, 300 frames from video_h265.mp4
+# Vulkan args: -init_hw_device vulkan=vk:<0|1> -hwaccel vulkan -hwaccel_device vk -hwaccel_output_format vulkan ... -vf hwdownload,format=yuv422p10le
+
+## [A] V3D, pristine -> same frame-pool failure as every Vulkan path (see blocker1_timeline_semaphore_export.txt)
+Failed to create semaphore: VK_ERROR_INVALID_EXTERNAL_HANDLE
+[prores @ 0x5555d1cb8830] Failed setup for format vulkan: hwaccel initialisation returned error.
+Conversion failed!
+
+## [B] V3D, semfix binary -> vkCreateComputePipelines for the VLD shader never returns
+[vist#0:0/prores @ 0x555578b818e0] Selecting decoder 'prores' because of requested hwaccel method vulkan
+[vist#0:0/prores @ 0x555578b818e0] [dec:prores @ 0x555578bd9830] Starting thread...
+[prores @ 0x555578bbbf00] Vulkan decoder initialization successful
+no 'Shader linked' line; decoder thread at ~100% CPU inside libvulkan_broadcom.so.
+run 1: killed with SIGKILL after 11 min (ELAPSED 11:02, TIME 10:56). run 2: V3D_DEBUG=perf, killed after 180 s, no V3D compiler message printed.
+gdb attach after 60 s (ffmpeg_g semfix), decoder thread:
+Thread 10 (Thread 0x7ffee86ff0e0 (LWP 811718) "av:prores:df0"):
+#0  0x00007ffed8ae7978 in ?? () from /lib/aarch64-linux-gnu/libvulkan_broadcom.so
+#1  0x00007ffed8ae7b50 in ?? () from /lib/aarch64-linux-gnu/libvulkan_broadcom.so
+#2  0x00007ffed8ae8114 in ?? () from /lib/aarch64-linux-gnu/libvulkan_broadcom.so
+#3  0x00007ffed8ae83ec in ?? () from /lib/aarch64-linux-gnu/libvulkan_broadcom.so
+#4  0x00007ffed8a04f2c in ?? () from /lib/aarch64-linux-gnu/libvulkan_broadcom.so
+#5  0x00007ffed897f9bc in ?? () from /lib/aarch64-linux-gnu/libvulkan_broadcom.so
+#6  0x00007ffed89801f4 in ?? () from /lib/aarch64-linux-gnu/libvulkan_broadcom.so
+#7  0x00007ffed8983be0 in ?? () from /lib/aarch64-linux-gnu/libvulkan_broadcom.so
+#8  0x00007ffed8984308 in ?? () from /lib/aarch64-linux-gnu/libvulkan_broadcom.so
+#9  0x000055556b393148 in init_compute_pipeline (s=0x7ffebc0064f0, shd=0x7ffebc0290d0, mod=<optimized out>, entrypoint=0x55556c1d5288 "main") at src/libavutil/vulkan.c:2272
+#10 ff_vk_shader_link (s=s@entry=0x7ffebc0064f0, shd=shd@entry=0x7ffebc0290d0, spirv=0x7ffee07fc010 "\003\002#\a", spirv_len=79216, entrypoint=entrypoint@entry=0x55556c1d5288 "main") at src/libavutil/vulkan.c:2432
+#11 0x000055556bc87ad8 in init_decode_shader (s=s@entry=0x7ffebc0064f0, pool=pool@entry=0x7ffebc0076b8, shd=shd@entry=0x7ffebc0290d0, interlaced=<optimized out>, max_num_mbs=<optimized out>, avctx=0x555578bbbf00) at src/libavcodec
+#12 0x000055556bc87b6c in vk_decode_prores_init (avctx=0x555578bbbf00) at src/libavcodec/vulkan_prores.c:495
+-> shader = prores_vld.comp.spv (79216 B): declares Int64, StorageImageWriteWithoutFormat, RuntimeDescriptorArray, ShaderNonUniform, StorageImageArrayNonUniformIndexing (all unsupported on V3D)
+
+## [C] llvmpipe, pristine -> works
+[prores @ 0x555628b93110] [vk @ 0x7ffeb40064f0] Shader linked, size: 23478 compressed, 79216 SPIR-V, 79216 binary
+[prores @ 0x555628b93110] [vk @ 0x7ffeb40064f0] Shader linked, size: 12761 compressed, 45692 SPIR-V, 45692 binary
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x555628ad91d0]   Input stream #0:0 (video): 26 packets read (14165523 bytes); 13 frames decoded; 0 decode errors; 
+first 10 frames: md5 differs from the CPU prores decoder on every frame, but only by rounding:
+  numpy over 10 frames (yuv422p10le): max_abs_diff=1 LSB, 1.90% of samples differ, PSNR vs CPU decoder = 77.4 dB
+  (the Vulkan decoder uses a float IDCT in dct.glsl; the CPU decoder uses the integer simple IDCT -> not bit-exact, within +-1 LSB)

@@ -1,0 +1,61 @@
+# Blocker 1: FFmpeg Vulkan frame allocation fails on V3DV (all Vulkan hwaccels and hwupload)
+
+## symptom (FFmpeg 8.1.3 pristine, -init_hw_device vulkan=vk:0 = V3D 7.1.10.2), FFv1 hwaccel decode:
+Failed to create semaphore: VK_ERROR_INVALID_EXTERNAL_HANDLE
+[ffv1 @ 0x55558e315c30] Failed setup for format vulkan: hwaccel initialisation returned error.
+## same with hwupload only (no codec):
+  ffmpeg -init_hw_device vulkan=vk:0 -filter_hw_device vk -f lavfi -i testsrc2=s=1920x1080 -frames:v 3 -vf format=yuv420p,hwupload,hwdownload,format=yuv420p -f null -
+  -> Failed to create semaphore: VK_ERROR_INVALID_EXTERNAL_HANDLE / Failed to configure output pad on Parsed_hwupload_1
+## system FFmpeg 7.1.5-0+deb13u1+rpt2 (/usr/bin/ffmpeg), same hwupload command: identical error (regression-free, long-standing)
+
+## root cause (libavutil/hwcontext_vulkan.c, 8.1.3)
+  device init (~l.1962): vkGetPhysicalDeviceExternalSemaphoreProperties(OPAQUE_FD) WITHOUT VkSemaphoreTypeCreateInfo -> queries BINARY semaphores
+  create_frame (~l.2717-2786): creates TIMELINE semaphores and chains VkExportSemaphoreCreateInfo(OPAQUE_FD) if the (binary) query said EXPORTABLE
+  V3DV: binary OPAQUE_FD exportable, timeline not exportable -> vkCreateSemaphore returns VK_ERROR_INVALID_EXTERNAL_HANDLE
+  spec: VUID-VkExportSemaphoreCreateInfo-handleTypes-01124 (handleTypes must be supported as reported by VkExternalSemaphoreProperties)
+  llvmpipe does not trigger it because it reports OPAQUE_FD not exportable even for binary.
+
+## standalone probe (sem_probe.c, gcc -std=c17 -Wall -Wextra -Wpedantic, -lvulkan) output:
+device 0: V3D 7.1.10.2
+  query OPAQUE_FD BINARY   (no pNext, as FFmpeg queries): features=EXPORTABLE IMPORTABLE
+  query OPAQUE_FD TIMELINE (VkSemaphoreTypeCreateInfo chained): features=none
+  query SYNC_FD   BINARY   (no pNext, as FFmpeg queries): features=EXPORTABLE IMPORTABLE
+  query SYNC_FD   TIMELINE (VkSemaphoreTypeCreateInfo chained): features=none
+  vkCreateSemaphore(BINARY + export OPAQUE_FD) = 0
+  vkCreateSemaphore(TIMELINE + export OPAQUE_FD) = -1000072003 (VK_ERROR_INVALID_EXTERNAL_HANDLE)
+device 1: llvmpipe (LLVM 19.1.7, 128 bits)
+  query OPAQUE_FD BINARY   (no pNext, as FFmpeg queries): features=none
+  query OPAQUE_FD TIMELINE (VkSemaphoreTypeCreateInfo chained): features=none
+  query SYNC_FD   BINARY   (no pNext, as FFmpeg queries): features=EXPORTABLE IMPORTABLE
+  query SYNC_FD   TIMELINE (VkSemaphoreTypeCreateInfo chained): features=none
+  vkCreateSemaphore(BINARY + export OPAQUE_FD) = -1000072003 (VK_ERROR_INVALID_EXTERNAL_HANDLE)
+  vkCreateSemaphore(TIMELINE + export OPAQUE_FD) = -1000072003 (VK_ERROR_INVALID_EXTERNAL_HANDLE)
+
+## research patch applied to a COPY of the build (binary ffmpeg_8.1.3_semfix; pristine binary kept as ffmpeg_8.1.3_pristine):
+--- a/libavutil/hwcontext_vulkan.c	2026-09-20 01:56:58.000000000 +0900
++++ b/libavutil/hwcontext_vulkan.c	2026-09-30 00:09:35.136526290 +0900
+@@ -1914,6 +1914,10 @@
+     VkQueueFamilyProperties2 *qf;
+     VkQueueFamilyVideoPropertiesKHR *qf_vid;
+     VkPhysicalDeviceExternalSemaphoreInfo ext_sem_props_info;
++    VkSemaphoreTypeCreateInfo sem_type_query = {
++        .sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
++        .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
++    };
+     int graph_index, comp_index, tx_index, enc_index, dec_index;
+ 
+     /* Set device extension flags */
+@@ -1959,8 +1963,11 @@
+         return AVERROR_EXTERNAL;
+     }
+ 
++    /* RESEARCH PATCH (yvo probe): frames use TIMELINE semaphores (create_frame),
++     * so query export support for the timeline type, not the default binary type. */
+     ext_sem_props_info = (VkPhysicalDeviceExternalSemaphoreInfo) {
+         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO,
++        .pNext = &sem_type_query,
+     };
+ 
+     /* Opaque FD semaphore properties */
+
+## after patch: hwupload/hwdownload 1080p on V3D -> 3 frames OK (frame=3, no error)
