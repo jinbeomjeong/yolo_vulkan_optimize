@@ -1,0 +1,32 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 15K of event 'cycles'
+# Event count (approx.): 10333997009
+#
+# Overhead        Period  Shared Object                     
+# ........  ............  ..................................
+#
+    68.33%    7061379068  libhailort.so.4.24.0              
+    11.86%    1225509185  [kernel.kallsyms]                 
+     7.69%     794645963  libc.so.6                         
+     2.27%     235000716  [hailo_pci]                       
+     1.55%     160278148  libgstbase-1.0.so.0.2602.0        
+     1.51%     156363175  libgstreamer-1.0.so.0.2602.0      
+     0.95%      98182818  yvo_gst_pipeline                  
+     0.73%      75120189  libvulkan_broadcom.so             
+     0.63%      64763960  [drm]                             
+     0.50%      51773637  [videodev]                        
+     0.49%      50398912  libglib-2.0.so.0.8400.4           
+     0.37%      38260620  libstdc++.so.6.0.33               
+     0.36%      36715934  libgstvideo-1.0.so.0.2602.0       
+     0.33%      34311834  libgstcodecs-1.0.so.0.2602.0      
+     0.31%      32394428  libgobject-2.0.so.0.8400.4        
+     0.29%      30212998  libgstcodecparsers-1.0.so.0.2602.0
+     0.29%      30142694  [rpi_hevc_dec]                    
+     0.28%      28522644  libgstisomp4.so                   
+#
+# (Tip: To show time in nanoseconds in record/report add --ns)
+#

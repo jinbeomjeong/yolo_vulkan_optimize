@@ -1,0 +1,18 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 15K of event 'cycles'
+# Event count (approx.): 10209890998
+#
+# Overhead        Period  Command        
+# ........  ............  ...............
+#
+    84.04%    8579961798  yvo_gst_pipelin
+     9.19%     938159448  qtdemux0:sink  
+     4.36%     445099334  q_dec:src      
+     2.42%     246670418  q_out:src      
+#
+# (Tip: To show time in nanoseconds in record/report add --ns)
+#

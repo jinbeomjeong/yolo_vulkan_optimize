@@ -1,0 +1,18 @@
+# started on Tue Sep 29 08:55:32 2026
+
+
+ Performance counter stats for 'env YVO_PERF_CTL=/home/pi/workspace/yolo_vulkan_optimize/07_results/gst_pipeline/runs/perf_breakdown/raw/gst_stat_run1/.ctl YVO_PERF_ACK=/home/pi/workspace/yolo_vulkan_optimize/07_results/gst_pipeline/runs/perf_breakdown/raw/gst_stat_run1/.ack /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_gst_pipeline --video /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 --hef /home/pi/workspace/yolo_vulkan_optimize/03_models/yolov11m.hef --sink hailo --batch 8 --slots 16 --quiet --csv-label gst_b8':
+
+     5,490,782,426      task-clock                       #    0.155 CPUs utilized             
+    10,642,587,194      cycles                           #    1.938 GHz                       
+    22,728,837,093      instructions                     #    2.14  insn per cycle            
+            37,095      context-switches                 #    6.756 K/sec                     
+             5,678      cpu-migrations                   #    1.034 K/sec                     
+             1,903      page-faults                      #  346.581 /sec                      
+
+      35.397491411 seconds time elapsed
+
+       0.000000000 seconds user
+       0.000000000 seconds sys
+
+

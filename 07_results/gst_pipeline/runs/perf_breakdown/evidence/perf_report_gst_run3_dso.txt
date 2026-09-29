@@ -1,0 +1,33 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 15K of event 'cycles'
+# Event count (approx.): 10209890998
+#
+# Overhead        Period  Shared Object                     
+# ........  ............  ..................................
+#
+    69.18%    7063504332  libhailort.so.4.24.0              
+    11.82%    1206367435  [kernel.kallsyms]                 
+     7.36%     751435404  libc.so.6                         
+     2.38%     242858187  [hailo_pci]                       
+     1.63%     166357463  libgstbase-1.0.so.0.2602.0        
+     1.28%     130320735  libgstreamer-1.0.so.0.2602.0      
+     0.83%      84296520  libvulkan_broadcom.so             
+     0.82%      84098973  yvo_gst_pipeline                  
+     0.52%      52940303  libglib-2.0.so.0.8400.4           
+     0.44%      44844386  [videodev]                        
+     0.42%      43356650  libgobject-2.0.so.0.8400.4        
+     0.34%      35157082  [drm]                             
+     0.31%      32067990  libstdc++.so.6.0.33               
+     0.30%      30550910  libgstcodecparsers-1.0.so.0.2602.0
+     0.28%      28458829  libgstcoreelements.so             
+     0.27%      27985080  libgstvideo-1.0.so.0.2602.0       
+     0.23%      23632380  libgstv4l2codecs.so               
+     0.23%      23098449  [rpi_hevc_dec]                    
+     0.20%      20480196  libgstvideoparsersbad.so          
+#
+# (Tip: Order by the overhead of source file name and line number: perf report -s srcline)
+#

@@ -1,0 +1,18 @@
+# started on Tue Sep 29 09:23:26 2026
+
+
+ Performance counter stats for 'env YVO_PERF_CTL=.ctl YVO_PERF_ACK=.ack /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_pipeline --video /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 --hef /home/pi/workspace/yolo_vulkan_optimize/03_models/yolov11m.hef --mode dmabuf --layout nhcw --batch 8 --slots 16 --quiet --csv-label app_nhcw_b8':
+
+        31,909,755      l1d_cache_refill_rd                                                   
+        67,192,254      l2d_cache_refill_rd                                                   
+        44,852,756      l3d_cache_refill                                                      
+        44,852,756      ll_cache_miss_rd                                                      
+    11,297,254,686      cycles                                                                
+    22,946,740,825      instructions                     #    2.03  insn per cycle            
+
+      35.722722961 seconds time elapsed
+
+       0.000000000 seconds user
+       0.000000000 seconds sys
+
+

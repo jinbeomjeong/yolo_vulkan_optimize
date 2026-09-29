@@ -1,0 +1,34 @@
+# objdump -d --start-address=0x30ff80 --stop-address=0x310000 /usr/lib/libhailort.so.4.24.0 (hot loop of the host NMS score scan; no symbols)
+000000000030ff80 <(no symbol)>:
+  30ff80:	aa1a03f9 	mov	x25, x26
+  30ff84:	aa0203fa 	mov	x26, x2
+  30ff88:	52800315 	mov	w21, #0x18                  	// #24
+  30ff8c:	b9008bff 	str	wzr, [sp, #136]
+  30ff90:	b9408be2 	ldr	w2, [sp, #136]
+  30ff94:	b940b3e3 	ldr	w3, [sp, #176]
+  30ff98:	0b030042 	add	w2, w2, w3
+  30ff9c:	b90077e2 	str	w2, [sp, #116]
+  30ffa0:	34001e41 	cbz	w1, 310368 <(no symbol)>
+  30ffa4:	52800014 	mov	w20, #0x0                   	// #0
+  30ffa8:	14000004 	b	30ffb8 <(no symbol)>
+  30ffac:	11000694 	add	w20, w20, #0x1
+  30ffb0:	6b01029f 	cmp	w20, w1
+  30ffb4:	54001d62 	b.cs	310360 <(no symbol)>  // b.hs, b.nlast
+  30ffb8:	b94077e2 	ldr	w2, [sp, #116]
+  30ffbc:	b9400740 	ldr	w0, [x26, #4]
+  30ffc0:	2d448702 	ldp	s2, s1, [x24, #36]
+  30ffc4:	fd400360 	ldr	d0, [x27]
+  30ffc8:	1b000a80 	madd	w0, w20, w0, w2
+  30ffcc:	f9403fe2 	ldr	x2, [sp, #120]
+  30ffd0:	3c604848 	ldr	b8, [x2, w0, uxtw]
+  30ffd4:	5e21d908 	scvtf	s8, s8
+  30ffd8:	1e223908 	fsub	s8, s8, s2
+  30ffdc:	1e210908 	fmul	s8, s8, s1
+  30ffe0:	1e22c101 	fcvt	d1, s8
+  30ffe4:	1e602030 	fcmpe	d1, d0
+  30ffe8:	54fffe2b 	b.lt	30ffac <(no symbol)>  // b.tstop
+  30ffec:	f94043e1 	ldr	x1, [sp, #128]
+  30fff0:	d28d20e2 	mov	x2, #0x6907                	// #26887
+  30fff4:	f2b8e1e2 	movk	x2, #0xc70f, lsl #16
+  30fff8:	f9400020 	ldr	x0, [x1]
+  30fffc:	f9400421 	ldr	x1, [x1, #8]
