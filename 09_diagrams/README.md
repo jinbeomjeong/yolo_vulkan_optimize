@@ -52,12 +52,25 @@ SVG/PNG/PDF 내보내기는 yEd GUI 에서 사람이 한다(File ▸ Export). yE
 **지연 수치의 정본은 `README.md` §1 의 ASCII 가 아니라 아래 측정 문서다.**
 둘이 다르면 측정 문서를 따랐고, 그 사실을 해당 노드의 `description` 에 적어 두었다.
 
+**측정 조건 (2026-09-30 표기 추가).** 아래 표에서 ⓒ 표시한 수치는 모두 `display_e2e`(2026-09-20), 즉 2026-09-28 이전 조건의 값이다 —
+**V3D 960 MHz**(부트로더 2025-12-08) · **FFmpeg 프레임 스레드 자동(5)** · **CPU NMS**. 지금 기본값은 셋 다 다르다.
+
+- V3D 1150 MHz — 부트로더 2026-09-25. FPS·CPU 는 그대로이고 GPU 전처리가 b1 2.11→1.81 ms, b8 평균 약 2.6→2.0 ms 로 줄었다
+  ([`bootloader_20260925/summary.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)).
+- 앱 디코더 프레임 스레드 기본 1 — `01_src/pipeline/main.cpp:629`, 환경변수 `YVO_DEC_THREADS`(0 = FFmpeg 자동).
+  표시 on disp_source 에서 CPU 2.073→1.778 ms/f, glass 평균 99.48→99.52 ms, 앱 e2e p90 +1.9 ms
+  ([`dec_threads/summary.md`](../07_results/dec_threads/summary.md)).
+- NMS 기본 `--nms gpu` — GPU NMS 수치는 정식 측정 전이다.
+
+다이어그램 수치는 재측정 전이라 바꾸지 않았고, 라벨에 `[960 MHz]`·`[측정 조건: FFmpeg 자동 5스레드]`, `n_note_perf` 에 측정 조건 3줄을 붙였다.
+앱 대 GStreamer 연구 경로 비교는 [`gst_pipeline/summary.md`](../07_results/gst_pipeline/summary.md) 에 있다(다이어그램에는 출처로만 넣었다).
+
 | 항목 | 출처 |
 |---|---|
-| GPU 4패스 구간별 median (전처리 2.088 / 후처리 0.626 / 변환 4.153 / 오버레이 0.128 ms, 합 6.995 ms) | [`07_results/display_e2e/summary.md`](../07_results/display_e2e/summary.md) §3.1 |
-| glass-to-glass 101.20 ms(median) · p90 118.36 ms | 같은 문서 §3.2 |
-| FPS · CPU ms/f · 검출 3369 · dropped 0 · held_frames_max | 같은 문서 §3 표 |
-| decode call 0.107 ms · NPU median 69.7 / mean 73.9 ms · present 간격 16.955 ms · cpu nms 2.667 µs (CPU NMS 당시 측정 — 지금 기본은 GPU NMS, description 에만 남김) | [`07_results/display_e2e/raw/disp_source_run1/stdout.log`](../07_results/display_e2e/raw/disp_source_run1/stdout.log) |
+| ⓒ GPU 4패스 구간별 median (전처리 2.088 / 후처리 0.626 / 변환 4.153 / 오버레이 0.128 ms, 합 6.995 ms) — V3D 960 MHz | [`07_results/display_e2e/summary.md`](../07_results/display_e2e/summary.md) §3.1 |
+| ⓒ glass-to-glass 101.20 ms(median) · p90 118.36 ms | 같은 문서 §3.2 |
+| ⓒ FPS · CPU ms/f · 검출 3369 · dropped 0 · held_frames_max | 같은 문서 §3 표 |
+| ⓒ decode call 0.107 ms(FFmpeg 자동 5스레드) · NPU median 69.7 / mean 73.9 ms · present 간격 16.955 ms · cpu nms 2.667 µs (CPU NMS 당시 측정 — 지금 기본은 GPU NMS, description 에만 남김) | [`07_results/display_e2e/raw/disp_source_run1/stdout.log`](../07_results/display_e2e/raw/disp_source_run1/stdout.log) |
 | 운용점 `b2/s4 --postproc gpu` 와 최종 실행 커맨드 | [`07_results/op_point/summary.md`](../07_results/op_point/summary.md) §8 |
 | 스레드·슬롯 규약, 종료 순서 | `01_src/pipeline/main.cpp:1-49` |
 | `slots + gpu_depth <= 10` 강제 (Vulkan 합성 경로) | `01_src/pipeline/main.cpp:350` |
@@ -90,6 +103,14 @@ SVG/PNG/PDF 내보내기는 yEd GUI 에서 사람이 한다(File ▸ Export). yE
 재측정으로 값이 바뀌면 아래 노드의 라벨(`y:NodeLabel` 텍스트)과 `d5` description 을 고친다.
 id 로 찾으면 된다 (`grep -n 'id="n_pre"' pipeline_overview.graphml`).
 
+**측정 조건이 바뀌어 재측정하면** 수치와 함께 아래 조건 표기도 고친다(지금 표기는 2026-09-28 이전 조건이다).
+
+- **디코더 스레드 수** — overview `n_dec` 라벨 4행 `[측정 조건: FFmpeg 자동 5스레드]`, detail `n0::n0` 라벨 3행
+  (`FFmpeg 프레임 스레드 기본 1 (YVO_DEC_THREADS) · 측정 당시 자동 5`), 두 노드와 detail `n0` 의 `d5`.
+  기본값의 정본은 `01_src/pipeline/main.cpp:629` 다.
+- **V3D 클럭** — overview `n_pre`·`n_post`·`n_conv`·`n_ovl` 라벨의 `[960 MHz]`와 `d5`, detail `n0::n5`·`n0::n7` 의 `d5`.
+- **공통 요약** — overview `n_note_perf` 라벨의 측정 조건 3줄과 `d5`, detail `n_src_note` 의 `측정 조건 :` 줄과 출처 3줄.
+
 **`pipeline_overview.graphml`**
 
 | 노드 id | 고쳐야 할 값 |
@@ -114,6 +135,7 @@ id 로 찾으면 된다 (`grep -n 'id="n_pre"' pipeline_overview.graphml`).
 
 | 노드 id | 고쳐야 할 값 |
 |---|---|
+| `n0::n0` | 디코더 프레임 스레드 수 (라벨 3행: 기본값 · 측정 당시 값) |
 | `n0::n5` | GPU 후처리 / NMS 수치 (GPU NMS 는 정식 측정 전, 기존 값은 CPU NMS 당시) |
 | `n0::n7` | 표시 변환·오버레이 median, 표시 CPU 증가분 |
 | `n3` | 슬롯 수, slot timeout / slot wait |

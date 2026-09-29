@@ -30,15 +30,16 @@ HEVC 1920×1080@30 · 900프레임<y:LabelModel>
       </data>
     </node>
     <node id="n_dec">
-      <data key="d5">HW HEVC 디코드. 출력 계약은 /home/pi/workspace/yolo_vulkan_optimize/01_src/core/frame_types.hpp struct DrmFrame. 수치 출처: 07_results/display_e2e/raw/disp_source_run1/stdout.log 'decode call ms median 0.107'. README.md §1 도 'decode call 0.107 ms/f' 로 갱신됐다(이전 표기 'CPU 0.10 ms/f' 는 CPU 시간이 아니라 이 디코드 호출 시간이었다).</data>
+      <data key="d5">HW HEVC 디코드. 출력 계약은 /home/pi/workspace/yolo_vulkan_optimize/01_src/core/frame_types.hpp struct DrmFrame. 수치 출처: 07_results/display_e2e/raw/disp_source_run1/stdout.log 'decode call ms median 0.107'. README.md §1 도 'decode call 0.107 ms/f' 로 갱신됐다(이전 표기 'CPU 0.10 ms/f' 는 CPU 시간이 아니라 이 디코드 호출 시간이었다). 측정 조건: FFmpeg 프레임 스레드 자동(5개, av:hevc:df0~4) — 2026-09-28 이전 앱 기본값이다. 지금 앱 기본은 1스레드다(01_src/pipeline/main.cpp:629, 환경변수 YVO_DEC_THREADS, 0 = FFmpeg 자동; 근거 07_results/dec_threads/summary.md). 이 값은 1스레드 조건으로 갱신하지 않았다 — 라벨 4행의 [측정 조건: FFmpeg 자동 5스레드] 표기.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="66.3" width="260.0" x="300.0" y="104.0"/>
           <y:Fill color="#B39DDB" color2="#B39DDB" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
-          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="44.26" modelName="custom" textColor="#000000" visible="true" width="248.6" x="5.7" y="11.02">libavcodec DRM_PRIME 디코드
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="57.68" modelName="custom" textColor="#000000" visible="true" width="248.6" x="5.7" y="4.31">libavcodec DRM_PRIME 디코드
 [HW 디코더] rpi-hevc-dec (V4L2 stateless)
-decode call median 0.107 ms/f<y:LabelModel>
+decode call median 0.107 ms/f
+[측정 조건: FFmpeg 자동 5스레드]<y:LabelModel>
               <y:SmartNodeLabelModel distance="4.0"/>
             </y:LabelModel>
             <y:ModelParameter>
@@ -67,14 +68,14 @@ SAND128 NV12 · 복사 0<y:LabelModel>
       </data>
     </node>
     <node id="n_pre">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/sand_letterbox.comp, 호출부는 01_src/vulkan/ SandLetterbox::submit/wait. 수치 출처: 07_results/display_e2e/summary.md §3.1 '전처리 sand_letterbox.comp 실측 2.088 ms(median, disp_asap)'. README.md §1 도 2.088 로 갱신됐다(이전에는 2.10 으로 반올림돼 있었다).</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/sand_letterbox.comp, 호출부는 01_src/vulkan/ SandLetterbox::submit/wait. 수치 출처: 07_results/display_e2e/summary.md §3.1 '전처리 sand_letterbox.comp 실측 2.088 ms(median, disp_asap)'. README.md §1 도 2.088 로 갱신됐다(이전에는 2.10 으로 반올림돼 있었다). 측정 조건: V3D 960 MHz(부트로더 2025-12-08, 2026-09-28 이전)·FFmpeg 자동 5스레드. 부트로더 2026-09-25 부터 V3D 는 1150 MHz 이고, 같은 셰이더가 pipeline_bench b1 gpu_ms_mean 기준 2.11→1.81 ms 로 줄었다(07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md). 벤치와 지표가 달라 이 노드 값(display_e2e median)을 대체하지 않는다 — 라벨의 [960 MHz] 표기.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="66.3" width="260.0" x="300.0" y="324.3"/>
           <y:Fill color="#99CC00" color2="#99CC00" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
-          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="44.26" modelName="custom" textColor="#000000" visible="true" width="208.12" x="25.94" y="11.02">sand_letterbox.comp
-[V3D GPU] median 2.088 ms
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="44.26" modelName="custom" textColor="#000000" visible="true" width="217.41" x="21.3" y="11.02">sand_letterbox.comp
+[V3D GPU] median 2.088 ms [960 MHz]
 de-SAND + letterbox + BT.709→sRGB<y:LabelModel>
               <y:SmartNodeLabelModel distance="4.0"/>
             </y:LabelModel>
@@ -141,14 +142,14 @@ batch 2 · slots 4 · PCIe Gen3 x1<y:LabelModel>
       </data>
     </node>
     <node id="n_post">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/yolo_decode.comp, 호출부는 01_src/pipeline/gpu_postproc_stage.cpp GpuPostprocStage::push_ready_to_gpu → YoloPostproc::submit. 수치 출처: 07_results/display_e2e/summary.md §3.1 '후처리 yolo_decode.comp 실측 0.626 ms(median)'. README.md §1 도 0.626 으로 갱신됐다(이전 0.53 은 낡은 값).</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/yolo_decode.comp, 호출부는 01_src/pipeline/gpu_postproc_stage.cpp GpuPostprocStage::push_ready_to_gpu → YoloPostproc::submit. 수치 출처: 07_results/display_e2e/summary.md §3.1 '후처리 yolo_decode.comp 실측 0.626 ms(median)'. README.md §1 도 0.626 으로 갱신됐다(이전 0.53 은 낡은 값). 측정 조건: V3D 960 MHz(부트로더 2025-12-08, 2026-09-28 이전). 부트로더 2026-09-25 부터 1150 MHz 인데(07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md), 1150 MHz 조건에서 이 셰이더를 따로 잰 summary 는 아직 없다 — 라벨의 [960 MHz] 표기.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="66.3" width="260.0" x="300.0" y="764.9"/>
           <y:Fill color="#99CC00" color2="#99CC00" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
-          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="44.26" modelName="custom" textColor="#000000" visible="true" width="205.48" x="27.26" y="11.02">yolo_decode.comp (pass 1)
-[V3D GPU] median 0.626 ms
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="44.26" modelName="custom" textColor="#000000" visible="true" width="225.89" x="17.06" y="11.02">yolo_decode.comp (pass 1)
+[V3D GPU] median 0.626 ms [960 MHz]
 dequant + DFL + threshold + 역변환<y:LabelModel>
               <y:SmartNodeLabelModel distance="4.0"/>
             </y:LabelModel>
@@ -197,14 +198,14 @@ dequant + DFL + threshold + 역변환<y:LabelModel>
       </data>
     </node>
     <node id="n_ovl">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/overlay_boxes.comp, 호출부는 01_src/display/ DisplayPipeline::pump. 수치 출처: 07_results/display_e2e/summary.md §3.1 '오버레이 overlay_boxes.comp 실측 0.128 ms(median, disp_asap)'. README.md §1 도 0.128 로 갱신됐다(이전 0.12).</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/overlay_boxes.comp, 호출부는 01_src/display/ DisplayPipeline::pump. 수치 출처: 07_results/display_e2e/summary.md §3.1 '오버레이 overlay_boxes.comp 실측 0.128 ms(median, disp_asap)'. README.md §1 도 0.128 로 갱신됐다(이전 0.12). 측정 조건: V3D 960 MHz(부트로더 2025-12-08, 2026-09-28 이전). 부트로더 2026-09-25 부터 1150 MHz 인데(07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md), 1150 MHz 조건에서 이 셰이더를 따로 잰 summary 는 아직 없다 — 라벨의 [960 MHz] 표기.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="66.3" width="260.0" x="300.0" y="1089.1999999999998"/>
           <y:Fill color="#99CC00" color2="#99CC00" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
-          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="44.26" modelName="custom" textColor="#000000" visible="true" width="178.2" x="40.9" y="11.02">overlay_boxes.comp
-[V3D GPU] median 0.128 ms
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="44.26" modelName="custom" textColor="#000000" visible="true" width="246.02" x="6.99" y="11.02">overlay_boxes.comp
+[V3D GPU] median 0.128 ms [960 MHz]
 dispatchIndirect (검출 수만큼)<y:LabelModel>
               <y:SmartNodeLabelModel distance="4.0"/>
             </y:LabelModel>
@@ -252,14 +253,14 @@ labwc(Wayland) · --display-fullscreen<y:LabelModel>
       </data>
     </node>
     <node id="n_conv">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/display_convert.comp, 호출부는 01_src/display/ DisplayPipeline. 디코더 SAND dma-buf 를 그대로 다시 읽는다(복사 0). 수치 출처: 07_results/display_e2e/summary.md §3.1 '표시 변환 실측 4.153 ms(median, disp_asap)', NPU 유휴 기준선(M5a)은 4.226 ms. README.md §1 도 4.153 으로 갱신됐다(이전 4.22 는 기준선 4.226 의 반올림이었다).</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/display_convert.comp, 호출부는 01_src/display/ DisplayPipeline. 디코더 SAND dma-buf 를 그대로 다시 읽는다(복사 0). 수치 출처: 07_results/display_e2e/summary.md §3.1 '표시 변환 실측 4.153 ms(median, disp_asap)', NPU 유휴 기준선(M5a)은 4.226 ms. README.md §1 도 4.153 으로 갱신됐다(이전 4.22 는 기준선 4.226 의 반올림이었다). 측정 조건: V3D 960 MHz(부트로더 2025-12-08, 2026-09-28 이전). 부트로더 2026-09-25 부터 1150 MHz 인데(07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md), 1150 MHz 조건에서 이 셰이더를 따로 잰 summary 는 아직 없다 — 라벨의 [960 MHz] 표기.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="66.3" width="260.0" x="650.0" y="985.1999999999999"/>
           <y:Fill color="#99CC00" color2="#99CC00" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
-          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="44.26" modelName="custom" textColor="#000000" visible="true" width="175.56" x="42.22" y="11.02">display_convert.comp
-[V3D GPU] median 4.153 ms
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="44.26" modelName="custom" textColor="#000000" visible="true" width="224.55" x="17.72" y="11.02">display_convert.comp
+[V3D GPU] median 4.153 ms [960 MHz]
 SAND→RGBA 1:1 (전체화면 고정)<y:LabelModel>
               <y:SmartNodeLabelModel distance="4.0"/>
             </y:LabelModel>
@@ -407,19 +408,22 @@ SAND→RGBA 1:1 (전체화면 고정)<y:LabelModel>
       </data>
     </node>
     <node id="n_note_perf">
-      <data key="d5">성능 요약. 출처: /home/pi/workspace/yolo_vulkan_optimize/07_results/display_e2e/summary.md §3 표와 §3.1, §3.2. README.md 7행 요약도 두 페이싱을 나눠 적도록 갱신됐다(이전에는 CPU 1.84=disp_asap 와 29.9 FPS·glass 101=disp_source 가 한 문장에 섞여 있었다).</data>
+      <data key="d5">성능 요약. 출처: /home/pi/workspace/yolo_vulkan_optimize/07_results/display_e2e/summary.md §3 표와 §3.1, §3.2. README.md 7행 요약도 두 페이싱을 나눠 적도록 갱신됐다(이전에는 CPU 1.84=disp_asap 와 29.9 FPS·glass 101=disp_source 가 한 문장에 섞여 있었다). 측정 조건: display_e2e(2026-09-20)는 부트로더 2025-12-08(V3D 960 MHz), FFmpeg 프레임 스레드 자동(5), CPU NMS 조건이다. 이후 기본값이 바뀌었다 — ① 부트로더 2026-09-25 로 V3D 1150 MHz(07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md: FPS·CPU 불변, GPU 전처리 b1 2.11→1.81 ms, b8 평균 약 2.6→2.0 ms) ② 앱 디코더 스레드 기본 1(01_src/pipeline/main.cpp:629, YVO_DEC_THREADS; 07_results/dec_threads/summary.md: 표시 on disp_source CPU 2.073→1.778 ms/f, glass 평균 99.48→99.52 ms, 앱 e2e p90 +1.9 ms) ③ NMS 기본 --nms gpu. 이 노드의 수치는 재측정 전이라 그대로 둔다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
-          <y:Geometry height="119.9" width="400.0" x="1000.0" y="420.0"/>
+          <y:Geometry height="160.16" width="400.0" x="1000.0" y="420.0"/>
           <y:Fill color="#FFFFFF" color2="#FFFFFF" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
-          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="97.94" modelName="custom" textColor="#000000" visible="true" width="351.12" x="24.44" y="10.98">성능 (07_results/display_e2e/summary.md §3)
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="138.2" modelName="custom" textColor="#000000" visible="true" width="393.9" x="3.05" y="10.98">성능 (07_results/display_e2e/summary.md §3)
 disp_source (최종 운용) : 29.910 FPS · CPU 2.179 ms/f
     glass-to-glass median 101.20 · p90 118.36 ms
 disp_asap : 34.870 FPS · CPU 1.842 ms/f · glass 130.75 ms
 검출 3369 (4설정 동일) · dropped 0 · slot timeout 0
 held_frames_max 4 (디코더 한계 약 13 — 여유 6)
-GPU 4패스 합 median 6.995 ms = 주기 28.6 ms 의 24.5%<y:LabelModel>
+GPU 4패스 합 median 6.995 ms = 주기 28.6 ms 의 24.5%
+측정 조건 : V3D 960 MHz · FFmpeg 자동 5스레드 · CPU NMS
+  (2026-09-28 이전. 현재 기본 1150 MHz · 1스레드 · GPU NMS 와 다름)
+  → 07_results/dec_threads · …/runs/bootloader_20260925<y:LabelModel>
               <y:SmartNodeLabelModel distance="4.0"/>
             </y:LabelModel>
             <y:ModelParameter>

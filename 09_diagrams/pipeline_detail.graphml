@@ -12,7 +12,7 @@
   <key for="edge" id="d9" yfiles.type="edgegraphics"/>
   <graph edgedefault="directed" id="G">
     <node id="n0" yfiles.foldertype="group">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/infer_stage.hpp:9-17 'VkQueue 는 외부 동기화 객체이고 이 프로젝트에는 큐가 하나뿐이다 → Vulkan 을 만지는 일은 전부 메인 스레드에서만 한다. 새 스레드를 만들지 않는다.'</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/infer_stage.hpp:9-17 'VkQueue 는 외부 동기화 객체이고 이 프로젝트에는 큐가 하나뿐이다 → Vulkan 을 만지는 일은 전부 메인 스레드에서만 한다. 새 스레드를 만들지 않는다.' 주: 이 문장은 앱 코드가 스레드를 직접 만들지 않는다는 뜻이다. 라이브러리 내부 스레드는 따로 있다 — libavcodec 디코더 프레임 스레드(앱 기본 1, 01_src/pipeline/main.cpp:629 YVO_DEC_THREADS, 0 = FFmpeg 자동; 2026-09-28 이전 측정은 자동 5스레드 av:hevc:df0~4, 07_results/dec_threads/summary.md)와 HailoRT 내부·콜백 스레드(n1).</data>
       <data key="d6">
         <y:ProxyAutoBoundsNode>
           <y:Realizers active="0">
@@ -41,14 +41,15 @@
       </data>
       <graph edgedefault="directed" id="n0:">
       <node id="n0::n0">
-        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:1-49 '메인 스레드: 디코드 → 빈 슬롯 확보 → GPU submit → wait → HailoRT submit'. 출력 구조체는 01_src/core/frame_types.hpp struct DrmFrame.</data>
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:1-49 '메인 스레드: 디코드 → 빈 슬롯 확보 → GPU submit → wait → HailoRT submit'. 출력 구조체는 01_src/core/frame_types.hpp struct DrmFrame. 디코더 스레드: FFmpeg 프레임 스레드 기본 1 (01_src/pipeline/main.cpp:629 → 01_src/decode/ffmpeg_drm_decoder.cpp:181 codec_->thread_count; 환경변수 YVO_DEC_THREADS, 0 = FFmpeg 자동). display_e2e 등 2026-09-28 이전 측정은 자동(5스레드, av:hevc:df0~4)이었다. 07_results/dec_threads/summary.md: 표시 on disp_source 에서 1스레드는 CPU 2.073→1.778 ms/f, glass 평균 99.48→99.52 ms, 앱 e2e p90 +1.9 ms.</data>
         <data key="d6">
           <y:GenericNode configuration="com.yworks.flowchart.process">
             <y:Geometry height="54.0" width="480.0" x="130.0" y="120.0"/>
             <y:Fill color="#E8EEF7" color2="#E8EEF7" transparent="false"/>
             <y:BorderStyle color="#000000" type="line" width="1.0"/>
-            <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="30.84" modelName="custom" textColor="#000000" visible="true" width="301.84" x="89.08" y="11.58">av_read_frame / avcodec_receive_frame (DRM_PRIME)
-→ DrmFrame (fd, uv_fd, keepalive)<y:LabelModel>
+            <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="44.26" modelName="custom" textColor="#000000" visible="true" width="362.15" x="58.93" y="4.87">av_read_frame / avcodec_receive_frame (DRM_PRIME)
+→ DrmFrame (fd, uv_fd, keepalive)
+FFmpeg 프레임 스레드 기본 1 (YVO_DEC_THREADS) · 측정 당시 자동 5<y:LabelModel>
                 <y:SmartNodeLabelModel distance="4.0"/>
               </y:LabelModel>
               <y:ModelParameter>
@@ -131,7 +132,7 @@ YoloPostproc::submit (decode → efficient_nms)  [vkQueueSubmit, 메인 전용]<
         </data>
       </node>
       <node id="n0::n5">
-        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/gpu_postproc_stage.cpp:190 GpuPostprocStage::finish(). --nms gpu(기본): pp_-&gt;read_nms 로 efficient_nms.comp 결과를 읽는다(:215). IoU 보호대·용량 초과·잘못된 클래스 프레임만 yvo::cpu_nms_greedy_by_class 로 fallback (:198-227, 호출 :202). --nms cpu: CPU 억제만(:209-210). --nms verify: 둘 다 돌려 비트 비교(:222-224). GPU NMS 수치는 정식 측정 전. display_e2e 수치는 CPU NMS 당시 값: 07_results/display_e2e/raw/disp_source_run1/stdout.log 'cpu nms us median 2.667', 'gpu post ms median 0.588'.</data>
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/gpu_postproc_stage.cpp:190 GpuPostprocStage::finish(). --nms gpu(기본): pp_-&gt;read_nms 로 efficient_nms.comp 결과를 읽는다(:215). IoU 보호대·용량 초과·잘못된 클래스 프레임만 yvo::cpu_nms_greedy_by_class 로 fallback (:198-227, 호출 :202). --nms cpu: CPU 억제만(:209-210). --nms verify: 둘 다 돌려 비트 비교(:222-224). GPU NMS 수치는 정식 측정 전. display_e2e(2026-09-20) 수치는 CPU NMS · V3D 960 MHz(부트로더 2025-12-08) · FFmpeg 자동 5스레드 당시 값: 07_results/display_e2e/raw/disp_source_run1/stdout.log 'cpu nms us median 2.667', 'gpu post ms median 0.588'.</data>
         <data key="d6">
           <y:GenericNode configuration="com.yworks.flowchart.process">
             <y:Geometry height="54.0" width="480.0" x="130.0" y="540.0"/>
@@ -167,7 +168,7 @@ YoloPostproc::submit (decode → efficient_nms)  [vkQueueSubmit, 메인 전용]<
         </data>
       </node>
       <node id="n0::n7">
-        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/display/ (별도 라이브러리 yvo_display). 수치: 07_results/display_e2e/summary.md §3.1 변환 4.153 ms / 오버레이 0.128 ms(median). 표시 CPU 증가분 +0.727 ms 의 정체는 vkQueuePresentKHR 자체다(같은 문서 §4).</data>
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/display/ (별도 라이브러리 yvo_display). 수치: 07_results/display_e2e/summary.md §3.1 변환 4.153 ms / 오버레이 0.128 ms(median) — V3D 960 MHz(부트로더 2025-12-08) 조건이고, 1150 MHz(07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)에서 따로 잰 summary 는 아직 없다. 표시 CPU 증가분 +0.727 ms(FFmpeg 자동 5스레드 · CPU NMS 당시)의 정체는 vkQueuePresentKHR 자체다(같은 문서 §4).</data>
         <data key="d6">
           <y:GenericNode configuration="com.yworks.flowchart.process">
             <y:Geometry height="54.0" width="480.0" x="130.0" y="708.0"/>
@@ -549,13 +550,13 @@ V3D 0 · CPU +0.89 ms · 검출 −2.33% 로 통합 보류<y:LabelModel>
       </data>
     </node>
     <node id="n_src_note">
-      <data key="d5">이 다이어그램의 모든 수치와 규약 문장의 출처 목록. 경로는 /home/pi/workspace/yolo_vulkan_optimize/ 기준 상대경로다.</data>
+      <data key="d5">이 다이어그램의 모든 수치와 규약 문장의 출처 목록. 경로는 /home/pi/workspace/yolo_vulkan_optimize/ 기준 상대경로다. 측정 조건 줄(2026-09-30 추가): 다이어그램 수치는 모두 2026-09-28 이전 조건(V3D 960 MHz · FFmpeg 자동 5스레드 · CPU NMS)이다. 이후의 기본값 변화는 07_results/dec_threads/summary.md(디코더 스레드), 07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md(V3D 클럭), 앱 대 GStreamer 연구 경로 비교는 07_results/gst_pipeline/summary.md.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
-          <y:Geometry height="174.0" width="480.0" x="760.0" y="880.0"/>
+          <y:Geometry height="241.1" width="480.0" x="760.0" y="880.0"/>
           <y:Fill color="#FFFFFF" color2="#FFFFFF" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
-          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="151.62" modelName="custom" textColor="#000000" visible="true" width="453.0" x="13.5" y="11.19">수치·규약 출처
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="218.72" modelName="custom" textColor="#000000" visible="true" width="453.0" x="13.5" y="11.19">수치·규약 출처
 GPU 구간별 median : 07_results/display_e2e/summary.md §3.1
 실행별 원시 출력  : 07_results/display_e2e/raw/disp_source_run1/stdout.log
 운용점 · 최종 커맨드 : 07_results/op_point/summary.md §8
@@ -565,7 +566,12 @@ slots+gpu_depth ≤ 10 : 01_src/pipeline/main.cpp:350 (평면 :336-349)
 스레드 규율      : 01_src/pipeline/infer_stage.hpp:9-17
 콜백 람다 :154 / NMS fallback :202 : gpu_postproc_stage.cpp
 평면 표시 : 01_src/display/plane_display.hpp
-버퍼 계약       : 01_src/core/frame_types.hpp<y:LabelModel>
+버퍼 계약       : 01_src/core/frame_types.hpp
+측정 조건 : 위 수치는 V3D 960 MHz · FFmpeg 자동 5스레드 · CPU NMS
+디코더 스레드 기본 1 : 07_results/dec_threads/summary.md
+V3D 960→1150 MHz : 07_results/pipeline_ffmpeg_vulkan_hailo/
+      runs/bootloader_20260925/summary.md
+GStreamer 연구 경로 : 07_results/gst_pipeline/summary.md<y:LabelModel>
               <y:SmartNodeLabelModel distance="4.0"/>
             </y:LabelModel>
             <y:ModelParameter>
