@@ -1,0 +1,58 @@
+# dec_threads_bench before 2026-09-29T10:27:59+09:00
+kernel: 6.18.50+rpt-rpi-2712
+soc temp: 65.3 C, hailo temp: 55.7 C
+throttled=0x80000
+frequency(0)=2400033792
+v3d_freq=1150
+bootloader: 2026/09/25 15:59:09
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+libavcodec61: 8:7.1.5-0+deb13u1+rpt2
+hailort: 4.24.0
+mesa-vulkan-drivers: 26.2.2-1~bpo13+0~rpt1
+git HEAD: 00ec2100c8f80752891ccbcbad58e8c44389b88e
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_pipeline md5 edb3b35b92f39b4e553adeb427965e4f mtime 2026-09-29 09:36:52.483075768 +0900
+wayland: /run/user/1000/wayland-0, wlr-randr outputs: HDMI-A-1:enabled
+video: /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4
+hef: /home/pi/workspace/yolo_vulkan_optimize/03_models/yolov11m.hef
+runs: 3 only: . cool: COOL_C=65 COOL_MAX_S=120 HOT_C=75 COOL_EVERY=1
+display guard: output HDMI-A-1 required, timeout -s KILL 90, SKIP_DISPLAY=0
+caller YVO_DEC_THREADS: <unset> (ignored: every child gets env -u or env YVO_DEC_THREADS=N)
+env: 
+configs (id|threads|frames|args, all):
+  sw_t1            |1   |all|--mode dmabuf --layout nhcw --batch 8 --slots 16
+  sw_t2            |2   |all|--mode dmabuf --layout nhcw --batch 8 --slots 16
+  sw_t3            |3   |all|--mode dmabuf --layout nhcw --batch 8 --slots 16
+  sw_t4            |4   |all|--mode dmabuf --layout nhcw --batch 8 --slots 16
+  sw_auto          |auto|all|--mode dmabuf --layout nhcw --batch 8 --slots 16
+  ptr_b8_auto      |auto|all|--mode ptr --layout nhwc --batch 8 --slots 16
+  ptr_b8_t1        |1   |all|--mode ptr --layout nhwc --batch 8 --slots 16
+  nhwc_b8_auto     |auto|all|--mode dmabuf --layout nhwc --batch 8 --slots 16
+  nhwc_b8_t1       |1   |all|--mode dmabuf --layout nhwc --batch 8 --slots 16
+  nhcw_b1_auto     |auto|all|--mode dmabuf --layout nhcw --batch 1 --slots 2
+  nhcw_b1_t1       |1   |all|--mode dmabuf --layout nhcw --batch 1 --slots 2
+  nhcw_b4_auto     |auto|all|--mode dmabuf --layout nhcw --batch 4 --slots 8
+  nhcw_b4_t1       |1   |all|--mode dmabuf --layout nhcw --batch 4 --slots 8
+  gpu_b2s4_auto    |auto|900|--mode dmabuf --layout nhcw --batch 2 --slots 4 --postproc gpu
+  gpu_b2s4_t1      |1   |900|--mode dmabuf --layout nhcw --batch 2 --slots 4 --postproc gpu
+  lat_b1s1d1_auto  |auto|900|--mode dmabuf --layout nhcw --batch 1 --slots 1 --gpu-depth 1
+  lat_b1s1d1_t1    |1   |900|--mode dmabuf --layout nhcw --batch 1 --slots 1 --gpu-depth 1
+  lat_b2s2d1_auto  |auto|900|--mode dmabuf --layout nhcw --batch 2 --slots 2 --gpu-depth 1
+  lat_b2s2d1_t1    |1   |900|--mode dmabuf --layout nhcw --batch 2 --slots 2 --gpu-depth 1
+  disp_source_auto |auto|900|--mode dmabuf --layout nhcw --batch 2 --slots 4 --postproc gpu --display on --display-fullscreen --display-pace source
+  disp_source_t1   |1   |900|--mode dmabuf --layout nhcw --batch 2 --slots 4 --postproc gpu --display on --display-fullscreen --display-pace source
+selected: sw_t1 sw_t2 sw_t3 sw_t4 sw_auto ptr_b8_auto ptr_b8_t1 nhwc_b8_auto nhwc_b8_t1 nhcw_b1_auto nhcw_b1_t1 nhcw_b4_auto nhcw_b4_t1 gpu_b2s4_auto gpu_b2s4_t1 lat_b1s1d1_auto lat_b1s1d1_t1 lat_b2s2d1_auto lat_b2s2d1_t1 disp_source_auto disp_source_t1 
+# dec_threads_bench after 2026-09-29T12:15:15+09:00
+kernel: 6.18.50+rpt-rpi-2712
+soc temp: 68.6 C, hailo temp: 73.0 C
+throttled=0x80000
+frequency(0)=2400023808
+v3d_freq=1150
+bootloader: 2026/09/25 15:59:09
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+libavcodec61: 8:7.1.5-0+deb13u1+rpt2
+hailort: 4.24.0
+mesa-vulkan-drivers: 26.2.2-1~bpo13+0~rpt1
+git HEAD: 00ec2100c8f80752891ccbcbad58e8c44389b88e
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_pipeline md5 edb3b35b92f39b4e553adeb427965e4f mtime 2026-09-29 09:36:52.483075768 +0900
+wayland: /run/user/1000/wayland-0, wlr-randr outputs: HDMI-A-1:enabled
+bin md5 (after measurement): edb3b35b92f39b4e553adeb427965e4f

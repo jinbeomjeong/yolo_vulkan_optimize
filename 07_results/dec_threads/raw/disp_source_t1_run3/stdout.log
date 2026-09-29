@@ -1,0 +1,30 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[hevc @ 0x5555b6d63f90] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+== yvo_pipeline (dmabuf, nhcw, batch 2, slots 4, gpu_depth 3, postproc gpu/export) ==
+frames          900 (decoded 900, errors 0)
+wall            30.086 s, 29.91 FPS
+cpu             1.778 ms/frame (process user+sys 1600.3 ms, 5% of one core)
+decode call ms  mean 2.909  median 3.694  p90 4.642  max 20.219
+gpu shader ms   mean 1.731  median 1.780  p90 1.825  max 2.891
+npu latency ms  mean 74.030  median 69.472  p90 94.505  max 97.061
+e2e latency ms  mean 79.927  median 73.710  p90 100.486  max 138.761  (decode return → NPU completion callback)
+slot wait ms    mean 0.000  p90 0.000  (time the main thread waited for a free slot)
+gpu post ms     mean 0.452  median 0.534  p90 0.599  max 0.892  (yolo_decode.comp pass 1)
+cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+nms backend     gpu
+gpu nms ms      mean 0.0426  median 0.0469  p90 0.0575  max 0.0810  (efficient_nms.comp)
+nms fallback    0 frames (capacity 0, iou guard 0)
+candidates      mean 16.81  max 45  overflow frames 0
+slot hold ms    mean 3.317  median 1.735  p90 8.136  max 42.964  (NPU completion callback → slot return)
+disp convert ms mean 3.185  median 3.593  p90 3.662  (display_convert.comp)
+disp overlay ms mean 0.107  median 0.118  p90 0.139  (overlay_boxes.comp)
+present interval ms median 17.493  p90 66.991  (n=897)
+glass-to-glass  mean 99.89  median 100.33  p90 116.23  (n=899, decode → reaches screen)
+display         presented 900, dropped 0, recreates 1, overlay overflow 0
+held frames max 4 (decoder limit about 13), slot timeout 0
+detections      3369 total, 3.74 / frame
+hailo chip temp 64.7 -> 73.3 C
+soc temp        68.6 -> 68.6 C
+vk validation   errors 0, warnings 1
+RESULT_CSV,disp_source_t1,dmabuf,nhcw,2,4,900,30.086,29.91,1.778,2.909,1.731,1.825,74.03,94.51,79.93,100.49,3369,64.7,73.3,68.6,68.6,1
+RESULT_CSV2,disp_source_t1,gpu,export,0.4523,0.5991,0.000,16.81,45,0,1,wayland,matched,source,3.1850,3.6621,0.1072,17.493,99.89,116.23,900,0,1,4,0,gpu,0.0426,0.0575,0,0,-,-,-,-,-,-
