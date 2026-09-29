@@ -13,8 +13,15 @@ Vulkan(V3D GPU)으로 밀어낸** 프로젝트다. 디코드·전처리·추론�
 
 검출 수는 표시 off/on, 두 페이싱 전부 **3369 로 동일**하다.
 근거: [`07_results/display_e2e/summary.md`](07_results/display_e2e/summary.md) §3·§3.2.
-이 수치는 억제를 **CPU**(`cpu_nms_greedy_by_class`, 지금의 `--nms cpu`)로 하던 때의 측정이다.
-GPU NMS(`--nms gpu`, 기본)로 바꾼 뒤의 재측정은 아직 없다.
+> **측정 조건(2026-09-20 전후): V3D 960 MHz · FFmpeg 디코더 자동 5스레드 · 억제 CPU**
+> (`cpu_nms_greedy_by_class`, 지금의 `--nms cpu`). 지금 기본값(부트로더 2026-09-25 의 V3D 1150 MHz,
+> 디코더 1스레드, `--nms gpu`)과 조건이 다르다. 옛 조건을 재현하려면 `--nms cpu` 와 `YVO_DEC_THREADS=0` 을 준다
+> (V3D 클럭은 펌웨어가 정한다).
+> - 현재 기본값의 **참고치**(정식 A/B 아님): 같은 명령의 `source` 행이 CPU **1.78 ms/frame**(같은 회차의 자동 스레드 2.07),
+>   glass **평균** 99.5 ms, 드롭 0, 검출 3369, GPU NMS 평균 약 0.04 ms, CPU 폴백 0이다
+>   ([`dec_threads/summary.md`](07_results/dec_threads/summary.md) — 위 표의 101.20 은 **중앙값**이라 섞지 않는다).
+> - V3D 클럭이 바뀌어도 FPS·CPU 는 그대로이고 GPU 전처리만 약 14% 빨라졌다([`bootloader_20260925`](07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)).
+> - GPU NMS·현재 기본값으로 위 표를 다시 재는 정식 측정은 아직 없다([계획](07_results/display_vulkan_hdmi/notes/formal_measurement_plan.md)).
 
 ---
 
@@ -65,7 +72,8 @@ cmake -S . -B build -G Ninja && cmake --build build
 
 빌드 경고는 **0줄**이어야 한다. 셰이더는 `glslc -Werror` + `spirv-val` 을 자동으로 통과한다.
 
-의존: HailoRT 4.24.0, Vulkan(V3DV), libavcodec, libdrm, wayland-client + wayland-protocols, OpenCV, GTest.
+의존: HailoRT 4.24.0, Vulkan(V3DV), libavcodec(RPi 빌드 7.1.5 rpt2 — v4l2-request·SAND), libdrm, wayland-client + wayland-protocols, OpenCV, GTest.
+선택: GStreamer ≥ 1.24(`-base`·`-video`·`-allocators`) — 없으면 연구 경로 `yvo_gstelem` 과 `tools/gst/` 도구만 빠진다.
 표시 경로(`yvo_display`, kms 백엔드 포함)는 wayland 가 없으면 조용히 빠지고 나머지는 그대로 빌드된다.
 wayland-protocols 에 staging `color-representation` XML 이 없으면 그 요청만 빠진다(`wayland-planes` 의 색 range 지정 불가).
 
@@ -76,7 +84,9 @@ wayland-protocols 에 staging `color-representation` XML 이 없으면 그 요�
 ### ⚠ 기본값은 권장 경로가 아니다
 
 인자 없이 실행하면 `--mode ptr --layout nhwc --postproc host --display off` 로 돈다.
-이것은 **가장 느린 경로**(CPU 17.6 ms/frame)다. 회귀 격리를 위해 기본값을 바꾸지 않았다.
+이것은 **가장 느린 경로**(CPU 17.6 ms/frame, 디코더 자동 스레드 조건 — 1스레드에서는 16.97)다. 회귀 격리를 위해 기본값을 바꾸지 않았다.
+예외는 디코더 프레임 스레드 하나다 — 2026-09-29 에 자동(5) → **1** 로 바꿨다(CPU −14%·e2e −8.8 ms, FPS·검출 동일,
+[`dec_threads/`](07_results/dec_threads/summary.md)). 옛 측정과 비교할 때는 `YVO_DEC_THREADS=0`(자동)을 준다.
 **아래 플래그를 반드시 주어야 한다.**
 
 ### 3.1 실시간 HDMI 표시 (권장)
@@ -110,6 +120,10 @@ build/bin/yvo_pipeline \
 | 최대 처리량 | `--batch 8 --slots 16` | 51.5 FPS, e2e 325 ms |
 | 최소 지연 | `--batch 1 --slots 1` | e2e 81.6 ms, 단 **24.4 FPS 로 30 fps 를 못 따라간다** |
 | 영상만 저지연 표시 | 위에 `--display-sync latest` 추가 | 화면 glass 28 ms, 박스만 뒤처진다 |
+
+> 이 표의 지연은 디코더 자동 5스레드·V3D 960 MHz 조건 값이다([`op_point/`](07_results/op_point/summary.md) §8).
+> 지금 기본값(1스레드)에서는 b8/s16 e2e 318.3 ms, b1/s1(gpu-depth 1) 79.1 ms, 표시 off b2/s4 GPU 후처리 34.99 FPS 로
+> 조금씩 짧고 FPS 는 같다([`dec_threads/`](07_results/dec_threads/summary.md)).
 
 **처리량·지연을 지배하는 것은 batch 가 아니라 slots 다.** 지연 ≈ `slots × 프레임 주기` 이고,
 같은 slots 에서 batch 차이는 0.25% 뿐이다. 다만 **batch 1 은 천장이 24.4 FPS** 라
@@ -197,7 +211,7 @@ loginctl activate <데스크톱 세션 id>    # (또는 sudo chvt 7) 데스크�
 | `--display-backend auto\|wayland\|offscreen\|wayland-planes\|kms` | `auto` | `auto` = Wayland 창이 열리면 `wayland`, 아니면 `offscreen`. `wayland` = Vulkan 합성 + 스왑체인(strict — 실패하면 종료), `offscreen` = 화면 없이 변환만. `wayland-planes`/`kms` = HVS 평면 스캔아웃(§3.5, strict) |
 | `--display-color-range auto\|full\|limited` | `auto` | 평면 백엔드가 요청할 COLOR_RANGE. `auto` = wayland-planes 는 full(labwc 뒤집힘 우회), kms 는 limited |
 | `--display-connector NAME` | 첫 연결 HDMI-A | `kms` 의 출력 커넥터(다른 백엔드에서는 경고 후 무시) |
-| `--display-fullscreen` | 꺼짐 | **반드시 켠다.** 창 모드는 에러·경고 없이 표시 변환이 **2.6배**(4.22 → 10.92 ms) 느려진다. 평면 백엔드는 자동으로 전체화면이다 |
+| `--display-fullscreen` | 꺼짐 | **반드시 켠다.** 창 모드는 에러·경고 없이 표시 변환이 **2.6배**(4.22 → 10.92 ms, V3D 960 MHz 측정) 느려진다. 평면 백엔드는 자동으로 전체화면이다 |
 | `--display-sync matched\|latest` | `matched` | `matched` 는 프레임과 그 검출을 정확히 맞춘다. `latest` 는 화면을 즉시 띄우고 박스만 뒤처진다 |
 | `--display-pace source\|asap` | 표시 on 이면 `source` | 소스 fps 로 페이싱. `asap` 이면 큐가 꽉 차 glass 101.20 → 130.75 ms (둘 다 median) |
 | `--postproc-alloc export\|heap` | `export` | **`heap` 은 쓰지 마라** — 3자 일관성(PCIe DMA ↔ CPU 캐시 ↔ V3D)이 미검증이다 |
@@ -205,6 +219,13 @@ loginctl activate <데스크톱 세션 id>    # (또는 sudo chvt 7) 데스크�
 | `--frames N` / `--quiet` / `--csv-label L` | | 측정용 |
 
 전체 목록은 `yvo_pipeline --help`.
+
+환경변수(인자가 아니다):
+
+| 변수 | 기본 | 설명 |
+|---|---|---|
+| `YVO_DEC_THREADS` | 1 | FFmpeg HEVC 디코더 프레임 스레드 수. `0` = FFmpeg 자동(코어 수, 2026-09-29 이전 기본). 1스레드가 CPU·지연 모두 낫다([`dec_threads/`](07_results/dec_threads/summary.md)) |
+| `YVO_PERF_CTL` / `YVO_PERF_ACK` | 없음 | `perf ... -D -1 --control fifo:<ctl>,<ack>` 의 FIFO 경로. 주면 `cpu_ms_per_frame` 과 **같은 구간만** 프로파일한다(`01_src/toolkit/tool_util.hpp` 의 `perf_window`). perf 없이 CTL 만 주면 멈춘다 |
 
 ---
 
@@ -265,17 +286,25 @@ bash 06_tools/bench/op_point_bench.sh    # 운용점 스윕 (배치·슬롯)
 bash 06_tools/bench/display_bench.sh     # 표시 e2e (M5a 기준선 + M4). CSV 59열 — 이전(48·53열) CSV 와 APPEND 불가
 bash 06_tools/bench/pipeline_bench.sh    # 기존 9설정 회귀 기준선
 bash 06_tools/bench/decode_bench.sh      # 디코드 경로 비교
+bash 06_tools/bench/dec_threads_bench.sh # 디코더 프레임 스레드 수 스윕 + 자동 대 1스레드 회귀 A/B
+bash 06_tools/bench/gst_pipeline_bench.sh # 앱 대 GStreamer 연구 경로(yvo_gst_pipeline)
 ```
 
+벤치 스크립트는 모두 9개다. 나머지(`backpressure`·`isp`·`isp_pipeline`)까지 포함한 목록은
+[`08_learn/09_code_map.md`](08_learn/09_code_map.md) §9.7.
+
 공통 환경변수: `RUNS`(기본 3), `FRAMES`, `ONLY`(설정 id grep), `APPEND=1`, `BIN`, `OUT_DIR`,
-`COOL_C`/`HOT_C`/`COOL_MAX_S`.
+`COOL_C`/`HOT_C`/`COOL_MAX_S`. 호출자의 `YVO_DEC_THREADS` 는 앱에 그대로 전달된다(`dec_threads_bench.sh` 만 설정별로 정한다) —
+2026-09-29 이전 CSV 와 CPU·e2e 를 비교하려면 `YVO_DEC_THREADS=0` 을 준다.
 
 측정 규약은 `.claude/skills/measure` 에 있다. 요점만:
 **설정당 3회 중앙값, 반복이 바깥 루프, 칩 75 °C 초과 시 65 °C 까지 냉각,
 `hailort.log` 에 온도·클럭 경고가 있으면 그 실행의 성능 수치는 신뢰 불가.**
 
 ⚠ **측정 중에 빌드·테스트를 돌리지 마라.** CPU 시간 측정이 조용히 오염된다.
-`.claude/hooks/npu_guard.sh` 가 NPU 충돌을 막아 준다.
+`.claude/hooks/npu_guard.sh` 가 NPU 충돌을 막고, 벤치가 도는 동안(`build/.bench_running` 락) 빌드·테스트도 막는다.
+`yvo_gst_pipeline`(`--sink hailo` 는 NPU, `fake`/`hold` 는 부하)과 `test_gst_detections` 도 인식한다.
+벤치 도중 `Ctrl+C` 를 누르면 남은 설정으로 넘어가지 않고 락을 지운 뒤 종료 코드 130(SIGTERM 은 143)으로 멈춘다.
 
 ---
 
@@ -325,7 +354,7 @@ grim -o HDMI-A-1 shot.png
 
 - **[`08_learn/`](08_learn/00_README.md)** — 배경지식이 없다면 **여기부터**. NPU·Vulkan·dma-buf·YOLO 텐서를
   맨 밑바닥부터 설명하고, 각 개념이 이 프로젝트의 어느 결정으로 이어졌는지 연결한 자습 교재 12장
-- **[`07_results/README.md`](07_results/README.md)** — 12개 실험의 색인과 결론. **수치를 인용하기 전에 여기부터**
+- **[`07_results/README.md`](07_results/README.md)** — 16개 실험의 색인과 결론. **수치를 인용하기 전에 여기부터**
 - [`07_results/op_point/summary.md`](07_results/op_point/summary.md) §8 — 운용점 확정 근거와 최종 결론
 - [`07_results/display_e2e/summary.md`](07_results/display_e2e/summary.md) — 표시 통합 측정
 - [`07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md`](07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md) §4.3 — 왜 이 설계인가(메모리 제약)
@@ -335,7 +364,7 @@ grim -o HDMI-A-1 shot.png
 
 ### 아직 열려 있는 것
 
-목록의 정본은 **[`07_results/README.md`](07_results/README.md#아직-열려-있는-것)** 다(13항목).
+목록의 정본은 **[`07_results/README.md`](07_results/README.md#아직-열려-있는-것)** 다(17항목).
 여기서는 운용에 바로 영향을 주는 셋만 적는다.
 
 - **연속 운용 발열** — 측정이 전부 26초짜리다. 몇 시간 도는 운용에서 `b2/s4` 의 30 fps 여유(+16%)가

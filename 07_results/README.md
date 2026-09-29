@@ -19,6 +19,12 @@
 
 > GPU NMS(`efficient_nms.comp`, 2026-09-22)와 HVS 평면 표시 백엔드(`--display-backend wayland-planes` / `kms`)는
 > 구현·검증(비트 일치, 실표시 debugfs 판정)까지 됐고 **정식 측정은 아직이다**. 아래 수치는 모두 그 이전 구성의 값이다.
+>
+> **측정 조건(2026-09-20 전후): V3D 960 MHz · FFmpeg 디코더 자동 5스레드 · CPU NMS.** 2026-09-29 에 둘이 바뀌었다.
+> - 부트로더 2026-09-25 로 V3D 클럭이 **1150 MHz** 가 됐다. FPS·CPU 는 불변, GPU 전처리만 약 14% 빨라졌다([`bootloader_20260925`](pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)).
+> - 앱 디코더 프레임 스레드 기본값이 **1** 이 됐다(5032575). CPU·e2e 가 줄고 FPS·검출은 같다([`dec_threads/`](dec_threads/summary.md)).
+> - 그 회차의 GPU 후처리·표시 설정은 기본값 `--nms gpu` 로 돌아 **GPU NMS 의 비정식 값**이 있다(`gpu_nms_mean` 0.036~0.050 ms, p90 약 0.057, 폴백 0).
+>   정식 A/B 는 아니다.
 
 ```bash
 XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
@@ -35,9 +41,12 @@ build/bin/yvo_pipeline \
 `--display-pace asap` 으로 바꾸면 **34.87 FPS · glass 130.75 ms · CPU 1.84 ms/frame** 이다.
 근거는 [`display_e2e/summary.md`](display_e2e/summary.md) §3·§3.2(운용점 확정은 [`op_point/summary.md`](op_point/summary.md) §8).
 ⚠ 두 페이싱은 **다른 실행**이다. FPS·CPU·glass 를 섞어 인용하지 마라.
+현재 기본값(1스레드·1150 MHz·GPU NMS)의 `source` 참고치는 CPU **1.78 ms/frame**(같은 회차 자동 스레드 2.07), glass **평균** 99.5 ms,
+드롭 0, 검출 3369 다([`dec_threads/`](dec_threads/summary.md)). 위 101.20 은 **중앙값**이다 — 섞지 않는다. `asap` 은 다시 재지 않았다.
 
 운용점은 용도에 따라 고른다 — 최대 처리량은 `b8/s16`(51.5 FPS, 지연 325 ms),
-최소 지연은 `b1/s1`(81.6 ms, 단 24.4 FPS 로 30 fps 를 못 따라간다).
+최소 지연은 `b1/s1`(81.6 ms, 단 24.4 FPS 로 30 fps 를 못 따라간다). 두 지연은 자동 5스레드 조건이고,
+1스레드 기본값에서는 각각 318.3 ms·79.1 ms(gpu-depth 1)다([`dec_threads/`](dec_threads/summary.md)).
 
 ---
 
@@ -61,7 +70,7 @@ build/bin/yvo_pipeline \
    > **둘은 애초에 다른 측정이었다.** 하나로 합치려 한 것이 실수였다.
 3. **처리량 상한은 PCIe Gen3 x1 이 정한다.** `T(B) = 24.8 + 16.2·B ms`, 점근 상한 61.6 FPS, 실측 51.7.
 4. **파이프라인에서 처리량·지연을 지배하는 것은 batch 가 아니라 slots 다.** 지연 ≈ `slots × 프레임 주기`.
-5. **표시 해상도를 낮추면 오히려 비싸진다.** 1:1 경로 **2.04 ns/px** vs 스케일 경로 **5.72**(720p) / **5.31**(900p) ns/px.
+5. **표시 해상도를 낮추면 오히려 비싸진다.**(V3D 960 MHz 측정) 1:1 경로 **2.04 ns/px** vs 스케일 경로 **5.72**(720p) / **5.31**(900p) ns/px.
    1920×1080 1:1 이 기본. (픽셀당 값은 `시간 ÷ 픽셀 수` 로 계산한 것이다 — 원문은 ms 만 준다.)
 6. **원시 출력에 `InferModel` 은 쓸 수 없다** — `VDevice::configure()` + `infer_async()` 저수준 경로 필수.
 
@@ -76,20 +85,20 @@ build/bin/yvo_pipeline \
 | 폴더 | 유형 | 상태 | 단계 | 회차 | 무엇을 쟀나 | 핵심 결론 |
 |---|---|---|---|---|---|---|
 | [`npu_benchmark/`](npu_benchmark/summary.md) | 레거시 | 부분 대체 | 1 NPU | `runs/{gen2,gen3,gen3_cooled}` | NPU 단독 처리량·지연 (Gen2 vs Gen3, batch 1~32) | batch 8 에서 **51.71 FPS**. Gen2→Gen3 로 두 항이 정확히 반씩 줄어 **PCIe 가 병목**임이 확정. ⚠ overall latency 표는 [`op_point/runs/latency_gen3_cooled/`](op_point/runs/latency_gen3_cooled/summary.md) 가 대체 |
-| [`decode_benchmark/`](decode_benchmark/summary.md) | 스윕 | 유효 | 2 디코드 | — | 디코드 경로 비교 (SW/HW × H.264/H.265) | GStreamer `v4l2slh265dec` 는 HW 를 쓰고도 32.7 FPS(CPU 30.6 ms/f, ORC 복사, **rpt3 기준**). 같은 HW 를 ffmpeg CLI `-hwaccel drm` 로 쓰면 **332.8 FPS / CPU 2.0 ms/f**(CPU 내려받기 포함). 회차 [`runs/gst_rpt4`](decode_benchmark/runs/gst_rpt4/summary.md): rpt4 에서 DMABuf 381.5 FPS / 0.24 ms/f. 회차 [`runs/ffmpeg_outfmt`](decode_benchmark/runs/ffmpeg_outfmt/summary.md): CLI 2.0 ms 중 약 1.5 ms 가 SAND→planar 내려받기, DRM_PRIME 유지 시 386.9 FPS / 0.55 ms/f, `vf_unsand` 는 이 빌드에서 실행 불가. (앱에 직접 넣은 libavcodec DRM_PRIME 은 **398.5 FPS / CPU 0.23~0.28 ms/f** — 이 값의 출처는 이 폴더가 아니라 [`pipeline_ffmpeg_vulkan_hailo/REPORT.md`](pipeline_ffmpeg_vulkan_hailo/REPORT.md) §4.1 이다) |
+| [`decode_benchmark/`](decode_benchmark/summary.md) | 스윕 | 유효 | 2 디코드 | — | 디코드 경로 비교 (SW/HW × H.264/H.265) | GStreamer `v4l2slh265dec` 는 HW 를 쓰고도 32.7 FPS(CPU 30.6 ms/f, ORC 복사, **rpt3 기준**). 같은 HW 를 ffmpeg CLI `-hwaccel drm` 로 쓰면 **332.8 FPS / CPU 2.0 ms/f**(CPU 내려받기 포함). 회차 [`runs/gst_rpt4`](decode_benchmark/runs/gst_rpt4/summary.md): rpt4 에서 DMABuf 381.5 FPS / 0.24 ms/f. 회차 [`runs/ffmpeg_outfmt`](decode_benchmark/runs/ffmpeg_outfmt/summary.md): CLI 2.0 ms 중 약 1.5 ms 가 SAND→planar 내려받기, DRM_PRIME 유지 시 386.9 FPS / 0.55 ms/f, `vf_unsand` 는 이 빌드에서 실행 불가. (앱에 직접 넣은 libavcodec DRM_PRIME 은 **398.5 FPS / CPU 0.23~0.28 ms/f**(프레임 스레드 자동 5개 조건. 앱 기본값인 1스레드는 약 266 FPS 로 코드 주석 기준, 미측정) — 이 값의 출처는 이 폴더가 아니라 [`pipeline_ffmpeg_vulkan_hailo/REPORT.md`](pipeline_ffmpeg_vulkan_hailo/REPORT.md) §4.1 이다) |
 | [`vulkan_compute_codecs/`](vulkan_compute_codecs/summary.md) | 프로브 | 유효 | 2 디코드 | — | FFmpeg 8.1.3 Vulkan compute 코덱(FFv1·ProRes·DPX 디코드, ffv1/prores_ks 인코드)을 V3DV·llvmpipe 에서 실행(프로젝트 외 조사) | **V3DV 불가.** FFmpeg semaphore export 버그(시스템 7.1.5 포함) + 셰이더의 Int64·포맷 없는 image store·runtime descriptor array 를 V3D 가 미지원 → 컴파일러 abort·행·조용한 오출력. llvmpipe 는 FFv1 range·DPX 바이트 동일, ProRes ±1 LSB 이지만 CPU 보다 12~170배 느림 |
 | [`isp_resize/`](isp_resize/summary.md) | 스윕 | 보류 | 3 전처리(ISP) | `runs/{pipeline,pipeline_rerun}` | PiSP BE(ISP) 전처리 vs GPU 셰이더 | ISP 가 wall 로 23% 빠르고 V3D 를 비운다. **단 검출 −2.33% 로 게이트 불합격 → 통합 보류.** 재검토 조건 3개 명시(그중 하나가 CSI 카메라) |
-| [`pipeline_ffmpeg_vulkan_hailo/`](pipeline_ffmpeg_vulkan_hailo/summary.md) | 스윕 | 유효 | 4 통합 | — | 디코드 → GPU 전처리 → NPU 통합 | **51.63 FPS**(NPU 상한의 99.9%). **NHCW 직접 출력으로 CPU 17.6 → 3.5 ms/f.** 비싼 것은 전치가 아니라 **CPU 가 V3D 메모리를 읽는 것**이었다 (상세: [`REPORT.md`](pipeline_ffmpeg_vulkan_hailo/REPORT.md)). 2026-09-29 회차 [`runs/bootloader_20251208`](pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20251208/summary.md) → [`runs/bootloader_20260925`](pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md): 부트로더 갱신(V3D 960 → 1150 MHz)에도 FPS·CPU 불변, **GPU 전처리 b8 2.6 → 2.0 ms, p90 5.5 → 2.1 ms**(느린 꼬리 소멸) |
-| [`gst_pipeline/`](gst_pipeline/summary.md) | 스윕 | 유효 | 4 통합 | — | 앱(libavcodec DRM_PRIME) 대 GStreamer 연구 경로(`v4l2slh265dec` DMABuf → `yvosandletterbox` → `yvohailosink`), b1/b4/b8 같은 slots | **검출 `detections.jsonl` 바이트 동일**(9457), FPS 동일(NPU 상한), **CPU 는 gst 가 약 0.2 ms/f(6.3%) 낮음**(원인 미확인, 디코드 쪽 추정). rpt4 이후 성능상 libavcodec 을 고집할 이유는 없어짐 — 대신 패키지 버전 의존. 측정 구간·e2e 시작점 정의가 다르다. 회차 [`runs/perf_breakdown`](gst_pipeline/runs/perf_breakdown/summary.md): 같은 구간 perf — 명령어 수 동일, 차이의 ~70% 는 **HailoRT 호스트 NMS 점수 스캔 루프가 앱에서 더 느린 것**(L3 미스 수는 같고 미스당 지연이 김), 나머지는 FFmpeg HEVC 프레임 스레드의 memset·문맥 교환. 디코드 코드 자체는 원인 아님. 회차 [`runs/perf_dec_threads`](gst_pipeline/runs/perf_dec_threads/summary.md): **앱의 FFmpeg 프레임 스레드를 1개로 두면 CPU 차이 74% 감소·cycles 는 gst 이하**(FPS·검출 동일) → 원인은 FFmpeg 프레임 스레딩 확정. 단 NMS 루프 차이는 재현 안 됨(회차 간 변동) — perf_breakdown 의 NMS 메커니즘은 대체됨 |
+| [`pipeline_ffmpeg_vulkan_hailo/`](pipeline_ffmpeg_vulkan_hailo/summary.md) | 스윕 | 유효 | 4 통합 | — | 디코드 → GPU 전처리 → NPU 통합 | **51.63 FPS**(NPU 상한의 99.9%). **NHCW 직접 출력으로 CPU 17.6 → 3.5 ms/f**(디코더 자동 스레드 조건. 1스레드 기본값에서는 nhcw b8 2.93 ms/f, [`dec_threads/`](dec_threads/summary.md)). 비싼 것은 전치가 아니라 **CPU 가 V3D 메모리를 읽는 것**이었다 (상세: [`REPORT.md`](pipeline_ffmpeg_vulkan_hailo/REPORT.md)). 2026-09-29 회차 [`runs/bootloader_20251208`](pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20251208/summary.md) → [`runs/bootloader_20260925`](pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md): 부트로더 갱신(V3D 960 → 1150 MHz)에도 FPS·CPU 불변, **GPU 전처리 b8 2.6 → 2.0 ms, p90 5.5 → 2.1 ms**(느린 꼬리 소멸) |
+| [`gst_pipeline/`](gst_pipeline/summary.md) | 스윕 | 유효 | 4 통합 | — | 앱(libavcodec DRM_PRIME) 대 GStreamer 연구 경로(`v4l2slh265dec` DMABuf → `yvosandletterbox` → `yvohailosink`), b1/b4/b8 같은 slots | **검출 `detections.jsonl` 바이트 동일**(9457), FPS 동일(NPU 상한), **CPU 는 gst 가 약 0.2 ms/f(6.3%) 낮음**(당시 앱은 디코더 자동 스레드 — 원인은 아래 `perf_dec_threads` 회차가 확정). rpt4 이후 성능상 libavcodec 을 고집할 이유는 없어짐 — 대신 패키지 버전 의존. 측정 구간·e2e 시작점 정의가 다르다. 회차 [`runs/perf_breakdown`](gst_pipeline/runs/perf_breakdown/summary.md): 같은 구간 perf — 명령어 수 동일, 차이의 ~70% 는 **HailoRT 호스트 NMS 점수 스캔 루프가 앱에서 더 느린 것**(L3 미스 수는 같고 미스당 지연이 김), 나머지는 FFmpeg HEVC 프레임 스레드의 memset·문맥 교환. 디코드 코드 자체는 원인 아님. 회차 [`runs/perf_dec_threads`](gst_pipeline/runs/perf_dec_threads/summary.md): **앱의 FFmpeg 프레임 스레드를 1개로 두면 CPU 차이 74% 감소·cycles 는 gst 이하**(FPS·검출 동일) → 원인은 FFmpeg 프레임 스레딩 확정. 단 NMS 루프 차이는 재현 안 됨(회차 간 변동) — perf_breakdown 의 NMS 메커니즘은 대체됨. 이후 앱 기본값이 1스레드가 돼(5032575, [`dec_threads/`](dec_threads/summary.md)) 차이의 대부분이 해소됐다 |
 | [`dec_threads/`](dec_threads/summary.md) | 스윕 | 유효 | 4 통합 | — | 앱 FFmpeg HEVC 프레임 스레드 수 스윕(1~4·자동)과 자동 대 1스레드 회귀 A/B(ptr·nhwc·nhcw b1/b4/b8, GPU 후처리, 지연 운용점, 표시 on) | **1스레드가 CPU −14%·e2e −8.8 ms(b8)**, 8개 모드 FPS·검출 동일, CPU·e2e 평균 모두 개선. 예외: 표시 on(source pace) 앱 내부 e2e p90 +1.9 ms(glass 평균 동일) |
 | [`nms_host_cost/`](nms_host_cost/summary.md) | 스윕 | 유효 | 5 후처리(호스트) | — | 호스트 NMS 비용 | `yolov8_nms_postprocess` 는 **온칩이 아니라 호스트 CPU** 실행. **2.2~3.2 ms/f 고정비**(검출 수와 무관). 원시 출력으로 바꿔도 **PCIe 트래픽은 안 늘어난다** |
-| [`gpu_postprocess/`](gpu_postprocess/summary.md) | 프로브 | 유효 | 6 후처리(GPU) | — | GPU 후처리 프로브 (P1/P2/P3) + **[F0] 관문** | 텐서 해석 4변수 전수 확정. pass1 **0.5625 ms**, CPU 억제 3~11 µs. **[F0]: 입력·출력 dma-buf 동시 사용 동작 확인**(`evidence/f0_in_dmabuf.txt`) |
-| [`display_vulkan_hdmi/`](display_vulkan_hdmi/summary.md) | 프로브 | 유효 | 7 표시 | — | 표시 프로브 (P4~P10) | 컴퓨트가 **스왑체인에 직접 STORAGE 쓰기** 가능(blit 불필요). 1080p 1:1 **4.229 ms**. ⚠ 창 모드는 **조용히 2.6배 느려진다**. 후속 메모(각 1회·비정식): [`notes/kms_vs_wayland.md`](display_vulkan_hdmi/notes/kms_vs_wayland.md)(HVS 두 평면 스캔아웃 KMS 대 Wayland, 증거 `evidence/hvs_review/`), [`notes/wayland_planes_pacing_gate.md`](display_vulkan_hdmi/notes/wayland_planes_pacing_gate.md)(커밋 간격 게이트). summary §P10·결론의 "안 (III) 미검증"은 이후 `wayland-planes`/`kms` 로 구현됐다 |
+| [`gpu_postprocess/`](gpu_postprocess/summary.md) | 프로브 | 유효 | 6 후처리(GPU) | — | GPU 후처리 프로브 (P1/P2/P3) + **[F0] 관문** | 텐서 해석 4변수 전수 확정. pass1 **0.5625 ms**(V3D 960 MHz), CPU 억제 3~11 µs. **[F0]: 입력·출력 dma-buf 동시 사용 동작 확인**(`evidence/f0_in_dmabuf.txt`) |
+| [`display_vulkan_hdmi/`](display_vulkan_hdmi/summary.md) | 프로브 | 유효 | 7 표시 | — | 표시 프로브 (P4~P10) | 컴퓨트가 **스왑체인에 직접 STORAGE 쓰기** 가능(blit 불필요). 1080p 1:1 **4.229 ms**(V3D 960 MHz). ⚠ 창 모드는 **조용히 2.6배 느려진다**. 후속 메모(각 1회·비정식): [`notes/kms_vs_wayland.md`](display_vulkan_hdmi/notes/kms_vs_wayland.md)(HVS 두 평면 스캔아웃 KMS 대 Wayland, 증거 `evidence/hvs_review/`), [`notes/wayland_planes_pacing_gate.md`](display_vulkan_hdmi/notes/wayland_planes_pacing_gate.md)(커밋 간격 게이트). summary §P10·결론의 "안 (III) 미검증"은 이후 `wayland-planes`/`kms` 로 구현됐다 |
 | [`dmaheap_unify/`](dmaheap_unify/summary.md) | 프로브 | 별도 트랙 | — 별도 트랙 | — | dma-heap → V3DV import 관문 (별도 트랙) | V3DV 가 dma-heap fd 를 import 한다. **단 `range = size − 256`** 함정. GPU 읽기 성능(B.2)과 3자 일관성은 **미검증** |
 | [`op_point/`](op_point/summary.md) ⭐ | 스윕 | ⭐최종 | 통합 2026-09-20 | `runs/{latency_gen3_cooled,latency_sweep}` | **운용점 결정 (O1~O4)** + 냉각 Gen3 지연 재측정 + 지연 스윕 | **이 폴더가 최종 결론이다(§8).** slots 가 지배 변수임을 정량 확인. `b4/s8` vs `b8/s8` 동률로 계획서 F1 가설 기각 |
 | [`gpu_postproc_e2e/`](gpu_postproc_e2e/summary.md) | 스윕 | 일부 인용금지 | 통합 2026-09-20 | — | `--postproc gpu` 통합 정확도·CPU | **매칭 @ IoU 0.9 = 0.9990, 검출 9457 로 host 와 완전 동일.** perf 에서 호스트 NMS 45.10% → **0건**. ⚠ 이 폴더의 FPS·지연은 **결함 상태 값이라 인용 금지**(문서 안에 표시) |
 | [`raw_runner_backpressure/`](raw_runner_backpressure/summary.md) | 스윕 | 유효 | 통합 2026-09-20 | — | 러너 백프레셔 이중 계수 결함 규명·수정 | 수동 `increase_ongoing_callbacks()` 가 `infer_async` 내부 계수와 겹쳐 **in-flight 가 슬롯의 절반**. 제거 후 gpu `b2/s4` 24.48 → **34.96 FPS**(host 대비 −0.03%) |
-| [`display_e2e/`](display_e2e/summary.md) | 스윕 | 일부 인용금지 | 통합 2026-09-20 | — | 표시 통합 e2e (M5a 기준선 + M4) | **glass-to-glass 101 ms**(계획서 추정 217 의 절반). GPU 4패스 합 **6.995 ms = 주기의 24.5%**. 표시 켜도 **검출 3369 불변**, 드롭 0 |
+| [`display_e2e/`](display_e2e/summary.md) | 스윕 | 일부 인용금지 | 통합 2026-09-20 | — | 표시 통합 e2e (M5a 기준선 + M4) | **glass-to-glass 101 ms**(계획서 추정 217 의 절반). GPU 4패스 합 **6.995 ms = 주기의 24.5%**(V3D 960 MHz·자동 스레드·CPU NMS). 표시 켜도 **검출 3369 불변**, 드롭 0 |
 | [`v3d_perf_counters/`](v3d_perf_counters/summary.md) | 프로브 | 유효 | — 프로파일링 도구 | — | V3D `VK_KHR_performance_query` 카운터 동작 특성 (E1 분해 단위 · E2 혼입 · E3 오버헤드) | 카운터 93개, 1 pass 32개. **한 쿼리는 안의 모든 잡을 합산**(k배 정확). **다른 클라이언트의 bin/render 잡이 겹치면 값이 잘리고 섞인다**(vkcube 중 정상의 1.4~4%, 유휴 데스크톱도 100회 중 0~5회) → 표시 off·중앙값·최빈값 이탈 표본 제외. GPU 쪽 쿼리 비용은 잡음 안(+7 µs/4.9 ms). 회차 [`runs/bootloader_20260925/`](v3d_perf_counters/runs/bootloader_20260925/summary.md)(V3D 1150 MHz): 결론 유지, heap_sum 은 클럭 1.198배에 1.10~1.13배만 빨라짐(메모리 대기), **실행 중 +2.6~6.3% 계단**(원인 미확인) |
 
 ## 폴더 규약
@@ -127,7 +136,7 @@ python3 06_tools/python/check_links.py
 - **"지금 뭘 쓰면 되나"** → [`op_point/summary.md`](op_point/summary.md) §8
 - **"왜 이 설계인가"** → `pipeline_ffmpeg_vulkan_hailo/REPORT.md` §4.3 (메모리 제약) → `nms_host_cost/` (후처리 비용)
 - **"표시가 어떻게 동작하나"** → `display_vulkan_hdmi/` (프로브) → `display_e2e/` (통합) → `display_vulkan_hdmi/notes/` (HVS 평면 스캔아웃, 비정식)
-- **"정확도를 어떻게 보장하나"** → `ctest` 78개. 특히 `test_postproc`(`PostprocFixture` 5 + `EfficientNms` 7 + live 1), `test_display_convert`,
+- **"정확도를 어떻게 보장하나"** → `ctest` 94개. 특히 `test_postproc`(`PostprocFixture` 5 + `EfficientNms` 7 + live 1), `test_display_convert`,
   `test_detections`, `test_preproc`, `test_overlay`. 판정 규칙은 `01_src/ref/detection_match.hpp` 하나로 공용화돼 있고
   `06_tools/python/compare_detections.py` 가 같은 규칙을 구현한다
 
@@ -163,8 +172,12 @@ python3 06_tools/python/check_links.py
 | 워크그룹 최적값의 **이유** | `yolo_decode` 가 60 invocation(10×6)에서 256보다 빠르고 `display_convert` 가 3×85 에서 16×16보다 1.83배 빠른 이유를 설명하지 못했다. **측정치만이 근거인 가설**이다 |
 | V3D 쪽 캐시 일관성 **기제** | Hailo 쪽은 드라이버가 관리함을 perf 로 확인했다. V3D 는 프레임마다 매핑하지 않는데도 오염이 관측되지 않는다 — 축출 완료인지 스누핑인지 **가르지 못했다**(결정적 실험에 root 필요) |
 | `pace=asap` 의 GPU timestamp 평균 왜곡 | 커맨드 버퍼 병합으로 **추정하나 미확인**. 해당 값은 위 "인용 금지 구간" 2번이다 |
-| GPU NMS·HVS 평면 표시 정식 측정 | `--nms gpu` 와 `--display-backend wayland-planes`/`kms` 는 구현·검증만 됐다. CPU·V3D·glass-to-glass 를 기존 경로와 같은 조건(추론 on, 냉각 규칙)으로 비교한 측정이 없다. kms 는 첫 모드셋 직후 프레임을 빼야 한다. 계획: [`display_vulkan_hdmi/notes/formal_measurement_plan.md`](display_vulkan_hdmi/notes/formal_measurement_plan.md) |
+| GPU NMS·HVS 평면 표시 정식 측정 | `--nms gpu` 와 `--display-backend wayland-planes`/`kms` 는 구현·검증만 됐다. CPU·V3D·glass-to-glass 를 기존 경로와 같은 조건(추론 on, 냉각 규칙)으로 비교한 측정이 없다. kms 는 첫 모드셋 직후 프레임을 빼야 한다. 계획: [`display_vulkan_hdmi/notes/formal_measurement_plan.md`](display_vulkan_hdmi/notes/formal_measurement_plan.md). [`dec_threads/`](dec_threads/summary.md) 에 `--nms gpu` 비정식 값만 있다. 옛 기준선(`display_e2e`)은 V3D 960 MHz·자동 스레드 값이므로 **기준선도 현재 조건에서 다시 재야** A/B 가 된다 |
 | KMS 종료 시 이전 상태 복원 | 복원 커밋이 `EINVAL` 로 실패하고 평면 끄기로 폴백한다(labwc FB 가 바뀐 것으로 추정, 미확인). 데스크톱 복귀에는 영향 없음 |
 | Vulkan present 무기한 대기 | 컴포지터가 frame 콜백을 주지 않으면(labwc headless) 스왑체인 경로가 `vkQueuePresentKHR` 안에서 멈추고 SIGTERM 도 안 먹는다. 원인(Mesa WSI 대기)은 추정. 평면 백엔드는 해당 없음 |
 | labwc COLOR_RANGE 뒤집힘 의존 | `wayland-planes` 는 full 을 요청해 limited 를 얻는 우회("fullhack")에 기댄다. 컴포지터가 고쳐지면 조용히 틀어지므로 debugfs 판정(`plane_color_ok`)을 매번 본다 |
 | 커밋 간격 게이트 여유 8 ms 의 최적값 | `wayland-planes`/`kms` 의 pace=source 게이트(소스 간격 − 8 ms)를 튜닝하지 않았다 |
+| 960 MHz 시절 b4/b8 GPU 느린 꼬리의 원인 | 부트로더 2026-09-25(V3D 1150 MHz) 뒤 p90 5.5 → 2.15 ms 로 사라졌지만 무엇이 꼬리를 만들었는지는 가르지 않았다([`bootloader_20260925`](pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)) |
+| 성능 카운터의 +2.6~6.3% 계단 | 1150 MHz 회차에서 실행 도중 GPU 작업 시간이 계단처럼 뛴다. 원인 미확인([`v3d_perf_counters` 회차](v3d_perf_counters/runs/bootloader_20260925/summary.md)) |
+| 표시 on 앱 내부 e2e p90 +1.9 ms | 디코더 1스레드에서 source pace 의 p90 만 3회 모두 높다(glass 평균은 같음). 원인 미확인([`dec_threads/`](dec_threads/summary.md) 결론 3) |
+| 1스레드 디코드 처리량 상한 | 약 266 FPS 는 코드 주석(`ffmpeg_drm_decoder.cpp:180`) 기준이고 직접 재지 않았다. 다중 스트림·NPU 병목이 없는 용도에서는 자동이 나을 수 있다 |
