@@ -1,0 +1,26 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 15K of event 'cycles'
+# Event count (approx.): 10805239314
+#
+# Overhead        Period  Shared Object          
+# ........  ............  .......................
+#
+    66.95%    7234516152  libhailort.so.4.24.0   
+    13.07%    1412366332  [kernel.kallsyms]      
+     9.85%    1064750855  libc.so.6              
+     2.36%     254651707  [hailo_pci]            
+     2.28%     245941874  libavcodec.so.61.19.101
+     1.06%     114849431  libvulkan_broadcom.so  
+     0.93%     100754438  libavutil.so.59.39.100 
+     0.59%      63964085  [videodev]             
+     0.54%      58701963  yvo_pipeline           
+     0.48%      51746899  [drm]                  
+     0.39%      41781497  libstdc++.so.6.0.33    
+     0.35%      38182191  libavformat.so.61.7.103
+#
+# (Tip: Print event counts in machine readable CSV format with: perf stat -x\;)
+#

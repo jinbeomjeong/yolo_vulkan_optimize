@@ -1,0 +1,22 @@
+# perf_dec_threads 2026-09-29T09:42:02+09:00
+kernel: 6.18.50+rpt-rpi-2712
+perf: perf version 6.18.50
+bootloader: 2026/09/25 15:59:09
+v3d_freq=1150
+pcie: pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+throttled=0x80000
+soc: temp=65.9'C
+gstreamer1.0-plugins-bad 1.26.2-3+rpt4+deb13u3
+hailort 4.24.0
+libavcodec61 8:7.1.5-0+deb13u1+rpt2
+libgstreamer1.0-0 1.26.2-2
+mesa-vulkan-drivers 26.2.2-1~bpo13+0~rpt1
+git HEAD: 1b9be7fab4c23ffe24a5f270565d2f42ec477ab7
+configs: app_t0 = /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_pipeline --video /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 --hef /home/pi/workspace/yolo_vulkan_optimize/03_models/yolov11m.hef --mode dmabuf --layout nhcw --batch 8 --slots 16 --quiet --csv-label app_t0 (YVO_DEC_THREADS unset = auto)
+         app_t1 = YVO_DEC_THREADS=1 /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_pipeline --video /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 --hef /home/pi/workspace/yolo_vulkan_optimize/03_models/yolov11m.hef --mode dmabuf --layout nhcw --batch 8 --slots 16 --quiet --csv-label app_t1
+         gst    = /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_gst_pipeline --video /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 --hef /home/pi/workspace/yolo_vulkan_optimize/03_models/yolov11m.hef --sink hailo --batch 8 --slots 16 --quiet --csv-label gst
+stat: perf stat -e task-clock,cycles,instructions,context-switches,cpu-migrations,page-faults -D -1 --control fifo:ctl,ack
+record: perf record -e cycles -F 2999 -D -1 --control fifo:ctl,ack
+# after 2026-09-29T10:14:06+09:00
+throttled=0x80000
+soc: temp=65.3'C

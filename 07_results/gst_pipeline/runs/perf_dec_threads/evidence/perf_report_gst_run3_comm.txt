@@ -1,0 +1,18 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 15K of event 'cycles'
+# Event count (approx.): 10357186519
+#
+# Overhead        Period  Command        
+# ........  ............  ...............
+#
+    84.43%    8744583182  yvo_gst_pipelin
+     9.35%     968053524  qtdemux0:sink  
+     3.98%     412468583  q_dec:src      
+     2.24%     232081230  q_out:src      
+#
+# (Tip: Search options using a keyword: perf report -h <keyword>)
+#

@@ -1,0 +1,20 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 17K of event 'cycles'
+# Event count (approx.): 11094630839
+#
+# Overhead        Period  Command     
+# ........  ............  ............
+#
+    90.76%   10069337832  yvo_pipeline
+     2.68%     297849905  av:hevc:df0 
+     1.78%     197792503  av:hevc:df4 
+     1.63%     181181446  av:hevc:df3 
+     1.62%     180121269  av:hevc:df1 
+     1.52%     168347884  av:hevc:df2 
+#
+# (Tip: For tracepoint events, try: perf report -s trace_fields)
+#

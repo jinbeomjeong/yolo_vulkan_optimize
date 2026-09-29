@@ -1,0 +1,15 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 15K of event 'cycles'
+# Event count (approx.): 9831884174
+#
+# Overhead        Period  Command     
+# ........  ............  ............
+#
+   100.00%    9831884174  yvo_pipeline
+#
+# (Tip: To collect Processor Trace with samples use perf record -e '{intel_pt//,cycles}' ; perf script --call-trace or --insn-trace --xed -F +ipc (remove --xed if no xed))
+#
