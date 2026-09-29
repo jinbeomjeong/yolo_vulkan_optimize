@@ -477,7 +477,9 @@ CPU 한 스레드로 전부 복사**하고 있었다. `DMABuf` caps를 강제해
 디코더가 주는 dma-buf fd를 **그대로 Vulkan으로 import** 하고, SAND 주소 계산을 셰이더가 한다.
 CPU는 그 메모리를 한 바이트도 읽지 않는다.
 
-결과: **398.5 FPS / CPU 0.23~0.28 ms/frame**
+결과: **398.5 FPS / CPU 0.23~0.28 ms/frame** (디코드만 잰 값, FFmpeg 프레임 스레드 자동 5개).
+앱은 2026-09-29부터 **프레임 스레드 1개**로 디코드한다. 파이프라인이 NPU 병목(약 51.7 FPS)이라 디코드 처리량은 1스레드(약 266 FPS)로도 넘치고,
+프레임 스레딩은 CPU(b8 −14%)와 지연(e2e −8.8 ms)만 늘렸기 때문이다([`dec_threads`](../07_results/dec_threads/summary.md), `YVO_DEC_THREADS=0`이면 자동).
 ([`REPORT.md §4.1`](../07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md)).
 
 ---

@@ -2,9 +2,9 @@
 # FFmpeg HEVC frame-thread count of yvo_pipeline — thread sweep + regression A/B (auto vs 1 thread)
 #
 # Why:
-#   The app lets FFmpeg pick its frame-thread count (thread_count = 0 -> 5 threads av:hevc:df0..4).
+#   Until 2026-09-29 the app let FFmpeg pick its frame-thread count (thread_count = 0 -> 5 threads av:hevc:df0..4).
 #   07_results/gst_pipeline/runs/perf_dec_threads/ showed that YVO_DEC_THREADS=1 (research knob read in
-#   01_src/pipeline/main.cpp, unset = 0 = auto) lowers CPU by ~0.28 ms/frame at b8 with the same FPS/detections.
+#   01_src/pipeline/main.cpp) lowers CPU by ~0.28 ms/frame at b8; the app default is now 1 (07_results/dec_threads).
 #   Before changing the app default to 1, this script collects (a) a thread-count sweep at nhcw b8/s16 and
 #   (b) auto-vs-1 A/B pairs across the other modes (ptr, nhwc dmabuf, b1/b4, gpu postproc, latency, display).
 #
@@ -27,7 +27,7 @@
 #   DISP_TIMEOUT_S=90 DISP_OUTPUT=HDMI-A-1 bash ...           # display-run guard (see below)
 #
 # Config schema: id|threads|frames|args
-#   threads = auto -> YVO_DEC_THREADS is removed from the child environment (env -u), so the app default path runs
+#   threads = auto -> YVO_DEC_THREADS=0 for that child (FFmpeg auto; the app default is 1 since 2026-09-29)
 #             N    -> YVO_DEC_THREADS=N only for that child (env YVO_DEC_THREADS=N)
 #   frames  = all  -> no --frames (full video, 1816 frames) | N -> --frames N
 #   args    = yvo_pipeline arguments; --video/--hef (absolute) and --quiet --csv-label <id> are added by this script.
@@ -77,13 +77,13 @@ DISP_OUTPUT="${DISP_OUTPUT:-HDMI-A-1}" # output wlr-randr must list before a dis
 require_bin "$BIN" yvo_pipeline
 check_only_exit
 
-# The caller's YVO_DEC_THREADS must not leak into the "auto" runs. Every child gets an explicit env -u / env VAR=N,
+# The caller's YVO_DEC_THREADS must not leak into any run. Every child gets an explicit env YVO_DEC_THREADS=0|N,
 # but the caller's value is still recorded in env_bench.txt.
 CALLER_DEC_THREADS="${YVO_DEC_THREADS-<unset>}"
 
 # id|threads|frames|args
 configs=(
-  # Sweep: nhcw b8/s16 host postproc, full video. sw_auto is the app default (thread_count 0 -> 5 threads).
+  # Sweep: nhcw b8/s16 host postproc, full video. sw_auto is FFmpeg auto (thread_count 0 -> 5 threads).
   "sw_t1            |1   |all|--mode dmabuf --layout nhcw --batch 8 --slots 16"
   "sw_t2            |2   |all|--mode dmabuf --layout nhcw --batch 8 --slots 16"
   "sw_t3            |3   |all|--mode dmabuf --layout nhcw --batch 8 --slots 16"
@@ -144,7 +144,7 @@ build_cmd() {
   read -ra argv <<<"$args"
   cmd=()
   if is_display "$args"; then cmd+=(timeout -s KILL "$DISP_TIMEOUT_S"); fi
-  if [[ "$threads" == "auto" ]]; then cmd+=(env -u YVO_DEC_THREADS)
+  if [[ "$threads" == "auto" ]]; then cmd+=(env YVO_DEC_THREADS=0)
   else cmd+=(env "YVO_DEC_THREADS=$threads"); fi
   cmd+=("$BIN" --video "$VIDEO" --hef "$HEF" "${argv[@]}")
   if [[ "$frames" != "all" ]]; then cmd+=(--frames "$frames"); fi
@@ -213,7 +213,7 @@ env_snapshot() {
   echo "hef: $HEF"
   echo "runs: $RUNS only: $ONLY cool: COOL_C=$COOL_C COOL_MAX_S=$COOL_MAX_S HOT_C=$HOT_C COOL_EVERY=$COOL_EVERY"
   echo "display guard: output $DISP_OUTPUT required, timeout -s KILL $DISP_TIMEOUT_S, SKIP_DISPLAY=$SKIP_DISPLAY"
-  echo "caller YVO_DEC_THREADS: $CALLER_DEC_THREADS (ignored: every child gets env -u or env YVO_DEC_THREADS=N)"
+  echo "caller YVO_DEC_THREADS: $CALLER_DEC_THREADS (ignored: every child gets env YVO_DEC_THREADS=0 (auto) or =N)"
   echo "env: $(env | grep -E '^(VK_|HAILO|AV_|FFREPORT)' | paste -sd ' ' || true)"
   echo "configs (id|threads|frames|args, all):"
   for c in "${configs[@]}"; do echo "  $c"; done

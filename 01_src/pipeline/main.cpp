@@ -626,7 +626,7 @@ int run(const Args& a) {
 #endif
 
     yvo::FfmpegDrmDecoder dec;
-    yvo::FfmpegDrmDecoder::Options dopt; if (const char* e = std::getenv("YVO_DEC_THREADS")) dopt.threads = std::atoi(e);  // research knob: FFmpeg frame threads (unset = 0 = auto)
+    yvo::FfmpegDrmDecoder::Options dopt; dopt.threads = 1; if (const char* e = std::getenv("YVO_DEC_THREADS")) dopt.threads = std::atoi(e);  // 1 frame thread (07_results/dec_threads); YVO_DEC_THREADS=0 -> FFmpeg auto
     dopt.extra_hw_frames = std::max(2 * yvo::kNumSlots, a.gpu_depth + 4);
 #ifdef YVO_HAVE_DISPLAY
     if (display && planes) {
