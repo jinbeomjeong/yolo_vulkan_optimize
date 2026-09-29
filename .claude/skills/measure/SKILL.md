@@ -18,7 +18,7 @@ description: >
 
 새로 짜기 전에 확인한다. 대개 `configs` 배열에 행 하나를 더하는 것으로 끝난다.
 
-`06_tools/bench/` 에 **8개**가 있다. 목록·환경변수는 [`06_tools/README.md`](../../../06_tools/README.md).
+`06_tools/bench/` 에 **9개**가 있다. 목록·환경변수는 [`06_tools/README.md`](../../../06_tools/README.md).
 
 | 스크립트 | 대상 | 출력 |
 |---|---|---|
@@ -30,11 +30,12 @@ description: >
 | `isp_bench.sh` | ISP 전처리 단독(NPU 미사용) | `07_results/isp_resize/` |
 | `isp_pipeline_bench.sh` | ISP 포함 전체 파이프라인 | `07_results/isp_resize/runs/pipeline/` |
 | `gst_pipeline_bench.sh` | 앱(`yvo_pipeline` dmabuf/NHCW) 대 GStreamer 연구 경로(`yvo_gst_pipeline --sink hailo`), b1/b4/b8 같은 slots 인터리브. CSV 앞 26열은 `pipeline_bench.sh` 와 같다(gst 의 `decode_ms` 는 nan) | `07_results/gst_pipeline/` |
+| `dec_threads_bench.sh` | 앱 FFmpeg 프레임 스레드 수(`YVO_DEC_THREADS`) 스윕 + auto 대 1 회귀 A/B. 65열 raw, 매 실행 전 냉각(`COOL_EVERY=1`), 표시 실행은 HDMI-A-1 확인 + `timeout -s KILL 90` | `07_results/dec_threads/` |
 
 > ⚠ `pipeline_bench.sh` 의 `configs` 스키마(`id|mode|layout|batch|slots` 5필드)는 **바꾸지 마라.**
 > 다른 스크립트들이 대조군 기준으로 쓴다.
 >
-> 여덟 스크립트 모두 시작할 때 `build/.bench_running` 에 PID 를 쓰고 `trap` 으로 지운다.
+> 아홉 스크립트 모두 시작할 때 `build/.bench_running` 에 PID 를 쓰고 `trap` 으로 지운다.
 > `npu_guard` 훅이 이걸 보고 측정 중 빌드·테스트를 막는다. **락을 우회하지 마라** —
 > 측정 중 다른 작업이 돌면 CPU 시간이 에러 없이 오염된다.
 
