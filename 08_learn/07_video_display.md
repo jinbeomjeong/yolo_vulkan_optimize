@@ -84,6 +84,10 @@ HW 디코더는 1080p를 **약 11배속**으로 푼다. CPU는 거의 놀고 있
 (2.0 ms도 대부분 CLI가 프레임을 CPU로 내려받는 비용이다. DRM_PRIME을 유지하면 0.55 ms,
 [`runs/ffmpeg_outfmt`](../07_results/decode_benchmark/runs/ffmpeg_outfmt/summary.md))
 
+GPU(V3D)로 푸는 길은 없다. V3DV에는 Vulkan Video 확장(`VK_KHR_video_*`)이 하나도 없고, 전용 엔진 없이
+compute 셰이더로 푸는 FFmpeg Vulkan 코덱(FFv1·ProRes·DPX)도 V3D에서는 돌지 않는다(`shaderInt64` 등 기능 부족,
+[`vulkan_compute_codecs`](../07_results/vulkan_compute_codecs/summary.md)). 그래서 **HEVC는 전용 HW 디코더, V3D는 전·후처리**라는 분업만 성립한다.
+
 그래서 이 프로젝트는 **입력을 HEVC로 못 박았다.**
 [`ffmpeg_drm_decoder.cpp`](../01_src/decode/ffmpeg_drm_decoder.cpp) 는 아예 코드로 거부한다:
 
@@ -259,7 +263,8 @@ HW 디코더가 내놓는 NV12는 **평범한 NV12가 아니다.** 행이 연속
 단위로** 처리한다. 블록 하나를 쓸 때 linear 배치면 메모리의 16군데에 흩어져 쓰게 되는데,
 세로로 긴 열 안에 두면 **훨씬 연속적**이다. 메모리 컨트롤러 입장에서 효율이 좋다.
 
-대가는 **읽는 쪽이 복잡해진다**는 것이고, 그래서 GStreamer가 여기서 넘어졌다(§7.8).
+대가는 **읽는 쪽이 복잡해진다**는 것이다. 이 프로젝트는 SAND 주소 계산을 셰이더가 직접 한다(§7.7).
+(rpt3 시절 GStreamer가 1080p에서 CPU 복사로 빠진 것을 SAND 탓으로 봤지만, 실제 원인은 크롭 처리 버그였다 — §7.7.)
 
 > 이 주소 규칙은 추측이 아니라 **실측으로 확인했다.** `yvo_drm_dump` 로 디코더 출력을 덤프하고
 > CPU de-SAND 결과를 `av_hwframe_transfer_data`(ffmpeg의 표준 변환)와 비교해
@@ -461,26 +466,43 @@ Vulkan은 플랫폼 중립이라 "창"을 모른다. 그래서 다리가 둘 필
 > ffmpeg 행의 2.0 ms도 대부분 CPU 내려받기이고, DRM_PRIME을 유지하면 386.9 FPS / 0.55 ms다
 > ([`runs/ffmpeg_outfmt`](../07_results/decode_benchmark/runs/ffmpeg_outfmt/summary.md)). 아래 결론(병목은 복사)은 그대로다.
 
-**같은 하드웨어 회로를 쓰는데 10배 차이다.** 게다가 GStreamer 경로는 CPU 코어 하나가 100% 찬다.
+**같은 하드웨어 회로를 쓰는데 10배 차이였다.** 게다가 rpt3의 GStreamer 경로는 CPU 코어 하나가 100% 찼다.
 HW 디코드를 쓰고도 CPU 비용(30.6 ms)이 SW H.265 디코드(31.8 ms)와 거의 같았다.
 **하드웨어 가속의 의미가 통째로 사라진 것이다.**
 
 **원인**: `perf` 로 프로파일하니 CPU 시간의 약 **90%가 ORC가 생성한 프레임 복사·변환 코드**였다.
-디코더 출력이 SAND128(§7.4)이라 GStreamer의 일반 경로가 그것을 **linear NV12로 되돌리려고
-CPU 한 스레드로 전부 복사**하고 있었다. `DMABuf` caps를 강제해도 복사가 남았다.
+당시에는 디코더 출력이 SAND128(§7.4)이라 GStreamer의 일반 경로가 그것을 linear NV12로 되돌리려고
+CPU로 복사한다고 해석했다. `DMABuf` caps를 강제해도 복사가 남았기 때문이다.
+**실제 원인은 SAND가 아니었다.** 1080p HEVC는 코딩 높이 1088에서 아래 8줄을 잘라 내는데(좌상단 (0,0)에서 시작하는 크롭 창),
+v4l2codecs가 이 경우의 zero-copy를 처리하지 못하고 복사로 빠지는 upstream 버그가 있었다(1.26.4, MR !9315에서 수정).
+rpt4는 이 수정을 들여왔고, 여전히 SAND128 DMABuf를 그대로 내보낸다([`runs/gst_rpt4`](../07_results/decode_benchmark/runs/gst_rpt4/summary.md)).
 
 **결론**: 병목은 디코더가 아니라 **디코더 출력을 누가 어떻게 건드리느냐**였다.
 [06_zerocopy_dmabuf.md](06_zerocopy_dmabuf.md) §6.7의 교훈과 정확히 같은 모양이다.
 
-**해법**: GStreamer를 통하지 않고 **앱 안에 libavcodec DRM_PRIME 디코더를 직접 넣었다**
+**해법(당시)**: GStreamer를 통하지 않고 **앱 안에 libavcodec DRM_PRIME 디코더를 직접 넣었다**
 ([`ffmpeg_drm_decoder.cpp`](../01_src/decode/ffmpeg_drm_decoder.cpp)).
 디코더가 주는 dma-buf fd를 **그대로 Vulkan으로 import** 하고, SAND 주소 계산을 셰이더가 한다.
 CPU는 그 메모리를 한 바이트도 읽지 않는다.
 
-결과: **398.5 FPS / CPU 0.23~0.28 ms/frame** (디코드만 잰 값, FFmpeg 프레임 스레드 자동 5개).
+결과: **398.5 FPS / CPU 0.23~0.28 ms/frame** (디코드만 잰 값, FFmpeg 프레임 스레드 자동 5개,
+[`REPORT.md §4.1`](../07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md)).
 앱은 2026-09-29부터 **프레임 스레드 1개**로 디코드한다. 파이프라인이 NPU 병목(약 51.7 FPS)이라 디코드 처리량은 1스레드(약 266 FPS)로도 넘치고,
 프레임 스레딩은 CPU(b8 −14%)와 지연(e2e −8.8 ms)만 늘렸기 때문이다([`dec_threads`](../07_results/dec_threads/summary.md), `YVO_DEC_THREADS=0`이면 자동).
-([`REPORT.md §4.1`](../07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md)).
+
+### rpt4 이후 — GStreamer 연구 경로로 다시 비교했다
+
+rpt4에서 복사가 사라졌으니 "GStreamer로도 같은 파이프라인이 되는가"를 직접 확인했다. 앱 본체는 그대로 두고,
+연구 경로 `yvo_gst_pipeline`([`01_src/gstelem/`](../01_src/gstelem/))을 따로 만들었다.
+`v4l2slh265dec`의 SAND128 DMABuf → 자체 요소 `yvosandletterbox`(앱과 같은 `SandLetterbox` 셰이더) → `yvohailosink`(같은 `HailoRunner`)다.
+
+- **검출은 바이트 동일**(`detections.jsonl`, b1·b4·b8), **FPS도 같다**(NPU 상한 51.7).
+- CPU는 GStreamer 쪽이 약 0.2 ms/frame(6%) 낮았다. perf와 인과 실험으로 보니 GStreamer의 디코드 코드가 가벼워서가 아니었다.
+  **앱의 FFmpeg 프레임 스레드 비용**이었고, 앱을 1스레드로 돌리면 차이가 74% 줄었다
+  ([`gst_pipeline`](../07_results/gst_pipeline/summary.md), [`runs/perf_dec_threads`](../07_results/gst_pipeline/runs/perf_dec_threads/summary.md)).
+  이 결과가 위의 1스레드 기본값으로 이어졌다.
+- 그래서 앱이 libavcodec을 쓰는 이유는 이제 성능이 아니다. GStreamer 경로는 **패키지 버전에 민감하다**(rpt3에서는 32.7 FPS였다)는 점이 남는다.
+  비용을 정하는 것은 프레임워크가 아니라 **복사가 있느냐**와 **스레딩**이다.
 
 ---
 
@@ -582,6 +604,9 @@ Vulkan 확장 두 개가 이것을 푼다.
 > **계획 단계의 추정치는 217 ms였다. 실측이 그 절반 이하였다.**
 > 같은 실행의 NPU e2e median이 75.3 ms이므로 **표시 경로가 더하는 지연은 약 26 ms**
 > (GPU 변환 4.2 ms + present 1~2 vsync)다.
+>
+> 이 값들은 V3D 960 MHz · FFmpeg 자동 5스레드 · CPU NMS 조건이다. 현재 기본값(1150 MHz · 1스레드 · GPU NMS)에서는
+> 같은 source pace 설정의 glass **mean**이 99.5 ms였다(median은 재지 않음, [`dec_threads`](../07_results/dec_threads/summary.md) 표시 on).
 
 Wayland에도 같은 목적의 `wp_presentation` 프로토콜이 있지만, **스왑체인 경로에서는 일부러 쓰지 않는다** —
 "목적이 겹치는 두 수단을 이중으로 두지 않는다"는 판단이다
@@ -601,7 +626,7 @@ KMS flip 이벤트 시각(kms)으로 glass-to-glass 를 잰다.
 ## 7.10 ⚠ 두 개의 함정 — 에러 없이 느려지는 것들
 
 이 절의 두 가지는 **프로그램이 정상으로 보이면서 성능만 무너지는** 경우다.
-측정을 할 사람에게 가장 위험한 종류다.
+측정을 할 사람에게 가장 위험한 종류다. (이 절의 GPU ms는 모두 V3D 960 MHz 조건이다. 1150 MHz에서는 다시 재지 않았다.)
 
 ### 함정 ① 창 모드면 2.6배 느려진다
 
@@ -833,18 +858,20 @@ loginctl activate <데스크톱 세션 id>      # 또는 sudo chvt 7 — labwc �
 **Q1. 이 보드에서 H.264 영상을 쓰면 왜 느린가?**
 
 BCM2712에는 **HEVC(H.265) 디코더 회로만** 있고 H.264 회로가 없다. H.264는 CPU가 소프트웨어로
-풀어야 해서 1080p 기준 **20.2 ms/frame** 이 든다(HW HEVC는 ffmpeg CLI로 **2.0 ms/frame**, 복사 없는 앱 경로는 0.23~0.28 ms).
+풀어야 해서 1080p 기준 **20.2 ms/frame** 이 든다(HW HEVC는 ffmpeg CLI로 **2.0 ms/frame**인데 대부분 CPU 내려받기 비용이다. 복사 없는 앱 경로는 0.23~0.28 ms).
 그래서 이 프로젝트의 디코더는 아예 HEVC가 아니면 거부한다
 (`ffmpeg_drm_decoder.cpp`: `if (st->codecpar->codec_id != AV_CODEC_ID_HEVC) return fail(...)`).
 근거: [`decode_benchmark/summary.md`](../07_results/decode_benchmark/summary.md).
 
 **Q2. 같은 HW 디코더를 쓰는데 GStreamer 경로가 10배 느렸던 이유는?**
 
-디코더 출력이 **SAND128 타일 배치**인데, GStreamer의 일반 경로가 그것을 linear NV12로
-되돌리려고 **CPU 한 스레드로 프레임 전체를 복사**했다(perf에서 CPU 시간의 약 90%가 ORC 생성 복사 코드).
-32.7 FPS / CPU 30.6 ms/frame이었고, **HW 디코드를 쓰고도 SW H.265(31.8 ms)와 CPU 비용이 같았다**(rpt3 기준, rpt4에서는 복사가 사라져 0.24 ms).
-해법은 GStreamer를 거치지 않고 **앱에 libavcodec DRM_PRIME 디코더를 직접 넣어** dma-buf fd를
+rpt3 패키지의 `v4l2slh265dec`가 **CPU 한 스레드로 프레임 전체를 복사**했다(perf에서 CPU 시간의 약 90%가 ORC 생성 복사 코드).
+32.7 FPS / CPU 30.6 ms/frame이었고, **HW 디코드를 쓰고도 SW H.265(31.8 ms)와 CPU 비용이 같았다.**
+당시에는 SAND128 배치 탓으로 봤지만, 원인은 1080p의 (0,0) 크롭 창에서 zero-copy가 깨지는 upstream 버그(1.26.4에서 수정)였다.
+rpt4에서는 복사가 사라져 0.24 ms/frame이다.
+당시의 해법은 GStreamer를 거치지 않고 **앱에 libavcodec DRM_PRIME 디코더를 직접 넣어** dma-buf fd를
 Vulkan으로 import하고 SAND 주소 계산을 셰이더가 하게 한 것이다 → 398.5 FPS / 0.23~0.28 ms.
+rpt4 이후 GStreamer 연구 경로도 검출·FPS가 앱과 같다(§7.7).
 
 **Q3. 스왑체인 포맷이 왜 `R8G8B8A8_UNORM` 인가? `_SRGB` 를 쓰면 안 되는가?**
 

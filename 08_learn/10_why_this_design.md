@@ -72,6 +72,10 @@ HailoRT가 CPU에서 변환하게 두었다. 그 변환이 **프레임당 약 14
 결과: **CPU 17.6 → 3.5 ms/프레임.** FPS는 51.55 → 51.63으로 거의 그대로다(병목이 NPU이므로).
 검출 결과는 완전히 동일.
 
+> 이 장의 CPU·e2e 수치는 따로 적지 않으면 **FFmpeg 자동 5스레드** 디코드 조건이고, GPU ms는 **V3D 960 MHz** 조건이다.
+> 디코더 1스레드 기본값(2026-09-29) 뒤에는 이 쌍이 16.97 → 2.93 ms/프레임이다(b8, [`dec_threads`](../07_results/dec_threads/summary.md)).
+> 차이(약 14 ms)와 결론은 그대로다.
+
 ### 일반화 — 이게 이 프로젝트 전체를 지배한다
 
 > **이 파이프라인에서 GPU가 쓴 버퍼를 CPU로 훑는 설계는 겉보기보다 약 10배 비싸다.**
@@ -152,6 +156,9 @@ CPU **2.921 → 1.122 ms/프레임**, FPS 차이 −0.03%(사실상 동일), 검
   프레임(후보 1024개 초과, IoU가 0.7 ± 4e-6 안)은 셰이더가 알리고 그 프레임만 CPU 함수로 처리한다.
 - **아직 모르는 것**: 억제 한 번의 GPU 시간이 CPU 억제(수 µs)보다 **클 수 있다.** 이 교체는
   CPU 시간을 줄이려는 것이 아니다. 전체 파이프라인의 FPS·지연·CPU에 주는 영향은 정식 측정 전이다.
+  비정식 값은 있다. `dec_threads` 측정의 GPU 후처리·표시 설정이 기본값 `--nms gpu`로 돌아
+  `efficient_nms` 평균이 0.036~0.050 ms(1150 MHz, 폴백 0)로 기록됐다. CPU 억제보다 크다는 가설과 맞는다
+  ([`dec_threads`](../07_results/dec_threads/summary.md) `results_raw.csv`, NMS A/B가 아님).
 
 ---
 
@@ -184,6 +191,7 @@ PCIe는 세대(Gen2 / Gen3)와 레인 수(x1)로 대역폭이 정해진다. (→
 **(1) 이 프로젝트는 FPS를 목표로 삼지 않는다.**
 전처리·후처리·표시를 아무리 최적화해도 상한은 그대로다.
 그래서 목표를 **CPU 부하 최소화**로 잡았고, 3.31 → 1.12 ms/프레임(표시 없이)을 달성했다.
+(자동 5스레드·CPU NMS 조건. 1스레드·GPU NMS 기본값에서 같은 GPU 후처리 b2/s4 설정은 1.05 ms다, [`dec_threads`](../07_results/dec_threads/summary.md).)
 
 **(2) 다중 스트림은 불가능하다 — 측정할 필요도 없다.**
 1080p30 영상 두 개면 초당 60프레임이 필요한데 NPU 상한이 51.7이다.
@@ -217,6 +225,7 @@ NPU에 한 번에 여러 장을 묶어 보내는 것이 **batch**, 동시에 몇
 | b8/s16 | 51.49 | 325.3 ms | **15.53** |
 
 맨 오른쪽 열을 보라. **`slots` 값과 거의 같다.**
+(자동 5스레드 조건. b8/s16은 `dec_threads`의 같은 회차에서 자동 327.4 → 1스레드 318.6 ms로 약 9 ms 짧고, 비율은 그대로다 — [`dec_threads`](../07_results/dec_threads/summary.md).)
 
 > **지연 ≈ slots × 프레임 주기**
 
@@ -291,6 +300,8 @@ NPU에 한 번에 여러 장을 묶어 보내는 것이 **batch**, 동시에 몇
 | **1920×1080 (1:1)** | **4.23 ms** |
 | 1280×720 | 5.27 ms |
 | 1600×900 | 7.64 ms |
+
+(V3D 960 MHz 조건. 1150 MHz에서는 다시 재지 않았다.)
 
 ### 왜
 
@@ -415,6 +426,49 @@ GPU 후처리를 넣었더니 `b2/s4` 설정에서 FPS가 **24.48**이 나왔다
 
 ---
 
+## 사슬 9 — V3D에는 비디오 엔진도 64비트 정수도 없다 → HW 디코더 + int32 셰이더
+
+### 관측
+
+- V3DV에는 Vulkan Video 확장(`VK_KHR_video_*`)이 하나도 없다. V3D는 3D·컴퓨트 GPU이고, HEVC 회로는 별도의 V4L2 장치다.
+- 전용 엔진 없이 compute 셰이더로 푸는 FFmpeg 8.1.3의 Vulkan 코덱(FFv1·ProRes·DPX)을 빌드해 V3D에서 돌려 봤다.
+  **모두 실패했다.** 셰이더가 쓰는 `Int64`, 포맷 없는 storage image 쓰기, runtime descriptor array를 V3D가 지원하지 않는다.
+  증상은 셰이더 컴파일러 abort, 파이프라인 생성이 끝나지 않음, 그리고 **에러 없는 틀린 출력**이었다.
+- 같은 셰이더가 llvmpipe(CPU Vulkan)에서는 맞게 돌지만 CPU 디코더보다 12~170배 느렸다. 돌더라도 이득이 없다.
+- HEVC 자체도 GPU에 맞지 않는다. CABAC 엔트로피 디코드는 완전 직렬이고, 인트라 예측은 이웃 블록에 의존한다.
+
+### 결정
+
+**디코드는 전용 HW 디코더(V4L2, DRM_PRIME)에 맡기고, V3D는 자체 int32 셰이더로 전·후처리만 한다.**
+지금 구조가 이 보드에서 성립하는 유일한 분업이다. 자체 셰이더를 쓸 때는 64비트 정수와 포맷 없는 image store를 피한다.
+
+**근거**: [`vulkan_compute_codecs/summary.md`](../07_results/vulkan_compute_codecs/summary.md), [05장](05_vulkan_compute.md) §5.9
+
+---
+
+## 사슬 10 — 디코드 비용을 정하는 것은 프레임워크가 아니라 복사와 스레딩이다
+
+### 관측
+
+- rpt3 GStreamer는 같은 HW 디코더로 32.7 FPS / CPU 30.6 ms였다. 원인은 1080p 크롭 창 버그로 생긴 CPU 복사였고,
+  rpt4에서 복사가 사라지자 381.5 FPS / 0.24 ms가 됐다([`runs/gst_rpt4`](../07_results/decode_benchmark/runs/gst_rpt4/summary.md)).
+- ffmpeg CLI의 2.0 ms/frame도 대부분 CPU 내려받기였다. DRM_PRIME을 유지하면 0.55 ms다([`runs/ffmpeg_outfmt`](../07_results/decode_benchmark/runs/ffmpeg_outfmt/summary.md)).
+- rpt4 GStreamer 연구 경로(`yvo_gst_pipeline`)는 앱과 검출이 바이트 동일, FPS가 같았고 CPU는 약 6% 낮았다.
+  그 차이는 앱의 **FFmpeg 프레임 스레드** 비용이었다([`gst_pipeline`](../07_results/gst_pipeline/summary.md), [`runs/perf_dec_threads`](../07_results/gst_pipeline/runs/perf_dec_threads/summary.md)).
+- 프레임 스레드를 1개로 줄이면 b8에서 CPU −14%, e2e −8.8 ms였다. 디코드 처리량(1스레드 약 266 FPS)은 NPU 상한(51.7)보다 훨씬 높다
+  ([`dec_threads`](../07_results/dec_threads/summary.md)).
+
+### 결정
+
+- 앱의 디코더 프레임 스레드 기본값을 **1**로 바꿨다(`YVO_DEC_THREADS=0`이면 자동). 대가는 표시 on에서 앱 내부 e2e p90 +1.9 ms다.
+- 앱은 libavcodec을 계속 쓴다. 이유는 이제 성능이 아니라 **패키지 버전에 덜 민감하다는 것**이다.
+
+### 여기서 얻을 교훈
+
+사슬 3과 같은 모양이다. **병목이 아닌 단계(디코드)에 병렬성을 주면 이득 없이 비용만 는다.**
+
+---
+
 ## 사슬들을 한 장으로
 
 ```
@@ -440,6 +494,10 @@ ISP가 SAND128 직접 수용 ──▶ 23% 빠름, 그러나 검출 −2.33%
                               └──▶ 보류 + 재검토 조건 3개      (사슬 7)
 
 계측하던 in-flight 값 ──▶ 조용한 절반 성능 버그 발견           (사슬 8)
+
+V3D에 Vulkan Video·Int64 없음 ──▶ HW 디코더 + int32 셰이더 분업   (사슬 9)
+
+디코드 비용 = 복사 유무 + 스레딩 ──▶ 1스레드 기본값, 프레임워크는 무관 (사슬 10)
 ```
 
 ---
@@ -484,7 +542,7 @@ V3D가 커맨드 버퍼를 합치면서 한쪽 구간이 0에 가깝게 잡히�
 지연에서 얼마나 이득인지도 아직 모른다(프로브 메모는 약 1 vblank 차이를 봤다 —
 [`notes/kms_vs_wayland.md`](../07_results/display_vulkan_hdmi/notes/kms_vs_wayland.md), 파이프라인 조건에서는 미측정).
 
-**전체 목록의 정본은 [`07_results/README.md`](../07_results/README.md#아직-열려-있는-것) 다**(13항목).
+**전체 목록의 정본은 [`07_results/README.md`](../07_results/README.md#아직-열려-있는-것) 다**(17항목).
 위 여섯은 그중 이 챕터의 사슬과 직접 이어지는 것만 고른 것이다.
 
 ---

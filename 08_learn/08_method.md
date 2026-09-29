@@ -24,6 +24,8 @@
 | batch / slots 설정 | FPS 24 ~ 51, 지연 82 ~ 325 ms ([`op_point/summary.md`](../07_results/op_point/summary.md)) |
 | 전체화면 vs 창 모드 | 표시 변환이 **2.6배** ([`display_vulkan_hdmi/summary.md`](../07_results/display_vulkan_hdmi/summary.md)) |
 | 측정 중에 다른 작업이 돌았는지 | CPU 측정이 조용히 오염됨 |
+| 펌웨어(부트로더 EEPROM)가 정한 V3D 클럭 (960 vs 1150 MHz) | GPU 전처리 b8 평균 2.6 → 2.0 ms, p90 5.5 → 2.15 ms. FPS·CPU는 그대로 ([`bootloader_20260925`](../07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)) |
+| FFmpeg 디코더 프레임 스레드 수 (자동 5 vs 1) | b8 CPU −14%, e2e −8.8 ms. FPS·검출은 그대로 ([`dec_threads`](../07_results/dec_threads/summary.md)) |
 
 **그래서 이 프로젝트는 수치를 낼 때 반드시 조건을 함께 적는다.**
 조건 없는 수치는 쓰지 않는다는 규칙이 [`07_results/README.md`](../07_results/README.md) 맨 위에 있다:
@@ -90,6 +92,8 @@ V3D가 커맨드 버퍼 두 개를 한 작업으로 합치면서 한쪽 구간�
 C가 느리게 나오면 그게 C가 느린 건지 칩이 뜨거운 건지 구분할 수 없다.
 
 **(나)는 열 편향을 세 설정에 고르게 퍼뜨린다.** 이 프로젝트의 모든 벤치 스크립트가 (나)다.
+다만 (나)도 **설정 순서는 고정**이다. 예컨대 `dec_threads`의 A/B 쌍에서는 늘 자동 스레드가 먼저 돌았다.
+매 실행 전 냉각으로 순서 편향을 줄였지만 교대(ABBA)하지는 않았다는 한계를 summary에 적어 두었다.
 
 ---
 
@@ -133,6 +137,9 @@ HailoRT 런타임은 `hailort.log` 에 온도·클럭 경고를 남긴다.
 
 그래서 모든 벤치 스크립트가 실행마다 **환경 스냅샷**을 남긴다(`env_bench.txt`):
 커널 버전, SoC·Hailo 칩 온도, 스로틀링 상태, PCIe 링크 speed·width, 바이너리 체크섬.
+단 **부트로더 버전과 V3D 클럭(`v3d_freq`)은 공통 스냅샷에 없다.** 2026-09-25 부트로더가 V3D 클럭을
+960 → 1150 MHz로 조용히 바꾼 것도 손으로 기록해서 알았다(`bootloader_*/env/firmware.txt`).
+지금은 `gst_pipeline_bench.sh`·`dec_threads_bench.sh`·`isp_bench.sh`만 v3d 클럭을 따로 적는다.
 
 > 체크섬까지 남기는 이유: "측정한 그 바이너리가 지금 이 바이너리가 맞나"를
 > 나중에 확인할 수 있어야 하기 때문이다.
@@ -146,7 +153,9 @@ FPS는 멀쩡해 보이는데 "CPU 2.18 ms/frame"만 틀리게 나오는 식이�
 
 이 프로젝트는 아예 자동 차단 장치를 뒀다:
 [`.claude/hooks/npu_guard.sh`](../.claude/hooks/npu_guard.sh) 가 벤치가 도는 동안
-NPU를 여는 명령과 빌드 명령을 막는다.
+NPU를 여는 명령과 빌드·테스트 명령을 막는다. GStreamer 연구 도구도 가린다
+(`yvo_gst_pipeline --sink hailo`는 NPU 사용, `fake`·`hold`는 부하, `test_gst_detections`는 NPU 테스트).
+벤치 도중 Ctrl+C를 누르면 다음 설정으로 넘어가지 않고 락을 지운 뒤 끝난다(종료 코드 130, TERM은 143).
 
 막는 이유가 둘인데, 주석에 **두 번째가 더 비싸다**고 적혀 있다:
 1. `HAILO_DEVICE_IN_USE` 충돌 (에러가 나므로 금방 안다)
@@ -204,6 +213,28 @@ NPU를 여는 명령과 빌드 명령을 막는다.
 이 프로젝트에서 GPU 후처리로 바꾼 뒤, **호스트 NMS 함수의 CPU 점유율이 45.10% → 0건**이
 된 것을 perf로 확인했다([`gpu_postproc_e2e/summary.md`](../07_results/gpu_postproc_e2e/summary.md)).
 "FPS가 올랐다"가 아니라 **"그 일을 하던 코드가 정말 안 돌게 됐다"** 를 직접 본 것이다.
+
+**도구가 보고하는 구간만 잰다 — `perf_window`.** 그냥 `perf record`를 걸면 초기화(장치 열기, 셰이더 로드)까지 섞인다.
+`yvo_pipeline`과 `yvo_gst_pipeline`은 `cpu_ms_per_frame`을 재는 구간의 시작과 끝에서 perf에 신호를 보낸다
+([`tool_util.hpp`](../01_src/toolkit/tool_util.hpp) `perf_window`).
+
+```
+perf stat|record -D -1 --control fifo:<ctl>,<ack> -- env YVO_PERF_CTL=<ctl> YVO_PERF_ACK=<ack> <도구> ...
+```
+
+`-D -1`은 "처음엔 끈 채로 시작"이다. 환경변수가 없으면 아무 일도 하지 않는다.
+perf 없이 `YVO_PERF_CTL`에 아무도 읽지 않는 FIFO를 주면 `open()`에서 영원히 멈추니 주의한다.
+
+**perf의 해석은 인과 실험으로 확인한다.** 앱이 GStreamer 경로보다 CPU를 약 0.2 ms/frame 더 쓰는 이유를 perf로 나눠 봤다.
+첫 회차([`perf_breakdown`](../07_results/gst_pipeline/runs/perf_breakdown/summary.md))는 차이의 약 70%가 HailoRT NMS 루프에서 나온다고 보고,
+FFmpeg 프레임 스레드가 늘린 메모리 지연을 원인으로 **추정**했다. 그래서 앱의 스레드만 1개로 줄이는 실험을 했다
+([`perf_dec_threads`](../07_results/gst_pipeline/runs/perf_dec_threads/summary.md)). 판정 기준은 측정 전에 정했다.
+
+- 원인(FFmpeg 프레임 스레드)은 **확정**됐다. 1스레드에서 CPU 차이가 74% 줄었다.
+- 메커니즘(NMS 루프의 메모리 지연)은 **재현되지 않았다.** 이 회차에서는 기본 앱의 NMS 루프도 GStreamer와 같았다.
+  첫 회차의 NMS 차이는 실행 사이의 변동이었고, perf 수치의 회차 간 변동이 최대 약 15%라는 것도 이때 알았다.
+
+교훈: **perf 한 회차의 심볼 분해로 메커니즘을 결론 내리지 않는다.** 변수를 하나 바꾸는 실험으로 확인한다.
 
 ---
 
@@ -278,6 +309,9 @@ NPU를 여는 명령과 빌드 명령을 막는다.
 | `display_convert` 워크그룹 3×85가 1.83배 빠른 이유 | **미확정 가설** |
 | V3D 쪽 캐시 일관성이 어떻게 유지되는지 | **가르지 못함** (결정적 실험에 root 권한 필요) |
 | `pace=asap`의 GPU timestamp 평균 왜곡 | **추정, 미확인** → 해당 값 인용 금지 |
+| 옛 펌웨어(960 MHz)에서 b4·b8 GPU 시간에 느린 꼬리(p90 5.5 ms)가 있던 이유 | **가르지 못함** (클럭 복귀나 제출 겹침 추정) |
+| 1150 MHz에서 GPU 작업 시간이 +2.6~6.3% 계단으로 바뀌는 현상 | **원인 미확인** (늘어난 몫은 전부 메모리 읽기 대기) |
+| 디코더 1스레드에서 표시 on 앱 내부 e2e p90이 +1.9 ms인 이유 | **추정** (source pace에서 가끔 한 프레임 준비가 늦음) |
 
 각 `summary.md` 끝에는 **"주의·남은 일"** 절이 있고,
 [`07_results/README.md`](../07_results/README.md) 와

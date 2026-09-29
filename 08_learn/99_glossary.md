@@ -24,6 +24,7 @@
 | **대조군 (control)** | 바꾸지 않은 기준 설정. 오늘 환경이 과거와 같은지 확인하는 용도 → [08](08_method.md) |
 | **perf** | 어느 함수가 CPU 시간을 쓰는지 보여 주는 리눅스 도구 → [08](08_method.md) |
 | **ASan / UBSan** | 메모리 오류·정의되지 않은 동작을 잡는 컴파일러 기능 → [08](08_method.md) |
+| **`perf_window`** | perf를 도구가 보고하는 CPU 구간에서만 켜는 헬퍼(`YVO_PERF_CTL`/`YVO_PERF_ACK` FIFO, `perf -D -1 --control`) → [08](08_method.md), [09](09_code_map.md) |
 
 ---
 
@@ -42,6 +43,7 @@
 | **통합 메모리** | CPU·GPU·NPU가 같은 DRAM을 쓰는 구조. zero-copy의 전제 → [02](02_hardware.md) |
 | **SIMD** | Single Instruction Multiple Data. 명령 하나로 여러 데이터를 동시에 처리하는 방식. GPU가 대량 반복에 강한 이유 → [02](02_hardware.md) |
 | **거버너 (governor)** | CPU 클럭을 부하에 따라 올리고 내리는 커널 정책. 측정값을 흔드는 변수 중 하나 → [02](02_hardware.md) |
+| **부트로더 EEPROM / `v3d_freq`** | 보드 펌웨어와 그것이 정하는 V3D(GPU) 클럭. 2026-09-25 부트로더가 기본값을 960 → 1150 MHz로 올려 GPU ms가 바뀌었다. `vcgencmd get_config v3d_freq`로 읽는다 → [05](05_vulkan_compute.md), [08](08_method.md) |
 
 ---
 
@@ -87,6 +89,9 @@
 | **배리어 (barrier)** | "여기까지 끝난 다음에 다음을 해라"를 GPU에 알리는 것 → [05](05_vulkan_compute.md) |
 | **fence / semaphore** | GPU 작업 완료를 기다리는 동기화 객체. fence는 CPU가, semaphore는 GPU가 기다린다 → [05](05_vulkan_compute.md) |
 | **timestamp query** | GPU가 각 구간에 쓴 시간을 재는 수단 → [05](05_vulkan_compute.md), [08](08_method.md) |
+| **성능 카운터 (`VK_KHR_performance_query`)** | GPU 하드웨어 카운터(QPU-active, 메모리 읽기 대기 등)를 읽는 확장. 시간이 **왜** 걸리는지 본다. 한 쿼리가 안의 잡을 합산하고 다른 클라이언트 잡이 섞인다 → [05](05_vulkan_compute.md) |
+| **Vulkan Video** | 전용 비디오 엔진으로 디코드·인코드하는 Vulkan 확장(`VK_KHR_video_*`). V3DV에는 **없다** → [05](05_vulkan_compute.md), [07](07_video_display.md) |
+| **`shaderInt64`** | 셰이더에서 64비트 정수를 쓸 수 있는지. V3D는 false라 자체 셰이더는 int32로만 짠다 → [05](05_vulkan_compute.md), [10](10_why_this_design.md) |
 | **검증 레이어 (validation layer)** | Vulkan 사용법이 틀렸을 때 알려 주는 디버그 계층 → [05](05_vulkan_compute.md) |
 | **VUID** | Valid Usage ID. 검증 레이어가 인용하는 스펙 규칙 번호 → [05](05_vulkan_compute.md) |
 | **storage image** | 셰이더가 직접 픽셀을 써넣을 수 있는 이미지 → [07](07_video_display.md) |
@@ -101,6 +106,8 @@
 | **컨테이너 / 코덱** | mp4는 담는 그릇(컨테이너), H.264·HEVC는 압축 방식(코덱) → [07](07_video_display.md) |
 | **HEVC (H.265)** | 압축 코덱. 이 보드는 **이것만 하드웨어로 푼다** → [07](07_video_display.md) |
 | **디코드 (decode)** | 압축된 영상을 그림으로 푸는 것 → [07](07_video_display.md) |
+| **프레임 스레딩 (frame threading)** | 디코더가 여러 프레임을 스레드 여러 개로 동시에 푸는 방식. 처리량은 늘지만 CPU·지연이 는다. 앱은 2026-09-29부터 1스레드(`YVO_DEC_THREADS`) → [07](07_video_display.md), [10](10_why_this_design.md) |
+| **`v4l2slh265dec`** | GStreamer의 HW HEVC 디코더 요소(v4l2codecs, stateless). rpt3 패키지에서는 1080p에서 CPU 복사로 빠졌고 rpt4에서 고쳐졌다 → [07](07_video_display.md) §7.7 |
 | **YUV / RGB** | 색을 표현하는 두 방식. 영상은 YUV, 화면은 RGB → [07](07_video_display.md) |
 | **4:2:0 크로마 서브샘플링** | 색 정보를 밝기보다 성기게 저장하는 것. 사람 눈이 색 해상도에 둔한 성질을 이용 → [07](07_video_display.md) |
 | **NV12** | Y 평면 + UV 인터리브 평면으로 된 4:2:0 배치 → [07](07_video_display.md) |

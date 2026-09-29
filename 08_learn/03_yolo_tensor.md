@@ -150,6 +150,7 @@ Hailo-8은 NHCW를 받는다. 우리 GPU 전처리 셰이더가 NHWC로 써 놓�
 **순서를 바꿔 주는 일(전치, transpose)** 을 대신 한다. 공짜가 아니다. 이 프로젝트에서
 그 비용은 프레임당 약 **14 ms**였다
 ([`10_paper/paper_ko.md`](../10_paper/paper_ko.md) §4.3.2, CPU 17.6 → 3.5 ms).
+(이 장의 CPU ms는 FFmpeg 자동 5스레드 조건이다. 1스레드 기본값에서는 16.97 → 2.93 ms이고, 차이 약 14 ms는 그대로다 — [`dec_threads`](../07_results/dec_threads/summary.md).)
 
 **이유 2: 읽는 방향에 따라 속도가 10배까지 달라진다.**
 

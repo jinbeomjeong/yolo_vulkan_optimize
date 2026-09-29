@@ -105,6 +105,10 @@ DRAM까지 가지 않고 캐시에서 준다. 작고 빠른 것과 크고 느린
 
 `disp_asap` 실행(34.87 FPS, 1.842 ms/frame)으로 계산해도 34.87 × 1.842 ≈ 64 ms로 거의 같다.
 
+> 조건: 두 값은 FFmpeg 자동(5) 프레임 스레드, V3D 960 MHz, CPU NMS에서 쟀다.
+> 앱 기본값이 1스레드로 바뀐 뒤 같은 `disp_source` 설정은 CPU 2.07 → 1.78 ms/frame(−14%)이다([`dec_threads`](../07_results/dec_threads/summary.md)).
+> 1스레드 값으로 계산하면 약 5.3%가 되고, 결론은 그대로다.
+
 > ⚠ 두 실행은 **다른 조건**이라 FPS·CPU·glass 값을 서로 섞어 인용하면 안 된다
 > ([`07_results/README.md`](../07_results/README.md) 맨 위 경고). 위에서는 각 실행 안의
 > 값끼리만 곱했기 때문에 문제가 없다.
@@ -150,6 +154,17 @@ SIMD의 폭과 한 번에 묶을 수 있는 일의 크기는 하드웨어마다 
 - **서브그룹(subgroup) 크기 16 고정** — 한 명령이 동시에 먹는 데이터가 16개 묶음이다
 - **워크그룹(workgroup) 최대 256 invocation** — 한 덩어리로 묶어 보낼 수 있는 작업 단위가 256개까지
 - 스테이지당 스토리지 버퍼 8개, 스토리지 이미지 4개, `descriptorIndexing` 미지원
+- **`shaderInt64` 미지원, 포맷 없는 스토리지 이미지 쓰기(`shaderStorageImageWriteWithoutFormat`) 미지원**, `runtimeDescriptorArray` 미지원
+- **Vulkan Video 확장이 없다**(`VK_KHR_video_queue` 0). V3D에는 비디오 엔진이 없고, HEVC 디코드는 별도의 V4L2 블록(2.4절)이 한다.
+  그래서 GPU로 영상을 디코드하는 길은 막혀 있다. FFmpeg 8.x의 Vulkan compute 코덱(FFv1·ProRes·DPX)도 위 세 기능을 요구해서 V3DV에서는 돌지 않는다.
+  컴파일러 abort, 컴파일 행, 또는 **조용히 틀린 출력**으로 끝난다([`vulkan_compute_codecs`](../07_results/vulkan_compute_codecs/summary.md)).
+  자체 셰이더도 64비트 정수와 포맷 없는 store를 피해야 한다.
+
+**클럭은 펌웨어가 정한다.** V3D 클럭은 부트로더 EEPROM이 바뀌면 `config.txt`를 건드리지 않아도 달라진다.
+2026-09-25 부트로더에서 펌웨어 기본값 `v3d_freq`가 960 → **1150 MHz**로 올랐다.
+그 결과 GPU 전처리가 b1 기준 2.11 → 1.81 ms(−14%)로 줄었고, b4·b8의 느린 꼬리(p90 5.5 ms)가 사라졌다. FPS와 CPU는 그대로다
+([`bootloader_20260925`](../07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)).
+**2026-09-29 이전 문서의 GPU ms는 960 MHz 값이다.** 확인 명령은 `vcgencmd get_config v3d_freq`와 `vcgencmd measure_clock v3d`다.
 
 ### 타일 기반 렌더러(tile-based renderer)란 무엇인가
 
@@ -168,11 +183,11 @@ DRAM 왕복이 줄어 전기를 크게 아끼지만 **대가가 있다.** 타일
 그래픽스 파이프라인(삼각형을 그리는 방식)으로 만들면 위 비용을 그대로 맞는다. 그래서 오버레이를
 **컴퓨트 셰이더로 직접 픽셀을 찍는 방식**(컴퓨트 래스터라이저)으로 구현했다
 ([`10_paper/paper_ko.md`](../10_paper/paper_ko.md) §3.3 제약 3 마지막 항목, 구현은 §4.5).
-셰이더는 [`02_shaders/overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) 이고 실측 0.128~0.196 ms다
+셰이더는 [`02_shaders/overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) 이고 실측 0.128~0.196 ms다(V3D 960 MHz)
 ([`display_e2e/summary.md`](../07_results/display_e2e/summary.md) §3.1).
 
 타일 구조는 성능 숫자에도 직접 나타난다. 표시 변환 셰이더의 워크그룹 모양을
-16×16(64×16 픽셀 타일)에서 3×85(12×85 픽셀)로 바꿨더니 **7.74 ms → 4.23 ms로 1.83배 빨라졌다**
+16×16(64×16 픽셀 타일)에서 3×85(12×85 픽셀)로 바꿨더니 **7.74 ms → 4.23 ms로 1.83배 빨라졌다**(V3D 960 MHz)
 — 같은 invocation 수인데 세로로 긴 모양이 결정적으로 빠르다
 ([`display_vulkan_hdmi/summary.md`](../07_results/display_vulkan_hdmi/summary.md) 결론 3).
 
@@ -313,20 +328,27 @@ CPU가 소프트웨어로 풀 수밖에 없다. 추측이 아니라 측정으로
 ### 함정 하나 — "하드웨어를 쓰는데 왜 안 빠르지"
 
 같은 하드웨어 디코더를 GStreamer의 `v4l2slh265dec`로 쓰면 **32.7 FPS, CPU 30.6 ms/frame**이 나왔다(2026-09-20, gst-plugins-bad rpt3).
-하드웨어를 쓰는데도 소프트웨어 디코드와 CPU 비용이 거의 같다. 원인은 디코더가 아니라
-**그 뒤의 복사**다. `perf` 프로파일에서 CPU 시간의 약 90%가 프레임 복사·변환 코드였다 —
-디코더가 내놓는 **SAND 타일 포맷**을 CPU 한 스레드가 일반 메모리로 옮기고 있었다
-(같은 문서 해석 1 — 문서는 이 원인을 "추정한다"고 적는다).
-이 복사는 알려진 upstream 버그(1.26.4에서 수정)였고, 2026-09-29 rpt4 패키지가 수정을 들여오자 DMABuf 경로가
-**381.5 FPS / 0.24 ms/frame**이 됐다([`decode_benchmark/runs/gst_rpt4`](../07_results/decode_benchmark/runs/gst_rpt4/summary.md)).
+하드웨어를 쓰는데도 소프트웨어 디코드와 CPU 비용이 거의 같았다. 원인은 디코더가 아니라
+**그 뒤의 복사**였다. `perf` 프로파일에서 CPU 시간의 약 90%가 프레임 복사·변환 코드였다.
+복사를 일으킨 것은 SAND 포맷 자체가 아니었다. 1080p HEVC는 코딩 높이 1088에서 아래 8줄을 잘라 내는데,
+좌상단 (0,0) 크롭에서 zero-copy가 깨지는 **upstream 버그**가 원인이었다
+([MR !9315](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/9315), 1.26.4에서 수정).
+배포판 1.26.2 rpt3에는 이 수정이 없었다. 2026-09-25 배포된 rpt4(이 장비 설치는 09-29)가 수정을 들여오자
+DMABuf 경로가 **381.5 FPS / 0.24 ms/frame**이 됐다. rpt4도 SAND128 DMABuf를 그대로 내보낸다
+([`decode_benchmark/runs/gst_rpt4`](../07_results/decode_benchmark/runs/gst_rpt4/summary.md)).
 
 **교훈: 하드웨어 블록을 썼다는 사실만으로는 아무것도 보장되지 않는다.
 그 출력이 다음 단계까지 복사 없이 가느냐가 실제 비용을 정한다.**
 
-그래서 이 프로젝트는 GStreamer 대신 libavcodec의 DRM_PRIME 경로를 직접 써서 디코더 출력 dma-buf를
-GPU가 바로 읽게 만들었다. 디코드 CPU 비용은 **0.23~0.28 ms/frame**까지 내려간다
+그래서 이 프로젝트는 (rpt3 시절에) GStreamer 대신 libavcodec의 DRM_PRIME 경로를 직접 써서 디코더 출력 dma-buf를
+GPU가 바로 읽게 만들었다. 디코드 CPU 비용은 **0.23~0.28 ms/frame**까지 내려간다(FFmpeg 자동 5스레드 조건)
 ([`07_results/README.md`](../07_results/README.md) 실험 목록, 원 출처는
 [`pipeline_ffmpeg_vulkan_hailo/REPORT.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md) §4.1).
+rpt4 이후 GStreamer로 같은 파이프라인을 만든 연구 경로(`01_src/gstelem/`)는 결과가 앱과 같았다.
+검출은 바이트 동일하고 FPS도 같으며, CPU는 약 6% 낮았다([`gst_pipeline`](../07_results/gst_pipeline/summary.md)).
+CPU 차이는 FFmpeg 프레임 스레드 비용이었다([`perf_dec_threads`](../07_results/gst_pipeline/runs/perf_dec_threads/summary.md)).
+그래서 앱도 기본값을 1스레드로 바꿨다([`dec_threads`](../07_results/dec_threads/summary.md)).
+지금 두 경로의 차이는 성능이 아니라 **패키지 버전 의존성**이다. GStreamer 경로는 rpt4 이상이 필요하다.
 상세는 [07_video_display.md](07_video_display.md), zero-copy는 [06_zerocopy_dmabuf.md](06_zerocopy_dmabuf.md).
 
 ---
@@ -429,6 +451,7 @@ V3D 드라이버가 내놓는 Vulkan 메모리 타입은 **`DEVICE_LOCAL | HOST_
 NPU 입력 레이아웃을 NHCW로 바꿔 CPU가 그 메모리를 읽는 일 자체를 없앤 것이
 **CPU 17.6 → 3.5 ms/frame** 개선의 본질이다
 ([`pipeline_ffmpeg_vulkan_hailo/REPORT.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md) §4.3).
+(FFmpeg 자동 5스레드 조건이다. 1스레드 기본값에서는 b8 기준 16.97 → 2.93 ms로, 차이 약 14 ms는 그대로다 — [`dec_threads`](../07_results/dec_threads/summary.md).)
 **여기서는 개념만 잡는다** — dma-buf, dma-heap, 캐시 동기화(`DMA_BUF_IOCTL_SYNC`),
 NHCW 레이아웃의 상세는 → [06_zerocopy_dmabuf.md](06_zerocopy_dmabuf.md).
 
@@ -482,6 +505,8 @@ NHCW 레이아웃의 상세는 → [06_zerocopy_dmabuf.md](06_zerocopy_dmabuf.md
 페이싱 때문에 프로세스가 놀아서 거버너가 클럭을 내린 것으로 **보인다**
 ([`07_results/display_e2e/summary.md`](../07_results/display_e2e/summary.md) §7 — 문서도 "보인다"로
 쓴다. **확정된 원인이 아니다.**) **교훈: CPU 시간(ms)을 비교할 때는 그때의 클럭을 함께 봐야 한다.**
+GPU 시간(ms)도 마찬가지다. V3D 클럭은 펌웨어(부트로더)가 정하므로 `v3d_freq`를 함께 적는다(§2.3 끝).
+위 두 CPU 값은 FFmpeg 자동 5스레드 조건이기도 하다.
 
 ---
 
@@ -492,7 +517,7 @@ NHCW 레이아웃의 상세는 → [06_zerocopy_dmabuf.md](06_zerocopy_dmabuf.md
 | 칩 | 위치 | 맡은 단계 | 코드 |
 |---|---|---|---|
 | **CPU** Cortex-A76 ×4 @2.4 GHz | SoC 안 | 전체 지휘, 슬롯 수명 관리 (NMS는 GPU, 드문 경계 프레임만 CPU) | [`01_src/pipeline/`](../01_src/pipeline/) |
-| **비디오 디코더** (HEVC 전용) | SoC 안 | ① mp4 → 프레임 (dma-buf) | libavcodec DRM_PRIME |
+| **비디오 디코더** (HEVC 전용) | SoC 안 | ① mp4 → 프레임 (dma-buf) | libavcodec DRM_PRIME(프레임 스레드 1, `YVO_DEC_THREADS`) |
 | **GPU** VideoCore VII / V3D 7.1 | SoC 안 | ② 전처리, ④ 후처리, ⑥ 표시 변환, ⑦ 오버레이 | [`02_shaders/`](../02_shaders/) |
 | **NPU** Hailo-8 | **SoC 밖, PCIe Gen3 x1** | ③ YOLO 추론 | [`01_src/hailo/`](../01_src/hailo/) |
 | **ISP** PiSP BE | SoC 안 | (전처리 대체 경로 — **구현됐으나 미사용**) | [`01_src/isp/`](../01_src/isp/) |
@@ -512,7 +537,9 @@ NHCW 레이아웃의 상세는 → [06_zerocopy_dmabuf.md](06_zerocopy_dmabuf.md
 
 #### GPU — **여유 있다. 주기의 약 24.5%.**
 
-`disp_asap` 실행에서 GPU 4패스의 중앙값 합이다.
+`disp_asap` 실행에서 GPU 4패스의 중앙값 합이다(V3D 960 MHz, CPU NMS라 `efficient_nms`는 없다).
+1150 MHz에서는 전처리가 약 14% 짧아지므로 비율은 이보다 조금 더 낮다
+([`bootloader_20260925`](../07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)).
 
 | 구간 | median | p90 |
 |---|---:|---:|
@@ -530,7 +557,7 @@ NHCW 레이아웃의 상세는 → [06_zerocopy_dmabuf.md](06_zerocopy_dmabuf.md
 #### CPU — **거의 비어 있다.** / ISP — **놀고 있다.**
 
 CPU는 [2.2](#22-cpu--순서대로-시키는-대로-하는-일꾼)에서 계산한 대로 **한 코어의 약 6.5%,
-4코어 전체의 약 1.6%** 다(표시를 끄면 1.115 ms/frame까지 더 내려간다). ISP는 구현은 돼 있지만
+4코어 전체의 약 1.6%** 다(표시를 끄면 1.115 ms/frame까지 더 내려간다. 둘 다 자동 5스레드 조건이고, 1스레드 기본값에서는 표시 off b2/s4가 1.137 → 1.046 ms로 약 8%, 표시 on이 약 14% 더 낮다). ISP는 구현은 돼 있지만
 쓰지 않는다 ([2.7](#27-isp-pisp-back-end--원래-카메라용인데-크기도-바꿔-준다)).
 
 ### 그래서 이 하드웨어 지도가 말하는 것
@@ -561,8 +588,11 @@ CPU를 비우기"** 가 된 것이다. 이 판단의 사슬은 [10_why_this_desi
 | NPU | **Hailo-8** | [`paper_ko.md`](../10_paper/paper_ko.md) §3.1 |
 | NPU 런타임 | **HailoRT 4.24.0** | [`paper_ko.md`](../10_paper/paper_ko.md) 부록 A.1 |
 | PCIe 링크 | **8.0 GT/s x1 (Gen3)**, `0001:01:00.0` | [`display_e2e/env_bench.txt`](../07_results/display_e2e/env_bench.txt) |
+| GPU 클럭 | **1150 MHz**(`v3d_freq`, 펌웨어 기본값). 2026-09-29 이전 측정은 **960 MHz** | [`bootloader_20260925/env/firmware.txt`](../07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/env/firmware.txt) |
+| 부트로더 EEPROM | **2026-09-25**(`1accd665`). 2026-09-29 이전은 2025-12-08 | 같은 파일, [`bootloader_20251208`](../07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20251208/summary.md) |
 | 비디오 디코더 | BCM2712 내장 **HEVC** 하드웨어 디코더 | [`paper_ko.md`](../10_paper/paper_ko.md) §3.1 |
-| 디코드 라이브러리 | **libavcodec 61.19** (FFmpeg) | [`pipeline_ffmpeg_vulkan_hailo/REPORT.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md) |
+| 디코드 라이브러리 | **libavcodec 61.19** (FFmpeg 7.1.5 RPi 빌드 `rpt2`). 앱은 프레임 스레드 **1**(2026-09-29부터, 이전은 자동 5) | [`pipeline_ffmpeg_vulkan_hailo/REPORT.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md), [`dec_threads`](../07_results/dec_threads/summary.md) |
+| GStreamer (연구 경로만) | 1.26.2, gst-plugins-bad **rpt4**(rpt3은 1080p 복사 버그) | [`decode_benchmark/runs/gst_rpt4`](../07_results/decode_benchmark/runs/gst_rpt4/summary.md) |
 | ISP 라이브러리 | **libpisp 1.7.0** | [`isp_resize/summary.md`](../07_results/isp_resize/summary.md) 1부 |
 | 커널 | **Linux 6.18.50+rpt-rpi-2712** | [`display_e2e/env_bench.txt`](../07_results/display_e2e/env_bench.txt) |
 | 컴파일러 | **g++ 14.2**, `-O3 -mcpu=cortex-a76` | [`paper_ko.md`](../10_paper/paper_ko.md) 부록 A.1 |
@@ -571,8 +601,8 @@ CPU를 비우기"** 가 된 것이다. 이 판단의 사슬은 [10_why_this_desi
 > ⚠ **PCIe 세대와 클럭은 "지금도 그렇다"는 보장이 없다.** 이 표는 측정 당시의 스냅샷이므로
 > 측정할 때는 반드시 sysfs에서 다시 읽는다
 > ([`.claude/skills/measure/SKILL.md`](../.claude/skills/measure/SKILL.md) §1).
-> **빈칸으로 둔 것**: DRAM 용량·규격, GPU 코어 클럭, V3D 연산 유닛 개수 — 프로젝트 문서에서
-> 확인하지 못했다.
+> **빈칸으로 둔 것**: DRAM 용량·규격, V3D 연산 유닛 개수 — 프로젝트 문서에서 확인하지 못했다.
+> GPU 클럭은 2026-09-29에 `vcgencmd`로 기록했다(위 표). 벤치 스크립트의 env 스냅샷은 이 값을 자동으로 남기지 않는다.
 
 ---
 
@@ -601,9 +631,9 @@ Gen3에서 `약 24.8 + 16.2 ms`로 **두 항이 모두 정확히 절반**이 됐
 **거짓이다. 그 출력을 어떻게 받느냐가 정한다.** 같은 BCM2712 HEVC 하드웨어 디코더를
 GStreamer `v4l2slh265dec`(rpt3)로 쓰면 **32.7 FPS / CPU 30.6 ms/frame**으로 소프트웨어 디코드
 (`avdec_h265` 31.8 ms)와 거의 같다. CPU 시간의 약 90%가 프레임 복사·변환이었다
-(원인은 문서가 "추정"으로 표시). 같은 하드웨어를 ffmpeg `-hwaccel drm`(CLI)으로 쓰면
+(원인은 (0,0) 크롭에서 zero-copy가 깨지는 upstream 버그였고, rpt4에서 고쳐졌다). 같은 하드웨어를 ffmpeg `-hwaccel drm`(CLI)으로 쓰면
 **332.8 FPS / CPU 2.0 ms**이고, 이것도 대부분 CPU 내려받기다. 복사가 없으면 0.2~0.5 ms대다
-(rpt4 GStreamer DMABuf 0.24, ffmpeg DRM_PRIME 유지 0.55, 앱 0.23~0.28). **차이는 디코더가 아니라 복사의 유무다.**
+(rpt4 GStreamer DMABuf 0.24, ffmpeg DRM_PRIME 유지 0.55, 앱 0.23~0.28(자동 5스레드)). **차이는 디코더가 아니라 복사의 유무다.**
 → [`decode_benchmark/summary.md`](../07_results/decode_benchmark/summary.md) 해석 1, 회차 `runs/gst_rpt4`·`runs/ffmpeg_outfmt`
 
 **Q4. CPU와 GPU가 "같은 메모리"를 쓰는데, 왜 GPU가 쓴 결과를 CPU로 읽으면 비싼가?**

@@ -124,7 +124,7 @@ llvmpipe를 고르면 코드는 멀쩡히 돌아가지만 **실제로는 CPU가 
 
 > 이 프로젝트의 표시 경로가 정확히 그렇게 한다. `display_convert` 와 `overlay_boxes` 가 **같은
 > 커맨드 버퍼**에 이어 붙어 있고, 그래도 변환 시간이 느려지지 않는다는 것을 실측으로 확인했다
-> (4.229 → 4.234 ms, 검출 5개 기준. [`display_vulkan_hdmi/summary.md`](../07_results/display_vulkan_hdmi/summary.md) 결론 8).
+> (4.229 → 4.234 ms, 검출 5개 기준, V3D 960 MHz 조건. [`display_vulkan_hdmi/summary.md`](../07_results/display_vulkan_hdmi/summary.md) 결론 8).
 
 ### ★ VkQueue는 "외부 동기화 객체"다 — 이 프로젝트 전체 구조의 근거
 
@@ -415,13 +415,14 @@ Vulkan은 이것을 3층으로 나눈다.
 
 ---
 
-## 5.7 timestamp query — GPU 시간을 재는 유일한 수단
+## 5.7 timestamp query — GPU 시간을 재는 기본 수단
 
 "이 셰이더가 몇 ms 걸리나"를 CPU 시계(`std::chrono`)로 재면 **틀린다.**
 `vkQueueSubmit` 은 곧바로 돌아오고(비동기), 그 뒤 fence를 기다리면 **제출 오버헤드와 대기
 시간까지 다 섞여 들어간다.**
 
-GPU 구간을 재는 수단은 **timestamp query** 하나다.
+GPU 구간의 **시간**을 재는 수단은 **timestamp query**다. 시간이 **왜** 그만큼 걸리는지(연산인지 메모리 대기인지)는
+이 절 끝의 **성능 카운터**로 본다.
 
 ```
    vkCreateQueryPool(... VK_QUERY_TYPE_TIMESTAMP ...)       // 초기화 때 한 번
@@ -448,7 +449,7 @@ GPU 구간을 재는 수단은 **timestamp query** 하나다.
 - **`timestamp_valid_bits`**: 카운터가 64비트를 다 쓰지 않을 수 있다. 상위 비트를 마스크해야 한다.
   이 프로젝트 코드는 그렇게 한다.
 - **GPU 단독 측정은 NPU가 노는 동안 재야 한다.** NPU를 동시에 돌리면 메모리 대역폭 경합으로
-  전처리가 2.14 → 2.20 ms(+3%)로 밀린다
+  전처리가 2.14 → 2.20 ms(+3%, V3D 960 MHz 조건)로 밀린다
   ([`display_vulkan_hdmi/summary.md`](../07_results/display_vulkan_hdmi/summary.md) "주의와 남은 일").
 
 > ⚠ 그리고 이 프로젝트에는 **timestamp 평균값을 믿으면 안 되는 조건**이 하나 있다.
@@ -456,6 +457,26 @@ GPU 구간을 재는 수단은 **timestamp query** 하나다.
 > 한쪽 구간이 0에 가깝게 기록되는 현상이 관측됐다(**원인 미확정**). 그래서 이 프로젝트의
 > GPU 시간은 **전부 중앙값(median)** 이다 ([`README.md`](../README.md) §5,
 > [`07_results/README.md`](../07_results/README.md#-인용-금지-구간) — 정본).
+
+> ⚠ **GPU ms는 V3D 클럭과 함께 읽어야 한다.** 2026-09-25 부트로더 EEPROM이 펌웨어 기본 `v3d_freq`를
+> 960 → 1150 MHz로 올렸다. 그 뒤 전처리(`sand_letterbox`)는 b1 2.11 → 1.81 ms, b8 평균 2.6 → 2.0 ms가 됐다
+> ([`bootloader_20260925`](../07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)).
+> 이 장의 GPU ms는 따로 적지 않으면 **960 MHz 조건**의 값이다.
+
+### 시간 말고 "왜"를 보려면 — 성능 카운터(`VK_KHR_performance_query`)
+
+timestamp는 "얼마나"만 알려 준다. V3DV는 `VK_KHR_performance_query`로 하드웨어 카운터 93개(QPU-active,
+TMU-active, core-memory-reads, L2T-stalls-read-data 등)를 내준다. 프로브 도구는 `yvo_perf_counters`
+([`perf_counters.cpp`](../01_src/tools/vulkan/perf_counters.cpp))이고, 실측으로 확인한 특성은 셋이다
+([`v3d_perf_counters`](../07_results/v3d_perf_counters/summary.md) — 정본).
+
+- **한 쿼리는 그 안의 잡을 모두 합산한다.** dispatch 하나만 보려면 쿼리 하나로 그 dispatch만 감싼다.
+- **다른 V3D 사용자의 잡이 섞인다.** 데스크톱 렌더가 끼면 우리 카운터가 멈추거나(절단) 남의 값이 들어온다(유입).
+  그래서 표시를 끄고, 중앙값을 쓰고, 결정적 카운터(QPU-active)가 최빈값과 다른 표본은 버린다.
+- **클럭을 올려도 메모리 대기는 줄지 않는다.** 1150 MHz(클럭 1.198배)에서 4 MiB 합 셰이더는 1.10~1.13배만 빨라졌다.
+  연산 사이클은 클럭을 따라 줄고, 메모리 읽기 대기(ns)는 그대로여서 구간의 약 41%가 대기였다(**추정**, 카운터 의미 미검증).
+  같은 회차에서 한 번의 시간이 +2.6~6.3% **계단**으로 바뀌는 현상도 보였고 원인은 모른다
+  ([`runs/bootloader_20260925`](../07_results/v3d_perf_counters/runs/bootloader_20260925/summary.md)).
 
 ---
 
@@ -521,7 +542,9 @@ VUID가 왜 중요한가? **그 번호로 스펙 원문을 정확히 찾을 수 
 | subgroup 크기 | **16** | 분기가 갈라지는 단위 |
 | `maxPerStageDescriptorStorageBuffers` | **8** | **한 셰이더가 SSBO를 8개까지만 본다** ← 아래 참조 |
 | **`descriptorIndexing`** | **false** | **버퍼를 배열로 두고 인덱스로 고를 수 없다** ← 아래 참조 |
-| `shaderStorageImageWriteWithoutFormat` | **false** | storage image에 쓰려면 GLSL에 포맷 한정자 필수 (→ [07_video_display.md](07_video_display.md)) |
+| `shaderStorageImageWriteWithoutFormat` | **false** | storage image에 쓰려면 GLSL에 포맷 한정자 필수 (→ [07_video_display.md](07_video_display.md)). 어기면 에러 없이 틀린다 — FFmpeg DPX compute 디코더가 R 채널만 기록했다 ([`vulkan_compute_codecs`](../07_results/vulkan_compute_codecs/summary.md)) |
+| **`shaderInt64`** | **false** | 셰이더에서 64비트 정수를 못 쓴다. 쓰면 셰이더 컴파일러가 abort한다(FFv1 `u2u64`, 같은 정본). 자체 셰이더는 int32로만 짠다 |
+| Vulkan Video (`VK_KHR_video_*`) | **확장 0개** | GPU로 영상 디코드를 못 한다. HEVC는 별도 HW 디코더(V4L2)만 쓴다 (같은 정본, [07장](07_video_display.md) §7.2) |
 | `R8G8B8A8_UNORM` `linearTilingFeatures` | `0xc980` — **STORAGE_IMAGE 없음** (optimal 은 있음) | 컴퓨트가 LINEAR 이미지에 쓸 수 없다 → HVS 박스 평면(AB24 LINEAR)은 storage buffer 에 그린다 (`overlay_boxes_buf.spv`, [`overlay_plane.hpp`](../01_src/display/overlay_plane.hpp), [07장](07_video_display.md) §7.12) |
 | 32비트 정수 곱셈 | **없음** (umul24 에뮬레이션) | 셰이더 안의 곱셈이 비싸다 → 주소 계산을 덧셈 누적으로 |
 | 메모리 타입 | `DEVICE_LOCAL｜HOST_VISIBLE｜HOST_COHERENT` **하나뿐** | → [06_zerocopy_dmabuf.md](06_zerocopy_dmabuf.md) 의 주제 |
@@ -574,10 +597,14 @@ NPU는 프레임마다 텐서 **6개**를 내놓는다(스케일 3개 × {클래
 | [`yolo_decode.comp`](../02_shaders/yolo_decode.comp) | 원시 6텐서 → 후보 박스 ~16개 | dequantize + DFL softmax + threshold + 좌표 역변환 | **0.626 ms** |
 | [`display_convert.comp`](../02_shaders/display_convert.comp) | 디코더 SAND128 NV12 → 스왑체인 RGBA | de-SAND + YUV→RGB (1:1) | **4.153 ms** |
 | [`overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) | 검출 목록 → 스왑체인 RGBA (변형 `overlay_boxes_buf`: → AB24 dma-buf 버퍼) | 박스 테두리 + 라벨 글자 + HUD 그리기 | **0.128 ms** (image 경로) |
-| [`efficient_nms.comp`](../02_shaders/efficient_nms.comp) | 후보 박스 → 최종 검출 | bitonic 정렬 + 클래스별 greedy 억제 | 측정 전 |
+| [`efficient_nms.comp`](../02_shaders/efficient_nms.comp) | 후보 박스 → 최종 검출 | bitonic 정렬 + 클래스별 greedy 억제 | 정식 측정 전 (비정식 평균 0.036~0.050 ms ¹) |
 
 합 **6.995 ms**(`efficient_nms.comp` 추가 전 4개), 프레임 주기 28.6 ms의 24.5%다
 ([`display_e2e/summary.md`](../07_results/display_e2e/summary.md) §3.1, `disp_asap`).
+표의 ms 값과 아래 워크그룹 스윕은 모두 **V3D 960 MHz** 조건이다. 1150 MHz(부트로더 2026-09-25)에서 전처리는 표시 off 기준
+b1 1.81 ms, b4·b8 약 2.0 ms다([`bootloader_20260925`](../07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)). 나머지 셰이더는 1150 MHz에서 다시 재지 않았다.
+
+¹ [`dec_threads`](../07_results/dec_threads/summary.md)의 GPU 후처리·표시 설정이 기본값 `--nms gpu`로 돈 부산물이다(1150 MHz, `results_raw.csv`의 `gpu_nms_mean`, 폴백 0). NMS 정식 A/B는 아니다.
 색 변환식과 letterbox 규칙의 상세는 [07_video_display.md](07_video_display.md),
 텐서 해석은 [03_yolo_tensor.md](03_yolo_tensor.md) 에 있다.
 

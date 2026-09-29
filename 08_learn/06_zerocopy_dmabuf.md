@@ -15,6 +15,7 @@
 
 [01_big_picture.md](01_big_picture.md) 에서 이 프로젝트의 성과를 이렇게 적었다:
 **FPS는 오르지 않았고, CPU 시간이 3.31 → 2.18 ms/프레임으로 줄었다.**
+(측정 조건: V3D 960 MHz · FFmpeg 자동 5스레드 · CPU NMS. 2026-09-29에 디코더를 1스레드로 바꾼 뒤의 값은 [`dec_threads`](../07_results/dec_threads/summary.md)에 있다.)
 
 그 절약의 대부분은 **"복사를 없앤 것"** 과 **"CPU가 GPU 메모리를 읽지 않게 만든 것"** 에서 나왔고,
 그 둘의 수단이 이 챕터의 주제다. 더 중요한 것은 **이 프로젝트의 설계 자체가 메모리 제약으로부터
@@ -510,7 +511,9 @@ CPU가 읽는 것은 GPU가 압축해 준 후보 목록 약 1.6 KB뿐이고,
 | `ptr` | `nhcw` | **시작할 때 거부된다** ← 아래 | – |
 | **`dmabuf`** | **`nhcw`** | HailoRT가 버퍼를 **그대로 DMA로 가져간다.** CPU가 안 건드린다 | **3.5** |
 
-(근거: [REPORT.md §4.3](../07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md) 근거 2·3)
+(근거: [REPORT.md §4.3](../07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md) 근거 2·3. b8, FFmpeg 자동 5스레드 조건.
+디코더 1스레드 기본값(2026-09-29) 뒤에는 `ptr+nhwc` 16.97, `dmabuf+nhcw` 2.93 ms/frame이다([`dec_threads`](../07_results/dec_threads/summary.md)).
+차이 약 14 ms와 결론은 그대로다.)
 
 `dmabuf + nhwc` 가 `ptr + nhwc` 와 똑같다는 것이 중요하다.
 **"dma-buf를 쓰면 zero-copy"가 아니다.** 소비자가 그 버퍼를 **CPU로 건드리지 않아야** zero-copy다.

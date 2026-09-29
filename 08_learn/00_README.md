@@ -5,7 +5,7 @@
 ## 왜 이 폴더가 있나
 
 이 저장소에는 이미 좋은 문서가 많다 — 실행 안내([`README.md`](../README.md)),
-실험 결과 12건([`07_results/`](../07_results/)), 파이프라인 다이어그램([`09_diagrams/`](../09_diagrams/)),
+실험 결과 16건([`07_results/`](../07_results/)), 파이프라인 다이어그램([`09_diagrams/`](../09_diagrams/)),
 논문 초고([`10_paper/paper_ko.md`](../10_paper/paper_ko.md)).
 
 그런데 그 문서들은 전부 **배경지식이 있는 독자**를 전제한다. 예를 들어 논문의 이 한 문장은
@@ -42,7 +42,7 @@
 | 07 | [영상과 화면 표시](07_video_display.md) | 코덱, YUV·NV12·SAND128, letterbox, Wayland·스왑체인, HVS 평면 스캔아웃(Wayland/KMS) | 02, 05 |
 | 08 | [측정과 검증의 방법론](08_method.md) | 왜 성능 수치를 믿을 수 없나, 중앙값·냉각·대조군, 검증 절차 | 01, 02 |
 | 09 | [코드 지도](09_code_map.md) | 폴더 구조, 읽는 순서, 빌드, 테스트, 도구 | 01 |
-| 10 | [왜 이렇게 만들었는가](10_why_this_design.md) | **배경지식 → 관측 → 결정의 사슬 8개.** 이 교재의 목적지 | 02~08 |
+| 10 | [왜 이렇게 만들었는가](10_why_this_design.md) | **배경지식 → 관측 → 결정의 사슬 10개.** 이 교재의 목적지 | 02~08 |
 | 11 | [TensorRT EfficientNMS 구조](11_tensorrt_efficient_nms.md) | Filter → Sort → 타일+상태 방송 NMS. GPU NMS(`efficient_nms.comp`)의 설계 근거 | 03, 05 |
 | 99 | [용어집](99_glossary.md) | 막혔을 때 찾아보는 사전 + 다음에 읽을 것 | — |
 
@@ -101,6 +101,12 @@ GPU 메모리를 CPU로 읽는 설계를 무심코 넣거나, 오염된 조건�
 **CPU 비용 거의 없이 도는 실시간 화면 표시**다.
 근거: [`07_results/op_point/summary.md`](../07_results/op_point/summary.md) §8.4
 
+> **측정 조건 (2026-09-30 추가)**: 이 교재의 수치 대부분은 2026-09-29 이전 조건에서 쟀다.
+> V3D 960 MHz, FFmpeg 디코더 자동(5) 프레임 스레드, 표시 쪽은 CPU NMS였다.
+> 그 뒤 두 가지가 바뀌었다. 수치는 그대로 두고 조건만 적어 둔다.
+> - 부트로더 2026-09-25로 V3D가 1150 MHz가 됐다. GPU 전처리 b8이 약 2.6 → 2.0 ms로 줄었고, FPS와 CPU는 같다([`bootloader_20260925`](../07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)).
+> - 앱 디코더가 1 프레임 스레드가 됐다. b8 기준 CPU −14%, e2e −8.8 ms다([`dec_threads`](../07_results/dec_threads/summary.md)). 같은 회차의 GPU 후처리 b2/s4는 CPU 1.137 → 1.046 ms였다(GPU NMS).
+
 ### 2. "조용히 틀리는 것"이 반복 주제다
 
 이 프로젝트 문서에는 **에러를 내지 않고 잘못 도는** 사례가 계속 나온다:
@@ -136,4 +142,6 @@ GPU 메모리를 CPU로 읽는 설계를 무심코 넣거나, 오염된 조건�
   ① 백프레셔 수정 이전 GPU 후처리 경로의 FPS·지연
   ② `--display-pace asap` + 표시 on 의 GPU timestamp **평균값**
 - 원인이 밝혀지지 않은 현상은 **"가설"이라고 명시**한다
+- 수치에는 조건을 함께 적는다. GPU ms에는 **V3D 클럭**(`vcgencmd get_config v3d_freq`)을, CPU ms·e2e에는 **디코더 프레임 스레드 수**(`YVO_DEC_THREADS`, 기본 1)와 NMS 위치를 적는다.
+  2026-09-29 이전 값은 960 MHz, 자동 5스레드 조건이다. 옛 조건을 재현하려면 `YVO_DEC_THREADS=0`, `--nms cpu`를 준다.
 - 새 용어를 쓰면 [99_glossary.md](99_glossary.md) 에 추가한다

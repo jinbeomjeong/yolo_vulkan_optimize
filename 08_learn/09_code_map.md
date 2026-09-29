@@ -47,7 +47,7 @@
 01_src/
 ├── core/       헤더만. 공용 계약 타입·OS 글루 — 다른 모든 폴더가 여기에 의존 (include 루트는 여기서만 지정)
 ├── ref/        헤더만. CPU 기준 구현 — 수식의 단일 진실 원천 (셰이더는 이것의 번역본)
-├── toolkit/    헤더만. 도구·앱 전용 헬퍼(CLI·이미지 저장·통계) — 라이브러리는 include 하지 않는다
+├── toolkit/    헤더만. 도구·앱 전용 헬퍼(CLI·이미지 저장·통계·perf 구간 제어 `perf_window`) — 라이브러리는 include 하지 않는다
 ├── testkit/    헤더만. 테스트·프로브가 공유하는 검증 하네스(픽스처 파서, 오프스크린 타깃, 비트 일치 판정)
 ├── decode/     HW HEVC 디코더 (FFmpeg DRM_PRIME → DrmFrame)
 ├── hailo/      NPU (HailoRT)                    ┐ 이 둘은 서로
@@ -223,6 +223,19 @@ cmake -S . -B build -G Ninja && cmake --build build
 > 먼저 프로브로 "이게 되는가"를 가른 다음 통과한 것만 승격한다.
 > 자세한 것은 [08_method.md](08_method.md).
 
+### 런타임 환경변수
+
+명령행 옵션 말고 환경변수로만 바꾸는 것들이다. 대부분 연구·진단용이다.
+
+| 변수 | 누가 읽나 | 뜻 |
+|---|---|---|
+| `YVO_DEC_THREADS` | `yvo_pipeline` ([`main.cpp:629`](../01_src/pipeline/main.cpp)) | FFmpeg 디코더 프레임 스레드 수. 없으면 **1**(2026-09-29부터 기본), `0`이면 FFmpeg 자동(코어 수) |
+| `YVO_PERF_CTL` / `YVO_PERF_ACK` | `yvo_pipeline`, `yvo_gst_pipeline` ([`tool_util.hpp`](../01_src/toolkit/tool_util.hpp) `perf_window`) | perf 제어 FIFO. 도구가 보고하는 CPU 구간에서만 perf를 켠다([08장](08_method.md) §8.9) |
+| `YVO_VK_VALIDATION` | 모든 Vulkan 사용자 ([`vulkan_context.cpp`](../01_src/vulkan/vulkan_context.cpp)) | `0`이 아닌 값이면 검증 레이어를 켠다 |
+| `YVO_VK_DEVICE` | 같음 | 물리 장치 이름 힌트(CPU 장치는 늘 제외) |
+| `YVO_SAND_LETTERBOX_SPV`, `YVO_YOLO_DECODE_SPV`, `YVO_EFFICIENT_NMS_SPV` | 각 셰이더 래퍼 | 임베드된 SPIR-V 대신 외부 `.spv`를 쓴다(개발용) |
+| `YVO_TEST_VIDEO`, `YVO_DET_FRAMES`, `YVO_GST_DET_FRAMES`, `YVO_GST_DET_BATCH` | 테스트 ([`05_tests/CMakeLists.txt`](../05_tests/CMakeLists.txt)) | 입력 영상, 검출 비교 프레임 수(기본 100 / 120), GStreamer 검출 테스트 배치(기본 4) |
+
 ---
 
 ## 9.6 테스트
@@ -282,6 +295,8 @@ C++ 테스트의 판정 규칙([`01_src/ref/detection_match.hpp`](../01_src/ref/
 아홉 스크립트 모두 시작할 때 `build/.bench_running` 에 자기 PID를 쓰고 끝날 때 지운다.
 [`.claude/hooks/npu_guard.sh`](../.claude/hooks/npu_guard.sh) 가 이 파일을 보고 **측정 중에는
 빌드·테스트 명령을 막는다** — 측정 중 다른 작업이 돌면 CPU 시간이 에러 없이 오염되기 때문이다.
+Ctrl+C(INT)나 TERM을 받으면 락을 지우고 바로 끝난다(종료 코드 130·143, [`lib/common.sh`](../06_tools/bench/lib/common.sh)).
+다음 설정으로 넘어가 측정을 이어 가지 않는다.
 
 ### 그 밖의 도구
 
@@ -301,6 +316,10 @@ build/bin/yvo_pipeline --video ... --hef ...
 
 인자 없이 돌리면 `--mode ptr --layout nhwc --postproc host --display off` 로 간다.
 이건 **의도된 것**이다 — 기본값을 바꾸면 과거 측정과의 비교가 깨지기 때문에 일부러 두었다.
+
+> **예외 하나:** FFmpeg 디코더 프레임 스레드 수는 2026-09-29에 자동(5) → **1**로 바꿨다(`main.cpp:629`).
+> 모든 모드에서 FPS·검출이 같고 CPU·지연이 줄었기 때문이다([`dec_threads`](../07_results/dec_threads/summary.md)).
+> 그 이전 측정과 CPU·e2e를 맞대 비교하려면 `YVO_DEC_THREADS=0`으로 돌린다.
 
 실제 권장 실행 커맨드는 [`07_results/README.md`](../07_results/README.md) 맨 위와
 [`README.md`](../README.md) §3.1 에 있다. 핵심 세 옵션:
