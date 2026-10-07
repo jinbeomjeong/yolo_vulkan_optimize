@@ -132,14 +132,15 @@ YoloPostproc::submit (decode → efficient_nms)  [vkQueueSubmit, 메인 전용]<
         </data>
       </node>
       <node id="n0::n5">
-        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/gpu_postproc_stage.cpp:190 GpuPostprocStage::finish(). --nms gpu(기본): pp_-&gt;read_nms 로 efficient_nms.comp 결과를 읽는다(:215). IoU 보호대·용량 초과·잘못된 클래스 프레임만 yvo::cpu_nms_greedy_by_class 로 fallback (:198-227, 호출 :202). --nms cpu: CPU 억제만(:209-210). --nms verify: 둘 다 돌려 비트 비교(:222-224). GPU NMS 수치는 정식 측정 전. display_e2e(2026-09-20) 수치는 CPU NMS · V3D 960 MHz(부트로더 2025-12-08) · FFmpeg 자동 5스레드 당시 값: 07_results/display_e2e/raw/disp_source_run1/stdout.log 'cpu nms us median 2.667', 'gpu post ms median 0.588'.</data>
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/gpu_postproc_stage.cpp:190 GpuPostprocStage::finish(). --nms gpu(기본): pp_-&gt;read_nms 로 efficient_nms.comp 결과를 읽는다(:215). IoU 보호대·용량 초과·잘못된 클래스 프레임만 yvo::cpu_nms_greedy_by_class 로 fallback (:198-227, 호출 :202). --nms cpu: CPU 억제만(:209-210). --nms verify: 둘 다 돌려 비트 비교(:222-224). GPU NMS 정식 측정(2026-10-08, 07_results/gpu_nms_e2e/summary.md §2·§3, V3D 1150 MHz · 디코더 프레임 스레드 1 · 표시 off, 설정당 3회 중앙값): b2s4 median 0.0486 / p90 0.0578 ms, b8s16 0.0500 / 0.0595 ms, fallback 0, V3D CSD 잡 프레임당 4 → 5, 전체 1816프레임 검출 9457 이 --nms cpu 와 바이트 동일(--nms verify 불일치 0). 같은 실험의 CPU NMS 는 약 2 µs/frame 이라 판정은 'CPU 절감'이 아니라 '회귀 없음 + GPU 비용 약 0.05 ms'다 — 라벨 3행. display_e2e(2026-09-20) 수치는 CPU NMS · V3D 960 MHz(부트로더 2025-12-08) · FFmpeg 자동 5스레드 당시 값: 07_results/display_e2e/raw/disp_source_run1/stdout.log 'cpu nms us median 2.667', 'gpu post ms median 0.588'.</data>
         <data key="d6">
           <y:GenericNode configuration="com.yworks.flowchart.process">
             <y:Geometry height="54.0" width="480.0" x="130.0" y="540.0"/>
             <y:Fill color="#E8EEF7" color2="#E8EEF7" transparent="false"/>
             <y:BorderStyle color="#000000" type="line" width="1.0"/>
-            <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="30.84" modelName="custom" textColor="#000000" visible="true" width="384.2" x="47.9" y="11.58">GpuPostprocStage::finish() → read_nms()  (efficient_nms 결과)
-보호대·용량 초과 프레임만 CPU fallback  (--nms gpu|cpu|verify)<y:LabelModel>
+            <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="44.26" modelName="custom" textColor="#000000" visible="true" width="429.48" x="25.26" y="4.87">GpuPostprocStage::finish() → read_nms()  (efficient_nms 결과)
+보호대·용량 초과 프레임만 CPU fallback  (--nms gpu|cpu|verify)
+GPU NMS 중앙 0.0486 · p90 0.0578 ms (b2s4) · fallback 0 [1150 MHz]<y:LabelModel>
                 <y:SmartNodeLabelModel distance="4.0"/>
               </y:LabelModel>
               <y:ModelParameter>
@@ -168,7 +169,7 @@ YoloPostproc::submit (decode → efficient_nms)  [vkQueueSubmit, 메인 전용]<
         </data>
       </node>
       <node id="n0::n7">
-        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/display/ (별도 라이브러리 yvo_display). 수치: 07_results/display_e2e/summary.md §3.1 변환 4.153 ms / 오버레이 0.128 ms(median) — V3D 960 MHz(부트로더 2025-12-08) 조건이고, 1150 MHz(07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)에서 따로 잰 summary 는 아직 없다. 표시 CPU 증가분 +0.727 ms(FFmpeg 자동 5스레드 · CPU NMS 당시)의 정체는 vkQueuePresentKHR 자체다(같은 문서 §4).</data>
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/display/ (별도 라이브러리 yvo_display). 수치: 07_results/display_e2e/summary.md §3.1 변환 4.153 ms / 오버레이 0.128 ms(median) — V3D 960 MHz(부트로더 2025-12-08) 조건 값으로 그대로 둔다. V3D 1150 MHz(07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md) · 디코더 1스레드 · GPU NMS 의 현재 조건 값(2026-10-08)은 07_results/display_planes_e2e/summary.md §2.2 의 vk_source(b2/s4, source 페이싱) 평균: disp_convert 3.234 ms · disp_overlay 0.111 ms, 그리고 셰이더 timestamp 에 안 잡히는 TFU 3.72 ms/f(gpu_stats) — median 이 아니라 평균이고 페이싱도 달라 위 값과 직접 비교하지 않는다. 표시 CPU 증가분 +0.727 ms(FFmpeg 자동 5스레드 · CPU NMS 당시)의 정체는 vkQueuePresentKHR 자체다(같은 문서 §4).</data>
         <data key="d6">
           <y:GenericNode configuration="com.yworks.flowchart.process">
             <y:Geometry height="54.0" width="480.0" x="130.0" y="708.0"/>
@@ -186,17 +187,18 @@ YoloPostproc::submit (decode → efficient_nms)  [vkQueueSubmit, 메인 전용]<
         </data>
       </node>
       <node id="n0::n8">
-        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/display/plane_display.hpp PlaneDisplay (DisplaySink 의 두 번째 구현, 스레드: 전부 메인 스레드). 대안 표시 경로 --display-backend wayland-planes (WaylandPlaneScanout: labwc 에 linux-dmabuf wl_buffer, 부모 surface = 영상, sync subsurface = 박스) / kms (KmsScanout: KMS atomic 직접 커밋, card1 DRM master 필요). 영상은 디코더 NV12 SAND128 dma-buf 를 그대로 HVS 영상 평면에, 박스는 OverlayPlane 이 overlay_boxes_buf.spv 로 그린 AB24 LINEAR dma-buf(링 3개)를 그 위 평면에 올린다. display_convert.comp 를 거치지 않는다. display_done 은 submit 펜스가 아니라 스캔아웃 release(wl_buffer.release / 다음 flip) 때 세운다(plane_display.hpp:10-18). 01_src/pipeline/main.cpp:21-29, :343-356. 상태: 구현·실표시 확인, 정식 측정 전 — 수치 없음.</data>
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/display/plane_display.hpp PlaneDisplay (DisplaySink 의 두 번째 구현, 스레드: 전부 메인 스레드). 대안 표시 경로 --display-backend wayland-planes (WaylandPlaneScanout: labwc 에 linux-dmabuf wl_buffer, 부모 surface = 영상, sync subsurface = 박스) / kms (KmsScanout: KMS atomic 직접 커밋, card1 DRM master 필요). 영상은 디코더 NV12 SAND128 dma-buf 를 그대로 HVS 영상 평면에, 박스는 OverlayPlane 이 overlay_boxes_buf.spv 로 그린 AB24 LINEAR dma-buf(링 3개)를 그 위 평면에 올린다. display_convert.comp 를 거치지 않는다. display_done 은 submit 펜스가 아니라 스캔아웃 release(wl_buffer.release / 다음 flip) 때 세운다(plane_display.hpp:10-18). 01_src/pipeline/main.cpp:21-29, :343-356. 상태: 정식 측정 완료(2026-10-08, V3D 1150 MHz · 디코더 프레임 스레드 1 · --nms gpu, HDMI 1080p60, matched · source 페이싱). b2/s4(07_results/display_planes_e2e/summary.md): CPU vk 2.059 → wayland-planes 1.569 / kms 1.576 ms/f, V3D 10.19 → 2.89 / 2.86 ms/f(TFU 3.72 ms 소멸), 그러나 프레임을 release 까지 최대 5장 쥐어 슬롯 대기 평균 28~30 ms. b2/s6(07_results/display_planes_e2e/runs/slots6/summary.md): slot wait 0, held_frames_max 5, CPU 2.189 → 1.747 / 1.759 ms/f(−0.44 ms, −20%), V3D 10.22 → 2.86 / 2.83 ms/f(−72%), 디코드 → 화면 평균 vk 101.43 / wlp 102.25 / kms 101.58 ms(지연 이득 없음). wayland-planes ≈ kms. 표시 on 평면 경로는 --slots 6 이 필요하다 — 라벨 6행. 열린 항목: source 페이싱에서 프레임의 약 25~27% 가 한 vblank 늦게 나간다(원인 미검증).</data>
         <data key="d6">
           <y:GenericNode configuration="com.yworks.flowchart.process">
             <y:Geometry height="92.0" width="220.0" x="390.0" y="792.0"/>
             <y:Fill color="#E8EEF7" color2="#E8EEF7" transparent="false"/>
             <y:BorderStyle color="#1E6FA8" type="line" width="2.0"/>
-            <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="71.1" modelName="custom" textColor="#000000" visible="true" width="193.4" x="13.3" y="10.45">대안: PlaneDisplay::show / pump
+            <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="84.52" modelName="custom" textColor="#000000" visible="true" width="194.22" x="12.89" y="3.74">대안: PlaneDisplay::show / pump
 --display-backend
 wayland-planes | kms
 SAND → HVS 영상 평면 · 변환 0
-AB24 박스 → HVS 박스 평면<y:LabelModel>
+AB24 박스 → HVS 박스 평면
+s6 필요 · V3D −72% · CPU −20%<y:LabelModel>
                 <y:SmartNodeLabelModel distance="4.0"/>
               </y:LabelModel>
               <y:ModelParameter>
@@ -400,7 +402,7 @@ FOREIGN 큐 소유권 전환 (release / acquire)<y:LabelModel>
       </graph>
     </node>
     <node id="n3">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:1-49 슬롯 규약: 'free → [GPU submit] → gpu 대기열 → [SandLetterbox::wait] → [HailoRunner::submit] → [HailoRT 완료 콜백 = compute_done] → [DisplayPipeline 표시 완료 = display_done] → 둘 다 서면 free'. --display off 면 display 조건이 없다(SlotExchange(need_display=false)). 실측 slot timeout 0 / slot wait median 0.000 ms (07_results/display_e2e/raw/disp_source_run1/stdout.log).</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:1-49 슬롯 규약: 'free → [GPU submit] → gpu 대기열 → [SandLetterbox::wait] → [HailoRunner::submit] → [HailoRT 완료 콜백 = compute_done] → [DisplayPipeline 표시 완료 = display_done] → 둘 다 서면 free'. --display off 면 display 조건이 없다(SlotExchange(need_display=false)). 실측 slot timeout 0 / slot wait median 0.000 ms (07_results/display_e2e/raw/disp_source_run1/stdout.log). 평면 백엔드(wayland-planes / kms)는 display_done 을 스캔아웃 release 때 세워 프레임을 최대 5장 쥐므로 b2/s4 에서 slot wait 평균 28~30 ms(07_results/display_planes_e2e/summary.md §2.1, 2026-10-08), b2/s6 에서 0(runs/slots6/summary.md)이다 — Vulkan 합성은 s4·s6 모두 0.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.decision">
           <y:Geometry height="66.3" width="480.0" x="100.0" y="990.0"/>
@@ -419,14 +421,15 @@ FOREIGN 큐 소유권 전환 (release / acquire)<y:LabelModel>
       </data>
     </node>
     <node id="n4">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:357 의 시작 시 검사(Vulkan 합성 경로). 평면 백엔드(wayland-planes / kms)는 :343-356 에서 slots + 1 (+ latest 면 PlaneDisplay::kExtraHeldBeyondSlots 5) ≤ 10 으로 따로 막는다 — 프레임을 스캔아웃 release 까지 쥐기 때문이다. '⚠ 디코더 13프레임 제약: 동시에 약 13프레임을 넘게 잡으면 디코더가 에러 없이 멈춘다. matched 는 slots + gpu_depth 를, latest 는 gpu_depth + image_count 를 잡는다. 여유를 두고 10 에서 막는다.' 운용점 b2/s4 는 4+3=7 (실측 held_frames_max 4, 여유 6).</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:357 의 시작 시 검사(Vulkan 합성 경로). 평면 백엔드(wayland-planes / kms)는 :343-356 에서 slots + 1 (+ latest 면 PlaneDisplay::kExtraHeldBeyondSlots 5) ≤ 10 으로 따로 막는다 — 프레임을 스캔아웃 release 까지 쥐기 때문이다. '⚠ 디코더 13프레임 제약: 동시에 약 13프레임을 넘게 잡으면 디코더가 에러 없이 멈춘다. matched 는 slots + gpu_depth 를, latest 는 gpu_depth + image_count 를 잡는다. 여유를 두고 10 에서 막는다.' 운용점 b2/s4 는 4+3=7 (실측 held_frames_max 4, 여유 6). 평면 경로 정식 측정(2026-10-08, V3D 1150 MHz · 디코더 1스레드): 평면 경로는 프레임을 release 까지 최대 5장 쥐어(held_frames_max 5) b2/s4 에서는 디코드된 프레임이 평균 28~30 ms 슬롯을 기다리고 fps 가 29.23~29.33 으로 떨어진다(07_results/display_planes_e2e/summary.md 결론 4). b2/s6 에서는 slot wait 0, fps 29.87~29.90(runs/slots6/summary.md 결론 1·4) — 표시 on 평면 경로의 운용점은 b2/s6 이고, matched 보유 상한은 6 + 1 = 7 ≤ 10 이다. 라벨 3행.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="79.7" width="340.0" x="1300.0" y="75.0"/>
           <y:Fill color="#FFFFFF" color2="#FFFFFF" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
-          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="57.68" modelName="custom" textColor="#000000" visible="true" width="280.8" x="29.6" y="11.01">제약: slots + gpu_depth ≤ 10
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="71.1" modelName="custom" textColor="#000000" visible="true" width="290.99" x="24.5" y="4.3">제약: slots + gpu_depth ≤ 10
 평면 백엔드: slots + 1 (latest +5) ≤ 10
+평면 표시 on: s4 는 슬롯 대기 28~30 ms → --slots 6
 디코더가 ~13프레임 초과 시 에러 없이 정지
 --gpu-depth 기본 3 · held_frames_max 로만 감지<y:LabelModel>
               <y:SmartNodeLabelModel distance="4.0"/>
@@ -550,13 +553,13 @@ V3D 0 · CPU +0.89 ms · 검출 −2.33% 로 통합 보류<y:LabelModel>
       </data>
     </node>
     <node id="n_src_note">
-      <data key="d5">이 다이어그램의 모든 수치와 규약 문장의 출처 목록. 경로는 /home/pi/workspace/yolo_vulkan_optimize/ 기준 상대경로다. 측정 조건 줄(2026-09-30 추가): 다이어그램 수치는 모두 2026-09-28 이전 조건(V3D 960 MHz · FFmpeg 자동 5스레드 · CPU NMS)이다. 이후의 기본값 변화는 07_results/dec_threads/summary.md(디코더 스레드), 07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md(V3D 클럭), 앱 대 GStreamer 연구 경로 비교는 07_results/gst_pipeline/summary.md.</data>
+      <data key="d5">이 다이어그램의 모든 수치와 규약 문장의 출처 목록. 경로는 /home/pi/workspace/yolo_vulkan_optimize/ 기준 상대경로다. 측정 조건 줄(2026-09-30 추가): 다이어그램 수치는 모두 2026-09-28 이전 조건(V3D 960 MHz · FFmpeg 자동 5스레드 · CPU NMS)이다. 이후의 기본값 변화는 07_results/dec_threads/summary.md(디코더 스레드), 07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md(V3D 클럭), 앱 대 GStreamer 연구 경로 비교는 07_results/gst_pipeline/summary.md. 2026-10-08 정식 측정(현재 기본 조건 V3D 1150 MHz · 디코더 1스레드 · --nms gpu. n0::n5 라벨 3행은 [1150 MHz] 로 표기, n0::n8 라벨 6행·n4 라벨 3행도 이 조건이다): GPU NMS 는 07_results/gpu_nms_e2e/summary.md, 평면 표시는 07_results/display_planes_e2e/summary.md(b2/s4)와 07_results/display_planes_e2e/runs/slots6/summary.md(b2/s6). 옛 조건 수치는 대체하지 않고 그대로 둔다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="241.1" width="480.0" x="760.0" y="880.0"/>
           <y:Fill color="#FFFFFF" color2="#FFFFFF" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
-          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="218.72" modelName="custom" textColor="#000000" visible="true" width="453.0" x="13.5" y="11.19">수치·규약 출처
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="232.14" modelName="custom" textColor="#000000" visible="true" width="453.0" x="13.5" y="4.48">수치·규약 출처
 GPU 구간별 median : 07_results/display_e2e/summary.md §3.1
 실행별 원시 출력  : 07_results/display_e2e/raw/disp_source_run1/stdout.log
 운용점 · 최종 커맨드 : 07_results/op_point/summary.md §8
@@ -567,11 +570,12 @@ slots+gpu_depth ≤ 10 : 01_src/pipeline/main.cpp:357 (평면 :343-356)
 콜백 람다 :154 / NMS fallback :202 : gpu_postproc_stage.cpp
 평면 표시 : 01_src/display/plane_display.hpp
 버퍼 계약       : 01_src/core/frame_types.hpp
-측정 조건 : 위 수치는 V3D 960 MHz · FFmpeg 자동 5스레드 · CPU NMS
+측정 조건 : GPU NMS·평면 외 수치는 960 MHz · 자동 5스레드 · CPU NMS
 디코더 스레드 기본 1 : 07_results/dec_threads/summary.md
 V3D 960→1150 MHz : 07_results/pipeline_ffmpeg_vulkan_hailo/
       runs/bootloader_20260925/summary.md
-GStreamer 연구 경로 : 07_results/gst_pipeline/summary.md<y:LabelModel>
+GStreamer 연구 경로 : 07_results/gst_pipeline/summary.md
+GPU NMS · 평면 표시 : 07_results/{gpu_nms_e2e, display_planes_e2e}<y:LabelModel>
               <y:SmartNodeLabelModel distance="4.0"/>
             </y:LabelModel>
             <y:ModelParameter>
