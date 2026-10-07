@@ -1225,10 +1225,10 @@ TEST(KmsScanout, PlaneDisplayWithoutMasterDropsAndDrains) {
         yvo::display::PlaneDisplay pd(ctx(), std::make_unique<KmsScanout>(kms_test_opts()), cfg);
         pd.set_display_done_callback([&](int s) { done.push_back(s); });
         EXPECT_STREQ(pd.backend_name(), "kms");
-        pd.retain(0, *tf.f);
+        pd.retain(0, *tf.f, std::chrono::steady_clock::now());
         pd.show(0, {Detection{0, 0.9f, 100.f, 100.f, 300.f, 300.f}});
         pd.pump();
-        pd.retain(1, *tf.f);
+        pd.retain(1, *tf.f, std::chrono::steady_clock::now());
         pd.show(1, {});
         pd.pump();
         pd.drain();

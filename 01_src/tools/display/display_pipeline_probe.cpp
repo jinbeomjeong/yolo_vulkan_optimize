@@ -204,7 +204,7 @@ int run(const Args& a) {
         const int slot = free_slots.front();
         free_slots.pop_front();
         f->pts = decoded;
-        disp.retain(slot, *f);
+        disp.retain(slot, *f, Clock::now());   // decode return ≈ now: the slot was taken before decode
         f.reset();
         lagq.emplace_back(slot, decoded);
         ++decoded;

@@ -8,7 +8,7 @@
 // transport-independent common part — frame lifetime, box ring, commit gate (pacing), statistics, debugfs verification.
 //
 // ── Frame lifetime (when is display_done raised) ─────────────────────────────────────────────────
-//   retain(slot)  : holds the keepalive right after decode (glass-to-glass start point)
+//   retain(slot)  : holds the keepalive after slot acquisition (glass-to-glass start point; decode-to-screen starts at t_decoded)
 //   show(slot)    : retained → pending (not committed yet). Draws the boxes (acquire → draw, non-blocking).
 //   commit        : pending → committed (the transport holds it for scanout). Identified by the transport token.
 //   release       : the transport released that buffer (wl_buffer.release / next flip) → release keepalive and display_done(slot).
@@ -36,7 +36,7 @@
 //   presented       : number of frames the transport reported as presented (Wayland: wp_presentation.presented, else commit count)
 //   display_dropped : skipped by every + pending overflow + rejected by transport + not shown at shutdown
 //   overlay_ms      : OverlayPlane's last_overlay_ms + last_clear_ms (V3D timestamp)
-//   present_interval_ms / glass_ms : based on presented time (CLOCK_MONOTONIC). glass = retain() → presented.
+//   present_interval_ms / glass_ms : based on presented time (CLOCK_MONOTONIC). glass = retain() → presented, d2s = t_decoded → presented.
 //   convert_ms      : none (conversion happens in the HVS) — empty value.
 //
 // Threads: all on the main thread.
@@ -51,6 +51,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <vulkan/vulkan.h>
@@ -135,7 +136,7 @@ public:
     void set_display_done_callback(std::function<void(int)> cb) override { done_cb_ = std::move(cb); }
     void set_source_size(int w, int h) override;
     void set_source_fps(double fps) override;
-    void retain(int slot, const DrmFrame& f) override;
+    void retain(int slot, const DrmFrame& f, Clock::time_point t_decoded) override;
     bool show(int slot, const std::vector<Detection>& dets, std::string_view hud = {}) override;
     void pump() override;
     void drain() override;
@@ -152,6 +153,7 @@ public:
     const std::vector<double>& overlay_ms() const override { return overlay_ms_; }
     const std::vector<double>& present_interval_ms() const override { return interval_ms_; }
     const std::vector<double>& glass_ms() const override { return glass_ms_; }
+    const std::vector<double>& decode_to_screen_ms() const override { return d2s_ms_; }
 
     std::string describe() const override;
     ScanoutReport scanout_report() const override;
@@ -159,7 +161,7 @@ public:
 private:
     struct Retained {
         DrmFrame frame;
-        Clock::time_point t{};
+        Clock::time_point t{}, t_decoded{};
         bool valid = false;
     };
     struct Item {                 // a pending or committed frame
@@ -167,7 +169,7 @@ private:
         int pipe = -1;            // -1 = the caller raises display_done itself (latest)
         int overlay = -1;         // box ring entry to put up with this frame (-1 = keep previous boxes)
         bool overlay_stat = false;
-        Clock::time_point t_retain{};
+        Clock::time_point t_retain{}, t_decoded{};
         std::uint64_t token = 0;
     };
 
@@ -195,7 +197,7 @@ private:
     // Frames not yet committed (display order, at most kMaxPending). On overflow the oldest is discarded.
     std::deque<Item> pending_;
     std::unordered_map<std::uint64_t, Item> committed_;   // token → committed frame (waiting for release)
-    std::unordered_map<std::uint64_t, Clock::time_point> await_present_;   // token → t_retain (waiting for feedback)
+    std::unordered_map<std::uint64_t, std::pair<Clock::time_point, Clock::time_point>> await_present_;   // token → (t_retain, t_decoded)
     std::uint64_t next_token_ = 1;
 
     bool frame_cb_pending_ = false;
@@ -218,7 +220,7 @@ private:
     bool drained_ = false;
 
     std::int64_t last_present_ns_ = 0;
-    std::vector<double> overlay_ms_, interval_ms_, glass_ms_;
+    std::vector<double> overlay_ms_, interval_ms_, glass_ms_, d2s_ms_;
 
     bool snap_start_taken_ = false;
     DrmStateSnapshot snap_start_, snap_end_;

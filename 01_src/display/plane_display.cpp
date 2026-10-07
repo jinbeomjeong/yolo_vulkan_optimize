@@ -76,10 +76,11 @@ void PlaneDisplay::set_source_fps(double fps) {
             std::chrono::duration<double, std::milli>(std::max(1000.0 / fps - 8.0, 0.0)));
 }
 
-void PlaneDisplay::retain(int slot, const DrmFrame& f) {
+void PlaneDisplay::retain(int slot, const DrmFrame& f, Clock::time_point t_decoded) {
     Retained& r = retained_.at(static_cast<std::size_t>(slot));
     r.frame = f;   // extra keepalive reference
     r.t = Clock::now();
+    r.t_decoded = t_decoded;
     r.valid = true;
 }
 
@@ -100,6 +101,7 @@ bool PlaneDisplay::show(int slot, const std::vector<Detection>& dets, std::strin
     Item it;
     it.frame = std::move(r.frame);
     it.t_retain = r.t;
+    it.t_decoded = r.t_decoded;
     r = Retained{};
 
     const bool skip = cfg_.every > 1 && (shown_counter_ % cfg_.every) != 0;
@@ -200,7 +202,7 @@ void PlaneDisplay::try_commit(bool force) {
     if (!scanout_->reports_presentation()) ++presented_;
     frame_cb_pending_ = true;
     last_commit_ = now;
-    await_present_[p.token] = p.t_retain;
+    await_present_[p.token] = {p.t_retain, p.t_decoded};
     const std::uint64_t tok = p.token;
     committed_.emplace(tok, std::move(p));
     pending_.pop_front();
@@ -250,7 +252,10 @@ void PlaneDisplay::on_presented(std::uint64_t token, std::int64_t t_ns, bool clo
     if (clock_monotonic) {
         if (last_present_ns_ != 0) interval_ms_.push_back(static_cast<double>(t_ns - last_present_ns_) / 1e6);
         last_present_ns_ = t_ns;
-        if (it != await_present_.end()) glass_ms_.push_back(static_cast<double>(t_ns - steady_ns(it->second)) / 1e6);
+        if (it != await_present_.end()) {   // same t_ns for both series → equal length and order
+            glass_ms_.push_back(static_cast<double>(t_ns - steady_ns(it->second.first)) / 1e6);
+            d2s_ms_.push_back(static_cast<double>(t_ns - steady_ns(it->second.second)) / 1e6);
+        }
     }
     if (it != await_present_.end()) await_present_.erase(it);
 }

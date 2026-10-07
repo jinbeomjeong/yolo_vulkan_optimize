@@ -8,7 +8,7 @@
 #   follows nms_bench.sh (experiment A). Per-run side files (gpu_stats, labwc /proc stat, debugfs state mid-run) follow
 #   07_results/display_vulkan_hdmi/evidence/hvs_review/baseline/run_baseline.sh.
 #
-# Configs (all b2/s4, --postproc gpu --nms gpu, NPU on, fullscreen, --display-sync matched, every flag explicit):
+# Configs (all b2/s$SLOTS (default 4), --postproc gpu --nms gpu, NPU on, fullscreen, --display-sync matched, every flag explicit):
 #   vk_source  / vk_asap    Vulkan composition (--display-backend wayland: the backend `auto` resolves to, but strict —
 #                           no silent offscreen fallback)
 #   wlp_source / wlp_asap   --display-backend wayland-planes --display-color-range auto
@@ -35,6 +35,7 @@
 #   bash 06_tools/bench/display_planes_bench.sh                       # 3 runs x 6 configs x 900 frames (user present: kms)
 #   SKIP_KMS=1 bash ...                                               # vk + wlp only (no session switch)
 #   ONLY='^wlp_' RUNS=1 FRAMES=300 bash ...                           # subset (grep -E on config id)
+#   SLOTS=6 bash ...                                                  # --slots of every config (default 4; --batch stays 2)
 #   DRYRUN=1 bash ...                                                 # print every command (incl. session switches), exit
 #   CHECK_ONLY=1 bash ...                                             # binary/tool check only
 #   SESSIONS_ONLY=1 bash ...                                          # read-only: print the session ids found, exit
@@ -48,7 +49,8 @@
 #                    dri_clients_{pre,post}.txt, wlr_randr_pre.txt (not for kms)}
 #   raw/_session/hailort.log (temperature probe)
 # results_raw.csv = 11 script columns + RESULT_CSV (22) + RESULT_CSV2 without label and its duplicate ok (33)
-#                   + RESULT_CSV3 without label and ok (12) + 17 stdout / side-file columns + checks = 96 columns.
+#                   + RESULT_CSV3 without label and ok (12 + d2s_mean/median/p90/n = 16)
+#                   + 19 stdout / side-file columns + checks = 102 columns.
 # Side-file columns: labwc_* = /proc stat ticks and drm-engine-* fdinfo deltas over the run (same labwc pid before and after);
 #   yvo_* = the child's last /proc sample (<= SAMPLE_S before exit), i.e. its **whole lifetime including init**
 #   (HailoRT / Vulkan setup) — the process CPU of the measurement window is cpu_ms_per_frame (getrusage) from RESULT_CSV;
@@ -66,6 +68,7 @@ RUNS="${RUNS:-3}"
 FRAMES="${FRAMES:-900}"
 ONLY="${ONLY:-.}"
 WARMUP="${WARMUP:-30}"
+SLOTS="${SLOTS:-4}"
 TIMEOUT_S="${TIMEOUT_S:-90}"
 COOL_C="${COOL_C:-65}"
 COOL_MAX_S="${COOL_MAX_S:-120}"
@@ -86,6 +89,7 @@ export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
 [[ "$FRAMES" =~ ^[1-9][0-9]*$ ]] || { echo "FRAMES must be a positive integer: $FRAMES" >&2; exit 2; }
 [[ "$RUNS" =~ ^[1-9][0-9]*$ ]] || { echo "RUNS must be a positive integer: $RUNS" >&2; exit 2; }
 [[ "$WARMUP" =~ ^[0-9]+$ ]] || { echo "WARMUP must be >= 0: $WARMUP" >&2; exit 2; }
+[[ "$SLOTS" =~ ^[1-9][0-9]*$ ]] || { echo "SLOTS must be a positive integer: $SLOTS" >&2; exit 2; }
 (( WARMUP < FRAMES )) || { echo "WARMUP ($WARMUP) must be < FRAMES ($FRAMES)" >&2; exit 2; }
 # Mid-run debugfs state snapshot: half of the source-paced duration + 3 s of startup.
 MID_SNAP_S="${MID_SNAP_S:-$(( FRAMES / 60 + 3 ))}"
@@ -96,7 +100,7 @@ done
 check_only_exit
 
 # Shared arguments (everything explicit, also the CLI defaults: defaults can move, archived commands must not).
-BASE_ARGS="--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --nms gpu --gpu-depth 3 --batch 2 --slots 4"
+BASE_ARGS="--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --nms gpu --gpu-depth 3 --batch 2 --slots $SLOTS"
 BASE_ARGS+=" --display on --display-fullscreen --display-sync matched --display-warmup $WARMUP"
 VK_ARGS="--display-backend wayland"
 WLP_ARGS="--display-backend wayland-planes --display-color-range auto"
@@ -179,7 +183,7 @@ build_cmd() {
 }
 
 if [[ "$DRYRUN" == "1" ]]; then
-  echo "DRYRUN: $(basename "$0") OUT_DIR=$OUT_DIR RUNS=$RUNS FRAMES=$FRAMES WARMUP=$WARMUP ONLY='$ONLY' SKIP_KMS=$SKIP_KMS"
+  echo "DRYRUN: $(basename "$0") OUT_DIR=$OUT_DIR RUNS=$RUNS FRAMES=$FRAMES WARMUP=$WARMUP SLOTS=$SLOTS ONLY='$ONLY' SKIP_KMS=$SKIP_KMS"
   echo "DRYRUN: TIMEOUT_S=$TIMEOUT_S MID_SNAP_S=$MID_SNAP_S COOL_EVERY=$COOL_EVERY env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR WAYLAND_DISPLAY=$WAYLAND_DISPLAY"
   for ((r = 1; r <= RUNS; r++)); do
     on_tty=0
@@ -296,7 +300,7 @@ env_snapshot() {
   env_snapshot before
   echo "video: $VIDEO"
   echo "hef: $HEF"
-  echo "runs: $RUNS frames: $FRAMES warmup: $WARMUP only: $ONLY skip_kms: $SKIP_KMS timeout_s: $TIMEOUT_S mid_snap_s: $MID_SNAP_S"
+  echo "runs: $RUNS frames: $FRAMES warmup: $WARMUP slots: $SLOTS only: $ONLY skip_kms: $SKIP_KMS timeout_s: $TIMEOUT_S mid_snap_s: $MID_SNAP_S"
   echo "cool: COOL_C=$COOL_C COOL_MAX_S=$COOL_MAX_S HOT_C=$HOT_C COOL_EVERY=$COOL_EVERY"
   echo "caller YVO_DEC_THREADS: ${YVO_DEC_THREADS-<unset>} (removed for every child: app default)"
   echo "env: $(env | grep -E '^(VK_|HAILO|AV_|FFREPORT|YVO_|WAYLAND_DISPLAY|XDG_RUNTIME_DIR)' | paste -sd ' ' || true)"
@@ -327,8 +331,15 @@ clients_snap() { cat "$DRI_DIR/clients" > "$1" 2>/dev/null || echo unreadable > 
 # ── stdout metrics ──────────────────────────────────────────────────────────────
 # Parsed from the yvo_pipeline summary (01_src/pipeline/main.cpp, end of run()). nan when absent.
 #   glass-to-glass  mean M  median D  p90 P  (n=N, ...)     -> (already RESULT_CSV2 mean/p90, RESULT_CSV3 median)
+#   decode-to-screen mean M  median D  p90 P  (n=N, ...)    -> (already RESULT_CSV3 d2s_*)
+#   slot wait ms    mean M  p90 P  (...)                    -> slot_wait_ms_mean, slot_wait_ms_p90
 #   "  kms: flips F, flip_timeouts T, commit failures C, busy B, master_lost no|yes (...)" -> kms_*
 #   "  kms: shutdown <result>"                                                               -> kms_shutdown (commas -> ;)
+slot_wait_metrics() {   # slot_wait_metrics <stdout.log> -> "mean,p90" (nan,nan if the line is missing)
+  awk '/^slot wait ms / { if (match($0, /mean [0-9.]+/)) m = substr($0, RSTART + 5, RLENGTH - 5)
+                          if (match($0, /p90 [0-9.]+/)) p = substr($0, RSTART + 4, RLENGTH - 4) }
+       END { printf "%s,%s", (m == "" ? "nan" : m), (p == "" ? "nan" : p) }' "$1" 2>/dev/null || printf 'nan,nan'
+}
 kms_metrics() {   # kms_metrics <stdout.log> -> "flips,timeouts,commit_failures,busy,master_lost,shutdown"
   awk '
     /^  kms: flips / {
@@ -362,11 +373,11 @@ stat_ticks() { awk '{ print $14 + $15 }' "$1" 2>/dev/null || echo ""; }   # utim
 SCRIPT_COLS="id,backend,pace,run,exit_code,cool_wait_s,hailort_warnings,hailort_errors,unreliable,hailo_pre_c,note"
 CSV1_COLS="label,mode,layout,batch,slots,frames,wall_s,fps,cpu_ms_per_frame,decode_ms_mean,gpu_ms_mean,gpu_ms_p90,npu_ms_mean,npu_ms_p90,e2e_ms_mean,e2e_ms_p90,detections,hailo_t0,hailo_t1,soc_t0,soc_t1,ok"
 CSV2_COLS="postproc,alloc,gpu_post_mean,gpu_post_p90,cpu_nms_us_mean,cand_mean,cand_max,cand_overflow,display,sync,pace_cli,disp_convert_mean,disp_convert_p90,disp_overlay_mean,present_interval_median,e2e_glass_mean,e2e_glass_p90,presented,display_dropped,recreates,held_frames_max,slot_timeout_count,nms,gpu_nms_mean,gpu_nms_p90,nms_fallback,nms_verify_mismatch,scanout_zero_copy,plane_color_ok,hvs_underrun_delta,overlay_skipped,frame_cb_timeouts,zero_copy_feedback"
-CSV3_COLS="display_warmup,glass_median,glass_n,present_interval_p90,present_interval_n,late_frames,late_expected_gap,seq_gap_max,seq_gaps,seq_breaks,discarded,refresh_hz"
-EXTRA_COLS="kms_flips,kms_flip_timeouts,kms_commit_failures,kms_busy,kms_master_lost,kms_shutdown,labwc_pid,labwc_cpu_ms_per_frame,labwc_v3d_ms_per_frame,yvo_ticks_ms_per_frame,yvo_v3d_ms_per_frame,v3d_csd_ms_per_frame,v3d_tfu_ms_per_frame,v3d_binrender_ms_per_frame,v3d_total_ms_per_frame,wall_script_s,session,checks"
+CSV3_COLS="display_warmup,glass_median,glass_n,present_interval_p90,present_interval_n,late_frames,late_expected_gap,seq_gap_max,seq_gaps,seq_breaks,discarded,refresh_hz,d2s_mean,d2s_median,d2s_p90,d2s_n"
+EXTRA_COLS="slot_wait_ms_mean,slot_wait_ms_p90,kms_flips,kms_flip_timeouts,kms_commit_failures,kms_busy,kms_master_lost,kms_shutdown,labwc_pid,labwc_cpu_ms_per_frame,labwc_v3d_ms_per_frame,yvo_ticks_ms_per_frame,yvo_v3d_ms_per_frame,v3d_csd_ms_per_frame,v3d_tfu_ms_per_frame,v3d_binrender_ms_per_frame,v3d_total_ms_per_frame,wall_script_s,session,checks"
 N_CSV1=22   # fields after "RESULT_CSV,"  (label ... ok)
 N_CSV2=35   # fields after "RESULT_CSV2," (label + 10 postproc incl. ok + 14 display + 5 NMS + 6 scanout)
-N_CSV3=14   # fields after "RESULT_CSV3," (label + 12 + ok)
+N_CSV3=18   # fields after "RESULT_CSV3," (label + 12 + ok + d2s_mean,d2s_median,d2s_p90,d2s_n)
 #   ⚠ If main.cpp appends fields to a RESULT_CSV* line, N_CSV* and the *_COLS names must change together.
 CSV_HEADER="$SCRIPT_COLS,$CSV1_COLS,$CSV2_COLS,$CSV3_COLS,$EXTRA_COLS"
 
@@ -401,7 +412,8 @@ make_row() {
   if [[ -z "$l3" || "$(awk -F, '{print NF}' <<<"$l3")" != "$N_CSV3" ]]; then
     notes+=(no_result_csv3); l3="$(nan_list $((N_CSV3 - 2)))"; l1="${l1%,*},0"
   else
-    l3=$(awk -F, 'BEGIN{OFS=","}{ out=""; for(i=2;i<NF;i++) out = (out=="" ? $i : out OFS $i); print out }' <<<"$l3")
+    # drop label (1) and ok (14); d2s_* (15..18) follow ok
+    l3=$(awk -F, 'BEGIN{OFS=","}{ out=""; for(i=2;i<=NF;i++){ if(i==14) continue; out = (out=="" ? $i : out OFS $i) } print out }' <<<"$l3")
   fi
   frames=$(cut -d, -f6 <<<"$l1")
   # Side-file metrics. CLK_TCK ticks -> ms. labwc must be the same pid before and after.
@@ -420,7 +432,7 @@ make_row() {
     yvo_v3d=$(awk -v a="$yv" -v n="$frames" 'BEGIN{printf "%.4f", a / 1e6 / n}')
   fi
   wall=$(sed -n 's/^wall_script_s //p' "$dir/meta.txt" 2>/dev/null || echo nan)
-  extra="$(kms_metrics "$log"),${lpid:--},$lcpu,$lv3d,$yvo_cpu,$yvo_v3d"
+  extra="$(slot_wait_metrics "$log"),$(kms_metrics "$log"),${lpid:--},$lcpu,$lv3d,$yvo_cpu,$yvo_v3d"
   extra+=",$(v3d_delta "$dir/gpu_stats_pre.txt" "$dir/gpu_stats_post.txt" "$frames"),${wall:-nan}"
   extra+=",$(sed -n 's/^session //p' "$dir/meta.txt" 2>/dev/null || echo '?')"
   (( rc != 0 )) && notes+=("rc_$rc")
@@ -442,6 +454,7 @@ if v.get("ok") != "1": bad.append("ok")
 if v.get("hailort_warnings") != "0": bad.append("hailort_warn")
 # Invalid runs: nothing left after the --display-warmup cut (glass_n 0 -> glass_median nan), or no vblank gap to judge.
 if v.get("glass_n") in ("0", "nan", ""): bad.append("no_glass")
+if v.get("d2s_n") != v.get("glass_n"): bad.append("d2s_n")   # both series are pushed at the same screen time
 if v.get("display") in ("wayland-planes", "kms"):
     if v.get("seq_gaps") in ("0", "nan", "") or v.get("late_frames") == "unverified": bad.append("late_unverified")
     if v.get("plane_color_ok") != "1": bad.append("color_ok")
@@ -530,6 +543,7 @@ run_one() {
     echo "yvo_pid ${ypid:--}"
     echo "session $(is_kms "$id" && echo "tty:$TTY_SID" || echo "desktop:$DESKTOP_SID")"
     echo "mid_snap_s $MID_SNAP_S"
+    echo "slots $SLOTS"
     printf 'cmd timeout -s KILL %s ' "$TIMEOUT_S"; printf '%q ' "${cmd[@]}"; echo
   } > "$run_dir/meta.txt"
   # labwc restarted in between -> its tick delta is meaningless
@@ -560,7 +574,7 @@ for ((r = 1; r <= RUNS; r++)); do
     echo "$row" >> "$RAW"
     checks=${row##*,}
     if [[ "$checks" != "pass" ]]; then echo "  rc=$rc checks=$checks (see stdout.log)"; tail -3 "$run_dir/stdout.log" || true; fi
-    echo "  $(grep -E '^wall|^cpu {5}|^glass-to-glass|^display  |^scanout         (zero_copy|late)|^  kms: flips' "$run_dir/stdout.log" | tr -s ' ' | tr '\n' ' ') hailo_warn=$nwarn rc=$rc"
+    echo "  $(grep -E '^wall|^cpu {5}|^slot wait|^glass-to-glass|^decode-to-screen|^display  |^scanout         (zero_copy|late)|^  kms: flips' "$run_dir/stdout.log" | tr -s ' ' | tr '\n' ' ') hailo_warn=$nwarn rc=$rc"
   done
   if (( ON_TTY )); then
     to_desktop || { echo "STOP: desktop did not come back after the kms runs" >&2; recovery_hint; exit 1; }
@@ -593,7 +607,8 @@ for r in rows:
     groups[r["id"]].append(r)
 
 METRICS = [("fps", 2), ("cpu_ms_per_frame", 3), ("e2e_ms_mean", 2), ("glass_median", 2), ("e2e_glass_p90", 2),
-           ("e2e_glass_mean", 2), ("glass_n", 0), ("present_interval_median", 3), ("present_interval_p90", 3),
+           ("e2e_glass_mean", 2), ("glass_n", 0), ("d2s_median", 2), ("d2s_p90", 2), ("d2s_mean", 2), ("d2s_n", 0),
+           ("slot_wait_ms_mean", 3), ("slot_wait_ms_p90", 3), ("present_interval_median", 3), ("present_interval_p90", 3),
            ("presented", 0), ("display_dropped", 0), ("late_frames", 0), ("seq_gaps", 0), ("seq_gap_max", 0), ("seq_breaks", 0),
            ("discarded", 0),
            ("disp_convert_mean", 3), ("disp_overlay_mean", 3), ("held_frames_max", 0), ("overlay_skipped", 0),
@@ -644,15 +659,17 @@ lines = []
 for c in order:
     s = summary[c]
     lines.append([c, rng(c, "fps", 2), rng(c, "cpu_ms_per_frame", 3), med(c, "glass_median", 2), med(c, "e2e_glass_p90", 2),
+                  med(c, "d2s_median", 2), med(c, "d2s_p90", 2), med(c, "slot_wait_ms_mean", 2),
                   med(c, "present_interval_median", 2), med(c, "present_interval_p90", 2), med(c, "presented", 0),
                   med(c, "display_dropped", 0), med(c, "late_frames", 0), med(c, "discarded", 0),
                   med(c, "labwc_cpu_ms_per_frame", 3), med(c, "v3d_csd_ms_per_frame", 3), med(c, "v3d_tfu_ms_per_frame", 3),
                   med(c, "v3d_total_ms_per_frame", 3), s["color"], s["zc"], med(c, "hvs_underrun_delta", 0),
                   f"{s['pass']}/{s['runs']}"])
-hdr = ["id", "fps", "cpu_ms/f", "glass_med", "glass_p90", "pres_med", "pres_p90", "presented", "dropped", "late",
+hdr = ["id", "fps", "cpu_ms/f", "glass_med", "glass_p90", "d2s_med", "d2s_p90", "slotw_ms", "pres_med", "pres_p90", "presented", "dropped", "late",
        "discard", "labwc_ms/f", "csd_ms/f", "tfu_ms/f", "v3d_ms/f", "color", "zc", "underrun", "pass"]
 wid = [max(len(h), *(len(l[i]) for l in lines)) for i, h in enumerate(hdr)]
-print("== per config (medians; fps / cpu as median (min..max); glass / present / late after --display-warmup) ==")
+print("== per config (medians; fps / cpu as median (min..max); glass / d2s / present / late after --display-warmup;"
+      " glass = slot acquired -> screen, d2s = decode return -> screen, slotw = slot wait mean) ==")
 print(" | ".join(h.ljust(x) for h, x in zip(hdr, wid)))
 print("-+-".join("-" * x for x in wid))
 for l in lines:

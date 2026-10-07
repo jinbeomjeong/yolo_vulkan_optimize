@@ -48,8 +48,9 @@ public:
     // Source frame rate for pace = Source (decoder avg_frame_rate). Same timing as set_source_size(); <= 0 is ignored.
     virtual void set_source_fps(double fps) = 0;
 
-    // Right after decode: additionally holds the keepalive of the frame this slot will use. Glass-to-glass start point.
-    virtual void retain(int slot, const DrmFrame& f) = 0;
+    // After slot acquisition: additionally holds the keepalive of the frame this slot will use. Now = glass-to-glass start
+    // point; t_decoded = decode return (decode-to-screen start point, includes the slot wait). No decode time → pass now.
+    virtual void retain(int slot, const DrmFrame& f, Clock::time_point t_decoded) = 0;
 
     // Presents one frame. false = display drop (caller calls display_done immediately).
     virtual bool show(int slot, const std::vector<Detection>& dets, std::string_view hud = {}) = 0;
@@ -80,7 +81,8 @@ public:
     virtual VkExtent2D extent() const = 0;                // screen (or output) size
     virtual const std::vector<double>& overlay_ms() const = 0;
     virtual const std::vector<double>& present_interval_ms() const = 0;
-    virtual const std::vector<double>& glass_ms() const = 0;
+    virtual const std::vector<double>& glass_ms() const = 0;              // retain() → reaches screen
+    virtual const std::vector<double>& decode_to_screen_ms() const = 0;   // t_decoded → same screen time (pairs with glass_ms)
 
     // ── Statistics (Vulkan composition path only — default 0/empty) ──
     virtual std::uint64_t recreates() const { return 0; }

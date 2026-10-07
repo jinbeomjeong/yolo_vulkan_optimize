@@ -31,7 +31,7 @@ description: >
 | `isp_pipeline_bench.sh` | ISP 포함 전체 파이프라인 | `07_results/isp_resize/runs/pipeline/` |
 | `gst_pipeline_bench.sh` | 앱(`yvo_pipeline` dmabuf/NHCW) 대 GStreamer 연구 경로(`yvo_gst_pipeline --sink hailo`), b1/b4/b8 같은 slots 인터리브. CSV 앞 26열은 `pipeline_bench.sh` 와 같다(gst 의 `decode_ms` 는 nan) | `07_results/gst_pipeline/` |
 | `dec_threads_bench.sh` | 앱 FFmpeg 프레임 스레드 수(`YVO_DEC_THREADS`) 스윕 + auto 대 1 회귀 A/B. 65열 raw, 매 실행 전 냉각(`COOL_EVERY=1`), 표시 실행은 HDMI-A-1 확인 + `timeout -s KILL 90` | `07_results/dec_threads/` |
-| `display_planes_bench.sh` | HVS 평면 표시 정식 측정(실험 B): vk / wayland-planes / kms × source·asap, b2/s4, 900f×3, 모든 설정 `--display-warmup 30`(kms 첫 모드셋 제외). 96열 raw(RESULT_CSV3 14필드·labwc CPU·V3D 엔진별 포함). kms 는 `loginctl activate` 로 세션을 전환하므로 **사용자가 자리에 있을 때만**(`SKIP_KMS=1`, `SESSIONS_ONLY=1`, `DRYRUN=1`) | `07_results/display_planes_e2e/` |
+| `display_planes_bench.sh` | HVS 평면 표시 정식 측정(실험 B): vk / wayland-planes / kms × source·asap, b2/s4(`SLOTS=N`으로 변경), 900f×3, 모든 설정 `--display-warmup 30`(kms 첫 모드셋 제외). 102열 raw(RESULT_CSV3 18필드 — decode-to-screen `d2s_*`는 `ok` 뒤 — ·slot wait·labwc CPU·V3D 엔진별 포함, 2026-10-08 보관본은 96열). kms 는 `loginctl activate` 로 세션을 전환하므로 **사용자가 자리에 있을 때만**(`SKIP_KMS=1`, `SESSIONS_ONLY=1`, `DRYRUN=1`) | `07_results/display_planes_e2e/` |
 | `nms_bench.sh` | GPU NMS 정식 A/B(실험 A, 표시 off): `MODE=perf` b2s4·b8s16 × `--nms cpu|gpu` 900f×3 인터리브(77열 raw), `MODE=verify` 전체 영상 cpu/gpu/verify 검출 대조. NMS 단독 GPU 비용은 `yvo_postproc_probe --probe nms`(NPU 불필요) | `07_results/gpu_nms_e2e/` |
 
 > ⚠ `pipeline_bench.sh` 의 `configs` 스키마(`id|mode|layout|batch|slots` 5필드)는 **바꾸지 마라.**

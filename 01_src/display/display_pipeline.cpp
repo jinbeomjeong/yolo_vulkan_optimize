@@ -211,10 +211,11 @@ void DisplayPipeline::set_source_size(int w, int h) {
     apply_extent();
 }
 
-void DisplayPipeline::retain(int slot, const DrmFrame& f) {
+void DisplayPipeline::retain(int slot, const DrmFrame& f, Clock::time_point t_decoded) {
     Retained& r = retained_.at(static_cast<std::size_t>(slot));
     r.frame = f;   // extra reference to the keepalive shared_ptr — the frame survives even after main's f.reset()
     r.t = Clock::now();
+    r.t_decoded = t_decoded;
     r.valid = true;
 }
 
@@ -259,7 +260,7 @@ bool DisplayPipeline::show(int slot, const std::vector<Detection>& dets, std::st
     if (!r.valid) return false;
     // Whichever path exits, the retained reference is released here (if displayed, DisplayConvert holds its own).
     const DrmFrame frame = std::move(r.frame);
-    const Clock::time_point t_retain = r.t;
+    const Clock::time_point t_retain = r.t, t_decoded = r.t_decoded;
     r = Retained{};
 
     recreate_if_needed();
@@ -318,7 +319,7 @@ bool DisplayPipeline::show(int slot, const std::vector<Detection>& dets, std::st
     p.t_retain = t_retain;
     p.have_retain = true;
     inflight_.push_back(p);
-    if (fr.present_id != 0) present_ids_.push_back(PresentWait{fr.present_id, t_retain, true});
+    if (fr.present_id != 0) present_ids_.push_back(PresentWait{fr.present_id, t_retain, t_decoded, true});
     return true;
 }
 
@@ -359,7 +360,10 @@ void DisplayPipeline::drain_present_waits(bool blocking) {
         if (have_last_present_) interval_ms_.push_back(ms_between(last_present_, t));
         last_present_ = t;
         have_last_present_ = true;
-        if (w.have_retain) glass_ms_.push_back(ms_between(w.t_retain, t));
+        if (w.have_retain) {   // same screen time t for both series → equal length and order (main.cpp cuts both alike)
+            glass_ms_.push_back(ms_between(w.t_retain, t));
+            d2s_ms_.push_back(ms_between(w.t_decoded, t));
+        }
     }
 }
 
