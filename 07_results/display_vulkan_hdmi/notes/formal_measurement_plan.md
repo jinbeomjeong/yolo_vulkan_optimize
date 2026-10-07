@@ -22,10 +22,10 @@
 
 | 항목 | 위치 | 비고 |
 |---|---|---|
-| `--nms gpu\|cpu\|verify` | `01_src/pipeline/main.cpp:264-270`, 기본 gpu `:176` | `--postproc gpu`에서만 허용(`:501-502`) |
+| `--nms gpu\|cpu\|verify` | `01_src/pipeline/main.cpp:264-270`, 기본 gpu `:176` | `--postproc gpu`에서만 허용(`:505-506`) |
 | decode·NMS 분리 타임스탬프 | `01_src/vulkan/yolo_postproc.cpp:24-26`, `:625-627` | pass1 = ts2−ts1, nms = ts4−ts3. 배리어 구간(ts2→ts3)은 어느 값에도 안 들어간다 |
-| 종료 요약 | `main.cpp:1040-1101` | `gpu nms ms mean/median/p90/max`, `nms fallback N frames (capacity X, iou guard Y)`, glass·present 간격 |
-| `RESULT_CSV2` | `main.cpp:1134-1145` | `nms,gpu_nms_mean,gpu_nms_p90,nms_fallback,nms_verify_mismatch` + 평면 6필드. **median·fallback 원인별 값은 stdout에만** 있다 |
+| 종료 요약 | `main.cpp:1046-1107` | `gpu nms ms mean/median/p90/max`, `nms fallback N frames (capacity X, iou guard Y)`, glass·present 간격 |
+| `RESULT_CSV2` | `main.cpp:1140-1151` | `nms,gpu_nms_mean,gpu_nms_p90,nms_fallback,nms_verify_mismatch` + 평면 6필드. **median·fallback 원인별 값은 stdout에만** 있다 |
 | CPU fallback | `01_src/pipeline/gpu_postproc_stage.cpp:209-228` | 용량(후보 > 1024)·IoU 보호대로 그 프레임만 CPU 억제 |
 | 평면 표시 시각 | `wayland_plane_scanout.cpp:351-365`, `kms_scanout.cpp:866-879` | wp_presentation / page-flip 하드웨어 시각 |
 | 벤치 템플릿 | `06_tools/bench/display_bench.sh` | CSV+CSV2 59열 전체 수집, 설정은 `id\|args`. **`--nms`·`--display-backend` 설정은 없다** |
@@ -54,7 +54,7 @@
 
 ### A3. NMS 단독 GPU 비용 (코드 수정 필요)
 - `01_src/tools/vulkan/postproc_probe.cpp`의 P3-⑥ 연속 스트림 루프(`:431-445`)에 `enable_nms` + `last_nms_ms()` 수집을 넣는다.
-  현재 이 프로브에는 NMS가 없다.
+  현재 이 프로브에는 NMS가 없다. → 구현(2026-10-08): fixture 출력의 `cmdbuf_ms` 의미를 바꾸지 않으려고 P3-⑥ 루프에 넣지 않고 같은 루프의 별도 모드 `--probe nms`로 만들었다(최악 경우는 `01_src/testkit/nms_harness.hpp`로 옮긴 `NmsHarness` 공유).
 - `04_data/raw_tensors/` 픽스처로 NPU 없이 median을 잰다. 최악 경우는 `05_tests/test_postproc.cpp`의 `NmsHarness`로 후보 1024개.
 - 단발 submit/wait 값(`EfficientNmsBitExact`의 `gpu nms max`)은 DVFS로 부풀려지므로 쓰지 않는다.
 - 담당 `vulkan-expert`, 끝나면 verify 스킬.
@@ -85,7 +85,7 @@
 ### 필요한 계측 보강 (코드 수정, 담당 `vulkan-expert`, kms 부분은 `cpp-expert` 검토)
 - glass 통계에서 **앞 N프레임 제외** 옵션. kms 첫 커밋이 블로킹 모드셋이라서다(`kms_scanout.hpp:33-36`).
   `.claude/skills/measure/SKILL.md:27`은 "display_bench가 뺀다"고 적지만 스크립트에 그 로직이 없다 → 둘을 맞춘다.
-- `discarded_`를 ScanoutReport·요약·CSV에 노출(`plane_display.hpp:209`).
+- `discarded_`를 ScanoutReport·요약·CSV에 노출(`plane_display.hpp:210`).
 - 평면 경로에서 page-flip `seq` 간격 > 2로 늦은 프레임 집계(선례 `06_tools/probes/hvs_probe/hvs_kms_probe.cpp:872-881`).
 
 ### 스크립트
