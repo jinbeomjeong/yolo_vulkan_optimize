@@ -48,7 +48,7 @@ VUID-VkSwapchainCreateInfoKHR-presentMode-02839
 `VK_EXT_swapchain_maintenance1` 의 `VkSwapchainPresentModesCreateInfoEXT` 를 체인에 넣어도 레이어(1.4.309)가
 이 VU 를 완화해 주지 않는다. 완화 규정을 담은 `VK_KHR_surface_maintenance1` 은 **이 드라이버에도 설치된
 Vulkan 헤더(1.4.309)에도 없다**(드라이버는 `VK_EXT_surface_maintenance1` 과 `VK_KHR_swapchain_maintenance1`
-만 광고한다).
+만 지원 목록에 올린다).
 
 "검증 레이어 errors 0" 이 이 프로젝트의 하드 게이트이므로 **기본값은 안전한 4**로 두고, 이미지 1장
 (1080p RGBA 8.29 MB)을 아끼는 선택은 `SwapchainOptions::lean_images` / 프로브 `--lean-images` 로

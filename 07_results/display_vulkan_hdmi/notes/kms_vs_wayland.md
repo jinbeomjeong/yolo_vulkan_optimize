@@ -74,7 +74,7 @@
 | `full` | BT.709 / full | BT.709 / **limited** | 1 |
 
 - 판정 근거는 위와 같이 `/sys/kernel/debug/dri/1/state`의 평면 실값이다. `yvo_pipeline`(300프레임 × 3회, `wayland-planes`)의 자체 판정과 1초 간격 외부 덤프가 일치한다.
-- **달라진 점 하나**: `wp_color_representation_manager_v1` 전역 광고 수가 **2개에서 1개로** 줄었다. 앱은 광고된 전역을 전부 바인드하고 BT.709를 지원하는 하나를 고르므로 동작에는 영향이 없다. 광고된 `(coefficients, range)` 쌍은 identity/full, bt709·bt601·bt2020 각각 full+limited로 7개이며, BT.709 full이 광고되므로 "요청 쌍 미광고 → 요청 생략" 고장 모드는 발생하지 않는다.
+- **달라진 점 하나**: 컴포지터가 알려 주는 `wp_color_representation_manager_v1` 전역(색 매니저)이 **2개에서 1개로** 줄었다. 앱은 알려진 전역을 전부 바인드하고 BT.709를 지원하는 하나를 고르므로 동작에는 영향이 없다. 지원 목록에 오른 `(coefficients, range)` 쌍은 identity/full, bt709·bt601·bt2020 각각 full+limited로 7개이며, BT.709 full이 목록에 있으므로 "요청 쌍이 지원 목록에 없음 → 요청 생략" 고장 모드는 발생하지 않는다.
 - 원시 기록: [`../verification/color_range_rpt4/`](../verification/color_range_rpt4/README.md). 성능 수치는 1회 실행이라 인용 대상이 아니다.
 - §4의 권고("Wayland 경로를 쓰면 시작할 때 debugfs state로 range를 검증해야 한다")는 그대로 유효하다. 이번 업그레이드는 반전을 고치지 않았을 뿐이고, 다음 업그레이드에서 고쳐질 수 있다.
 

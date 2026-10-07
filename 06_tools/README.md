@@ -55,6 +55,6 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 
 | 파일 | 어디서 썼나 |
 |---|---|
-| `dmabuf_modifier_dump.c` | 컴포지터가 광고하는 dma-buf format/modifier 덤프 — [`07_results/display_vulkan_hdmi/`](../07_results/display_vulkan_hdmi/summary.md) |
+| `dmabuf_modifier_dump.c` | 컴포지터가 지원 목록으로 알려 주는 dma-buf format/modifier 덤프 — [`07_results/display_vulkan_hdmi/`](../07_results/display_vulkan_hdmi/summary.md) |
 | `ongoing_probe.cpp` | 백프레셔 계수 관찰 — [`07_results/raw_runner_backpressure/`](../07_results/raw_runner_backpressure/summary.md) |
 | `hvs_probe/` | KMS 직접·Wayland 전체화면에서 NV12 SAND 영상 평면 + AB24 박스 평면을 HVS가 블렌딩하는지 비교 — [`kms_vs_wayland.md`](../07_results/display_vulkan_hdmi/notes/kms_vs_wayland.md). 원래 `yvo_pipeline_port` 저장소(git 밖)에서 그 저장소 헤더(`common/`, `display/overlay_reference.hpp`, `pipeline/ffmpeg_drm_decoder`)에 맞춰 빌드했다. 메모의 `tools/hvs_probe/` 가 이 폴더다. 원시 증거는 [`07_results/display_vulkan_hdmi/evidence/hvs_review/`](../07_results/display_vulkan_hdmi/evidence/hvs_review/README.md)(검증 로그는 같은 실험의 `verification/hvs_review/`) |

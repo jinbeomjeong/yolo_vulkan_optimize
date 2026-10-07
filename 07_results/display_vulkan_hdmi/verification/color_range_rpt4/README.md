@@ -20,14 +20,14 @@ color-representation formats from gles2"*). [`../../notes/kms_vs_wayland.md`](..
 `color_ok`의 판정 기준은 `01_src/display/drm_state.hpp`의
 `video_on_plane && encoding_bt709 && range_limited`이고, 근거는 `/sys/kernel/debug/dri/1/state`다.
 
-## 달라진 것: 광고 매니저 수 2 → 1
+## 달라진 것: 컴포지터가 알려 주는 색 매니저 수 2 → 1
 
-rpt3 시절 labwc는 `wp_color_representation_manager_v1` 전역을 **2개** 광고했다
+rpt3 시절 labwc는 `wp_color_representation_manager_v1` 전역을 **2개** 알려 줬다
 (`06_tools/probes/hvs_probe/hvs_wl_probe.cpp`의 측정 주석). rpt4에서는 **1개**다 —
-세 회차 모두 `[managers advertised 1]`. 앱은 광고된 전역을 전부 바인드하고 BT.709를 지원하는 하나를
+세 회차 모두 `[managers advertised 1]`. 앱은 알려진 전역을 전부 바인드하고 BT.709를 지원하는 하나를
 고르므로(`01_src/display/wayland_window.cpp` `select_color_manager()`) 동작에 영향은 없다.
 
-광고된 `(coefficients, range)` 쌍은 7개다(`wayland_debug_color_auto.log`, 숫자는 프로토콜 enum 생값):
+지원 목록에 오른 `(coefficients, range)` 쌍은 7개다(`wayland_debug_color_auto.log`, 숫자는 프로토콜 enum 생값):
 
 | 쌍 | 뜻 |
 |---|---|
@@ -36,7 +36,7 @@ rpt3 시절 labwc는 `wp_color_representation_manager_v1` 전역을 **2개** 광
 | (4, 2), (4, 1) | bt601 / limited, bt601 / full |
 | (6, 2), (6, 1) | bt2020 / limited, bt2020 / full |
 
-BT.709가 full·limited 둘 다 광고되므로 "요청 쌍 미광고 → 요청 생략"
+BT.709가 full·limited 둘 다 지원 목록에 있으므로 "요청 쌍이 목록에 없음 → 요청 생략"
 (`01_src/display/wayland_plane_scanout.cpp`의 보호 분기) 고장 모드는 발생하지 않는다.
 실제로 보낸 요청은 `set_coefficients_and_range(2, 1)` = bt709 / full이었다.
 
@@ -68,7 +68,7 @@ XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
 함정 두 개:
 - **`--frames`는 90 이상**이어야 한다. start 스냅샷이 프레젠트 60장 뒤에 잡히기 때문이다
   (`01_src/display/plane_display.hpp` `kSnapshotAfterPresented`).
-- **`--quiet`를 주면 안 된다.** `[display] … color=` 줄이 사라져 광고 정보를 못 본다.
+- **`--quiet`를 주면 안 된다.** `[display] … color=` 줄이 사라져 컴포지터가 알려 준 지원 정보를 못 본다.
 
 labwc 세션 안에서 돌기 때문에 VT 전환이나 lightdm 정지는 필요 없다. 실행 중 VT를 바꾸지 않는다.
 

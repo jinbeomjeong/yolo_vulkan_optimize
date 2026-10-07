@@ -17,13 +17,13 @@
 | **P5** present 가 실제로 되는가 | 간격 16.7±2 ms, 검증 0, 화면 일치 | `present_wait` 간격 **median 16.661 ms** (p90 16.697, n=118), 120 present 타임아웃 0, 검증 레이어 **errors 0 / warnings 0**(sync 포함, 4구성), `grim` 픽셀 **오차 0** | **통과** |
 | **P6** 기존 경로 회귀 없음 | GPU median [2.074, 2.162] ms | **2.120 / 2.121 / 2.125 ms** (골든 2.116~2.120), context diff **0** | **통과** |
 | **P8** 원본 해상도가 예산에 드는가 | 1080p median ≤ 7.0 ms, CPU 기준과 비트 일치 | **4.229 ms** (p90 4.329), **max 오차 0 / 2,073,600 px**, alpha≠255 0개 | **통과** |
-| **P10** SAND 직접 스캔아웃(선택) | 프로토콜 가능 여부 | labwc 가 `NV12 modifier 0x0700000000000004` **광고함**. 이득은 미검증 | 가능 확인 |
+| **P10** SAND 직접 스캔아웃(선택) | 프로토콜 가능 여부 | labwc 가 `NV12 modifier 0x0700000000000004` 를 **지원 목록에 올림**. 이득은 미검증 | 가능 확인 |
 | **P7** 오버레이 박스·라벨 | 비트 일치, GPU ms, 검증 0 | 테두리 선두께 1/2/3 **max 오차 0**(변경 px 수까지 CPU와 동일), 글리프 ASCII 32~126 **max 오차 0**, 검출 5개 **0.151** / 40개 **0.555** ms, errors 0 | **통과** |
 
 부수 실측: 모드별 `minImageCount` **MAILBOX 4 / FIFO 3 / IMMEDIATE 3**,
 `currentExtent = 0xFFFFFFFF`, `supportedPresentScaling = None`,
 blit 폴백 비용 **약 1.23 ms**(계획서 추정 3.6 ms보다 쌈),
-labwc 광고 전역: `wp_viewporter=1`, `wp_presentation=1`, `wl_subcompositor=1`, `zwp_linux_dmabuf_v1` version 4.
+labwc 가 알려 준 전역: `wp_viewporter=1`, `wp_presentation=1`, `wl_subcompositor=1`, `zwp_linux_dmabuf_v1` version 4.
 
 ## 결론
 
@@ -89,7 +89,7 @@ labwc 광고 전역: `wp_viewporter=1`, `wp_presentation=1`, `wl_subcompositor=1
 - `evidence/p05_p10_probe.md` — P0.5/P10(조정자 실행), labwc modifier 표 덤프
 - `evidence/p08_window_mode_trap.md` — 창 모드 2.6배 저하와 `wp_viewporter` 해법, P5 픽셀 재검사
 - `evidence/p07_overlay.md` — 오버레이 P7 실측 전문, 경계 규약 R0~R8, 워크그룹 스윕
-- `dmabuf_modifier_dump.c` — labwc 가 광고하는 dma-buf format/modifier 덤프 도구.
+- `dmabuf_modifier_dump.c` — labwc 가 지원 목록으로 알려 주는 dma-buf format/modifier 덤프 도구.
   2026-09-21 폴더 재배치에서 **`../../06_tools/probes/dmabuf_modifier_dump.c` 로 옮겼다**
   (결과 폴더에는 소스를 두지 않는다)
 - `verification/README.md` — 6개 게이트 표와 로그 색인

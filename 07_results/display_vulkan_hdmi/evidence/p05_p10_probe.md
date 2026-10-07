@@ -37,10 +37,10 @@ waylandsink gstwaylandsink.c:1062 error: buffer ... size 3110400 ... cannot have
 (소스: `dmabuf_modifier_dump.c`, `wayland-scanner` + `libwayland-client` 만 사용).
 
 ```
-zwp_linux_dmabuf_v1 광고됨 (컴포지터 version=4) -> version 3 으로 bind
-wl_subcompositor       광고됨 (version=1)
-wp_presentation        광고됨 (version=2)
-wp_viewporter          광고됨 (version=1)
+zwp_linux_dmabuf_v1 advertised (compositor version=4) -> bind as version 3
+wl_subcompositor       advertised (version=1)
+wp_presentation        advertised (version=2)
+wp_viewporter          advertised (version=1)
   NV12  modifier 0x0700000000000006
   NV12  modifier 0x0000000000000000
   NV12  modifier 0x0700000000000004      <-- 우리 디코더의 modifier

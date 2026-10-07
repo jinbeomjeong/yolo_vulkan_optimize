@@ -29,7 +29,7 @@ labwc 가 창 모드에서 높이를 **1044** 로 준다(1080 − 36, 패널/장
 대신:
 1. **항상 1920x1080 1:1 로 렌더한다**(4.23 ms, CPU 기준과 비트 일치).
 2. `wp_viewport_set_destination(win_w, win_h)` 로 **축소를 Pi 5 HVS 하드웨어에 맡긴다.**
-   `wp_viewporter` 는 labwc 가 광고하고(`version=1`) `WaylandWindow::create_viewport()` 로 이미 접근 가능하다.
+   `wp_viewporter` 는 labwc 가 제공하고(`version=1`) `WaylandWindow::create_viewport()` 로 이미 접근 가능하다.
    > 주(2026-09-21): 2026-09-21 리팩터에서 미사용 viewporter 바인딩(`create_viewport()` 등)을 삭제했다. 구현할 때 다시 붙인다([`08_learn/07_video_display.md:608`](../../../08_learn/07_video_display.md)).
 3. 셰이더의 `kUniformScale` 경로는 **viewporter 가 없는 컴포지터를 위한 폴백으로만** 남긴다.
 
