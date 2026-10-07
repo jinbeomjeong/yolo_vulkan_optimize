@@ -22,7 +22,7 @@
 
 | 항목 | 위치 | 비고 |
 |---|---|---|
-| `--nms gpu\|cpu\|verify` | `01_src/pipeline/main.cpp:264-270`, 기본 gpu `:176` | `--postproc gpu`에서만 허용(`:505-506`) |
+| `--nms gpu\|cpu\|verify` | `01_src/pipeline/main.cpp:266-272`, 기본 gpu `:176` | `--postproc gpu`에서만 허용(`:508-509`) |
 | decode·NMS 분리 타임스탬프 | `01_src/vulkan/yolo_postproc.cpp:24-26`, `:625-627` | pass1 = ts2−ts1, nms = ts4−ts3. 배리어 구간(ts2→ts3)은 어느 값에도 안 들어간다 |
 | 종료 요약 | `main.cpp:1078-1144` | `gpu nms ms mean/median/p90/max`, `nms fallback N frames (capacity X, iou guard Y)`, glass·present 간격 |
 | `RESULT_CSV2` | `main.cpp:1177-1188` | `nms,gpu_nms_mean,gpu_nms_p90,nms_fallback,nms_verify_mismatch` + 평면 6필드. **median·fallback 원인별 값은 stdout에만** 있다 |

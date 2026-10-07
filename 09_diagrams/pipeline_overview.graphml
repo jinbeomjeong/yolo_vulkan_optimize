@@ -30,7 +30,7 @@ HEVC 1920×1080@30 · 900프레임<y:LabelModel>
       </data>
     </node>
     <node id="n_dec">
-      <data key="d5">HW HEVC 디코드. 출력 계약은 /home/pi/workspace/yolo_vulkan_optimize/01_src/core/frame_types.hpp struct DrmFrame. 수치 출처: 07_results/display_e2e/raw/disp_source_run1/stdout.log 'decode call ms median 0.107'. README.md §1 도 'decode call 0.107 ms/f' 로 갱신됐다(이전 표기 'CPU 0.10 ms/f' 는 CPU 시간이 아니라 이 디코드 호출 시간이었다). 측정 조건: FFmpeg 프레임 스레드 자동(5개, av:hevc:df0~4) — 2026-09-28 이전 앱 기본값이다. 지금 앱 기본은 1스레드다(01_src/pipeline/main.cpp:633, 환경변수 YVO_DEC_THREADS, 0 = FFmpeg 자동; 근거 07_results/dec_threads/summary.md). 이 값은 1스레드 조건으로 갱신하지 않았다 — 라벨 4행의 [측정 조건: FFmpeg 자동 5스레드] 표기.</data>
+      <data key="d5">HW HEVC 디코드. 출력 계약은 /home/pi/workspace/yolo_vulkan_optimize/01_src/core/frame_types.hpp struct DrmFrame. 수치 출처: 07_results/display_e2e/raw/disp_source_run1/stdout.log 'decode call ms median 0.107'. README.md §1 도 'decode call 0.107 ms/f' 로 갱신됐다(이전 표기 'CPU 0.10 ms/f' 는 CPU 시간이 아니라 이 디코드 호출 시간이었다). 측정 조건: FFmpeg 프레임 스레드 자동(5개, av:hevc:df0~4) — 2026-09-28 이전 앱 기본값이다. 지금 앱 기본은 1스레드다(01_src/pipeline/main.cpp:636, 환경변수 YVO_DEC_THREADS, 0 = FFmpeg 자동; 근거 07_results/dec_threads/summary.md). 이 값은 1스레드 조건으로 갱신하지 않았다 — 라벨 4행의 [측정 조건: FFmpeg 자동 5스레드] 표기.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="66.3" width="260.0" x="300.0" y="104.0"/>
@@ -161,7 +161,7 @@ dequant + DFL + threshold + 역변환<y:LabelModel>
       </data>
     </node>
     <node id="n_nms">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/efficient_nms.comp (EfficientNms, 01_src/vulkan/efficient_nms.hpp). YoloPostproc::submit 이 yolo_decode.comp pass 1 뒤 같은 커맨드 버퍼에 기록한다(01_src/vulkan/yolo_postproc.hpp:10, :148). 억제 위치는 --nms gpu|cpu|verify, 기본 gpu (01_src/pipeline/main.cpp:32-34, --postproc gpu 전용 검사 :505-508). GpuPostprocStage::finish() (01_src/pipeline/gpu_postproc_stage.cpp:190) 가 read_nms 로 결과를 읽고, IoU 보호대(경계)·용량 초과·잘못된 클래스 프레임만 CPU cpu_nms_greedy_by_class 로 fallback 한다 (:198-227, 호출 :202; kNmsFallbackIouGuard / kNmsFallbackCapacity, efficient_nms.hpp:56-57). --nms verify 는 둘 다 돌려 비트 비교한다. GPU NMS 수치는 아직 정식 측정 전이라 넣지 않았다. 참고로 display_e2e(2026-09-20)는 CPU NMS 당시 측정이다: 07_results/display_e2e/raw/disp_source_run1/stdout.log 'cpu nms us mean 2.841 median 2.667', 'candidates mean 16.81 max 45 overflow frames 0'. --postproc host 경로는 해당 없음(HailoRT 가 HEF 내장 NMS 를 그대로 한다).</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/efficient_nms.comp (EfficientNms, 01_src/vulkan/efficient_nms.hpp). YoloPostproc::submit 이 yolo_decode.comp pass 1 뒤 같은 커맨드 버퍼에 기록한다(01_src/vulkan/yolo_postproc.hpp:10, :148). 억제 위치는 --nms gpu|cpu|verify, 기본 gpu (01_src/pipeline/main.cpp:32-34, --postproc gpu 전용 검사 :508-511). GpuPostprocStage::finish() (01_src/pipeline/gpu_postproc_stage.cpp:190) 가 read_nms 로 결과를 읽고, IoU 보호대(경계)·용량 초과·잘못된 클래스 프레임만 CPU cpu_nms_greedy_by_class 로 fallback 한다 (:198-227, 호출 :202; kNmsFallbackIouGuard / kNmsFallbackCapacity, efficient_nms.hpp:56-57). --nms verify 는 둘 다 돌려 비트 비교한다. GPU NMS 수치는 아직 정식 측정 전이라 넣지 않았다. 참고로 display_e2e(2026-09-20)는 CPU NMS 당시 측정이다: 07_results/display_e2e/raw/disp_source_run1/stdout.log 'cpu nms us mean 2.841 median 2.667', 'candidates mean 16.81 max 45 overflow frames 0'. --postproc host 경로는 해당 없음(HailoRT 가 HEF 내장 NMS 를 그대로 한다).</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="66.3" width="260.0" x="300.0" y="881.1999999999999"/>
@@ -408,7 +408,7 @@ SAND→RGBA 1:1 (전체화면 고정)<y:LabelModel>
       </data>
     </node>
     <node id="n_note_perf">
-      <data key="d5">성능 요약. 출처: /home/pi/workspace/yolo_vulkan_optimize/07_results/display_e2e/summary.md §3 표와 §3.1, §3.2. README.md 7행 요약도 두 페이싱을 나눠 적도록 갱신됐다(이전에는 CPU 1.84=disp_asap 와 29.9 FPS·glass 101=disp_source 가 한 문장에 섞여 있었다). 측정 조건: display_e2e(2026-09-20)는 부트로더 2025-12-08(V3D 960 MHz), FFmpeg 프레임 스레드 자동(5), CPU NMS 조건이다. 이후 기본값이 바뀌었다 — ① 부트로더 2026-09-25 로 V3D 1150 MHz(07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md: FPS·CPU 불변, GPU 전처리 b1 2.11→1.81 ms, b8 평균 약 2.6→2.0 ms) ② 앱 디코더 스레드 기본 1(01_src/pipeline/main.cpp:633, YVO_DEC_THREADS; 07_results/dec_threads/summary.md: 표시 on disp_source CPU 2.073→1.778 ms/f, glass 평균 99.48→99.52 ms, 앱 e2e p90 +1.9 ms) ③ NMS 기본 --nms gpu. 이 노드의 수치는 재측정 전이라 그대로 둔다.</data>
+      <data key="d5">성능 요약. 출처: /home/pi/workspace/yolo_vulkan_optimize/07_results/display_e2e/summary.md §3 표와 §3.1, §3.2. README.md 7행 요약도 두 페이싱을 나눠 적도록 갱신됐다(이전에는 CPU 1.84=disp_asap 와 29.9 FPS·glass 101=disp_source 가 한 문장에 섞여 있었다). 측정 조건: display_e2e(2026-09-20)는 부트로더 2025-12-08(V3D 960 MHz), FFmpeg 프레임 스레드 자동(5), CPU NMS 조건이다. 이후 기본값이 바뀌었다 — ① 부트로더 2026-09-25 로 V3D 1150 MHz(07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md: FPS·CPU 불변, GPU 전처리 b1 2.11→1.81 ms, b8 평균 약 2.6→2.0 ms) ② 앱 디코더 스레드 기본 1(01_src/pipeline/main.cpp:636, YVO_DEC_THREADS; 07_results/dec_threads/summary.md: 표시 on disp_source CPU 2.073→1.778 ms/f, glass 평균 99.48→99.52 ms, 앱 e2e p90 +1.9 ms) ③ NMS 기본 --nms gpu. 이 노드의 수치는 재측정 전이라 그대로 둔다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="160.16" width="400.0" x="1000.0" y="420.0"/>
@@ -476,7 +476,7 @@ build/bin/yvo_pipeline \
       </data>
     </node>
     <node id="n_note_planes">
-      <data key="d5">대안 표시 경로 요약. 근거: 01_src/display/plane_display.hpp:1-42 (상단 주석), overlay_plane.hpp, wayland_plane_scanout.hpp:1-30, kms_scanout.hpp:1-57, 01_src/pipeline/main.cpp:21-29(머리 주석)·:340-353(보유 검사). 상태: 구현·실표시 확인, 정식 측정 전 — 수치를 넣지 않는다.</data>
+      <data key="d5">대안 표시 경로 요약. 근거: 01_src/display/plane_display.hpp:1-42 (상단 주석), overlay_plane.hpp, wayland_plane_scanout.hpp:1-30, kms_scanout.hpp:1-57, 01_src/pipeline/main.cpp:21-29(머리 주석)·:343-356(보유 검사). 상태: 구현·실표시 확인, 정식 측정 전 — 수치를 넣지 않는다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="125.0" width="440.0" x="950.0" y="790.0"/>
@@ -498,7 +498,7 @@ display_convert · overlay_boxes.comp · present 를 거치지 않는다
       </data>
     </node>
     <node id="n_ovlp">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/overlay_boxes.comp 를 YVO_OVERLAY_BUFFER 로 컴파일한 storage-buffer 변형 overlay_boxes_buf.spv (02_shaders/CMakeLists.txt:9). V3D 가 LINEAR RGBA8 storage image 를 지원하지 않아 packed RGBA8 버퍼에 pitch 로 직접 쓴다 (01_src/display/overlay_plane.hpp:6-18). 지우기는 Auto=Erase(직전 검출을 alpha 0 으로 다시 그림). 근거: 01_src/display/plane_display.hpp:1-42 (상단 주석), overlay_plane.hpp, wayland_plane_scanout.hpp:1-30, kms_scanout.hpp:1-57, 01_src/pipeline/main.cpp:21-29(머리 주석)·:340-353(보유 검사). 상태: 구현·실표시 확인, 정식 측정 전 — 수치를 넣지 않는다.</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/overlay_boxes.comp 를 YVO_OVERLAY_BUFFER 로 컴파일한 storage-buffer 변형 overlay_boxes_buf.spv (02_shaders/CMakeLists.txt:9). V3D 가 LINEAR RGBA8 storage image 를 지원하지 않아 packed RGBA8 버퍼에 pitch 로 직접 쓴다 (01_src/display/overlay_plane.hpp:6-18). 지우기는 Auto=Erase(직전 검출을 alpha 0 으로 다시 그림). 근거: 01_src/display/plane_display.hpp:1-42 (상단 주석), overlay_plane.hpp, wayland_plane_scanout.hpp:1-30, kms_scanout.hpp:1-57, 01_src/pipeline/main.cpp:21-29(머리 주석)·:343-356(보유 검사). 상태: 구현·실표시 확인, 정식 측정 전 — 수치를 넣지 않는다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="66.3" width="300.0" x="950.0" y="1105.0"/>
@@ -517,7 +517,7 @@ display_convert · overlay_boxes.comp · present 를 거치지 않는다
       </data>
     </node>
     <node id="n_ab24">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/display/overlay_plane.hpp OverlayPlane: 링 3개(ring=3: 화면 + pending + 그리는 중). DRM_FORMAT_ABGR8888(AB24), modifier LINEAR, DmaBufExporter 로 할당·export. 프레임 끝에 우리 큐 → VK_QUEUE_FAMILY_FOREIGN_EXT release, 재사용 시작에 FOREIGN → 우리 큐 acquire (overlay_plane.hpp:43-44). 근거: 01_src/display/plane_display.hpp:1-42 (상단 주석), overlay_plane.hpp, wayland_plane_scanout.hpp:1-30, kms_scanout.hpp:1-57, 01_src/pipeline/main.cpp:21-29(머리 주석)·:340-353(보유 검사). 상태: 구현·실표시 확인, 정식 측정 전 — 수치를 넣지 않는다.</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/display/overlay_plane.hpp OverlayPlane: 링 3개(ring=3: 화면 + pending + 그리는 중). DRM_FORMAT_ABGR8888(AB24), modifier LINEAR, DmaBufExporter 로 할당·export. 프레임 끝에 우리 큐 → VK_QUEUE_FAMILY_FOREIGN_EXT release, 재사용 시작에 FOREIGN → 우리 큐 acquire (overlay_plane.hpp:43-44). 근거: 01_src/display/plane_display.hpp:1-42 (상단 주석), overlay_plane.hpp, wayland_plane_scanout.hpp:1-30, kms_scanout.hpp:1-57, 01_src/pipeline/main.cpp:21-29(머리 주석)·:343-356(보유 검사). 상태: 구현·실표시 확인, 정식 측정 전 — 수치를 넣지 않는다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="54.0" width="300.0" x="950.0" y="1205.0"/>
@@ -535,7 +535,7 @@ Vulkan export · FOREIGN 큐 소유권 전환<y:LabelModel>
       </data>
     </node>
     <node id="n_hvs">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/display/plane_display.hpp PlaneDisplay + PlaneScanout(WaylandPlaneScanout / KmsScanout). 영상: 디코더 NV12 SAND128 dma-buf 를 그대로 HVS 영상 평면에, 박스: AB24 dma-buf 를 그 위 평면(zpos 위)에. HVS 가 스캔아웃 중에 YUV→RGB 변환과 블렌딩을 한다. 평면 번호 83(영상, Primary) / 107(박스, AB24 zpos=1)은 debugfs 실측(07_results/display_vulkan_hdmi/notes/kms_vs_wayland.md:45)이며 코드가 고정하지 않는다(런타임 선택). 프레임은 스캔아웃이 release(wl_buffer.release / 다음 page flip)할 때까지 쥐고 그때 display_done 을 세운다. 근거: 01_src/display/plane_display.hpp:1-42 (상단 주석), overlay_plane.hpp, wayland_plane_scanout.hpp:1-30, kms_scanout.hpp:1-57, 01_src/pipeline/main.cpp:21-29(머리 주석)·:340-353(보유 검사). 상태: 구현·실표시 확인, 정식 측정 전 — 수치를 넣지 않는다.</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/display/plane_display.hpp PlaneDisplay + PlaneScanout(WaylandPlaneScanout / KmsScanout). 영상: 디코더 NV12 SAND128 dma-buf 를 그대로 HVS 영상 평면에, 박스: AB24 dma-buf 를 그 위 평면(zpos 위)에. HVS 가 스캔아웃 중에 YUV→RGB 변환과 블렌딩을 한다. 평면 번호 83(영상, Primary) / 107(박스, AB24 zpos=1)은 debugfs 실측(07_results/display_vulkan_hdmi/notes/kms_vs_wayland.md:45)이며 코드가 고정하지 않는다(런타임 선택). 프레임은 스캔아웃이 release(wl_buffer.release / 다음 page flip)할 때까지 쥐고 그때 display_done 을 세운다. 근거: 01_src/display/plane_display.hpp:1-42 (상단 주석), overlay_plane.hpp, wayland_plane_scanout.hpp:1-30, kms_scanout.hpp:1-57, 01_src/pipeline/main.cpp:21-29(머리 주석)·:343-356(보유 검사). 상태: 구현·실표시 확인, 정식 측정 전 — 수치를 넣지 않는다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="90.0" width="300.0" x="950.0" y="1295.0"/>
