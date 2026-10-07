@@ -21,7 +21,7 @@ Vulkan(V3D GPU)으로 밀어낸** 프로젝트다. 디코드·전처리·추론�
 >   glass **평균** 99.5 ms, 드롭 0, 검출 3369, GPU NMS 평균 약 0.04 ms, CPU 폴백 0이다
 >   ([`dec_threads/summary.md`](07_results/dec_threads/summary.md) — 위 표의 101.20 은 **중앙값**이라 섞지 않는다).
 > - V3D 클럭이 바뀌어도 FPS·CPU 는 그대로이고 GPU 전처리만 약 14% 빨라졌다([`bootloader_20260925`](07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)).
-> - 현재 기본값의 **표시 off 정식 기준선**(2026-10-08): b8s16 51.50 fps · CPU 0.869 ms/frame, GPU NMS 는 CPU NMS 대비 회귀 없음·검출 바이트 동일([`gpu_nms_e2e/`](07_results/gpu_nms_e2e/summary.md)). 표시 on 으로 위 표를 다시 재는 정식 측정은 아직 없다([계획](07_results/display_vulkan_hdmi/notes/formal_measurement_plan.md) 실험 B).
+> - 현재 기본값의 **표시 off 정식 기준선**(2026-10-08): b8s16 51.50 fps · CPU 0.869 ms/frame, GPU NMS 는 CPU NMS 대비 회귀 없음·검출 바이트 동일([`gpu_nms_e2e/`](07_results/gpu_nms_e2e/summary.md)). 표시 on 정식 측정은 [`display_planes_e2e/`](07_results/display_planes_e2e/summary.md)에 있다 — Vulkan 합성 소스 페이싱 b2/s4 CPU 2.059 ms/frame, 평면 경로는 CPU −0.44 ms/f·V3D −72%·지연 같음(`--slots 6` 필요). 위 표와는 조건이 달라 섞지 않는다.
 
 ---
 
@@ -164,11 +164,14 @@ wall            4.612 s, 29.49 FPS
 - 통계가 필요하고 중단 시점을 미리 정할 수 있으면 **`--frames N`** 이 더 깔끔하다.
   입력 영상 끝에서는 자동으로 정상 종료한다(1,816프레임, 약 60초).
 
-### 3.5 HVS 평면 표시 (`wayland-planes` / `kms`) — 구현·검증됨, 정식 측정 전
+### 3.5 HVS 평면 표시 (`wayland-planes` / `kms`) — 구현·검증·정식 측정됨
 
 V3D 가 표시 변환을 하지 않는 두 번째 표시 방식이다. 디코더 SAND 버퍼를 **디스플레이 컨트롤러(HVS)의 영상 평면**에 그대로 올리고,
 박스는 GPU 가 AB24 버퍼에 그려 **그 위 평면**에 올린다. YUV→RGB 와 블렌딩은 HVS 가 스캔아웃 중에 한다.
-두 백엔드 모두 실제 HDMI 에서 평면 배치와 색(BT.709 limited)을 debugfs 로 확인했지만, **기존 경로와 비교한 정식 측정은 아직 없다**
+두 백엔드 모두 실제 HDMI 에서 평면 배치와 색(BT.709 limited)을 debugfs 로 확인했다. 정식 측정(2026-10-08,
+[`07_results/display_planes_e2e/`](07_results/display_planes_e2e/summary.md))에서 Vulkan 합성 대비 **CPU −0.44 ms/f(−20%)·V3D −72%** 이고,
+디코드 → 화면 지연은 세 경로가 같다(평균 약 101~102 ms). **평면 경로는 버퍼를 최대 5장 쥐므로 `--slots 6` 이 필요하다** —
+슬롯 4에서는 디코드 후 빈 슬롯을 평균 28~30 ms 기다린다. wayland-planes 와 kms 는 모든 지표가 겹친다
 (설명: [`08_learn/07_video_display.md`](08_learn/07_video_display.md) §7.12).
 
 ```bash

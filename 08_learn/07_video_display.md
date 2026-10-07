@@ -848,7 +848,9 @@ loginctl activate <데스크톱 세션 id>      # 또는 sudo chvt 7 — labwc �
 
 두 백엔드 모두 실제 HDMI 에서 영상 평면 `NV12/SAND128` + 박스 평면 `AB24`(영상 위), `BT.709 / limited`,
 `hvs_underrun` 증가 0, V3D 표시 변환 0을 debugfs 로 확인했다. 검증 레이어 errors 0, ASan 0, `--nms verify` 불일치 0.
-**지연·CPU 를 기존 경로와 비교한 정식 측정은 아직 없다**(개발 중 1회 실행 값만 있어 여기에는 적지 않는다).
+기존 경로와 비교한 정식 측정은 2026-10-08 에 했다([`display_planes_e2e/`](../07_results/display_planes_e2e/summary.md), 회차 `runs/slots6`).
+Vulkan 합성 대비 CPU −0.44 ms/f·V3D −72%(TFU 3.7 ms 소멸), 디코드 → 화면 지연은 같다. 평면 경로는 디코더 버퍼를 다음 flip 까지 쥐어
+최대 5장을 보유하므로 **`--slots 6`** 이 필요하다(슬롯 4에서는 디코드 후 28~30 ms 대기, glass-to-glass 에는 안 잡힌다 — 그래서 `decode-to-screen` 지표를 따로 둔다).
 열린 항목은 [`07_results/README.md`](../07_results/README.md) 에 있다.
 
 ---

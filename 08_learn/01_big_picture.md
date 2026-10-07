@@ -132,7 +132,7 @@ video_h265.mp4 (HEVC 1080p30)
 
 > 표시(⑥~⑧)에는 대안 경로가 하나 더 있다 — `--display-backend wayland-planes` / `kms`.
 > 디코더 SAND 버퍼를 변환 없이 디스플레이 컨트롤러(HVS)의 영상 평면에 올리고, 박스만 GPU가 별도 평면에 그린다.
-> YUV→RGB 와 겹치기는 HVS 가 한다. 구현·실표시 확인까지 됐고 정식 측정은 아직이다 → [07장](07_video_display.md) §7.12.
+> YUV→RGB 와 겹치기는 HVS 가 한다. 정식 측정에서 CPU·V3D 는 줄고 지연은 같았다(슬롯 6 필요) → [07장](07_video_display.md) §7.12.
 
 ### ① 디코드 — mp4에서 그림 한 장 꺼내기
 

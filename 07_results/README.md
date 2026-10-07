@@ -18,7 +18,8 @@
 ```
 
 > GPU NMS(`efficient_nms.comp`, 2026-09-22)와 HVS 평면 표시 백엔드(`--display-backend wayland-planes` / `kms`)는
-> 구현·검증(비트 일치, 실표시 debugfs 판정)까지 됐고 **정식 측정은 아직이다**. 아래 수치는 모두 그 이전 구성의 값이다.
+> 2026-10-08 정식 측정을 마쳤다 — [`gpu_nms_e2e/`](gpu_nms_e2e/summary.md)(회귀 없음·검출 바이트 동일),
+> [`display_planes_e2e/`](display_planes_e2e/summary.md)(평면 경로 CPU −0.44 ms/f·V3D −72%, 지연은 같음, 슬롯 6 필요). 아래 수치는 모두 그 이전 구성의 값이다.
 >
 > **측정 조건(2026-09-20 전후): V3D 960 MHz · FFmpeg 디코더 자동 5스레드 · CPU NMS.** 2026-09-29 에 둘이 바뀌었다.
 > - 부트로더 2026-09-25 로 V3D 클럭이 **1150 MHz** 가 됐다. FPS·CPU 는 불변, GPU 전처리만 약 14% 빨라졌다([`bootloader_20260925`](pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)).
