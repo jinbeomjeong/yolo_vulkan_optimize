@@ -10,6 +10,8 @@
 //      The byte-sum (kChecksum pipeline) cross-check is also done here.
 //  --probe sweep (no NPU needed)
 //      local_size_x × local_size_y sweep. The plan's "measure and pick" discipline.
+//  --probe nms (no NPU needed)
+//      GPU NMS (efficient_nms.comp) cost alone: fixture continuous stream + synthetic worst case (run_nms()).
 //  --probe live (**exclusive NPU**)
 //      Allocate/export 6 tensors × slots with `DmaBufExporter` → HailoRT maps them D2H → receive the raw output
 //      directly and feed it to pass 1. P3-② (byte sum computed by shader == sum computed by CPU).
@@ -66,6 +68,7 @@
 
 #include "heap_sum_spv.h"
 #include "toolkit/tool_util.hpp"
+#include "testkit/nms_harness.hpp"
 #include "testkit/postproc_fixture.hpp"
 #include "toolkit/stats.hpp"
 
@@ -174,6 +177,8 @@ struct Options {
     std::string heap_sync = "on";         // on | off | both — DMA_BUF_IOCTL_SYNC of ImportHeap (B.10 R2/R3)
     int rounds = 3;                       // gpuab: number of plain↔heap interleaved rounds
     int v3_window = 4096;                 // v3: per-tensor window size (B) used by line-dirty/stale-read
+    std::string nms_cands = "16,64,256,1024";   // nms: synthetic candidate counts (1024 = kMaxSelected, worst case)
+    float nms_score = kHefScoreThreshold;       // nms: decode score threshold for the fixture stream
     bool out_dir_set = false;             // whether --out-dir was given explicitly (decides the per-probe default path)
     std::string api = "read_async";       // live: read_async | infer_async
     std::uint16_t batch = 1;
@@ -185,7 +190,7 @@ struct Options {
 
 void usage() {
     std::puts(
-        "yvo_postproc_probe --probe {fixture|sweep|live|stale|heapimport|gpuab|v3} [options]\n"
+        "yvo_postproc_probe --probe {fixture|sweep|nms|live|stale|heapimport|gpuab|v3} [options]\n"
         "  --fixture-dir DIR      fixture directory (default <repo>/04_data/raw_tensors = YVO_FIXTURE_DIR)\n"
         "  --out-dir DIR          evidence file directory (default <repo>/build/out/yvo_postproc_probe)\n"
         "  --out-file NAME        evidence file name (default p3_<probe>.txt)\n"
@@ -204,6 +209,8 @@ void usage() {
         "  --heap-sync X          on | off | both  DMA_BUF_IOCTL_SYNC of ImportHeap (default on)\n"
         "  --rounds N             gpuab: plain↔heap interleaved rounds (default 3)\n"
         "  --v3-window N          v3: per-tensor window size B for line-dirty/stale-read (default 4096)\n"
+        "  --nms-cand LIST        nms: synthetic all-survive candidate counts, comma-separated (default 16,64,256,1024)\n"
+        "  --nms-score T          nms: decode score threshold of the fixture stream (default 0.2 = HEF)\n"
         "  --heap PATH            heapimport: dma-heap node (default vidbuf_cached → system fallback)\n"
         "  --no-headroom          heapimport: set the B.12 headroom to 0 (negative control — conv71_178 is expected to throw)\n"
         "  --validation           explicitly enable the validation layer in the context\n"
@@ -2190,6 +2197,209 @@ int run_heapimport(const Options& o, Tee& log) {
     return rc;
 }
 
+// ───────────────────────────────────── nms (GPU NMS cost on its own, **no NPU needed**, plan A3)
+//
+// formal_measurement_plan.md §4 A3: the GPU cost of efficient_nms.comp without the NPU.
+//   NMS-(1) bit-exact sanity: GPU NMS == cpu_nms_greedy_by_class() on the same GPU candidates (fixture frames)
+//   NMS-(2) the P3-⑥ continuous-stream loop with enable_nms — pass1 / nms / cmdbuf timestamps per frame.
+//           nms = last_nms_ms() = ts3→ts4, the same interval the pipeline reports as `gpu nms ms`.
+//   NMS-(3) synthetic worst case through testkit/nms_harness.hpp (the EfficientNms.* test harness):
+//           n candidates that all survive (non-overlapping boxes, <= max_per_class per class), so each of the
+//           n main-loop iterations is a broadcast plus a same-class IoU sweep. n = 1024 is kMaxSelected.
+// A single submit/wait (EfficientNmsBitExact's `gpu nms max`) is inflated by DVFS, so only the back-to-back
+// streams here are measured. Not a pipeline number: the NPU is idle, so there is no memory-bandwidth contention.
+
+// Order-sensitive bit comparison (count, order, class, anchor_key, score, box) — the rule of same_bits() in
+// 01_src/pipeline/gpu_postproc_stage.cpp, which decides `nms verify mismatch`.
+bool same_bits_ordered(const std::vector<DetectionKeyed>& a, const std::vector<DetectionKeyed>& b) {
+    if (a.size() != b.size()) return false;
+    for (std::size_t i = 0; i < a.size(); ++i) {
+        const DetectionKeyed& x = a[i];
+        const DetectionKeyed& y = b[i];
+        if (x.anchor_key != y.anchor_key || x.class_id != y.class_id || bits_of(x.score) != bits_of(y.score) ||
+            bits_of(x.x1) != bits_of(y.x1) || bits_of(x.y1) != bits_of(y.y1) || bits_of(x.x2) != bits_of(y.x2) ||
+            bits_of(x.y2) != bits_of(y.y2))
+            return false;
+    }
+    return true;
+}
+
+// n non-overlapping boxes (IoU 0 for every pair) on a 40-column grid over 1920x1080, class = i % ceil(n/max_per_class)
+// so no class exceeds its quota → every candidate survives. Scores are quantized like the fixture (ties occur;
+// anchor_key breaks them). The input order is shuffled with a fixed seed (the bitonic network is data-independent).
+std::vector<DetectionKeyed> nms_worst_case(int n, int max_per_class) {
+    const int classes = std::max(1, (n + max_per_class - 1) / max_per_class);
+    const int cols = 40;
+    const int rows = std::max(1, (n + cols - 1) / cols);
+    const float cw = static_cast<float>(kSrcW) / static_cast<float>(cols);
+    const float ch = static_cast<float>(kSrcH) / static_cast<float>(rows);
+    std::vector<DetectionKeyed> v;
+    v.reserve(static_cast<std::size_t>(n));
+    std::uint32_t lcg = 12345u;
+    for (int i = 0; i < n; ++i) {
+        lcg = lcg * 1664525u + 1013904223u;
+        DetectionKeyed d;
+        d.x1 = static_cast<float>(i % cols) * cw + 2.0f;
+        d.y1 = static_cast<float>(i / cols) * ch + 2.0f;
+        d.x2 = d.x1 + cw - 4.0f;
+        d.y2 = d.y1 + ch - 4.0f;
+        d.score = 0.2f + static_cast<float>((lcg >> 8) % 60u) * 0.0125f;
+        d.class_id = i % classes;
+        d.anchor_key = static_cast<std::uint32_t>(i);
+        v.push_back(d);
+    }
+    for (std::size_t i = v.size(); i > 1; --i) {   // Fisher–Yates with the same LCG (no <random> dependency)
+        lcg = lcg * 1664525u + 1013904223u;
+        std::swap(v[i - 1], v[(lcg >> 8) % i]);
+    }
+    return v;
+}
+
+std::vector<int> parse_int_list(const std::string& s) {
+    std::vector<int> out;
+    std::stringstream ss(s);
+    std::string tok;
+    while (std::getline(ss, tok, ','))
+        if (!tok.empty()) out.push_back(std::stoi(tok));
+    return out;
+}
+
+int run_nms(const Options& o, Tee& log) {
+    constexpr float kIouThr = 0.7f;      // HEF setting (gpu_postproc_stage.hpp)
+    constexpr int kMaxPerClass = 100;    // HEF setting
+    if (o.perf_frames < 1) throw std::runtime_error("--perf-frames must be >= 1");
+    FixtureRig rig = load_rig(o);
+    log(fmt("[fixture] dir=%s frames=%d  score_thr=%.4f (HEF %.2f)", o.fixture_dir.c_str(), rig.fs.frames,
+            static_cast<double>(o.nms_score), static_cast<double>(kHefScoreThreshold)));
+
+    yvo::vk::VulkanContextOptions co;
+    co.enable_validation = o.validation;
+    co.validation_sync = o.sync_validation;
+    co.verbose = o.verbose;
+    yvo::vk::VulkanContext ctx(co);
+    log(fmt("[vk] device=%s  timestamps=%d period=%.3f ns valid_bits=%u", ctx.device_name(),
+            ctx.timestamps_supported() ? 1 : 0, static_cast<double>(ctx.timestamp_period()),
+            ctx.timestamp_valid_bits()));
+    if (!ctx.timestamps_supported()) throw std::runtime_error("--probe nms needs timestamp queries");
+
+    YoloPostprocConfig pc;
+    pc.num_slots = std::max(1, std::min(o.slots, rig.fs.frames));
+    pc.max_dets = o.max_dets;
+    pc.local_size_x = o.lx;
+    pc.local_size_y = o.ly;
+    pc.score_thr = o.nms_score;
+    pc.input_alloc = YoloInputAlloc::Plain;
+    pc.input_sync = YoloInputSync::HostWrite;
+    pc.enable_nms = true;
+    pc.nms.iou_thr = kIouThr;
+    pc.nms.max_per_class = kMaxPerClass;
+    pc.verbose = o.verbose;
+    YoloPostproc pp(ctx, rig.layout, pc);
+    const yvo::vk::EfficientNmsConfig& nc = pp.nms()->config();
+    log(fmt("[cfg] slots=%d max_dets=%d local=%ux%u  nms local=%u max_selected=%u iou=%.2f max_per_class=%d "
+            "shared=%zu B",
+            pp.num_slots(), pc.max_dets, pc.local_size_x, pc.local_size_y, nc.local_size, nc.max_selected,
+            static_cast<double>(nc.iou_thr), nc.max_per_class, pp.nms()->shared_bytes()));
+    const int nslots = pp.num_slots();
+    for (int s = 0; s < nslots; ++s) fill_slot(pp, s, rig.frames[static_cast<std::size_t>(s)]);
+
+    // ── NMS-(1) bit-exact sanity ────────────────────────────────────────────────────────────
+    log("");
+    log("== NMS-(1) GPU NMS vs cpu_nms_greedy_by_class() on the same GPU candidates (ordered bit comparison) ==");
+    log("frame  cand  gpu_kept  cpu_kept  fallback  match");
+    bool exact_ok = true;
+    int fallback_frames = 0;
+    for (int s = 0; s < nslots; ++s) {
+        pp.submit(s, rig.fs.lb, rig.fs.src_w, rig.fs.src_h);
+        pp.wait(s);
+        std::vector<DetectionKeyed> gpu;
+        const bool ok = pp.read_nms(s, gpu);
+        auto cpu = pp.read_candidates(s);
+        const std::size_t cand = cpu.size();
+        yvo::cpu_nms_greedy_by_class(cpu, kIouThr, kMaxPerClass);
+        const bool eq = ok && same_bits_ordered(gpu, cpu);
+        if (!ok) ++fallback_frames;
+        exact_ok = exact_ok && (eq || !ok);   // a fallback frame is the CPU's job by contract, not a mismatch
+        log(fmt("%5d  %4zu  %8zu  %8zu  %8u  %s", s, cand, gpu.size(), cpu.size(), pp.nms_fallback_reason(s),
+                !ok ? "fallback" : (eq ? "ok" : "MISMATCH")));
+    }
+    log(fmt("[NMS-(1)] %s  fallback frames %d/%d", exact_ok ? "PASS" : "FAIL", fallback_frames, nslots));
+
+    // ── NMS-(2) continuous stream (P3-⑥ loop + enable_nms) ──────────────────────────────────
+    log("");
+    log(fmt("== NMS-(2) decode + NMS in one command buffer, continuous stream of %d frames (warm-up %d) ==",
+            o.perf_frames, o.warmup));
+    std::vector<double> pass1, nms, total;
+    std::size_t cand_sum = 0, cand_max = 0;
+    int stream_fallback = 0;
+    for (int i = 0; i < o.warmup + o.perf_frames; ++i) {
+        const int s = i % nslots;
+        pp.submit(s, rig.fs.lb, rig.fs.src_w, rig.fs.src_h);
+        pp.wait(s);
+        if (i >= o.warmup) {
+            pass1.push_back(pp.last_pass1_ms());
+            nms.push_back(pp.last_nms_ms());
+            total.push_back(pp.last_total_ms());
+            const std::size_t c = pp.raw_count(s);
+            cand_sum += c;
+            cand_max = std::max(cand_max, c);
+            if (pp.nms_fallback_reason(s) != 0) ++stream_fallback;
+        }
+    }
+    auto line = [&](const char* name, const std::vector<double>& v) {
+        log(fmt("%-9s median %.4f  p90 %.4f  min %.4f  max %.4f  n=%zu", name, percentile(v, 0.5), percentile(v, 0.9),
+                *std::min_element(v.begin(), v.end()), *std::max_element(v.begin(), v.end()), v.size()));
+    };
+    line("pass1_ms", pass1);
+    line("nms_ms", nms);
+    line("cmdbuf_ms", total);
+    log(fmt("candidates/frame mean %.2f max %zu  fallback frames %d", static_cast<double>(cand_sum) /
+            static_cast<double>(std::max<std::size_t>(1, pass1.size())), cand_max, stream_fallback));
+
+    // ── NMS-(3) synthetic worst case (testkit NmsHarness) ───────────────────────────────────
+    log("");
+    log(fmt("== NMS-(3) synthetic all-survive input via NmsHarness, continuous stream of %d runs per n (warm-up %d) ==",
+            o.perf_frames, o.warmup));
+    log("    n  classes  cpu_kept  fallback  match  nms_median_ms  p90     min     max");
+    yvo::vk::EfficientNmsConfig hc;
+    hc.iou_thr = kIouThr;
+    hc.max_per_class = kMaxPerClass;
+    NmsHarness h(ctx, hc);
+    bool synth_ok = true;
+    for (const int n : parse_int_list(o.nms_cands)) {
+        if (n < 0 || n > static_cast<int>(NmsHarness::kInputMax))
+            throw std::runtime_error(fmt("--nms-cand %d outside 0..%u", n, NmsHarness::kInputMax));
+        const auto in = nms_worst_case(n, kMaxPerClass);
+        std::vector<DetectionKeyed> out;
+        std::uint32_t why = 0;
+        const bool ok = h.run(in, out, &why);
+        auto cpu = in;
+        yvo::cpu_nms_greedy_by_class(cpu, kIouThr, kMaxPerClass);
+        const bool eq = ok && same_bits_ordered(out, cpu);
+        // n <= kMaxSelected must finish on the GPU and match; above it the capacity fallback is the expected result.
+        const bool expect_gpu = n <= static_cast<int>(nc.max_selected);
+        synth_ok = synth_ok && (expect_gpu ? eq : (!ok && (why & yvo::vk::kNmsFallbackCapacity) != 0));
+        std::vector<double> ms;
+        for (int i = 0; i < o.warmup + o.perf_frames; ++i) {
+            h.run(in, out, nullptr);
+            if (i >= o.warmup) ms.push_back(h.last_ms());
+        }
+        log(fmt("%5d  %7d  %8zu  %8u  %5s  %13.4f  %.4f  %.4f  %.4f", n,
+                std::max(1, (n + kMaxPerClass - 1) / kMaxPerClass), cpu.size(), why,
+                !ok ? "fb" : (eq ? "ok" : "MISM"), percentile(ms, 0.5), percentile(ms, 0.9),
+                *std::min_element(ms.begin(), ms.end()), *std::max_element(ms.begin(), ms.end())));
+    }
+    log(fmt("[NMS-(3)] %s (n <= max_selected must match the CPU bit for bit; n > max_selected must fall back)",
+            synth_ok ? "PASS" : "FAIL"));
+
+    log("");
+    log(fmt("[validation] errors=%llu warnings=%llu", static_cast<unsigned long long>(ctx.validation_errors()),
+            static_cast<unsigned long long>(ctx.validation_warnings())));
+    const bool pass = exact_ok && synth_ok && ctx.validation_errors() == 0;
+    log(fmt("[RESULT] nms %s", pass ? "PASS" : "FAIL"));
+    return pass ? 0 : 1;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -2226,6 +2436,8 @@ int main(int argc, char** argv) {
             else if (a == "--heap-sync") o.heap_sync = next("--heap-sync");
             else if (a == "--rounds") o.rounds = std::stoi(next("--rounds"));
             else if (a == "--v3-window") o.v3_window = std::stoi(next("--v3-window"));
+            else if (a == "--nms-cand") o.nms_cands = next("--nms-cand");
+            else if (a == "--nms-score") o.nms_score = std::stof(next("--nms-score"));
             else if (a == "--no-headroom") o.no_headroom = true;
             else if (a == "--heapimport") o.probe = "heapimport";
             else if (a == "--validation") o.validation = true;
@@ -2270,6 +2482,7 @@ int main(int argc, char** argv) {
         if (o.probe == "v3") return run_v3(o, log);
         if (o.probe == "fixture") return run_fixture(o, log);
         if (o.probe == "sweep") return run_sweep(o, log);
+        if (o.probe == "nms") return run_nms(o, log);
         if (o.probe == "live") return run_live(o, log);
         if (o.probe == "stale") return run_stale(o, log);
         log(fmt("unknown probe: %s", o.probe.c_str()));

@@ -186,7 +186,7 @@ cmake -S . -B build -G Ninja && cmake --build build
 | `yvo_core` | 헤더만 (INTERFACE) | 공용 타입 + OS 글루. include 루트 `01_src/` 를 지정하는 유일한 타깃 |
 | `yvo_ref` | 헤더만 (INTERFACE) | CPU 기준 구현 |
 | `yvo_toolkit` | 헤더만 (INTERFACE) | 도구·앱 전용 헬퍼. 라이브러리는 링크하지 않는다 |
-| `yvo_testkit_postproc` / `yvo_testkit_display` | 헤더만 (INTERFACE) | 테스트·프로브 공용 검증 하네스 |
+| `yvo_testkit_postproc` / `yvo_testkit_display` | 헤더만 (INTERFACE) | 테스트·프로브 공용 검증 하네스(`nms_harness.hpp`: `efficient_nms` 단독 실행 — `test_postproc` 의 `EfficientNms.*` 와 `yvo_postproc_probe --probe nms` 가 공유) |
 | `yvo_warnings` | 경고 플래그만 | `-Wall -Wextra -Wpedantic` |
 | `yvo_shaders` | 컴파일된 셰이더 헤더 (본 5개 + 버퍼 변형 1 = 6개) | 링크하면 include 경로가 붙는다 |
 | `yvo_shaders_diag` | 진단 셰이더 헤더 (`diag/` 2개) | 도구만 링크한다 |
