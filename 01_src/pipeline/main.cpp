@@ -16,7 +16,7 @@
 //   (held_frames_max) is measured and emitted to the CSV. This is the only means of detection.
 // Modes
 //   ptr    : HailoRT set_buffer(MemoryView(V3D output mapped pointer))
-//   dmabuf : at init, export per-slot output memory as dma-buf fds → pre-map with HailoRunner::map_dmabuf
+//   dmabuf : (default) at init, export per-slot output memory as dma-buf fds → pre-map with HailoRunner::map_dmabuf
 //            → set_dma_buffer with PreprocOutput.dmabuf_fd
 // Display (--display, conditionally compiled with YVO_HAVE_DISPLAY)
 //   off  : the path up to today. Does not even create a DisplayPipeline (default).
@@ -28,8 +28,8 @@
 //          matched = shown together with that frame's detections (show in flush_results),
 //          latest  = shown as soon as preprocessing finishes, with the most recent detections overlaid (show in finish_gpu).
 // Post-processing (--postproc)
-//   host : single HEF-embedded NMS output → parsed by HailoRT on the host CPU (baseline path, default)
-//   gpu  : 6 raw output streams (dma-buf) → yolo_decode.comp pass 1 → suppression (--nms).
+//   host : single HEF-embedded NMS output → parsed by HailoRT on the host CPU (baseline path; implicit default under ptr/nhwc)
+//   gpu  : (default) 6 raw output streams (dma-buf) → yolo_decode.comp pass 1 → suppression (--nms).
 //          --nms gpu (default): efficient_nms.comp in the same command buffer. Only guard/over-capacity frames fall back to CPU.
 //          --nms cpu: CPU greedy suppression (cpu_nms_greedy_by_class). --nms verify: runs both and compares bit-exactly.
 //          Pushing NPU completions to the GPU is also done by the **main thread** (InferStage::pump/drain_one) —
@@ -161,20 +161,20 @@ struct Args {
     std::string video = YVO_DEFAULT_VIDEO;
     std::string hef = YVO_DEFAULT_HEF;
     long frames = 0;  // 0 = all
-    Mode mode = Mode::Ptr;
+    Mode mode = Mode::Dmabuf;
     // Preprocessing output / NPU input tensor layout. With Nhcw, HailoRT's CPU input conversion disappears (dmabuf mode only).
-    yvo::TensorLayout layout = yvo::TensorLayout::Nhwc;
+    yvo::TensorLayout layout = yvo::TensorLayout::Nhcw;
     int batch = 8;
     int slots = 0;      // 0 = batch*2 (minimum 4)
     int gpu_depth = 3;  // number of frames kept in flight on the GPU at once
     float score = -1.0f;
-    Postproc postproc = Postproc::Host;
+    Postproc postproc = Postproc::Gpu;
     // Allocation method for the GPU post-processing raw output buffers. Default export (= Vulkan allocates and exports).
     // heap (dma-heap import) has not yet been verified for three-way coherence (PCIe DMA ↔ CPU cache ↔ V3D).
     std::string postproc_alloc = "export";
     // Where --postproc gpu does suppression. Default gpu (efficient_nms.comp).
     yvo::pipeline::NmsBackend nms = yvo::pipeline::NmsBackend::Gpu;
-    bool nms_explicit = false;
+    bool nms_explicit = false, layout_explicit = false, postproc_explicit = false;   // given on the command line
     std::string dump_dir;
     int dump_every = 100;
     bool quiet = false;
@@ -194,11 +194,11 @@ void usage(const char* a0) {
                  "          [--batch N] [--slots N] [--postproc host|gpu] [--postproc-alloc export|heap]\n"
                  "          [--nms gpu|cpu|verify] [--gpu-depth N] [--score T] [--dump-dir DIR] [--dump-every K]\n"
                  "          [--quiet] [--csv-label L]\n"
-                 "  --layout     preprocessing output / NPU input tensor layout (default nhwc)\n"
+                 "  --layout     preprocessing output / NPU input tensor layout (default nhcw with the default --mode dmabuf; nhwc under --mode ptr)\n"
                  "               nhcw removes HailoRT's CPU input conversion (about 14 ms/frame). --mode dmabuf only\n"
                  "  --slots      number of slots shared by GPU and NPU (default max(4, batch*2))\n"
                  "  --gpu-depth  max frames in flight on the GPU at once (default 3, 2~4 recommended: decoder buffer limit)\n"
-                 "  --postproc   post-processing location (default host). gpu = 6 raw output streams + yolo_decode.comp + efficient_nms.comp suppression\n"
+                 "  --postproc   post-processing location (default gpu; host under --mode ptr or --layout nhwc). gpu = 6 raw output streams + yolo_decode.comp + efficient_nms.comp suppression\n"
                  "               (only edge-case frames fall back to CPU, see --nms)\n"
                  "               --mode dmabuf --layout nhcw only\n"
                  "  --postproc-alloc  raw output buffer allocation for gpu post-processing (default export)\n"
@@ -245,7 +245,7 @@ bool parse(int argc, char** argv, Args& a) {
             else if (m == "dmabuf") a.mode = Mode::Dmabuf;
             else return false;
         } else if (s == "--layout" && (v = next())) {
-            const std::string l = v;
+            const std::string l = v;  a.layout_explicit = true;
             if (l == "nhwc") a.layout = yvo::TensorLayout::Nhwc;
             else if (l == "nhcw") a.layout = yvo::TensorLayout::Nhcw;
             else return false;
@@ -253,7 +253,7 @@ bool parse(int argc, char** argv, Args& a) {
         else if (s == "--slots" && (v = next())) a.slots = std::atoi(v);
         else if (s == "--gpu-depth" && (v = next())) a.gpu_depth = std::atoi(v);
         else if (s == "--postproc" && (v = next())) {
-            const std::string p = v;
+            const std::string p = v;  a.postproc_explicit = true;
             if (p == "host") a.postproc = Postproc::Host;
             else if (p == "gpu") a.postproc = Postproc::Gpu;
             else return false;
@@ -307,6 +307,10 @@ bool parse(int argc, char** argv, Args& a) {
         else if (s == "-h" || s == "--help") return false;
         else return false;
     }
+    const bool lay_dn = !a.layout_explicit && a.mode == Mode::Ptr;  // implicit dependents follow an explicit --mode ptr / --layout nhwc
+    const bool pp_dn = !a.postproc_explicit && (a.mode == Mode::Ptr || a.layout == yvo::TensorLayout::Nhwc);
+    if (lay_dn || pp_dn) std::fprintf(stderr, "note: default lowered to%s%s (nhcw needs --mode dmabuf, --postproc gpu needs dmabuf + nhcw)\n", lay_dn ? " --layout nhwc" : "", pp_dn ? " --postproc host" : "");
+    a.layout = lay_dn ? yvo::TensorLayout::Nhwc : a.layout;  a.postproc = pp_dn ? Postproc::Host : a.postproc;
     if (a.slots <= 0) a.slots = std::max(4, a.batch * 2);
     if (a.batch < 1 || a.batch > 64 || a.gpu_depth < 1 || a.dump_every < 1) return false;
     a.gpu_depth = std::min(a.gpu_depth, a.slots);

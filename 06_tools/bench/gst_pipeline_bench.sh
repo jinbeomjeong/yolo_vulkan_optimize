@@ -85,7 +85,7 @@ build_cmd() {
   local tool="$1" id="$2" batch="$3" slots="$4" dump="${5:-}"
   case "$tool" in
     app)
-      cmd=("$APP_BIN" --video "$VIDEO" --hef "$HEF" --mode dmabuf --layout nhcw
+      cmd=("$APP_BIN" --video "$VIDEO" --hef "$HEF" --mode dmabuf --layout nhcw --postproc host
            --batch "$batch" --slots "$slots" "${frames_arg[@]}")
       if [[ -n "$dump" ]]; then cmd+=(--dump-dir "$dump" --dump-every "$DETS_PNG_EVERY"); fi
       ;;

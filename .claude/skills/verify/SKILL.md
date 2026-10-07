@@ -47,7 +47,7 @@ VK_LOADER_LAYERS_ENABLE='*validation' build/bin/yvo_pipeline \
     --video 04_data/videos/video_h265.mp4 --mode dmabuf --layout nhcw --frames 200
 ```
 
-- 합격: 출력 끝 줄의 `vk validation errors 0`.
+- 합격: 출력 끝 줄의 `vk validation errors 0`. 2026-10-08부터 `--postproc` 기본값이 gpu 라 이 명령은 GPU 후처리(`yolo_decode`·`efficient_nms`)까지 덮는다.
 - 셰이더·배리어·동기화·dma-buf import를 건드렸으면 반드시 돈다.
 - `yvo_preproc_bench`도 같은 방식으로 돌릴 수 있다(NPU를 쓰지 않아 더 빠르다).
 
@@ -77,7 +77,7 @@ build-asan/bin/yvo_pipeline --video 04_data/videos/video_h265.mp4 \
     --mode dmabuf --layout nhcw --frames 100
 ```
 
-- 합격: ASan/UBSan 출력 없음, `LeakSanitizer` 누수 0.
+- 합격: ASan/UBSan 출력 없음, `LeakSanitizer` 누수 0. (위 명령은 기본값인 GPU 후처리 경로를 돈다. host NMS 경로를 보려면 `--postproc host`.)
 - 디코더·dma-buf 수명·슬롯 반납을 건드렸으면 반드시 돈다.
   (과거에 `avcodec_flush_buffers()` 누락으로 1448 B 누수가 이렇게 잡혔다.)
 - fd 누수는 `yvo_drm_dump`가 시작·종료 fd 수를 세어 확인한다.

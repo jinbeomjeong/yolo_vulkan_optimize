@@ -97,7 +97,7 @@ for ((r = 1; r <= RUNS; r++)); do
     rm -rf "$run_dir"; mkdir -p "$run_dir"
     echo "[$(date +%T)] run $r/$RUNS $id (hailo $(hailo_temp) C)"
     set +e
-    (cd "$run_dir" && "$BIN" --video "$VIDEO" --hef "$HEF" --mode "$mode" --layout "$layout" \
+    (cd "$run_dir" && "$BIN" --video "$VIDEO" --hef "$HEF" --mode "$mode" --layout "$layout" --postproc host \
         --batch "$batch" --slots "$slots" \
         "${frames_arg[@]}" --quiet --csv-label "${id}" > stdout.log 2>&1)
     rc=$?
@@ -148,7 +148,7 @@ EOF
 if [[ "$SAMPLES" == "1" ]]; then
   echo "[samples] dmabuf/$SAMPLE_LAYOUT batch8 --dump-dir (excluded from measurement)"
   rm -rf "$OUT_DIR/samples"; mkdir -p "$OUT_DIR/samples"
-  (cd "$OUT_DIR/samples" && "$BIN" --video "$VIDEO" --hef "$HEF" --mode dmabuf --layout "$SAMPLE_LAYOUT" --batch 8 "${frames_arg[@]}" \
+  (cd "$OUT_DIR/samples" && "$BIN" --video "$VIDEO" --hef "$HEF" --mode dmabuf --layout "$SAMPLE_LAYOUT" --postproc host --batch 8 "${frames_arg[@]}" \
       --dump-dir "$OUT_DIR/samples" --dump-every 300 > stdout.log 2>&1) || echo "  samples run failed"
 fi
 {

@@ -54,23 +54,23 @@ HAVE_WAYLAND=0; [[ -n "${WAYLAND_DISPLAY:-}" ]] && HAVE_WAYLAND=1
 #   so results compare directly with the existing 07_results/pipeline_ffmpeg_vulkan_hailo/results.csv.
 #   b2s2 goes first: it has a real risk of not exceeding 30 FPS, which we need to know first.
 configs=(
-  "b2s2      |--mode dmabuf --layout nhcw --batch 2 --slots 2"
-  "b2s4      |--mode dmabuf --layout nhcw --batch 2 --slots 4"
-  "b4s4      |--mode dmabuf --layout nhcw --batch 4 --slots 4"
-  "b8s8      |--mode dmabuf --layout nhcw --batch 8 --slots 8"
-  "ctl_b4s8  |--mode dmabuf --layout nhcw --batch 4 --slots 8"    # control: previously 44.52 FPS
-  "ctl_b8s16 |--mode dmabuf --layout nhcw --batch 8 --slots 16"   # control: previously 51.63 FPS
+  "b2s2      |--mode dmabuf --layout nhcw --batch 2 --slots 2 --postproc host"
+  "b2s4      |--mode dmabuf --layout nhcw --batch 2 --slots 4 --postproc host"
+  "b4s4      |--mode dmabuf --layout nhcw --batch 4 --slots 4 --postproc host"
+  "b8s8      |--mode dmabuf --layout nhcw --batch 8 --slots 8 --postproc host"
+  "ctl_b4s8  |--mode dmabuf --layout nhcw --batch 4 --slots 8 --postproc host"    # control: previously 44.52 FPS
+  "ctl_b8s16 |--mode dmabuf --layout nhcw --batch 8 --slots 16 --postproc host"   # control: previously 51.63 FPS
 )
 
 # Latency-minimizing sweep (select with ONLY='lat_'). Gives up 30 FPS to see how far latency can drop.
 #   Fewer slots remove queue waiting; lower gpu_depth removes GPU-stage buffering.
 #   s=1 is a fully serial path with no pipelining at all (unmeasured territory).
 configs_lat=(
-  "lat_b1s1d1 |--mode dmabuf --layout nhcw --batch 1 --slots 1 --gpu-depth 1"
-  "lat_b1s2d1 |--mode dmabuf --layout nhcw --batch 1 --slots 2 --gpu-depth 1"
-  "lat_b2s2d1 |--mode dmabuf --layout nhcw --batch 2 --slots 2 --gpu-depth 1"
-  "lat_b2s3d2 |--mode dmabuf --layout nhcw --batch 2 --slots 3 --gpu-depth 2"
-  "lat_b2s4d1 |--mode dmabuf --layout nhcw --batch 2 --slots 4 --gpu-depth 1"
+  "lat_b1s1d1 |--mode dmabuf --layout nhcw --batch 1 --slots 1 --gpu-depth 1 --postproc host"
+  "lat_b1s2d1 |--mode dmabuf --layout nhcw --batch 1 --slots 2 --gpu-depth 1 --postproc host"
+  "lat_b2s2d1 |--mode dmabuf --layout nhcw --batch 2 --slots 2 --gpu-depth 1 --postproc host"
+  "lat_b2s3d2 |--mode dmabuf --layout nhcw --batch 2 --slots 3 --gpu-depth 2 --postproc host"
+  "lat_b2s4d1 |--mode dmabuf --layout nhcw --batch 2 --slots 4 --gpu-depth 1 --postproc host"
 )
 [[ "${USE_LAT:-0}" == "1" ]] && configs=("${configs_lat[@]}")
 

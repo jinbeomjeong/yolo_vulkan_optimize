@@ -217,7 +217,7 @@ cmake -S . -B build -G Ninja && cmake --build build
 | `yvo_display_pipeline_probe` | 표시 상태기계만 | 아니오 |
 | `yvo_isp_*` | ISP 경로 (보류 상태) | 아니오 |
 | `yvo_gst_sand_probe` | (선택, GStreamer 연구 경로) `v4l2slh265dec` DMABuf → `DrmFrame` → GPU 전처리가 FFmpeg 경로와 바이트 일치하는지 | 아니오 |
-| `yvo_gst_pipeline` | (선택, GStreamer 연구 경로) `v4l2slh265dec` → `yvosandletterbox`(Vulkan NHCW, 링 슬롯 dma-buf) → `yvohailosink`(기본, `yvo_pipeline --mode dmabuf --layout nhcw`와 같은 추론·후처리, 같은 `RESULT_CSV`·`detections.jsonl`) 또는 fakesink/hold 싱크. 슬롯 역압·정지 감시 | hailo 싱크(기본)는 예 |
+| `yvo_gst_pipeline` | (선택, GStreamer 연구 경로) `v4l2slh265dec` → `yvosandletterbox`(Vulkan NHCW, 링 슬롯 dma-buf) → `yvohailosink`(기본, `yvo_pipeline --mode dmabuf --layout nhcw --postproc host`와 같은 추론·후처리, 같은 `RESULT_CSV`·`detections.jsonl`) 또는 fakesink/hold 싱크. 슬롯 역압·정지 감시 | hailo 싱크(기본)는 예 |
 
 > **이 도구들이 프로젝트의 방법론이다.** 새 기능을 바로 본체에 넣지 않고,
 > 먼저 프로브로 "이게 되는가"를 가른 다음 통과한 것만 승격한다.
@@ -307,17 +307,17 @@ Ctrl+C(INT)나 TERM을 받으면 락을 지우고 바로 끝난다(종료 코드
 
 ---
 
-## 9.8 실행 — 기본값이 권장 경로가 **아니다**
+## 9.8 실행 — 기본값이 측정된 최적 경로다 (2026-10-08부터)
 
 ```bash
-# 이렇게 돌리면 가장 느린 경로로 돈다
+# 인자 없이 돌리면 dmabuf / nhcw / gpu 후처리 경로로 돈다
 build/bin/yvo_pipeline --video ... --hef ...
 ```
 
-인자 없이 돌리면 `--mode ptr --layout nhwc --postproc host --display off` 로 간다.
-이건 **의도된 것**이다 — 기본값을 바꾸면 과거 측정과의 비교가 깨지기 때문에 일부러 두었다.
+인자 없이 돌리면 `--mode dmabuf --layout nhcw --postproc gpu --display off` 로 간다. 2026-10-08 전에는 가장 느린 `--mode ptr --layout nhwc --postproc host` 였다.
+과거 측정과 비교할 때는 옛 플래그를 명시한다(벤치 스크립트는 명시한다). `--mode ptr` 만 주면 나머지는 호환 값(nhwc·host)으로 내려간다(`parse()` 의 `note:`).
 
-> **예외 하나:** FFmpeg 디코더 프레임 스레드 수는 2026-09-29에 자동(5) → **1**로 바꿨다(`main.cpp:629`).
+> **예외 하나:** FFmpeg 디코더 프레임 스레드 수는 2026-09-29에 자동(5) → **1**로 바꿨다(`main.cpp:633`).
 > 모든 모드에서 FPS·검출이 같고 CPU·지연이 줄었기 때문이다([`dec_threads`](../07_results/dec_threads/summary.md)).
 > 그 이전 측정과 CPU·e2e를 맞대 비교하려면 `YVO_DEC_THREADS=0`으로 돌린다.
 

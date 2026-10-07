@@ -81,13 +81,13 @@ wayland-protocols 에 staging `color-representation` XML 이 없으면 그 요�
 
 ## 3. 실행
 
-### ⚠ 기본값은 권장 경로가 아니다
+### 기본값 = 측정된 최적 경로 (2026-10-08 변경)
 
-인자 없이 실행하면 `--mode ptr --layout nhwc --postproc host --display off` 로 돈다.
-이것은 **가장 느린 경로**(CPU 17.6 ms/frame, 디코더 자동 스레드 조건 — 1스레드에서는 16.97)다. 회귀 격리를 위해 기본값을 바꾸지 않았다.
-예외는 디코더 프레임 스레드 하나다 — 2026-09-29 에 자동(5) → **1** 로 바꿨다(CPU −14%·e2e −8.8 ms, FPS·검출 동일,
+인자 없이 실행하면 `--mode dmabuf --layout nhcw --postproc gpu --batch 8 --display off` 로 돈다(300프레임 1회 확인: CPU 0.904 ms/frame, 검출 동일).
+2026-10-08 전에는 **가장 느린 경로** `--mode ptr --layout nhwc --postproc host`(CPU 17.6 ms/frame, 자동 스레드 조건 — 1스레드 16.97)가 기본이었다. 옛 측정을 재현하려면 그 플래그를 명시한다(벤치 스크립트는 명시한다). `--mode ptr` 만 주면 layout·postproc 은 호환 값(nhwc·host)으로 내려간다.
+디코더 프레임 스레드는 2026-09-29 에 자동(5) → **1** 로 바꿨다(CPU −14%·e2e −8.8 ms, FPS·검출 동일,
 [`dec_threads/`](07_results/dec_threads/summary.md)). 옛 측정과 비교할 때는 `YVO_DEC_THREADS=0`(자동)을 준다.
-**아래 플래그를 반드시 주어야 한다.**
+**표시는 기본 off 다 — 아래 3.1 의 플래그를 준다.**
 
 ### 3.1 실시간 HDMI 표시 (권장)
 
@@ -269,7 +269,7 @@ ctest --test-dir build        # 94/94 통과해야 한다
 | `test_display_convert` | 불필요 | 표시 변환 셰이더(1:1) vs CPU 기준 **비트 일치**. BT.709 계수 세 번째 사본의 게이트 |
 | `test_isp_preproc` | 불필요(ISP 필요) | ISP 전처리 vs CPU 기준. **비트 일치가 아니다**(리샘플 커널이 다르다) — 패딩만 오차 0, 내용은 MAE ≤ 3.0 |
 | `test_gst_adapter` | 불필요 | (선택, GStreamer 연구 경로) 어댑터 `DrmFrame`·`yvosandletterbox` 출력이 FFmpeg 경로 NHCW와 **바이트 일치**(프레임 0/100/1815), 텐서 메타·슬롯 fd 고정, sink caps 는 SAND DMA_DRM 만, 슬롯 메모리를 다른 버퍼로 옮겨도 덮어쓰지 않고 메모리 교체로 슬롯이 새지 않음(`GstElementSlots.*`) |
-| `test_gst_detections` | 필요 | (선택, GStreamer 연구 경로) `yvohailosink` 검출이 `yvo_pipeline --mode dmabuf --layout nhcw` 추론 경로와 **프레임마다 동일**(앞 120프레임, 배치 4, `YVO_GST_DET_FRAMES`·`YVO_GST_DET_BATCH`) |
+| `test_gst_detections` | 필요 | (선택, GStreamer 연구 경로) `yvohailosink` 검출이 `yvo_pipeline --mode dmabuf --layout nhcw --postproc host` 추론 경로와 **프레임마다 동일**(앞 120프레임, 배치 4, `YVO_GST_DET_FRAMES`·`YVO_GST_DET_BATCH`) |
 
 두 경로의 검출을 직접 비교하려면:
 
@@ -322,7 +322,7 @@ bash 06_tools/bench/gst_pipeline_bench.sh # 앱 대 GStreamer 연구 경로(yvo_
 | `yvo_display_pipeline_probe` | `DisplayPipeline` 단독 검증 (`yvo_pipeline` 미사용) |
 | `yvo_isp_*` | PiSP BE(ISP) 전처리 — **통합 보류 상태** |
 | `yvo_gst_sand_probe` | (선택) GStreamer `v4l2slh265dec` DMABuf → `DrmFrame` → GPU 전처리(NHCW)가 FFmpeg 경로와 바이트 일치하는지 가르는 관문 |
-| `yvo_gst_pipeline` | (선택) GStreamer 연구 경로(B안): `v4l2slh265dec` → `yvosandletterbox`(정적 등록 요소, Vulkan NHCW) → `yvohailosink`(기본, NPU 추론·host NMS — `yvo_pipeline --mode dmabuf --layout nhcw`와 같은 `RESULT_CSV`·`--dump-dir`) 또는 fakesink/hold. 슬롯 역압·정지 감시 |
+| `yvo_gst_pipeline` | (선택) GStreamer 연구 경로(B안): `v4l2slh265dec` → `yvosandletterbox`(정적 등록 요소, Vulkan NHCW) → `yvohailosink`(기본, NPU 추론·host NMS — `yvo_pipeline --mode dmabuf --layout nhcw --postproc host`와 같은 `RESULT_CSV`·`--dump-dir`) 또는 fakesink/hold. 슬롯 역압·정지 감시 |
 | `06_tools/probes/hvs_probe/` | (빌드 안 함) HVS 두 평면 스캔아웃 KMS/Wayland 프로브 소스. [`notes/kms_vs_wayland.md`](07_results/display_vulkan_hdmi/notes/kms_vs_wayland.md) 의 근거 |
 
 화면에 실제로 나왔는지는 사람 눈 없이 확인한다:
