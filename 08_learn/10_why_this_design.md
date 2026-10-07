@@ -155,10 +155,10 @@ CPU **2.921 → 1.122 ms/프레임**, FPS 차이 −0.03%(사실상 동일), 검
   `(score, anchor_key)` 전순서를 지켜 **CPU 결과와 비트 단위로 같다**. 비트 일치를 보장할 수 없는
   프레임(후보 1024개 초과, IoU가 0.7 ± 4e-6 안)은 셰이더가 알리고 그 프레임만 CPU 함수로 처리한다.
 - **아직 모르는 것**: 억제 한 번의 GPU 시간이 CPU 억제(수 µs)보다 **클 수 있다.** 이 교체는
-  CPU 시간을 줄이려는 것이 아니다. 전체 파이프라인의 FPS·지연·CPU에 주는 영향은 정식 측정 전이다.
-  비정식 값은 있다. `dec_threads` 측정의 GPU 후처리·표시 설정이 기본값 `--nms gpu`로 돌아
-  `efficient_nms` 평균이 0.036~0.050 ms(1150 MHz, 폴백 0)로 기록됐다. CPU 억제보다 크다는 가설과 맞는다
-  ([`dec_threads`](../07_results/dec_threads/summary.md) `results_raw.csv`, NMS A/B가 아님).
+  CPU 시간을 줄이려는 것이 아니다. 2026-10-08 정식 A/B([`gpu_nms_e2e`](../07_results/gpu_nms_e2e/summary.md), 표시 off)에서
+  FPS·검출은 같고 CPU·e2e 차이는 실행 간 흔들림 안이었다(회귀 없음, 검출 바이트 동일).
+  `efficient_nms`는 0.049~0.050 ms(1150 MHz, 폴백 0)로 CPU 억제(약 2 µs)보다 크다는 가설과 맞는다
+  (먼저 [`dec_threads`](../07_results/dec_threads/summary.md) 부산물로 0.036~0.050 ms가 보였고, 정식 A/B가 이를 확인했다).
 
 ---
 

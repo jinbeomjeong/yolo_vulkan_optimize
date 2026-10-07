@@ -1,0 +1,26 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[hevc @ 0x5555d7de19a0] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+== yvo_pipeline (dmabuf, nhcw, batch 2, slots 4, gpu_depth 3, postproc gpu/export) ==
+frames          1816 (decoded 1816, errors 0)
+wall            51.865 s, 35.01 FPS
+cpu             1.006 ms/frame (process user+sys 1826.5 ms, 4% of one core)
+decode call ms  mean 2.927  median 3.715  p90 5.003  max 10.685
+gpu shader ms   mean 1.808  median 1.804  p90 1.867  max 2.292
+npu latency ms  mean 106.312  median 106.482  p90 108.365  max 141.398
+e2e latency ms  mean 139.525  median 146.394  p90 166.494  max 206.450  (decode return → NPU completion callback)
+slot wait ms    mean 25.501  p90 53.075  (time the main thread waited for a free slot)
+gpu post ms     mean 0.592  median 0.583  p90 0.682  max 1.272  (yolo_decode.comp pass 1)
+cpu nms us      mean 3.571  median 2.898  p90 6.639  max 16.129  (cpu_nms_greedy_by_class, n=1816)
+nms backend     verify
+gpu nms ms      mean 0.0590  median 0.0568  p90 0.0772  max 0.1065  (efficient_nms.comp)
+nms fallback    0 frames (capacity 0, iou guard 0)
+nms verify mismatch 0 frames (frames where the GPU result differs bitwise from the CPU reference, excluding fallback)
+candidates      mean 26.08  max 78  overflow frames 0
+slot hold ms    mean 3.981  median 3.784  p90 5.660  max 43.192  (NPU completion callback → slot return)
+held frames max 2 (decoder limit about 13), slot timeout 0
+detections      9457 total, 5.21 / frame
+hailo chip temp 64.9 -> 79.9 C
+soc temp        71.9 -> 68.6 C
+vk validation   errors 0, warnings 1
+RESULT_CSV,verify_b2s4,dmabuf,nhcw,2,4,1816,51.865,35.01,1.006,2.927,1.808,1.867,106.31,108.37,139.52,166.49,9457,64.9,79.9,71.9,68.6,1
+RESULT_CSV2,verify_b2s4,gpu,export,0.5918,0.6817,3.571,26.08,78,0,1,off,-,-,0.0000,0.0000,0.0000,0.000,0.00,0.00,0,0,0,2,0,verify,0.0590,0.0772,0,0,-,-,-,-,-,-

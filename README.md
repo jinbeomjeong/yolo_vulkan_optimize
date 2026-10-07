@@ -21,7 +21,7 @@ Vulkan(V3D GPU)으로 밀어낸** 프로젝트다. 디코드·전처리·추론�
 >   glass **평균** 99.5 ms, 드롭 0, 검출 3369, GPU NMS 평균 약 0.04 ms, CPU 폴백 0이다
 >   ([`dec_threads/summary.md`](07_results/dec_threads/summary.md) — 위 표의 101.20 은 **중앙값**이라 섞지 않는다).
 > - V3D 클럭이 바뀌어도 FPS·CPU 는 그대로이고 GPU 전처리만 약 14% 빨라졌다([`bootloader_20260925`](07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)).
-> - GPU NMS·현재 기본값으로 위 표를 다시 재는 정식 측정은 아직 없다([계획](07_results/display_vulkan_hdmi/notes/formal_measurement_plan.md)).
+> - 현재 기본값의 **표시 off 정식 기준선**(2026-10-08): b8s16 51.50 fps · CPU 0.869 ms/frame, GPU NMS 는 CPU NMS 대비 회귀 없음·검출 바이트 동일([`gpu_nms_e2e/`](07_results/gpu_nms_e2e/summary.md)). 표시 on 으로 위 표를 다시 재는 정식 측정은 아직 없다([계획](07_results/display_vulkan_hdmi/notes/formal_measurement_plan.md) 실험 B).
 
 ---
 

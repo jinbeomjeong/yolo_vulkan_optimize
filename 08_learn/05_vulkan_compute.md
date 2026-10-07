@@ -597,14 +597,14 @@ NPU는 프레임마다 텐서 **6개**를 내놓는다(스케일 3개 × {클래
 | [`yolo_decode.comp`](../02_shaders/yolo_decode.comp) | 원시 6텐서 → 후보 박스 ~16개 | dequantize + DFL softmax + threshold + 좌표 역변환 | **0.626 ms** |
 | [`display_convert.comp`](../02_shaders/display_convert.comp) | 디코더 SAND128 NV12 → 스왑체인 RGBA | de-SAND + YUV→RGB (1:1) | **4.153 ms** |
 | [`overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) | 검출 목록 → 스왑체인 RGBA (변형 `overlay_boxes_buf`: → AB24 dma-buf 버퍼) | 박스 테두리 + 라벨 글자 + HUD 그리기 | **0.128 ms** (image 경로) |
-| [`efficient_nms.comp`](../02_shaders/efficient_nms.comp) | 후보 박스 → 최종 검출 | bitonic 정렬 + 클래스별 greedy 억제 | 정식 측정 전 (비정식 평균 0.036~0.050 ms ¹) |
+| [`efficient_nms.comp`](../02_shaders/efficient_nms.comp) | 후보 박스 → 최종 검출 | bitonic 정렬 + 클래스별 greedy 억제 | **0.049~0.050 ms** (파이프라인 중앙값, 1150 MHz ¹) |
 
 합 **6.995 ms**(`efficient_nms.comp` 추가 전 4개), 프레임 주기 28.6 ms의 24.5%다
 ([`display_e2e/summary.md`](../07_results/display_e2e/summary.md) §3.1, `disp_asap`).
 표의 ms 값과 아래 워크그룹 스윕은 모두 **V3D 960 MHz** 조건이다. 1150 MHz(부트로더 2026-09-25)에서 전처리는 표시 off 기준
 b1 1.81 ms, b4·b8 약 2.0 ms다([`bootloader_20260925`](../07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)). 나머지 셰이더는 1150 MHz에서 다시 재지 않았다.
 
-¹ [`dec_threads`](../07_results/dec_threads/summary.md)의 GPU 후처리·표시 설정이 기본값 `--nms gpu`로 돈 부산물이다(1150 MHz, `results_raw.csv`의 `gpu_nms_mean`, 폴백 0). NMS 정식 A/B는 아니다.
+¹ 정식 A/B [`gpu_nms_e2e`](../07_results/gpu_nms_e2e/summary.md)(2026-10-08, 표시 off, b2s4·b8s16, 폴백 0). 단독 프로브 0.054 ms, 후보 1024 최악 3.05 ms. CPU 억제는 약 2 µs/frame이라 CPU 절감은 보이지 않고 회귀도 없다.
 색 변환식과 letterbox 규칙의 상세는 [07_video_display.md](07_video_display.md),
 텐서 해석은 [03_yolo_tensor.md](03_yolo_tensor.md) 에 있다.
 
