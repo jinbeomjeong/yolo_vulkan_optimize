@@ -46,7 +46,7 @@ build/bin/yvo_pipeline \
 
 운용점은 용도에 따라 고른다 — 최대 처리량은 `b8/s16`(51.5 FPS, 지연 325 ms),
 최소 지연은 `b1/s1`(81.6 ms, 단 24.4 FPS 로 30 fps 를 못 따라간다). 두 지연은 자동 5스레드 조건이고,
-1스레드 기본값에서는 각각 318.3 ms·79.1 ms(gpu-depth 1)다([`dec_threads/`](dec_threads/summary.md)).
+1스레드 기본값에서는 각각 318.6 ms·79.1 ms(gpu-depth 1)다([`dec_threads/`](dec_threads/summary.md)).
 
 ---
 
@@ -94,7 +94,7 @@ build/bin/yvo_pipeline \
 | [`nms_host_cost/`](nms_host_cost/summary.md) | 스윕 | 유효 | 5 후처리(호스트) | — | 호스트 NMS 비용 | `yolov8_nms_postprocess` 는 **온칩이 아니라 호스트 CPU** 실행. **2.2~3.2 ms/f 고정비**(검출 수와 무관). 원시 출력으로 바꿔도 **PCIe 트래픽은 안 늘어난다** |
 | [`gpu_postprocess/`](gpu_postprocess/summary.md) | 프로브 | 유효 | 6 후처리(GPU) | — | GPU 후처리 프로브 (P1/P2/P3) + **[F0] 관문** | 텐서 해석 4변수 전수 확정. pass1 **0.5625 ms**(V3D 960 MHz), CPU 억제 3~11 µs. **[F0]: 입력·출력 dma-buf 동시 사용 동작 확인**(`evidence/f0_in_dmabuf.txt`) |
 | [`display_vulkan_hdmi/`](display_vulkan_hdmi/summary.md) | 프로브 | 유효 | 7 표시 | — | 표시 프로브 (P4~P10) | 컴퓨트가 **스왑체인에 직접 STORAGE 쓰기** 가능(blit 불필요). 1080p 1:1 **4.229 ms**(V3D 960 MHz). ⚠ 창 모드는 **조용히 2.6배 느려진다**. 후속 메모(각 1회·비정식): [`notes/kms_vs_wayland.md`](display_vulkan_hdmi/notes/kms_vs_wayland.md)(HVS 두 평면 스캔아웃 KMS 대 Wayland, 증거 `evidence/hvs_review/`, §4.1 = 2026-10-07 색 범위 재판정 · 원시 `verification/color_range_rpt4/`), [`notes/wayland_planes_pacing_gate.md`](display_vulkan_hdmi/notes/wayland_planes_pacing_gate.md)(커밋 간격 게이트). summary §P10·결론의 "안 (III) 미검증"은 이후 `wayland-planes`/`kms` 로 구현됐다 |
-| [`dmaheap_unify/`](dmaheap_unify/summary.md) | 프로브 | 별도 트랙 | — 별도 트랙 | — | dma-heap → V3DV import 관문 (별도 트랙) | V3DV 가 dma-heap fd 를 import 한다. **단 `range = size − 256`** 함정. GPU 읽기 성능(B.2)과 3자 일관성은 **미검증** |
+| [`dmaheap_unify/`](dmaheap_unify/summary.md) | 프로브 | 별도 트랙 | — 별도 트랙 | — | dma-heap → V3DV import 관문 (별도 트랙) | V3DV 가 dma-heap fd 를 import 한다. **단 `range = size − 256`** 함정. GPU 읽기 성능(B.2)은 **닫혔다**(heap/plain = 0.9994, 손해 없음). Hailo 방향 3자 체크섬(V1, 120건)은 불일치 0 PASS. **열린 것**: V3D 방향 캐시 일관성 기제 미확정, sync 필요성 미실증(sync 유지), `--alloc heap` 경로가 ctest 에 없음 |
 | [`op_point/`](op_point/summary.md) ⭐ | 스윕 | ⭐최종 | 통합 2026-09-20 | `runs/{latency_gen3_cooled,latency_sweep}` | **운용점 결정 (O1~O4)** + 냉각 Gen3 지연 재측정 + 지연 스윕 | **이 폴더가 최종 결론이다(§8).** slots 가 지배 변수임을 정량 확인. `b4/s8` vs `b8/s8` 동률로 계획서 F1 가설 기각 |
 | [`gpu_postproc_e2e/`](gpu_postproc_e2e/summary.md) | 스윕 | 일부 인용금지 | 통합 2026-09-20 | — | `--postproc gpu` 통합 정확도·CPU | **매칭 @ IoU 0.9 = 0.9990, 검출 9457 로 host 와 완전 동일.** perf 에서 호스트 NMS 45.10% → **0건**. ⚠ 이 폴더의 FPS·지연은 **결함 상태 값이라 인용 금지**(문서 안에 표시) |
 | [`raw_runner_backpressure/`](raw_runner_backpressure/summary.md) | 스윕 | 유효 | 통합 2026-09-20 | — | 러너 백프레셔 이중 계수 결함 규명·수정 | 수동 `increase_ongoing_callbacks()` 가 `infer_async` 내부 계수와 겹쳐 **in-flight 가 슬롯의 절반**. 제거 후 gpu `b2/s4` 24.48 → **34.96 FPS**(host 대비 −0.03%) |
@@ -167,7 +167,7 @@ python3 06_tools/python/check_links.py
 | **연속 운용 발열 안정 FPS** ★ 가장 큰 구멍 | 측정이 전부 900프레임 ≈ 26초짜리다. 칩이 90 °C대로 가면 클럭이 400→250 MHz 로 떨어지고 `b2/s4` 의 여유(+16%)가 사라질 수 있다 |
 | **카메라(CSI) 입력 경로** | 디코더가 `01_src/decode/ffmpeg_drm_decoder.cpp:166` 에서 **HEVC 파일만** 받는다. 카메라로 가면 ISP 경로 재검토 조건도 함께 열린다 |
 | `--display-sync latest` 정식 측정 | 150프레임 확인 실행만 했다(glass median 28.2 ms) |
-| dma-heap B.2 / 3자 일관성 | 별도 트랙. `--postproc-alloc heap` 은 옵션만 있고 **기본값은 `export`** 다 |
+| dma-heap 전환 (B.2 성능·V1 체크섬은 닫힘) | 별도 트랙. 성능(heap/plain 0.9994)과 Hailo 방향 3자 체크섬(V1 PASS)은 [`dmaheap_unify/`](dmaheap_unify/summary.md) 에서 확인됐다. 남은 것: `--alloc heap` 경로가 ctest 에 없다(안 쓰면 조용히 깨진다), 현재 이득 0 이라 기본 경로는 전환하지 않았다. `--postproc-alloc heap` 은 옵션만 있고 **기본값은 `export`** 다. V3D 쪽 기제는 아래 별도 행 |
 | 다중 스트림 | **측정 불필요** — 1080p30 2개 = 60 FPS 인데 NPU 상한이 51.7 이다 |
 | 워크그룹 최적값의 **이유** | `yolo_decode` 가 60 invocation(10×6)에서 256보다 빠르고 `display_convert` 가 3×85 에서 16×16보다 1.83배 빠른 이유를 설명하지 못했다. **측정치만이 근거인 가설**이다 |
 | V3D 쪽 캐시 일관성 **기제** | Hailo 쪽은 드라이버가 관리함을 perf 로 확인했다. V3D 는 프레임마다 매핑하지 않는데도 오염이 관측되지 않는다 — 축출 완료인지 스누핑인지 **가르지 못했다**(결정적 실험에 root 필요) |

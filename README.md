@@ -122,7 +122,7 @@ build/bin/yvo_pipeline \
 | 영상만 저지연 표시 | 위에 `--display-sync latest` 추가 | 화면 glass 28 ms, 박스만 뒤처진다 |
 
 > 이 표의 지연은 디코더 자동 5스레드·V3D 960 MHz 조건 값이다([`op_point/`](07_results/op_point/summary.md) §8).
-> 지금 기본값(1스레드)에서는 b8/s16 e2e 318.3 ms, b1/s1(gpu-depth 1) 79.1 ms, 표시 off b2/s4 GPU 후처리 34.99 FPS 로
+> 지금 기본값(1스레드)에서는 b8/s16 e2e 318.6 ms, b1/s1(gpu-depth 1) 79.1 ms, 표시 off b2/s4 GPU 후처리 34.99 FPS 로
 > 조금씩 짧고 FPS 는 같다([`dec_threads/`](07_results/dec_threads/summary.md)).
 
 **처리량·지연을 지배하는 것은 batch 가 아니라 slots 다.** 지연 ≈ `slots × 프레임 주기` 이고,

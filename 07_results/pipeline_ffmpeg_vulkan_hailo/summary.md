@@ -48,10 +48,10 @@
   (약 1.41 GB/s)** 다. §4.3의 stride-3 읽기는 같은 양에 약 14 ms(약 0.088 GB/s)였다.
   → **16배 차이는 V3D 읽기 대역폭 자체가 아니라 접근 패턴에서 나온다.** 순차로 읽으면 1.2 MB에 0.87 ms로
   감당 가능하다. 다만 "캐시된 malloc 대비 몇 배인가"는 여전히 직접 비교가 필요하다(완전 확정은 아니다).
-- 지연 최적 설정(b8/s8, b4/s4)은 미측정이다. 슬롯 수가 곧 큐 깊이라 지연이 중요하면 줄여야 한다.
+- 지연 최적 설정(b8/s8, b4/s4)은 미측정이다. 슬롯 수가 곧 큐 깊이라 지연이 중요하면 줄여야 한다. → 해소(2026-10-08): [op_point/summary.md §5](../op_point/summary.md) 가 측정(b4/s4 e2e 142.81 ms, b8/s8 199.05 ms)
 - 연속 운용 시 칩이 90 °C대까지 오른다. CPU 부하가 1/5로 줄어도 칩 온도는 그대로다(발열원은 NPU다).
 - **정정(2026-09-20):** `yvo_hailo_selftest`의 `[stream]` FPS는 측정 창에 파이프라인 드레인이 들어가
   약 4.8% 과소평가된다(기본 300프레임/16슬롯). REPORT.md §4.1 표의 "NPU만 50.0 FPS"는 보정하면 약 52.5이고
   benchmark 상한 51.7과 정합한다. **`yvo_pipeline`의 51.63 FPS는 wall-clock 기반이라 영향이 없다.**
   자세한 내용은 [REPORT.md](REPORT.md)의 "정정 1".
-- 보류 과제: Gen3에서 칩을 식힌 상태의 overall latency 재측정 (`07_results/npu_benchmark/runs/gen3/summary.md`).
+- 보류 과제: Gen3에서 칩을 식힌 상태의 overall latency 재측정 (`07_results/npu_benchmark/runs/gen3/summary.md`). → 해소(2026-10-08): [op_point/runs/latency_gen3_cooled](../op_point/runs/latency_gen3_cooled/summary.md)

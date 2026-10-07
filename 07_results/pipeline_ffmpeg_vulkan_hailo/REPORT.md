@@ -222,7 +222,7 @@ fps_보고 ≈ fps_참값 × bench_frames / (bench_frames − 1 + slots)
 - batch별 FPS가 `hailortcli benchmark`(24.3 / 44.5 / 51.7)와 같다. **병목은 NPU이고, 디코드와 GPU는 NPU를 막지 않는다.**
 - **NHCW로 바꿔도 FPS는 거의 그대로다**(51.55 → 51.63). 이미 NPU 상한에 붙어 있었기 때문이다.
   얻은 것은 처리량이 아니라 **CPU 코어 0.9개 → 0.16개**의 여유다. 다중 스트림이나 후단 처리를 올릴 자리가 생겼다.
-- NPU 지연과 E2E(디코드 반환부터 콜백까지)는 HailoRT 큐 대기를 포함한다. 슬롯 수가 곧 큐 깊이다. 지연이 중요하면 슬롯을 줄여야 한다(예: b8/s8, 미측정).
+- NPU 지연과 E2E(디코드 반환부터 콜백까지)는 HailoRT 큐 대기를 포함한다. 슬롯 수가 곧 큐 깊이다. 지연이 중요하면 슬롯을 줄여야 한다(예: b8/s8, 미측정). → 해소(2026-10-08): [op_point/summary.md §5](../op_point/summary.md) 가 측정(b8/s8 e2e 199.05 ms)
 
 ### 4.3 CPU 부하 분석: 전치 연산인가, GPU 메모리 읽기인가
 
@@ -358,7 +358,7 @@ NHCW 1.78 GHz). NHCW는 프로세스가 코어의 20%만 써서 거버너가 클
      사는 것은 CPU 코어 약 0.2개다. 후단 처리(다중 스트림, 트래킹)를 올릴 계획이 있을 때 착수한다.
      구현 난이도는 `InferModel`이 postprocess를 건너뛸 수 있는지에 달려 있다(안 되면 raw stream API로 러너 재작성).
    - 확보한 CPU 여유로 다중 스트림을 시도한다. 병목이 NPU이므로 스트림을 늘려도 합계 FPS는 51.7이 상한이다.
-   - 지연이 중요한 설정(b8/s8, b4/s4)을 측정한다.
+   - 지연이 중요한 설정(b8/s8, b4/s4)을 측정한다. → 해소(2026-10-08): [op_point/summary.md §5](../op_point/summary.md) 가 측정
 
 ## 6. 남은 이슈
 - ~~0x30ffac 부근 함수를 확정한다~~ → **해소.** 호스트 NMS 후처리로 확정했다(§4.5, `07_results/nms_host_cost/`).
@@ -366,10 +366,10 @@ NHCW 1.78 GHz). NHCW는 프로세스가 코어의 20%만 써서 거버너가 클
   `ConfiguredNetworkGroup`의 raw stream API로 러너를 상당 부분 다시 써야 한다.
 - §4.3의 "V3D 메모리 읽기가 비싸다"는 해석은 malloc 버퍼와의 비교(거친 측정)에 근거한다.
   V3D 버퍼를 CPU로 순차 읽기 vs stride 3 읽기로 대역폭을 직접 재면 확정할 수 있다.
-- 지연을 최적화하는 설정(b8/s8, b4/s4 등)은 아직 측정하지 않았다.
+- 지연을 최적화하는 설정(b8/s8, b4/s4 등)은 아직 측정하지 않았다. → 해소(2026-10-08): [op_point/summary.md §5](../op_point/summary.md) 가 측정(b4/s4 142.81 ms, b8/s8 199.05 ms)
 - 연속 운용 시 Hailo 칩이 90 °C대까지 오른다. 방열 대책이 필요하다.
 - GPU를 단발로 실행하면 DVFS 때문에 셰이더 시간이 5.5 ms까지 늘어난다. 연속 스트림에서는 2.1 ms다.
-- 별도 보류 과제: Gen3에서 칩을 식힌 상태로 overall latency를 다시 재야 한다(`07_results/npu_benchmark/runs/gen3/summary.md`).
+- 별도 보류 과제: Gen3에서 칩을 식힌 상태로 overall latency를 다시 재야 한다(`07_results/npu_benchmark/runs/gen3/summary.md`). → 해소(2026-10-08): [op_point/runs/latency_gen3_cooled](../op_point/runs/latency_gen3_cooled/summary.md)
 
 ## 7. 재현 방법
 ```bash

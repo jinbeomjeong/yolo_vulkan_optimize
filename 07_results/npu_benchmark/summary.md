@@ -33,4 +33,4 @@
 ## 주의와 남은 일
 
 - Gen3에서는 Hailo 칩이 최고 92.7 °C까지 올라 클럭이 400 MHz에서 250 MHz로 떨어졌다. 연속 부하에서 FPS를 유지하려면 방열 대책이 필요하다
-- **TODO:** Gen3 overall latency는 과열 상태에서 잰 값이라 칩을 식힌 뒤 batch 1/8을 다시 재야 한다 (자세한 내용은 runs/gen3/summary.md)
+- **TODO:** Gen3 overall latency는 과열 상태에서 잰 값이라 칩을 식힌 뒤 batch 1/8을 다시 재야 한다 (자세한 내용은 runs/gen3/summary.md) → 해소(2026-10-08): [op_point/runs/latency_gen3_cooled](../op_point/runs/latency_gen3_cooled/summary.md)
