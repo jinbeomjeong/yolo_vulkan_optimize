@@ -79,7 +79,7 @@ slot wait 은 실행별 stdout 의 `slot wait ms mean`(메인 스레드가 빈 �
    - source 설정의 fps 가 30 에 못 미치는 것(29.23~29.33, vk 29.91)도 같은 원인으로 본다.
    - 확인(비정식, 각 1회 450프레임, 인용 금지, `11_logs/2026-10-08_slotprobe_wlp_source_b2s{4,6,8}.log`): wlp_source 를
      `--slots 6`·`8` 로 돌리면 slot wait 이 **0**, e2e 중앙 107.2 → 73.7(s6)·73.8(s8) ms(vk_source 와 같은 수준), fps 29.33 → 29.80(s6)·29.81(s8) 이 된다.
-   - 따라서 평면 경로의 **지연 비교는 이 실험으로 결론 내리지 않는다.** 평면 경로는 slots ≥ 6 에서 다시 재야 한다(§5).
+   - 따라서 평면 경로의 **지연 비교는 이 실험으로 결론 내리지 않는다.** 평면 경로는 slots ≥ 6 에서 다시 재야 한다(§5). → **2차 회차 [`runs/slots6/`](runs/slots6/summary.md)(b2/s6, 같은 날)에서 slot wait 0, 디코드 → 화면 평균 vk 101.4 / wlp 102.3 / kms 101.6 ms 로 세 경로가 같았다 — 평면 경로의 지연 이득은 없고 손해도 없다.**
 5. **표시 박자(source)**: 평면 경로는 present 간격 중앙 33.33 / p90 50.0 ms, 프레임의 약 26%가 한 vblank 늦게 나간다(glass p90 = 중앙 + 16.7 ms).
    wlp·kms 가 같고 slots 6·8 확인 실행에서도 그대로라(late 109·111 / 418, s4 확인 실행은 112) 컴포지터나 슬롯이 아니라 **앱 페이싱이 vblank 위상에 묶여 있지 않은 탓**으로 추정한다(미검증).
    Vulkan 합성은 p90 66.96 ms 로 꼬리가 더 길다(glass p90 123.66).
@@ -91,7 +91,7 @@ slot wait 은 실행별 stdout 의 `slot wait ms mean`(메인 스레드가 빈 �
 
 - **glass 끝점이 다르다.** 평면 경로는 하드웨어 표시 시각(wp_presentation / page-flip), Vulkan 경로는 `vkWaitForPresentKHR`를 폴링해 알아챈 시각이다.
   Vulkan 쪽 glass 중앙(94.37)이 평면(99.9)보다 작은 것을 그대로 지연 차로 읽지 않는다. 그리고 위 결론 4의 슬롯 대기가 이보다 훨씬 크다.
-- **glass 시작점이 슬롯 획득 뒤다.** slot wait 이 0이 아닌 설정(vk_asap 포함)은 glass 가 "디코드 → 화면"보다 작게 나온다. stdout 의 `decode → reaches screen` 표기는 이 경우 정확하지 않다.
+- **glass 시작점이 슬롯 획득 뒤다.** slot wait 이 0이 아닌 설정(vk_asap 포함)은 glass 가 "디코드 → 화면"보다 작게 나온다. stdout 의 `decode → reaches screen` 표기는 이 경우 정확하지 않다. (이 측정 당시 앱 기준. `fd9f7ff` 부터 glass 라벨은 `slot acquired → reaches screen` 이고 디코드 반환부터 재는 `decode-to-screen` 이 따로 나온다.)
 - `disp_overlay_ms`는 이름만 같다(평면: 박스 그리기 + 지우기, Vulkan: `overlay_boxes.comp`).
 - `yvo_ticks_*`(results.csv)는 프로세스 전체 수명(초기화 포함)의 /proc 값이다. 측정 구간 CPU 는 `cpu_ms_per_frame`(getrusage)을 쓴다.
 - V3D 합·CSD·TFU 는 `gpu_stats` 시스템 전체 값이다(다른 클라이언트 포함). 프로세스별은 fdinfo 열.
@@ -99,8 +99,9 @@ slot wait 은 실행별 stdout 의 `slot wait ms mean`(메인 스레드가 빈 �
 
 ## 5. 남은 일
 
-1. **평면 경로 slots 재측정(권장 다음 단계)**: `vk_source`·`wlp_source`·`kms_source` 를 b2/s6(필요하면 s8)로 같은 프로토콜 900f×3.
+1. ~~**평면 경로 slots 재측정**~~ → 완료(2026-10-08, [`runs/slots6/`](runs/slots6/summary.md)). 아래 두 줄은 당시 계획이다.
+   **평면 경로 slots 재측정(권장 다음 단계)**: `vk_source`·`wlp_source`·`kms_source` 를 b2/s6(필요하면 s8)로 같은 프로토콜 900f×3.
    슬롯 대기가 사라진 상태에서 디코드 → 화면 지연·CPU 를 다시 비교한다. 지금 스크립트는 b2/s4 고정이라 slots 를 바꾸는 옵션이 필요하다.
-2. **glass 시작점 정의**: 디코드 반환 시각에서 재는 값을 함께 내거나 시작점을 옮긴다(코드 수정, 표시 담당).
+2. **glass 시작점 정의**: 디코드 반환 시각에서 재는 값을 함께 내거나 시작점을 옮긴다(코드 수정, 표시 담당). → 완료(`fd9f7ff`: `decode-to-screen` 지표·RESULT_CSV3 `d2s_*`, glass 정의는 그대로).
 3. **source 페이싱의 vblank 위상**: 약 26% 늦은 프레임의 원인 확인(프레임별 커밋 시각 대 vblank 시각 기록)과 vblank 기준 일정 검토.
 4. 표시 on 상태의 연속 운용 발열은 이 실험 범위 밖이다(실행마다 냉각).

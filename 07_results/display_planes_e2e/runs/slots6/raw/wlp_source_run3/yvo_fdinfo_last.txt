@@ -1,0 +1,44 @@
+== fd 6 -> /dev/dri/card0
+pos:	0
+flags:	02400002
+mnt_id:	22
+ino:	265
+drm-driver:	v3d
+drm-client-id:	24022
+drm-engine-bin: 	0 ns
+v3d-jobs-bin: 	0 jobs
+drm-engine-render: 	0 ns
+v3d-jobs-render: 	0 jobs
+drm-engine-tfu: 	0 ns
+v3d-jobs-tfu: 	0 jobs
+drm-engine-csd: 	0 ns
+v3d-jobs-csd: 	0 jobs
+drm-engine-cache_clean: 	0 ns
+v3d-jobs-cache_clean: 	0 jobs
+drm-engine-cpu: 	0 ns
+v3d-jobs-cpu: 	0 jobs
+drm-total-memory:	0
+drm-shared-memory:	0
+== fd 7 -> /dev/dri/renderD128
+pos:	0
+flags:	02400002
+mnt_id:	22
+ino:	264
+drm-driver:	v3d
+drm-client-id:	24023
+drm-engine-bin: 	0 ns
+v3d-jobs-bin: 	0 jobs
+drm-engine-render: 	0 ns
+v3d-jobs-render: 	0 jobs
+drm-engine-tfu: 	8960870 ns
+v3d-jobs-tfu: 	6 jobs
+drm-engine-csd: 	2177205197 ns
+v3d-jobs-csd: 	6105 jobs
+drm-engine-cache_clean: 	240617652 ns
+v3d-jobs-cache_clean: 	6105 jobs
+drm-engine-cpu: 	50678885 ns
+v3d-jobs-cpu: 	15691 jobs
+drm-total-memory:	94176 KiB
+drm-shared-memory:	91824 KiB
+drm-active-memory:	20784 KiB
+drm-resident-memory:	41952 KiB

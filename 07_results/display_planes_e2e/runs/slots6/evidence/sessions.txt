@@ -1,0 +1,12 @@
+[06:24:26] session: activate tty 3 (desktop 2); masters before: systemd-logind(722) labwc(1073)
+[06:24:26] session: tty active=yes, masters: 
+[06:25:34] session: activate desktop 2; masters before: 
+[06:25:34] session: desktop active=yes, labwc master=y, masters: systemd-logind(722) labwc(1073), HDMI-A-1 Enabled -> ok
+[06:28:07] session: activate tty 3 (desktop 2); masters before: systemd-logind(722) labwc(1073)
+[06:28:07] session: tty active=yes, masters: 
+[06:29:26] session: activate desktop 2; masters before: 
+[06:29:26] session: desktop active=yes, labwc master=y, masters: systemd-logind(722) labwc(1073), HDMI-A-1 Enabled -> ok
+[06:32:04] session: activate tty 3 (desktop 2); masters before: systemd-logind(722) labwc(1073)
+[06:32:04] session: tty active=yes, masters: 
+[06:33:23] session: activate desktop 2; masters before: 
+[06:33:23] session: desktop active=yes, labwc master=y, masters: systemd-logind(722) labwc(1073), HDMI-A-1 Enabled -> ok
