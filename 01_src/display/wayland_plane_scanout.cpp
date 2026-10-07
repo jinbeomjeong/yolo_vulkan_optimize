@@ -349,8 +349,8 @@ void WaylandPlaneScanout::on_frame_done(void* data, wl_callback* cb, std::uint32
 void WaylandPlaneScanout::on_fb_sync_output(void* /*data*/, struct wp_presentation_feedback* /*f*/, wl_output* /*o*/) {}
 
 void WaylandPlaneScanout::on_fb_presented(void* data, struct wp_presentation_feedback* f, std::uint32_t sec_hi,
-                                          std::uint32_t sec_lo, std::uint32_t nsec, std::uint32_t /*refresh*/,
-                                          std::uint32_t /*seq_hi*/, std::uint32_t /*seq_lo*/, std::uint32_t flags) {
+                                          std::uint32_t sec_lo, std::uint32_t nsec, std::uint32_t refresh,
+                                          std::uint32_t seq_hi, std::uint32_t seq_lo, std::uint32_t flags) {
     auto* fbc = static_cast<Feedback*>(data);
     WaylandPlaneScanout* self = fbc->self;
     const std::uint64_t token = fbc->token;
@@ -361,7 +361,9 @@ void WaylandPlaneScanout::on_fb_presented(void* data, struct wp_presentation_fee
     self->feedback_.erase(f);
     if (self->listener_)
         self->listener_->on_presented(token, t_ns, self->win_.presentation_clock() == CLOCK_MONOTONIC,
-                                      (flags & WP_PRESENTATION_FEEDBACK_KIND_ZERO_COPY) != 0);
+                                      (flags & WP_PRESENTATION_FEEDBACK_KIND_ZERO_COPY) != 0,
+                                      (flags & WP_PRESENTATION_FEEDBACK_KIND_VSYNC)   // no vsync: seq means nothing
+                                          ? (static_cast<std::uint64_t>(seq_hi) << 32) | seq_lo : 0, refresh);   // 0 = none
 }
 
 void WaylandPlaneScanout::on_fb_discarded(void* data, struct wp_presentation_feedback* f) {

@@ -1,6 +1,7 @@
 #include "display/plane_display.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <stdexcept>
 #include <utility>
@@ -186,6 +187,7 @@ void PlaneDisplay::try_commit(bool force) {
     p.token = next_token_++;
     if (!scanout_->commit(p.frame, p.token, p.overlay)) {
         ++rejected_;
+        stall_tokens_.push_back(p.token);   // the previous frame stays on screen longer: a real stall (seq gap)
         drop_item(p);
         pending_.pop_front();
         return;
@@ -218,7 +220,29 @@ void PlaneDisplay::on_overlay_released(int overlay_idx) {
 
 void PlaneDisplay::on_frame_done() { frame_cb_pending_ = false; }
 
-void PlaneDisplay::on_presented(std::uint64_t token, std::int64_t t_ns, bool clock_monotonic, bool zero_copy) {
+void PlaneDisplay::on_presented(std::uint64_t token, std::int64_t t_ns, bool clock_monotonic, bool zero_copy,
+                                std::uint64_t seq, std::uint32_t refresh_ns) {
+    // Vblank seq gap ending at this presentation (index = feedback_presented_ before the increment). Gaps that touch the
+    // first cfg_.warmup presentations are skipped — the same first-N cut main.cpp applies to the interval series.
+    // A gap is taken only if this token directly follows the previous presented one in commit order. Tokens that
+    // were discarded (wp_presentation) or rejected by the transport are real screen stalls, so they stay **inside** the
+    // gap (stall_tokens_). Any other hole — kms flip watchdog timeout (no on_presented), a presentation without a vsync
+    // seq, a non-increasing seq — breaks the chain: counted in seq_breaks_, no gap (it would inflate seq_gap_max).
+    if (refresh_ns > 0) refresh_ns_ = refresh_ns;
+    std::uint64_t expect = last_chain_token_ + 1;
+    while (std::find(stall_tokens_.begin(), stall_tokens_.end(), expect) != stall_tokens_.end()) ++expect;
+    stall_tokens_.erase(std::remove_if(stall_tokens_.begin(), stall_tokens_.end(),
+                                       [&](std::uint64_t t) { return t <= token; }),
+                        stall_tokens_.end());
+    if (seq != 0) seq_seen_ = true;
+    if (last_seq_ != 0 && feedback_presented_ > static_cast<std::uint64_t>(std::max(cfg_.warmup, 0))) {
+        if (seq > last_seq_ && token == expect)
+            seq_gaps_.push_back(static_cast<std::uint32_t>(std::min<std::uint64_t>(seq - last_seq_, UINT32_MAX)));
+        else
+            ++seq_breaks_;
+    }
+    last_seq_ = seq;   // seq 0 also ends the chain: the next presentation starts a new one
+    last_chain_token_ = token;
     ++presented_;
     ++feedback_presented_;
     if (zero_copy) ++zero_copy_fb_;
@@ -233,6 +257,7 @@ void PlaneDisplay::on_presented(std::uint64_t token, std::int64_t t_ns, bool clo
 
 void PlaneDisplay::on_discarded(std::uint64_t token) {
     ++discarded_;
+    stall_tokens_.push_back(token);   // never reached the screen: a real stall, kept inside the seq gap
     await_present_.erase(token);
 }
 
@@ -323,6 +348,21 @@ DisplaySink::ScanoutReport PlaneDisplay::scanout_report() const {
     r.zero_copy_feedback = zero_copy_fb_;
     r.feedback_presented = feedback_presented_;
     r.busy_reuse = scanout_ ? scanout_->busy_reuse() : 0;
+    r.discarded = discarded_;
+    r.refresh_hz = refresh_ns_ > 0 ? 1e9 / static_cast<double>(refresh_ns_) : 0.0;
+    // Expected gap = the largest gap of the normal cadence. show() puts up 1 of every K frames (--display-every), so a
+    // shown frame lasts K × refresh / fps vblanks; a non-integer ratio alternates floor/ceil (60 Hz / 25 fps = 2.4 →
+    // 2,2,3,…), so round **up**. The −0.01 keeps 60/30, 59.94/29.97 and 60/29.97 (2.002) at 2.
+    if (r.refresh_hz > 0.0 && cfg_.source_fps > 0.0)
+        r.late_expected_gap = std::max(1, static_cast<int>(std::ceil(std::max(cfg_.every, 1) * r.refresh_hz /
+                                                                      cfg_.source_fps - 0.01)));
+    r.seq_gaps = seq_gaps_.size();
+    r.seq_breaks = seq_breaks_;
+    for (std::uint32_t g : seq_gaps_) r.seq_gap_max = std::max<std::uint64_t>(r.seq_gap_max, g);
+    if (seq_seen_ && r.late_expected_gap > 0 && !seq_gaps_.empty()) {   // no gap left (warmup >= presented) = unverified
+        const auto exp_gap = static_cast<std::uint32_t>(r.late_expected_gap);
+        r.late_frames = std::count_if(seq_gaps_.begin(), seq_gaps_.end(), [&](std::uint32_t g) { return g > exp_gap; });
+    }
     if (scanout_) {
         r.transport_lines = scanout_->report_lines();
         r.fatal = scanout_->fatal_error();

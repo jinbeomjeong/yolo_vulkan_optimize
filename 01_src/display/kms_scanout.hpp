@@ -22,7 +22,7 @@
 //   (not inside commit(): PlaneDisplay records mark_held/committed_ after commit returns).
 //   On the flip(N, tv) event they are called in this order:
 //     1. on_frame_done()                               — the next commit may be made (corresponds to wl_surface.frame)
-//     2. on_presented(N, tv→ns, TIMESTAMP_MONOTONIC, zero_copy=true)   (corresponds to wp_presentation.presented)
+//     2. on_presented(N, tv→ns, TIMESTAMP_MONOTONIC, zero_copy=true, flip seq, mode period)   (corresponds to wp_presentation.presented)
 //     3. on_video_released(token of the previous on-screen commit)        — the HVS no longer reads that buffer (corresponds to wl_buffer.release)
 //     4. if commit N changed the boxes, on_overlay_released(previous on-screen box entry)
 //   on_discarded is not called (a non-blocking commit is rejected with EBUSY, not replaced).
@@ -33,7 +33,7 @@
 // ── Measurement caveats (B8/B10) ──────────────────────────────────────────────────────────────
 //   The first commit is a blocking modeset, so the call takes tens of ms (main loop stalls), and its flip time is the modeset completion time,
 //   not the normal vblank period. In glass-to-glass·present interval statistics **exclude the first N frames (right after modeset)**
-//   (PlaneDisplay's debugfs start snapshot is also taken after presented 60). To be handled in the 07_results measurement scripts.
+//   (PlaneDisplay's debugfs start snapshot is also taken after presented 60). Done with --display-warmup N (main.cpp cuts glass·interval, PlaneDisplay the seq gaps).
 //
 // ── master ────────────────────────────────────────────────────────────────────────────────────
 //   Right after open, drmIsMaster → otherwise drmSetMaster. On failure, KmsMasterError (finds who is master from debugfs clients and
@@ -219,7 +219,7 @@ private:
     int commit_planes_off(bool crtc_off);
 
     static void on_flip(int fd, unsigned seq, unsigned sec, unsigned usec, unsigned crtc, void* data);
-    void handle_flip(std::uint64_t token, bool have_time, unsigned sec, unsigned usec);
+    void handle_flip(std::uint64_t token, bool have_time, unsigned sec, unsigned usec, unsigned seq);
     void check_flip_watchdog();
     void fail(const std::string& msg);
     void on_master_lost(const std::string& where);
@@ -234,7 +234,7 @@ private:
     std::uint32_t conn_id_ = 0, crtc_id_ = 0, mode_blob_ = 0;
     int crtc_idx_ = -1;
     std::string conn_name_;
-    int mode_w_ = 0, mode_h_ = 0, mode_hz_ = 0;
+    int mode_w_ = 0, mode_h_ = 0, mode_hz_ = 0;  std::uint32_t refresh_ns_ = 0;   // refresh_ns_: exact period from timings
     std::string mode_name_;
     std::vector<std::uint8_t> mode_raw_;   // drmModeModeInfo bytes (to avoid pulling xf86drmMode.h into the header)
     Props conn_props_, crtc_props_;

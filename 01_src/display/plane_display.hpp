@@ -75,7 +75,9 @@ public:
     virtual void on_overlay_released(int overlay_idx) = 0;            // released a box ring entry
     virtual void on_frame_done() = 0;                                 // the next commit may be made (vblank)
     // Presented. t_ns = ns on CLOCK_MONOTONIC (if clock_monotonic=false it is a different clock and not used for glass).
-    virtual void on_presented(std::uint64_t token, std::int64_t t_ns, bool clock_monotonic, bool zero_copy) = 0;
+    // seq = vertical retrace counter of that presentation (0 = unavailable), refresh_ns = refresh period (0 = unknown).
+    virtual void on_presented(std::uint64_t token, std::int64_t t_ns, bool clock_monotonic, bool zero_copy,
+                              std::uint64_t seq, std::uint32_t refresh_ns) = 0;
     virtual void on_discarded(std::uint64_t token) = 0;               // replaced without reaching the screen
 };
 
@@ -173,7 +175,8 @@ private:
     void on_video_released(std::uint64_t token) override;
     void on_overlay_released(int overlay_idx) override;
     void on_frame_done() override;
-    void on_presented(std::uint64_t token, std::int64_t t_ns, bool clock_monotonic, bool zero_copy) override;
+    void on_presented(std::uint64_t token, std::int64_t t_ns, bool clock_monotonic, bool zero_copy, std::uint64_t seq,
+                      std::uint32_t refresh_ns) override;
     void on_discarded(std::uint64_t token) override;
 
     void try_commit(bool force);
@@ -208,6 +211,10 @@ private:
     std::uint64_t skipped_ = 0, replaced_ = 0, rejected_ = 0, shutdown_dropped_ = 0;
     std::uint64_t overlay_skipped_ = 0, frame_cb_timeouts_ = 0, zero_copy_fb_ = 0, feedback_presented_ = 0;
     std::uint64_t discarded_ = 0;
+    std::vector<std::uint32_t> seq_gaps_;   // vblank seq gaps after warmup (late frames are judged in scanout_report)
+    std::uint64_t last_seq_ = 0;  std::uint32_t refresh_ns_ = 0;  bool seq_seen_ = false;
+    std::uint64_t last_chain_token_ = 0, seq_breaks_ = 0;   // token of the previous presentation / broken seq chains
+    std::vector<std::uint64_t> stall_tokens_;   // discarded / rejected tokens: real screen stalls, kept inside a gap
     bool drained_ = false;
 
     std::int64_t last_present_ns_ = 0;

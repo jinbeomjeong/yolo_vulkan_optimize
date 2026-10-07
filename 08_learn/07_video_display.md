@@ -842,7 +842,7 @@ loginctl activate <데스크톱 세션 id>      # 또는 sudo chvt 7 — labwc �
   (labwc 의 FB 가 바뀐 것으로 추정). 데스크톱으로 돌아가면 labwc 가 화면을 새로 잡으므로 실사용 문제는 없다.
 - Xwayland 가 비활성 VT 동안 card1 을 새로 열면 **Xwayland 가 master 를 가져가** labwc 가 headless 로 남는다.
   이때는 Xwayland 를 끝내고 VT 를 한 번 더 토글한다.
-- 첫 커밋은 블로킹 모드셋이라 그 직후 프레임의 지연·간격은 측정에서 뺀다.
+- 첫 커밋은 블로킹 모드셋이라 그 직후 프레임의 지연·간격은 측정에서 뺀다(`--display-warmup N` — 앞 N 표시분을 glass·present 간격·늦은 프레임 통계에서 제외. 기본 0, `display_planes_bench.sh` 는 모든 설정에 30). 평면 경로 요약의 `late frames` 는 vblank seq 간격이 정상 cadence 의 최대 간격 max(1, ceil(every × refresh/소스 fps − 0.01))을 넘은 수다(`RESULT_CSV3`, 플립 타임아웃 등으로 체인이 끊긴 횟수는 `seq_breaks`).
 
 ### 무엇이 확인됐고 무엇이 남았나
 

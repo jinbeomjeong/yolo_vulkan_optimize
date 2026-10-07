@@ -109,6 +109,9 @@ struct DisplayPipelineConfig {
     std::string title = "yolo_vulkan_optimize";
     std::string app_id = "yvo_pipeline";
     bool verbose = false;
+    // --display-warmup: the first N presentations are left out of glass / present-interval / late-frame statistics
+    // (kms first commit is a blocking modeset, kms_scanout.hpp B8/B10). Same meaning for every backend. 0 = keep all.
+    int warmup = 0;
 };
 
 class DisplayPipeline final : public DisplaySink {

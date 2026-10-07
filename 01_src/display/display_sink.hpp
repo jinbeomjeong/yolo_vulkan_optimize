@@ -107,6 +107,13 @@ public:
         std::vector<std::string> lines;    // judgement lines printed verbatim in the summary (debugfs excerpt)
         std::vector<std::string> transport_lines;   // transport-specific lines (kms: flip_timeouts·master_lost·restore result at exit)
         std::string fatal;                 // unrecoverable transport error ("" = none) — the run is treated as failed
+        // Late frames from the vblank counter (kms page-flip seq / wp_presentation seq). Gaps touching the first
+        // DisplayPipelineConfig::warmup presentations are skipped (same rule as the glass / present-interval series).
+        std::uint64_t discarded = 0;       // wp_presentation.discarded count (replaced before reaching the screen; kms 0)
+        long long late_frames = -1;        // seq gaps > late_expected_gap (-1 = no seq / refresh / gap left: unverified)
+        std::uint64_t seq_gaps = 0, seq_gap_max = 0, seq_breaks = 0;   // evaluated gaps / largest (vblanks) / chain breaks
+        int late_expected_gap = 0;         // largest normal gap = max(1, ceil(every*refresh_hz/source_fps - 0.01)); 0 = unknown
+        double refresh_hz = 0.0;           // output refresh reported by the transport (0 = unknown)
     };
     virtual ScanoutReport scanout_report() const { return {}; }
 

@@ -220,6 +220,8 @@ void usage(const char* a0) {
                  "  --display-sync {matched,latest}          default matched (shown together with that frame's detections)\n"
                  "  --display-pace {source,asap}             default source when display is on. asap = no pacing\n"
                  "  --display-fullscreen | --display-size WxH | --display-every K\n"
+                 "  --display-warmup N                       leave the first N presentations out of glass / present-interval /\n"
+                 "               late-frame stats, every backend (default 0 = keep all; kms first commit is a blocking modeset)\n"
                  "  --present-mode {fifo,mailbox,immediate}  default fifo\n"
                  "  --display-blit                           force the blit fallback even if STORAGE is available\n"
                  "  --overlay-line-width N | --overlay-text-scale N   default 2 / 2\n"
@@ -298,6 +300,7 @@ bool parse(int argc, char** argv, Args& a) {
             a.disp.width = w;
             a.disp.height = h;
         } else if (s == "--display-every" && (v = next())) a.disp.every = std::atoi(v);
+        else if (s == "--display-warmup" && (v = next())) a.disp.warmup = std::atoi(v);
         else if (s == "--present-mode" && (v = next())) {
             if (!yvo::display::parse_present_mode(v, &a.disp.present_mode)) return false;
         } else if (s == "--display-blit") a.disp.force_blit = true;
@@ -315,7 +318,7 @@ bool parse(int argc, char** argv, Args& a) {
     if (a.batch < 1 || a.batch > 64 || a.gpu_depth < 1 || a.dump_every < 1) return false;
     a.gpu_depth = std::min(a.gpu_depth, a.slots);
 #ifdef YVO_HAVE_DISPLAY
-    if (a.disp.every < 1 || a.disp.overlay_line_width < 1 || a.disp.overlay_text_scale < 1) return false;
+    if (a.disp.every < 1 || a.disp.warmup < 0 || a.disp.overlay_line_width < 1 || a.disp.overlay_text_scale < 1) return false;
     // Pacing default: source when display is on (follows the 30 fps source), none when off.
     if (!a.pace_explicit)
         a.disp.pace = a.display ? yvo::display::DisplayPace::Source : yvo::display::DisplayPace::None;
@@ -980,12 +983,23 @@ int run(const Args& a) {
     std::string sc_fatal;
     unsigned long long sc_busy_reuse = 0, sc_feedback = 0;
     bool sc_applicable = false;
+    // RESULT_CSV3: warmup cut (--display-warmup) and plane-path late frames. "-" = not applicable
+    std::size_t disp_warmup = 0, glass_raw_n = 0;
+    std::string sc_late = "-", sc_late_gap = "-", sc_gap_max = "-", sc_gaps = "-", sc_discarded = "-", sc_refresh = "-",
+                sc_late_rule = "-", sc_breaks = "-";
 #ifdef YVO_HAVE_DISPLAY
     if (display) {
         sdc = stats(display->convert_ms());
         sdo = stats(display->overlay_ms());
-        sdi = stats(display->present_interval_ms());
-        sdg = stats(display->glass_ms());
+        // The same first-N cut for every backend: interval j ends at presentation j+1, so dropping N of each series
+        // removes every sample that touches the first N presentations.
+        disp_warmup = static_cast<std::size_t>(a.disp.warmup);
+        auto cut = [&](const std::vector<double>& v) {
+            return std::vector<double>(v.begin() + static_cast<std::ptrdiff_t>(std::min(v.size(), disp_warmup)), v.end());
+        };
+        glass_raw_n = display->glass_ms().size();
+        sdi = stats(cut(display->present_interval_ms()));
+        sdg = stats(cut(display->glass_ms()));
         presented = display->presented();
         disp_dropped = display->display_dropped();
         recreates = display->recreates();
@@ -1005,6 +1019,18 @@ int run(const Args& a) {
             sc_fatal = rep.fatal;
             sc_busy_reuse = rep.busy_reuse;
             sc_feedback = rep.feedback_presented;
+            sc_late = rep.late_frames >= 0 ? std::to_string(rep.late_frames) : std::string("unverified");
+            sc_late_gap = rep.late_expected_gap > 0 ? std::to_string(rep.late_expected_gap) : std::string("unverified");
+            sc_gap_max = std::to_string(rep.seq_gap_max);
+            sc_gaps = std::to_string(rep.seq_gaps);
+            sc_breaks = std::to_string(rep.seq_breaks);
+            sc_discarded = std::to_string(rep.discarded);
+            char hz[96];
+            std::snprintf(hz, sizeof(hz), "%.3f", rep.refresh_hz);
+            sc_refresh = rep.refresh_hz > 0.0 ? std::string(hz) : std::string("unverified");
+            std::snprintf(hz, sizeof(hz), "gap > %d = max(1, ceil(every %d x %.3f Hz / %.3f fps - 0.01))",
+                          rep.late_expected_gap, a.disp.every, rep.refresh_hz, src_fps);
+            sc_late_rule = rep.late_expected_gap > 0 ? std::string(hz) : std::string("gap rule unverified: refresh unknown");
         }
     }
 #endif
@@ -1025,6 +1051,12 @@ int run(const Args& a) {
     const double cpu_per_frame = completed ? (c1 - c0) / static_cast<double>(completed) : 0.0;
     const Stats sd = stats(decode_ms), sg = stats(gpu_ms), sn = stats(npu_ms), se = stats(e2e_ms),
                 sw = stats(wait_block_ms);
+    // Empty after the --display-warmup cut (or display off) → "nan", not a 0 that looks like a measurement.
+    char num_buf[32];
+    std::snprintf(num_buf, sizeof(num_buf), "%.2f", sdg.median);
+    const std::string glass_med_s = sdg.n ? std::string(num_buf) : std::string("nan");
+    std::snprintf(num_buf, sizeof(num_buf), "%.3f", sdi.p90);
+    const std::string pres_p90_s = sdi.n ? std::string(num_buf) : std::string("nan");
     if (static_cast<long>(completed) != n || static_cast<long>(completed) != submitted_npu) {
         std::fprintf(stderr, "[error] frame count mismatch: decoded=%ld npu_submitted=%ld completed=%ld\n", n, submitted_npu,
                      completed);
@@ -1091,6 +1123,8 @@ int run(const Args& a) {
                     sdg.median, sdg.p90, sdg.n);
         std::printf("display         presented %llu, dropped %llu, recreates %llu, overlay overflow %llu\n",
                     presented, disp_dropped, recreates, ov_overflow);
+        std::printf("display warmup  %zu presentations excluded from glass / present interval / late frames "
+                    "(glass n %zu of %zu, glass median %s)\n", disp_warmup, sdg.n, glass_raw_n, glass_med_s.c_str());
         if (sc_applicable) {
             std::printf("scanout         zero_copy %s, color_ok %s, hvs_underrun delta %s (debugfs verdict)\n",
                         sc_zero_copy.c_str(), sc_color_ok.c_str(), sc_underrun.c_str());
@@ -1100,6 +1134,9 @@ int run(const Args& a) {
                         "presentation ZERO_COPY %s/%llu\n",
                         sc_ov_skipped.c_str(), sc_cb_timeouts.c_str(), sc_busy_reuse, sc_zc_feedback.c_str(),
                         sc_feedback);
+            std::printf("scanout         late frames %s (vblank seq %s; gaps %s, max gap %s, chain breaks %s), discarded %s\n",
+                        sc_late.c_str(), sc_late_rule.c_str(), sc_gaps.c_str(), sc_gap_max.c_str(), sc_breaks.c_str(),
+                        sc_discarded.c_str());
         }
     }
     std::printf("held frames max %ld (decoder limit about 13), slot timeout %ld\n", held_frames_max, slot_timeout_count);
@@ -1149,6 +1186,17 @@ int run(const Args& a) {
                     a.postproc == Postproc::Gpu ? nms_name(a.nms) : "-", sgn.mean, sgn.p90, nms_fb, nms_mismatch,
                     sc_zero_copy.c_str(), sc_color_ok.c_str(), sc_underrun.c_str(), sc_ov_skipped.c_str(),
                     sc_cb_timeouts.c_str(), sc_zc_feedback.c_str());
+        // Third line (RESULT_CSV/RESULT_CSV2 keep their field counts: display_bench.sh 59, dec_threads_bench.sh 65 and
+        // nms_bench.sh 77 columns check them). label first, ok last:
+        //   label,display_warmup,glass_median,glass_n,present_interval_p90,present_interval_n,late_frames,late_expected_gap,
+        //   seq_gap_max,seq_gaps,seq_breaks,discarded,refresh_hz,ok
+        // glass_* / present_interval_* use the same --display-warmup cut as RESULT_CSV2's e2e_glass_* / present_interval_median
+        // (nan when nothing is left after the cut). late_frames .. refresh_hz are "-" except for wayland-planes / kms;
+        // late_frames / late_expected_gap / refresh_hz are "unverified" when there is no vblank seq, refresh or gap to judge.
+        std::printf("RESULT_CSV3,%s,%zu,%s,%zu,%s,%zu,%s,%s,%s,%s,%s,%s,%s,%d\n", a.csv_label.c_str(), disp_warmup,
+                    glass_med_s.c_str(), sdg.n, pres_p90_s.c_str(), sdi.n, sc_late.c_str(), sc_late_gap.c_str(),
+                    sc_gap_max.c_str(), sc_gaps.c_str(), sc_breaks.c_str(), sc_discarded.c_str(), sc_refresh.c_str(),
+                    fail ? 0 : 1);
     }
     std::fflush(stdout);
     if (ctx.debug_messenger_active() && ctx.validation_errors() > 0) fail = true;

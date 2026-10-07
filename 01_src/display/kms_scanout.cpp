@@ -302,6 +302,16 @@ void KmsScanout::select_output() {
         mode_w_ = pick->hdisplay;
         mode_h_ = pick->vdisplay;
         mode_hz_ = static_cast<int>(pick->vrefresh);
+        // Exact refresh period from the timings (vrefresh is rounded); feeds the late-frame seq gap rule. Same terms as
+        // the kernel's drm_mode_vrefresh(): DBLSCAN doubles and vscan > 1 multiplies the denominator (interlaced modes
+        // are never picked above). Out of u32 range or a zero term = 0 (unknown).
+        {
+            std::uint64_t den = static_cast<std::uint64_t>(pick->htotal) * pick->vtotal;
+            if (pick->flags & DRM_MODE_FLAG_DBLSCAN) den *= 2;
+            if (pick->vscan > 1) den *= pick->vscan;
+            const std::uint64_t ns = pick->clock && den ? (1000000ull * den + pick->clock / 2) / pick->clock : 0;   // clock kHz
+            refresh_ns_ = ns > 0 && ns <= UINT32_MAX ? static_cast<std::uint32_t>(ns) : 0u;
+        }
         mode_name_ = pick->name;
         // CRTC: CRTC the encoder currently uses → possible CRTC not in use → first possible CRTC (B4)
         std::uint32_t cur_crtc = 0;
@@ -842,9 +852,9 @@ bool KmsScanout::dispatch(int timeout_ms) {
     return ok;
 }
 
-void KmsScanout::on_flip(int /*fd*/, unsigned /*seq*/, unsigned sec, unsigned usec, unsigned /*crtc*/, void* data) {
+void KmsScanout::on_flip(int /*fd*/, unsigned seq, unsigned sec, unsigned usec, unsigned /*crtc*/, void* data) {
     if (t_dispatching == nullptr) return;
-    t_dispatching->handle_flip(static_cast<std::uint64_t>(reinterpret_cast<std::uintptr_t>(data)), true, sec, usec);
+    t_dispatching->handle_flip(static_cast<std::uint64_t>(reinterpret_cast<std::uintptr_t>(data)), true, sec, usec, seq);
 }
 
 void KmsScanout::check_flip_watchdog() {
@@ -856,10 +866,10 @@ void KmsScanout::check_flip_watchdog() {
                      "[kms] warning: flip event did not arrive within %d ms (token %llu) — treating it as on screen and "
                      "continuing (no on_presented, counted in flip_timeouts; further identical warnings suppressed)\n",
                      kFlipTimeoutMs, static_cast<unsigned long long>(in_flight_.token));
-    handle_flip(in_flight_.token, false, 0, 0);
+    handle_flip(in_flight_.token, false, 0, 0, 0);
 }
 
-void KmsScanout::handle_flip(std::uint64_t token, bool have_time, unsigned sec, unsigned usec) {
+void KmsScanout::handle_flip(std::uint64_t token, bool have_time, unsigned sec, unsigned usec, unsigned seq) {
     // Accept only events for the commit we are waiting on. Late events of commits already promoted by the watchdog, shutdown commits, etc. are ignored.
     if (!in_flight_.valid || in_flight_.token != token) return;
     if (have_time) ++flips_;
@@ -875,7 +885,7 @@ void KmsScanout::handle_flip(std::uint64_t token, bool have_time, unsigned sec, 
     if (have_time) {
         const std::int64_t t_ns =
             static_cast<std::int64_t>(sec) * 1000000000LL + static_cast<std::int64_t>(usec) * 1000LL;
-        listener_->on_presented(now.token, t_ns, ts_monotonic_, true);
+        listener_->on_presented(now.token, t_ns, ts_monotonic_, true, seq, refresh_ns_);
     }
     if (prev.valid) listener_->on_video_released(prev.token);
     if (now.overlay >= 0 && prev_overlay >= 0 && prev_overlay != now.overlay) listener_->on_overlay_released(prev_overlay);
