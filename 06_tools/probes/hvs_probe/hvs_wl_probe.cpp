@@ -173,7 +173,7 @@ struct App {
     wp_color_representation_manager_v1* color_repr_mgr = nullptr; // selected manager (the one supporting BT.709 limited)
     std::vector<std::string> globals;
     std::vector<std::string> crm_supported;
-    // labwc 0.20.1 advertises **two** wp_color_representation_manager_v1 globals (measured). Bind both,
+    // The number of wp_color_representation_manager_v1 globals depends on the version (measured: labwc 0.20.1 = two, labwc 0.20.2 / wlroots 0.20.2+rpt4 = one). Bind all of them,
     // receive their supported lists, then pick the one that supports BT.709.
     struct CrmCand {
         App* app = nullptr;

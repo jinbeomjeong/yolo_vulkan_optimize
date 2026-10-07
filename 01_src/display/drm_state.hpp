@@ -2,7 +2,7 @@
 //
 // Why it is needed: the plane scanout backends (wayland-planes, kms) assume that "the HVS reads the decoder NV12 SAND buffer
 // directly and blends the box plane on top of it". On Wayland the compositor (labwc/wlroots) can silently fall back to GL composition
-// (windowed mode, format rejection …), and in labwc 0.20.1 the color range also goes out inverted from the request (wayland_plane_scanout.hpp
+// (windowed mode, format rejection …), and in labwc 0.20.1~0.20.2 the color range also goes out inverted from the request (wayland_plane_scanout.hpp
 // "Color"). The protocol responses cannot tell us this — reading the kernel atomic state directly is the only way to confirm it.
 //
 // Origin: 06_tools/probes/hvs_probe/probe_common.hpp:137-216 (parse_active_planes / judge_placement).

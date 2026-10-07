@@ -28,7 +28,7 @@ run() {
     sleep 2
 }
 
-# color: labwc 0.20.1 + wlroots 0.20.2+rpt3 inverts COLOR_RANGE when writing (report §3). "_lim" is the honest request,
+# color: labwc 0.20.1~0.20.2 + wlroots 0.20.2+rpt3~+rpt4 invert COLOR_RANGE when writing (report §3, re-judged 2026-10-07). "_lim" is the honest request,
 #     "_fullhack" is the workaround that requests range=full so that limited reaches the kernel.
 run wl_fs_video_default      --overlay off
 run wl_fs_video_lim          --overlay off --color-repr on --color-range limited

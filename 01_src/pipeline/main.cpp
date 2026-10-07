@@ -215,7 +215,7 @@ void usage(const char* a0) {
                  "               (if the desktop is on the active VT, master cannot be acquired: exit code 2). no window, so stop with Ctrl+C/SIGTERM\n"
                  "  --display-connector NAME                 connector for kms (default: first connected HDMI-A. e.g. HDMI-A-2)\n"
                  "  --display-color-range {auto,full,limited}   COLOR_RANGE for plane scanout (default auto)\n"
-                 "               wayland-planes auto = request full: labwc 0.20.1 inverts it and programs limited\n"
+                 "               wayland-planes auto = request full: labwc 0.20.1~0.20.2 / wlroots 0.20.2+rpt3~+rpt4 invert it and program limited\n"
                  "               kms auto = programs limited as is (the actual plane value is judged via debugfs in both cases)\n"
                  "  --display-sync {matched,latest}          default matched (shown together with that frame's detections)\n"
                  "  --display-pace {source,asap}             default source when display is on. asap = no pacing\n"

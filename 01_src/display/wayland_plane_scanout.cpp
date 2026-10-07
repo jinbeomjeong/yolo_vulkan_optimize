@@ -74,7 +74,7 @@ void WaylandPlaneScanout::setup_color() {
                                              : WP_COLOR_REPRESENTATION_SURFACE_V1_RANGE_FULL;
     const char* range_s = want_limited ? "limited" : "full";
     const char* why = opt_.color_range == ColorRangeRequest::Auto
-                          ? " (auto = fullhack: labwc 0.20.1 inverts it and loads limited)"
+                          ? " (auto = fullhack: labwc 0.20.1~0.20.2 inverts it and loads limited)"
                           : "";
     if (mgr == nullptr) {
         color_desc_ = win_.color_managers_advertised() > 0 ? "none (no manager supporting BT.709)"

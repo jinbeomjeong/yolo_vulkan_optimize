@@ -27,7 +27,7 @@
 //      wp_presentation (v1)           — display time (+ the clock_id event is received here: it arrives right after bind)
 //      wp_viewporter (v1)             — HVS scaling when output size ≠ source size
 //      wp_color_representation_manager_v1 (v1, staging, only when the XML is present at build time) — BT.709 / range request.
-//        labwc 0.20.1 advertises **two** of this global (measured, hvs_wl_probe.cpp:176-184). We bind all of them to receive
+//        the number of these globals advertised depends on the compositor version (measured: labwc 0.20.1 = **two**, labwc 0.20.2 / wlroots 0.20.2+rpt4 = **one**; hvs_wl_probe.cpp:176-184). We bind all of them to receive
 //        the supported lists, keep only the first manager that supports BT.709, and destroy the rest at the end of open().
 //    These are gated behind an option so they do not change the Vulkan path's behavior (zero behavior change on the existing path).
 //  · wl_subcompositor (version 1, core protocol so no wayland-scanner stub is needed) — always bound when advertised.

@@ -64,7 +64,7 @@ enum class DisplayBackendKind {
 // COLOR_RANGE requested by plane scanout.
 //   wayland-planes: requested from the compositor via wp_color_representation_v1. kms: put as-is into the video plane COLOR_RANGE property.
 enum class ColorRangeRequest {
-    Auto,      // wayland-planes = Full: labwc 0.20.1/wlroots 0.20.2 emit it **inverted** from the request ("fullhack") → actually limited
+    Auto,      // wayland-planes = Full: labwc 0.20.1~0.20.2 / wlroots 0.20.2+rpt3~+rpt4 emit it **inverted** from the request ("fullhack") → actually limited
                // kms = Limited (no inversion)
     Full,
     Limited,

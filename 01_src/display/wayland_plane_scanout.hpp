@@ -21,7 +21,7 @@
 //     (counted in busy_reuse — must be 0. The decoder does not reuse that buffer until we drop the keepalive).
 //
 // ── Color (wp_color_representation_v1, staging) ──────────────────────────────────────────────
-//   Requests BT.709 + range. labwc 0.20.1 / wlroots 0.20.2 **inverts** the range when loading it into the HVS (measured —
+//   Requests BT.709 + range. labwc 0.20.1~0.20.2 / wlroots 0.20.2+rpt3~+rpt4 **invert** the range when loading it into the HVS (measured 2026-09-22 and re-judged 2026-10-07 —
 //   requesting full goes out as COLOR_RANGE=limited: "fullhack"). So --display-color-range auto requests full
 //   (= actually limited, matching the decoder output). The actual plane values are checked via debugfs (PlaneDisplay snapshot).
 //   If the manager did not advertise that (coef, range) combination, **it is not sent** — an unadvertised combination causes a protocol error
