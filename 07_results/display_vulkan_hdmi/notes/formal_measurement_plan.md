@@ -24,10 +24,10 @@
 |---|---|---|
 | `--nms gpu\|cpu\|verify` | `01_src/pipeline/main.cpp:264-270`, 기본 gpu `:176` | `--postproc gpu`에서만 허용(`:505-506`) |
 | decode·NMS 분리 타임스탬프 | `01_src/vulkan/yolo_postproc.cpp:24-26`, `:625-627` | pass1 = ts2−ts1, nms = ts4−ts3. 배리어 구간(ts2→ts3)은 어느 값에도 안 들어간다 |
-| 종료 요약 | `main.cpp:1046-1107` | `gpu nms ms mean/median/p90/max`, `nms fallback N frames (capacity X, iou guard Y)`, glass·present 간격 |
-| `RESULT_CSV2` | `main.cpp:1140-1151` | `nms,gpu_nms_mean,gpu_nms_p90,nms_fallback,nms_verify_mismatch` + 평면 6필드. **median·fallback 원인별 값은 stdout에만** 있다 |
+| 종료 요약 | `main.cpp:1078-1144` | `gpu nms ms mean/median/p90/max`, `nms fallback N frames (capacity X, iou guard Y)`, glass·present 간격 |
+| `RESULT_CSV2` | `main.cpp:1177-1188` | `nms,gpu_nms_mean,gpu_nms_p90,nms_fallback,nms_verify_mismatch` + 평면 6필드. **median·fallback 원인별 값은 stdout에만** 있다 |
 | CPU fallback | `01_src/pipeline/gpu_postproc_stage.cpp:209-228` | 용량(후보 > 1024)·IoU 보호대로 그 프레임만 CPU 억제 |
-| 평면 표시 시각 | `wayland_plane_scanout.cpp:351-365`, `kms_scanout.cpp:866-879` | wp_presentation / page-flip 하드웨어 시각 |
+| 평면 표시 시각 | `wayland_plane_scanout.cpp:351-367`, `kms_scanout.cpp:876-889` | wp_presentation / page-flip 하드웨어 시각 |
 | 벤치 템플릿 | `06_tools/bench/display_bench.sh` | CSV+CSV2 59열 전체 수집, 설정은 `id\|args`. **`--nms`·`--display-backend` 설정은 없다** |
 | V3D 부하 | `/sys/class/drm/renderD128/device/gpu_stats`, `/proc/<pid>/fdinfo`의 `drm-engine-*` | 파서 선례 `06_tools/probes/hvs_probe/probe_common.hpp:57-100` |
 
@@ -82,14 +82,14 @@
 3. **overlay_ms는 이름만 같다.** 평면 경로는 박스 그리기 + 지우기, Vulkan 경로는 `overlay_boxes.comp`만. convert_ms는 평면 경로에서 0.
 4. **버퍼 보유 시간 차이.** 평면 경로는 release까지 버퍼를 1~2 vsync 더 쥔다(`plane_display.hpp:10-18`).
 
-### 필요한 계측 보강 (코드 수정, 담당 `vulkan-expert`, kms 부분은 `cpp-expert` 검토)
+### 필요한 계측 보강 (코드 수정, 담당 `vulkan-expert`, kms 부분은 `cpp-expert` 검토) — 2026-10-08 완료: `--display-warmup N`, 요약의 `discarded`·`late frames`, `RESULT_CSV3`
 - glass 통계에서 **앞 N프레임 제외** 옵션. kms 첫 커밋이 블로킹 모드셋이라서다(`kms_scanout.hpp:33-36`).
-  `.claude/skills/measure/SKILL.md:27`은 "display_bench가 뺀다"고 적지만 스크립트에 그 로직이 없다 → 둘을 맞춘다.
-- `discarded_`를 ScanoutReport·요약·CSV에 노출(`plane_display.hpp:210`).
+  `.claude/skills/measure/SKILL.md:27`은 "display_bench가 뺀다"고 적지만 스크립트에 그 로직이 없다 → 둘을 맞춘다. → 완료: 앱 `--display-warmup N`, `display_planes_bench.sh`는 WARMUP=30, display_bench.sh 는 0.
+- `discarded_`를 ScanoutReport·요약·CSV에 노출(`plane_display.hpp:213`).
 - 평면 경로에서 page-flip `seq` 간격 > 2로 늦은 프레임 집계(선례 `06_tools/probes/hvs_probe/hvs_kms_probe.cpp:872-881`).
 
 ### 스크립트
-- `display_bench.sh`를 바탕으로 `06_tools/bench/display_planes_bench.sh`(A용은 `nms_bench.sh`)를 만든다.
+- `display_bench.sh`를 바탕으로 `06_tools/bench/display_planes_bench.sh`(A용은 `nms_bench.sh`)를 만든다. → 완료(2026-10-08, 96열, `SKIP_KMS`·`SESSIONS_ONLY`·`DRYRUN`).
   `display_bench.sh`의 설정은 바꾸지 않는다(기존 결과의 재현 기준).
 - 실행마다 전후 gpu_stats, labwc·yvo_pipeline fdinfo/stat, 중간 debugfs `state`를 `raw/<설정>_run<N>/`에 저장
   (`../evidence/hvs_review/baseline/run_baseline.sh` 방식을 이식).
