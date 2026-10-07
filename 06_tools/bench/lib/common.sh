@@ -92,6 +92,25 @@ pcie_link() {
   echo "pcie: read failed (vendor 0x1e60 device not found in /sys/bus/pci/devices)"
 }
 
+# ── Package versions ───────────────────────────────────────────────────────────
+# pkg_versions <pkg>…: prints one "<pkg>: <version>" line per package ("?" when dpkg-query fails).
+# Extracted from the loop that was inline in dec_threads_bench.sh (2026-10-08) because three display benches need it.
+#
+# Why the compositor packages matter: the wayland-planes path depends on the compositor inverting COLOR_RANGE
+#   ("fullhack", wayland_plane_scanout.hpp). On 2026-10-07 an apt upgrade moved labwc 0.20.1 -> 0.20.2 and
+#   libwlroots-0.20 +rpt3 -> +rpt4 and **no env_bench.txt had recorded either version**, so the change could not be
+#   dated from the archived results (07_results/display_vulkan_hdmi/verification/color_range_rpt4/).
+#   Benches that pass --display therefore record labwc and libwlroots-0.20 as well.
+pkg_versions() {
+  local p
+  for p in "$@"; do
+    echo "$p: $(dpkg-query -W -f='${Version}' "$p" 2>/dev/null || echo '?')"
+  done
+}
+
+# Default package set for the benches that use the display path (decode + NPU + GPU + compositor).
+PKGS_DISPLAY_BENCH=(libavcodec61 hailort mesa-vulkan-drivers labwc libwlroots-0.20)
+
 # ── Cool-down ───────────────────────────────────────────────────────────────────────
 # $1 = reason (for the log), $2 = sensor hailo|soc (default hailo)
 # Leaves the seconds waited in COOL_WAITED — measure skill §2 requires recording it.

@@ -18,7 +18,7 @@
 set -euo pipefail
 
 PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-# Common functions (temperature, PCIe, cool-down, hailort warning verdict, bench lock) live in lib/common.sh.
+# Common functions (temperature, PCIe, package versions, cool-down, hailort warning verdict, bench lock) live in lib/common.sh.
 # They used to be copy-pasted into 7 scripts and had actually diverged (e.g. pcie_link's Gen5 branch).
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 BIN="${BIN:-$BIN_DIR/yvo_pipeline}"
@@ -81,6 +81,7 @@ fi
   vcgencmd get_throttled 2>/dev/null || true
   vcgencmd measure_clock arm 2>/dev/null || true
   pcie_link
+  pkg_versions "${PKGS_DISPLAY_BENCH[@]}"   # labwc/libwlroots matter: the wayland-planes COLOR_RANGE inversion is a compositor behavior
   echo "bin: $BIN"
   echo "bin md5: $(md5sum "$BIN" | cut -d' ' -f1)"
   echo "video: $VIDEO frames: ${FRAMES:-all} runs: $RUNS"

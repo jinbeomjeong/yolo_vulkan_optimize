@@ -56,7 +56,7 @@
 set -euo pipefail
 
 PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-# Common functions (temperature, PCIe, cool-down, hailort warning verdict, bench lock) live in lib/common.sh.
+# Common functions (temperature, PCIe, package versions, cool-down, hailort warning verdict, bench lock) live in lib/common.sh.
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 BIN="${BIN:-$BIN_DIR/yvo_pipeline}"
 VIDEO="${VIDEO:-$PROJ/04_data/videos/video_h265.mp4}"
@@ -197,10 +197,7 @@ env_snapshot() {
   vcgencmd get_config v3d_freq 2>/dev/null || true
   echo "bootloader: $(vcgencmd bootloader_version 2>/dev/null | head -1)"
   pcie_link
-  local p
-  for p in libavcodec61 hailort mesa-vulkan-drivers; do
-    echo "$p: $(dpkg-query -W -f='${Version}' "$p" 2>/dev/null || echo '?')"
-  done
+  pkg_versions "${PKGS_DISPLAY_BENCH[@]}"
   echo "git HEAD: $(git -C "$PROJ" rev-parse HEAD 2>/dev/null || echo '?')${dirty}"
   echo "bin: $BIN md5 $(md5sum "$BIN" | cut -d' ' -f1) mtime $(stat -c %y "$BIN")"
   if (( HAVE_WAYLAND )); then echo "wayland: $XDG_RUNTIME_DIR/$WAYLAND_DISPLAY, wlr-randr outputs: $(wlr_outputs || true)"
