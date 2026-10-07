@@ -63,6 +63,22 @@
   - PSNR 49.53 dB, 채널별 평균 오차 R +0.57 / G −0.61 / B +0.84 (1 LSB 미만)
   - max|d| 25는 색 경계에서만 나타나는 것으로 보인다. 크로마 업샘플링 방식 차이로 추정하며 확인하지 않았다.
 
+### 4.1 재판정 — labwc 0.20.2 / wlroots 0.20.2+rpt4 (2026-10-07, 추가 기록)
+
+2026-10-07 `apt upgrade`로 `labwc` 0.20.1-1+rpt1 → 0.20.2-1~bpo13+1, `libwlroots-0.20` 0.20.2-1+rpt3 → +rpt4가 설치됐다. rpt4 changelog는 *"Add patch to advertise color-representation formats from gles2"* 한 줄이라, 위 §4의 반전 전제가 깨졌을 수 있어 재판정했다. **결론: 반전은 그대로다. `fullhack` 기본값은 여전히 옳고 코드는 바꾸지 않았다.**
+
+| 요청 (`--display-color-range`) | 보낸 값 | 커널 평면 실값 | `plane_color_ok` |
+|---|---|---|---|
+| `auto` (기본값) | BT.709 / full | BT.709 / **limited** | 1 |
+| `limited` | BT.709 / limited | BT.709 / **full** | 0 |
+| `full` | BT.709 / full | BT.709 / **limited** | 1 |
+
+- 판정 근거는 위와 같이 `/sys/kernel/debug/dri/1/state`의 평면 실값이다. `yvo_pipeline`(300프레임 × 3회, `wayland-planes`)의 자체 판정과 1초 간격 외부 덤프가 일치한다.
+- **달라진 점 하나**: `wp_color_representation_manager_v1` 전역 광고 수가 **2개에서 1개로** 줄었다. 앱은 광고된 전역을 전부 바인드하고 BT.709를 지원하는 하나를 고르므로 동작에는 영향이 없다. 광고된 `(coefficients, range)` 쌍은 identity/full, bt709·bt601·bt2020 각각 full+limited로 7개이며, BT.709 full이 광고되므로 "요청 쌍 미광고 → 요청 생략" 고장 모드는 발생하지 않는다.
+- 원시 기록: [`../verification/color_range_rpt4/`](../verification/color_range_rpt4/README.md). 성능 수치는 1회 실행이라 인용 대상이 아니다.
+- §4의 권고("Wayland 경로를 쓰면 시작할 때 debugfs state로 range를 검증해야 한다")는 그대로 유효하다. 이번 업그레이드는 반전을 고치지 않았을 뿐이고, 다음 업그레이드에서 고쳐질 수 있다.
+
+
 ## 5. Wayland 창 모드 (참고)
 
 | 변형 | 늦은 프레임 | 간격 p99 (ms) | V3D render (ms/f) | 앱 CPU | labwc CPU | 평면 |

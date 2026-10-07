@@ -803,11 +803,11 @@ HVS가 읽을 박스 버퍼는 **LINEAR** 배치여야 한다(평면 `IN_FORMATS
 §7.3의 BT.709 limited 를 여기서도 맞춰야 한다.
 
 - **kms**: 앱이 매 커밋 `BT.709` / `limited` 를 직접 넣는다.
-- **wayland-planes**: color-representation 프로토콜로 요청하는데, labwc 0.20.1 + wlroots 0.20.2 조합은
+- **wayland-planes**: color-representation 프로토콜로 요청하는데, labwc 0.20.1~0.20.2 + wlroots 0.20.2+rpt3~rpt4 조합은
   **range 를 뒤집어서** 커널에 넘긴다(limited 를 요청하면 full 로 나간다). 요청하지 않으면 BT.601 full 이 된다.
   그래서 기본값(`--display-color-range auto`)은 **full 을 요청해 limited 가 나오게** 하는 우회("fullhack")다.
-  컴포지터가 업데이트되면 조용히 틀어질 수 있으므로 **debugfs 로 실제 평면 상태를 확인한다**(아래).
-  → [`notes/kms_vs_wayland.md`](../07_results/display_vulkan_hdmi/notes/kms_vs_wayland.md) §4
+  컴포지터가 업데이트되면 조용히 틀어질 수 있으므로 **debugfs 로 실제 평면 상태를 확인한다**(아래). 2026-10-07 업그레이드 뒤 재판정했고 반전은 그대로였다.
+  → [`notes/kms_vs_wayland.md`](../07_results/display_vulkan_hdmi/notes/kms_vs_wayland.md) §4 · §4.1(재판정)
 
 ### debugfs 로 "정말 평면에 올라갔는가"를 판정한다
 
@@ -926,9 +926,9 @@ packed RGBA 를 pitch 단위로 쓴다. 근거: [`overlay_plane.hpp`](../01_src/
 
 **Q9. wayland-planes 에서 limited range 를 원하는데 왜 full 을 요청하는가?**
 
-labwc 0.20.1 + wlroots 0.20.2 조합이 color-representation 의 range 를 뒤집어 커널에 넘기기 때문이다. 요청 full → 평면 limited.
-컴포지터 버그에 기댄 우회라서 debugfs 로 실제 `COLOR_RANGE` 를 매 실행 확인한다(`scanout color_ok`).
-근거: [`notes/kms_vs_wayland.md`](../07_results/display_vulkan_hdmi/notes/kms_vs_wayland.md) §4.
+labwc 0.20.1~0.20.2 + wlroots 0.20.2+rpt3~rpt4 조합이 color-representation 의 range 를 뒤집어 커널에 넘기기 때문이다. 요청 full → 평면 limited.
+컴포지터 버그에 기댄 우회라서 debugfs 로 실제 `COLOR_RANGE` 를 매 실행 확인한다(`scanout color_ok`). 2026-10-07 재판정에서도 반전은 그대로였다.
+근거: [`notes/kms_vs_wayland.md`](../07_results/display_vulkan_hdmi/notes/kms_vs_wayland.md) §4·§4.1.
 
 ---
 

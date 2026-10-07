@@ -1,0 +1,284 @@
+plane[48]: plane-0
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[67]: plane-1
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[83]: plane-2
+	crtc=crtc-2
+	fb=685
+	color-encoding=ITU-R BT.601 YCbCr
+	color-range=YCbCr full range
+plane[95]: plane-3
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[107]: plane-4
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[118]: plane-5
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[129]: plane-6
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[140]: plane-7
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[151]: plane-8
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[162]: plane-9
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[173]: plane-10
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[184]: plane-11
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[195]: plane-12
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[206]: plane-13
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[217]: plane-14
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[228]: plane-15
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[239]: plane-16
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[250]: plane-17
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[261]: plane-18
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[272]: plane-19
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[283]: plane-20
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[294]: plane-21
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[305]: plane-22
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[316]: plane-23
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[327]: plane-24
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[338]: plane-25
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[349]: plane-26
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[360]: plane-27
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[371]: plane-28
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[382]: plane-29
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[393]: plane-30
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[404]: plane-31
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[415]: plane-32
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[426]: plane-33
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[437]: plane-34
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[448]: plane-35
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[459]: plane-36
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[470]: plane-37
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[481]: plane-38
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[492]: plane-39
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[503]: plane-40
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[514]: plane-41
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[525]: plane-42
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[536]: plane-43
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[547]: plane-44
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[558]: plane-45
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[569]: plane-46
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[580]: plane-47
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[591]: plane-48
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[602]: plane-49
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[613]: plane-50
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[624]: plane-51
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[635]: plane-52
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[646]: plane-53
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[657]: plane-54
+	crtc=crtc-2
+	fb=681
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+plane[668]: plane-55
+	crtc=(null)
+	fb=0
+	color-encoding=ITU-R BT.709 YCbCr
+	color-range=YCbCr limited range
+	crtc=crtc-2
+	crtc=(null)
+	crtc=(null)
+	crtc=(null)

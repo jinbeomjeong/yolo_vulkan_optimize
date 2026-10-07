@@ -1,0 +1,32 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[cfg] video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 1920x1080 mode=dmabuf layout=nhcw batch=2 slots=4 gpu_depth=3 postproc=host device=V3D 7.1.10.2
+[display] backend=wayland-planes 1920x1080 fullscreen | video=NV12/SAND128 dma-buf -> parent wl_surface (zwp_linux_dmabuf v4) | presentation=yes(MONOTONIC) viewporter=yes | color=BT.709/full requested [managers advertised 1] | boxes=OverlayPlane AB24 LINEAR 1920x1080 pitch=7680 x3 clear=erase | sync=matched pace=source every=1 hw_frames=9 color_range=full
+[hevc @ 0x55560e093cd0] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[scanout] debugfs start (presented 60): active=3 video=plane[83] NV12/SAND128 zpos=0 enc='ITU-R BT.709 YCbCr' range='YCbCr limited range' | boxes=plane[107] AB24 zpos=1 | hvs_underrun=0
+[progress] 300 frames, 29.5 FPS, hailo 64.7 C
+[scanout] debugfs end (presented 299): active=3 video=plane[83] NV12/SAND128 zpos=0 enc='ITU-R BT.709 YCbCr' range='YCbCr limited range' | boxes=plane[107] AB24 zpos=1 | hvs_underrun=0
+== yvo_pipeline (dmabuf, nhcw, batch 2, slots 4, gpu_depth 3, postproc host) ==
+frames          300 (decoded 300, errors 0)
+wall            10.310 s, 29.10 FPS
+cpu             3.468 ms/frame (process user+sys 1040.3 ms, 10% of one core)
+decode call ms  mean 2.886  median 3.710  p90 4.503  max 27.666
+gpu shader ms   mean 1.874  median 1.873  p90 1.925  max 2.078
+npu latency ms  mean 74.857  median 73.442  p90 93.235  max 99.478
+e2e latency ms  mean 98.064  median 100.837  p90 121.140  max 147.308  (decode return → NPU completion callback)
+slot wait ms    mean 20.331  p90 45.543  (time the main thread waited for a free slot)
+disp convert ms -  (wayland-planes: YUV→RGB conversion is done by the HVS during scanout, V3D 0)
+disp overlay ms mean 0.311  median 0.314  p90 0.410  (overlay_boxes_buf.spv + clear, box plane)
+present interval ms median 33.334  p90 50.002  (n=298)
+glass-to-glass  mean 101.00  median 99.57  p90 116.69  (n=299, decode → reaches screen)
+display         presented 299, dropped 1, recreates 0, overlay overflow 0
+scanout         zero_copy 1, color_ok 1, hvs_underrun delta 0 (debugfs verdict)
+  debugfs start: active=3 video=plane[83] NV12/SAND128 zpos=0 enc='ITU-R BT.709 YCbCr' range='YCbCr limited range' | boxes=plane[107] AB24 zpos=1 | hvs_underrun=0
+  debugfs end: active=3 video=plane[83] NV12/SAND128 zpos=0 enc='ITU-R BT.709 YCbCr' range='YCbCr limited range' | boxes=plane[107] AB24 zpos=1 | hvs_underrun=0
+scanout         overlay skipped 1, frame-callback timeouts 0, busy reuse 0, presentation ZERO_COPY 299/299
+held frames max 4 (decoder limit about 13), slot timeout 0
+detections      911 total, 3.04 / frame
+hailo chip temp 60.6 -> 64.6 C
+soc temp        66.4 -> 66.4 C
+vk validation   errors 0, warnings 1
+RESULT_CSV,cr_full,dmabuf,nhcw,2,4,300,10.310,29.10,3.468,2.886,1.874,1.925,74.86,93.24,98.06,121.14,911,60.6,64.6,66.4,66.4,1
+RESULT_CSV2,cr_full,host,-,0.0000,0.0000,0.000,0.00,0,0,1,wayland-planes,matched,source,0.0000,0.0000,0.3108,33.334,101.00,116.69,299,1,0,4,0,-,0.0000,0.0000,0,0,1,1,0,1,0,299
