@@ -42,7 +42,7 @@
 #   WARMUP=30 TIMEOUT_S=90 MID_SNAP_S=<auto> COOL_C=65 COOL_MAX_S=120 HOT_C=75 COOL_EVERY=1 bash ...
 #
 # Output (default OUT_DIR = 07_results/display_planes_e2e; not created by anyone else — guard_out_dir):
-#   env_bench.txt, results_raw.csv (one row per run), results.csv (per config), sessions.txt (kms switch log),
+#   env_bench.txt, results_raw.csv (one row per run), results.csv (per config), evidence/sessions.txt (kms switch log),
 #   raw/<id>_run<N>/{stdout.log, hailort.log, meta.txt, gpu_stats_{pre,post}.txt, labwc_stat_{pre,post}.txt,
 #                    labwc_fdinfo_{pre,post}.txt, yvo_stat_last.txt, yvo_fdinfo_last.txt, dri_state_mid.txt,
 #                    dri_clients_{pre,post}.txt, wlr_randr_pre.txt (not for kms)}
@@ -225,7 +225,7 @@ fi
 
 bench_lock_acquire
 mkdir -p "$OUT_DIR/raw"
-SESS_LOG="$OUT_DIR/sessions.txt"
+SESS_LOG="$OUT_DIR/evidence/sessions.txt"   # kms switch log (not directly in OUT_DIR: STRUCTURE.md R4)
 ON_TTY=0          # 1 while the tty session is active (set by to_tty, cleared by to_desktop)
 CHILD_PID=""      # running timeout/yvo_pipeline (the switch-back waits for it)
 
@@ -238,7 +238,7 @@ recovery_hint() {
 EOF
 }
 to_tty() {
-  echo "[$(date +%T)] session: activate tty $TTY_SID (desktop $DESKTOP_SID); masters before: $(masters)" | tee -a "$SESS_LOG"
+  mkdir -p "$OUT_DIR/evidence"; echo "[$(date +%T)] session: activate tty $TTY_SID (desktop $DESKTOP_SID); masters before: $(masters)" | tee -a "$SESS_LOG"
   loginctl activate "$TTY_SID"
   ON_TTY=1
   local w=0

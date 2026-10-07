@@ -1,0 +1,130 @@
+== fd 15 -> /dev/dri/card1
+pos:	0
+flags:	02404002
+mnt_id:	168
+ino:	390
+== fd 16 -> /dev/dri/card1
+pos:	0
+flags:	02404002
+mnt_id:	168
+ino:	390
+== fd 17 -> /dev/dri/card1
+pos:	0
+flags:	02404002
+mnt_id:	168
+ino:	390
+== fd 18 -> /dev/dri/card1
+pos:	0
+flags:	0404002
+mnt_id:	168
+ino:	390
+== fd 20 -> /dev/dri/card1
+pos:	0
+flags:	02400002
+mnt_id:	22
+ino:	390
+== fd 21 -> /dev/dri/card1
+pos:	0
+flags:	02400002
+mnt_id:	22
+ino:	390
+== fd 22 -> /dev/dri/card1
+pos:	0
+flags:	02400002
+mnt_id:	22
+ino:	390
+== fd 23 -> /dev/dri/renderD128
+pos:	0
+flags:	0400002
+mnt_id:	22
+ino:	264
+drm-driver:	v3d
+drm-client-id:	10
+drm-engine-bin: 	5403800851 ns
+v3d-jobs-bin: 	62826 jobs
+drm-engine-render: 	39471917911 ns
+v3d-jobs-render: 	62826 jobs
+drm-engine-tfu: 	52377723 ns
+v3d-jobs-tfu: 	11 jobs
+drm-engine-csd: 	0 ns
+v3d-jobs-csd: 	0 jobs
+drm-engine-cache_clean: 	0 ns
+v3d-jobs-cache_clean: 	0 jobs
+drm-engine-cpu: 	0 ns
+v3d-jobs-cpu: 	0 jobs
+drm-total-memory:	28048 KiB
+drm-shared-memory:	16288 KiB
+drm-resident-memory:	11760 KiB
+== fd 24 -> /dev/dri/renderD128
+pos:	0
+flags:	02400002
+mnt_id:	22
+ino:	264
+drm-driver:	v3d
+drm-client-id:	11
+drm-engine-bin: 	0 ns
+v3d-jobs-bin: 	0 jobs
+drm-engine-render: 	0 ns
+v3d-jobs-render: 	0 jobs
+drm-engine-tfu: 	0 ns
+v3d-jobs-tfu: 	0 jobs
+drm-engine-csd: 	0 ns
+v3d-jobs-csd: 	0 jobs
+drm-engine-cache_clean: 	0 ns
+v3d-jobs-cache_clean: 	0 jobs
+drm-engine-cpu: 	0 ns
+v3d-jobs-cpu: 	0 jobs
+drm-total-memory:	0
+drm-shared-memory:	0
+== fd 25 -> /dev/dri/renderD128
+pos:	0
+flags:	02404002
+mnt_id:	22
+ino:	264
+drm-driver:	v3d
+drm-client-id:	13
+drm-engine-bin: 	0 ns
+v3d-jobs-bin: 	0 jobs
+drm-engine-render: 	0 ns
+v3d-jobs-render: 	0 jobs
+drm-engine-tfu: 	0 ns
+v3d-jobs-tfu: 	0 jobs
+drm-engine-csd: 	0 ns
+v3d-jobs-csd: 	0 jobs
+drm-engine-cache_clean: 	0 ns
+v3d-jobs-cache_clean: 	0 jobs
+drm-engine-cpu: 	0 ns
+v3d-jobs-cpu: 	0 jobs
+drm-total-memory:	0
+drm-shared-memory:	0
+== fd 26 -> /dev/dri/card1
+pos:	0
+flags:	02404002
+mnt_id:	168
+ino:	390
+== fd 28 -> /dev/dri/card1
+pos:	0
+flags:	02404002
+mnt_id:	168
+ino:	390
+== fd 30 -> /dev/dri/renderD128
+pos:	0
+flags:	0400002
+mnt_id:	22
+ino:	264
+drm-driver:	v3d
+drm-client-id:	15
+drm-engine-bin: 	0 ns
+v3d-jobs-bin: 	0 jobs
+drm-engine-render: 	0 ns
+v3d-jobs-render: 	0 jobs
+drm-engine-tfu: 	0 ns
+v3d-jobs-tfu: 	0 jobs
+drm-engine-csd: 	0 ns
+v3d-jobs-csd: 	0 jobs
+drm-engine-cache_clean: 	0 ns
+v3d-jobs-cache_clean: 	0 jobs
+drm-engine-cpu: 	0 ns
+v3d-jobs-cpu: 	0 jobs
+drm-total-memory:	16288 KiB
+drm-shared-memory:	16288 KiB

@@ -1,0 +1,4 @@
+             command  tgid dev master a   uid      magic                                                             name                   id
+      systemd-logind   722   1   y    y     0          0                                                          <unset>                    8
+               labwc  1073   1   n    n  1000          0                                                          <unset>                    9
+               labwc  1073   1   y    y  1000          0                                                          <unset>                   14

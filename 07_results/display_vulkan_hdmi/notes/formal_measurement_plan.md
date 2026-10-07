@@ -61,7 +61,7 @@
 
 ## 5. 실험 B — HVS 평면 표시
 
-- **폴더**: `07_results/display_planes_e2e/` (스윕형, 색인 행 함께 추가)
+- **폴더**: `07_results/display_planes_e2e/` (스윕형, 색인 행 함께 추가) — 2026-10-08 실행 완료([`summary.md`](../../display_planes_e2e/summary.md)). b2/s4 에서 평면 경로가 슬롯 부족(slot wait 28~30 ms)이라 지연 비교는 slots ≥ 6 재측정으로 넘겼다
 - **설정** (모두 b2/s4, `--postproc gpu --nms gpu`, 추론 on, `--display-fullscreen --display-sync matched`, 900프레임 × 3회):
 
 | id | 백엔드 | pace |

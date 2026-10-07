@@ -1,0 +1,57 @@
+# display_planes_bench before 2026-10-08T05:19:53+09:00
+kernel: 6.18.50+rpt-rpi-2712
+soc temp: 69.7 C, hailo temp: 57.4 C
+throttled=0xe0000
+frequency(0)=2400027136
+frequency(0)=1150014720
+v3d_freq=1150
+bootloader: 2026/09/25 15:59:09
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+libavcodec61: 8:7.1.5-0+deb13u1+rpt2
+hailort: 4.24.0
+mesa-vulkan-drivers: 26.2.2-1~bpo13+0~rpt1
+labwc: 0.20.2-1~bpo13+1
+libwlroots-0.20: 0.20.2-1+rpt4
+git HEAD: aa8bbf055beb66f23c373608fc58b8ce1f5ba669
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_pipeline md5 d13630225b6473ae9f0e082d3473c9e4 mtime 2026-10-08 02:51:30.924160438 +0900
+wlr-randr HDMI-A-1: Enabled; DRM masters: systemd-logind(722) labwc(1073)
+mode:     1920x1080 px, 60.000000 Hz (preferred, current)
+video: /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4
+hef: /home/pi/workspace/yolo_vulkan_optimize/03_models/yolov11m.hef
+runs: 3 frames: 900 warmup: 30 only: . skip_kms: 0 timeout_s: 90 mid_snap_s: 18
+cool: COOL_C=65 COOL_MAX_S=120 HOT_C=75 COOL_EVERY=1
+caller YVO_DEC_THREADS: <unset> (removed for every child: app default)
+env: WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/1000
+session 1 name=pi seat=- type=unspecified class=manager remote=no tty=- vt=0 active=yes
+session 2 name=pi seat=seat0 type=wayland class=user remote=no tty=- vt=7 active=yes
+session 3 name=pi seat=seat0 type=tty class=user remote=no tty=tty1 vt=1 active=no
+session 4 name=pi seat=- type=tty class=user remote=yes tty=- vt=0 active=yes
+session 5 name=pi seat=- type=tty class=user remote=yes tty=- vt=0 active=yes
+desktop candidates: 2 -> DESKTOP_SID=2
+tty candidates (vt:id): 1:3 -> TTY_SID=3
+configs (id|args):
+  vk_source|--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --nms gpu --gpu-depth 3 --batch 2 --slots 4 --display on --display-fullscreen --display-sync matched --display-warmup 30 --display-backend wayland --display-pace source
+  vk_asap|--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --nms gpu --gpu-depth 3 --batch 2 --slots 4 --display on --display-fullscreen --display-sync matched --display-warmup 30 --display-backend wayland --display-pace asap
+  wlp_source|--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --nms gpu --gpu-depth 3 --batch 2 --slots 4 --display on --display-fullscreen --display-sync matched --display-warmup 30 --display-backend wayland-planes --display-color-range auto --display-pace source
+  wlp_asap|--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --nms gpu --gpu-depth 3 --batch 2 --slots 4 --display on --display-fullscreen --display-sync matched --display-warmup 30 --display-backend wayland-planes --display-color-range auto --display-pace asap
+  kms_source|--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --nms gpu --gpu-depth 3 --batch 2 --slots 4 --display on --display-fullscreen --display-sync matched --display-warmup 30 --display-backend kms --display-connector HDMI-A-1 --display-color-range auto --display-pace source
+  kms_asap|--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --nms gpu --gpu-depth 3 --batch 2 --slots 4 --display on --display-fullscreen --display-sync matched --display-warmup 30 --display-backend kms --display-connector HDMI-A-1 --display-color-range auto --display-pace asap
+# display_planes_bench after 2026-10-08T05:41:43+09:00
+kernel: 6.18.50+rpt-rpi-2712
+soc temp: 69.2 C, hailo temp: 72.7 C
+throttled=0xe0000
+frequency(0)=2400030464
+frequency(0)=1150011520
+v3d_freq=1150
+bootloader: 2026/09/25 15:59:09
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+libavcodec61: 8:7.1.5-0+deb13u1+rpt2
+hailort: 4.24.0
+mesa-vulkan-drivers: 26.2.2-1~bpo13+0~rpt1
+labwc: 0.20.2-1~bpo13+1
+libwlroots-0.20: 0.20.2-1+rpt4
+git HEAD: aa8bbf055beb66f23c373608fc58b8ce1f5ba669
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_pipeline md5 d13630225b6473ae9f0e082d3473c9e4 mtime 2026-10-08 02:51:30.924160438 +0900
+wlr-randr HDMI-A-1: Enabled; DRM masters: systemd-logind(722) labwc(1073)
+mode:     1920x1080 px, 60.000000 Hz (preferred, current)
+bin md5 (after measurement): d13630225b6473ae9f0e082d3473c9e4

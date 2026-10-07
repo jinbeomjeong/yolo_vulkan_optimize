@@ -1,0 +1,32 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[hevc @ 0x5555b4667670] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+== yvo_pipeline (dmabuf, nhcw, batch 2, slots 4, gpu_depth 3, postproc gpu/export) ==
+frames          900 (decoded 900, errors 0)
+wall            25.812 s, 34.87 FPS
+cpu             1.747 ms/frame (process user+sys 1572.4 ms, 6% of one core)
+decode call ms  mean 3.791  median 3.879  p90 7.175  max 27.573
+gpu shader ms   mean 0.960  median 1.794  p90 1.886  max 3.480
+npu latency ms  mean 96.022  median 96.870  p90 98.296  max 144.985
+e2e latency ms  mean 130.439  median 132.296  p90 157.218  max 198.448  (decode return → NPU completion callback)
+slot wait ms    mean 24.656  p90 47.481  (time the main thread waited for a free slot)
+gpu post ms     mean 0.561  median 0.554  p90 0.636  max 2.000  (yolo_decode.comp pass 1)
+cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+nms backend     gpu
+gpu nms ms      mean 0.0502  median 0.0484  p90 0.0577  max 0.3317  (efficient_nms.comp)
+nms fallback    0 frames (capacity 0, iou guard 0)
+candidates      mean 16.81  max 45  overflow frames 0
+slot hold ms    mean 3.520  median 3.446  p90 4.272  max 43.167  (NPU completion callback → slot return)
+disp convert ms mean 1.928  median 3.407  p90 3.595  (display_convert.comp)
+disp overlay ms mean 0.116  median 0.120  p90 0.147  (overlay_boxes.comp)
+present interval ms median 18.183  p90 50.395  (n=867)
+glass-to-glass  mean 132.51  median 131.99  p90 140.62  (n=869, decode → reaches screen)
+display         presented 900, dropped 0, recreates 1, overlay overflow 0
+display warmup  30 presentations excluded from glass / present interval / late frames (glass n 869 of 899, glass median 131.99)
+held frames max 4 (decoder limit about 13), slot timeout 0
+detections      3369 total, 3.74 / frame
+hailo chip temp 64.6 -> 73.7 C
+soc temp        69.2 -> 70.8 C
+vk validation   errors 0, warnings 1
+RESULT_CSV,vk_asap,dmabuf,nhcw,2,4,900,25.812,34.87,1.747,3.791,0.960,1.886,96.02,98.30,130.44,157.22,3369,64.6,73.7,69.2,70.8,1
+RESULT_CSV2,vk_asap,gpu,export,0.5609,0.6359,0.000,16.81,45,0,1,wayland,matched,asap,1.9281,3.5952,0.1162,18.183,132.51,140.62,900,0,1,4,0,gpu,0.0502,0.0577,0,0,-,-,-,-,-,-
+RESULT_CSV3,vk_asap,30,131.99,869,50.395,867,-,-,-,-,-,-,-,1

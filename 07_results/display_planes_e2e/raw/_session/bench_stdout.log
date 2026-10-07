@@ -1,0 +1,131 @@
+# display_planes_bench before 2026-10-08T05:19:53+09:00
+kernel: 6.18.50+rpt-rpi-2712
+soc temp: 69.7 C, hailo temp: 57.4 C
+throttled=0xe0000
+frequency(0)=2400027136
+frequency(0)=1150014720
+v3d_freq=1150
+bootloader: 2026/09/25 15:59:09
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+libavcodec61: 8:7.1.5-0+deb13u1+rpt2
+hailort: 4.24.0
+mesa-vulkan-drivers: 26.2.2-1~bpo13+0~rpt1
+labwc: 0.20.2-1~bpo13+1
+libwlroots-0.20: 0.20.2-1+rpt4
+git HEAD: aa8bbf055beb66f23c373608fc58b8ce1f5ba669
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_pipeline md5 d13630225b6473ae9f0e082d3473c9e4 mtime 2026-10-08 02:51:30.924160438 +0900
+wlr-randr HDMI-A-1: Enabled; DRM masters: systemd-logind(722) labwc(1073)
+mode:     1920x1080 px, 60.000000 Hz (preferred, current)
+video: /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4
+hef: /home/pi/workspace/yolo_vulkan_optimize/03_models/yolov11m.hef
+runs: 3 frames: 900 warmup: 30 only: . skip_kms: 0 timeout_s: 90 mid_snap_s: 18
+cool: COOL_C=65 COOL_MAX_S=120 HOT_C=75 COOL_EVERY=1
+caller YVO_DEC_THREADS: <unset> (removed for every child: app default)
+env: WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/1000
+session 1 name=pi seat=- type=unspecified class=manager remote=no tty=- vt=0 active=yes
+session 2 name=pi seat=seat0 type=wayland class=user remote=no tty=- vt=7 active=yes
+session 3 name=pi seat=seat0 type=tty class=user remote=no tty=tty1 vt=1 active=no
+session 4 name=pi seat=- type=tty class=user remote=yes tty=- vt=0 active=yes
+session 5 name=pi seat=- type=tty class=user remote=yes tty=- vt=0 active=yes
+desktop candidates: 2 -> DESKTOP_SID=2
+tty candidates (vt:id): 1:3 -> TTY_SID=3
+configs (id|args):
+  vk_source|--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --nms gpu --gpu-depth 3 --batch 2 --slots 4 --display on --display-fullscreen --display-sync matched --display-warmup 30 --display-backend wayland --display-pace source
+  vk_asap|--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --nms gpu --gpu-depth 3 --batch 2 --slots 4 --display on --display-fullscreen --display-sync matched --display-warmup 30 --display-backend wayland --display-pace asap
+  wlp_source|--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --nms gpu --gpu-depth 3 --batch 2 --slots 4 --display on --display-fullscreen --display-sync matched --display-warmup 30 --display-backend wayland-planes --display-color-range auto --display-pace source
+  wlp_asap|--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --nms gpu --gpu-depth 3 --batch 2 --slots 4 --display on --display-fullscreen --display-sync matched --display-warmup 30 --display-backend wayland-planes --display-color-range auto --display-pace asap
+  kms_source|--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --nms gpu --gpu-depth 3 --batch 2 --slots 4 --display on --display-fullscreen --display-sync matched --display-warmup 30 --display-backend kms --display-connector HDMI-A-1 --display-color-range auto --display-pace source
+  kms_asap|--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --nms gpu --gpu-depth 3 --batch 2 --slots 4 --display on --display-fullscreen --display-sync matched --display-warmup 30 --display-backend kms --display-connector HDMI-A-1 --display-color-range auto --display-pace asap
+[05:19:54] run 1 vk_source (hailo 57.5 C, cooled 0s, session desktop)
+  wall 30.075 s, 29.92 FPS cpu 2.172 ms/frame (process user+sys 1955.0 ms, 7% of one core) glass-to-glass mean 100.61 median 95.88 p90 121.75 (n=870, decode → reaches screen) display presented 900, dropped 0, recreates 1, overlay overflow 0  hailo_warn=0 rc=0
+  cooling (every run, chip 67.4 C): hailo 67.3 C -> <= 65 C (max 120s)
+  cooled 10s, hailo 65.0 C
+[05:20:36] run 1 vk_asap (hailo 64.9 C, cooled 10s, session desktop)
+  wall 25.795 s, 34.89 FPS cpu 1.832 ms/frame (process user+sys 1648.6 ms, 6% of one core) glass-to-glass mean 132.43 median 131.95 p90 140.83 (n=869, decode → reaches screen) display presented 900, dropped 0, recreates 1, overlay overflow 0  hailo_warn=0 rc=0
+  cooling (every run, chip 72.8 C): hailo 72.7 C -> <= 65 C (max 120s)
+  cooled 40s, hailo 64.8 C
+[05:21:46] run 1 wlp_source (hailo 64.8 C, cooled 40s, session desktop)
+  wall 30.852 s, 29.17 FPS cpu 1.603 ms/frame (process user+sys 1442.3 ms, 5% of one core) glass-to-glass mean 102.11 median 99.93 p90 116.47 (n=870, decode → reaches screen) display presented 900, dropped 0, recreates 0, overlay overflow 0 scanout zero_copy 1, color_ok 1, hvs_underrun delta 0 (debugfs verdict) scanout late frames 228 (vblank seq gap > 2 = max(1, ceil(every 1 x 60.000 Hz / 30.000 fps - 0.01)); gaps 869, max gap 5, chain breaks 0), discarded 0  hailo_warn=0 rc=0
+  cooling (every run, chip 72.5 C): hailo 72.3 C -> <= 65 C (max 120s)
+  cooled 40s, hailo 64.9 C
+[05:23:00] run 1 wlp_asap (hailo 64.9 C, cooled 40s, session desktop)
+  wall 29.845 s, 30.16 FPS cpu 1.651 ms/frame (process user+sys 1486.2 ms, 5% of one core) glass-to-glass mean 98.66 median 99.31 p90 100.55 (n=869, decode → reaches screen) display presented 899, dropped 1, recreates 0, overlay overflow 0 scanout zero_copy 1, color_ok 1, hvs_underrun delta 0 (debugfs verdict) scanout late frames 301 (vblank seq gap > 2 = max(1, ceil(every 1 x 60.000 Hz / 30.000 fps - 0.01)); gaps 868, max gap 6, chain breaks 0), discarded 0  hailo_warn=0 rc=0
+[05:23:31] session: activate tty 3 (desktop 2); masters before: systemd-logind(722) labwc(1073)
+[05:23:31] session: tty active=yes, masters: 
+  cooling (every run, chip 72.6 C): hailo 72.6 C -> <= 65 C (max 120s)
+  cooled 45s, hailo 64.5 C
+[05:24:18] run 1 kms_source (hailo 64.4 C, cooled 45s, session tty)
+  wall 30.686 s, 29.33 FPS cpu 1.526 ms/frame (process user+sys 1373.5 ms, 4% of one core) glass-to-glass mean 101.57 median 99.86 p90 116.44 (n=869, decode → reaches screen) display presented 899, dropped 1, recreates 0, overlay overflow 0 scanout zero_copy 1, color_ok 1, hvs_underrun delta 0 (debugfs verdict)  kms: flips 899, flip_timeouts 0, commit failures 0, busy 0, master_lost no scanout late frames 230 (vblank seq gap > 2 = max(1, ceil(every 1 x 60.000 Hz / 30.000 fps - 0.01)); gaps 868, max gap 5, chain breaks 0), discarded 0  hailo_warn=0 rc=0
+  cooling (every run, chip 72.3 C): hailo 72.3 C -> <= 65 C (max 120s)
+  cooled 40s, hailo 64.9 C
+[05:25:33] run 1 kms_asap (hailo 64.9 C, cooled 40s, session tty)
+  wall 29.669 s, 30.34 FPS cpu 1.600 ms/frame (process user+sys 1440.2 ms, 5% of one core) glass-to-glass mean 98.20 median 99.47 p90 100.42 (n=869, decode → reaches screen) display presented 899, dropped 1, recreates 0, overlay overflow 0 scanout zero_copy 1, color_ok 1, hvs_underrun delta 0 (debugfs verdict)  kms: flips 899, flip_timeouts 0, commit failures 0, busy 0, master_lost no scanout late frames 296 (vblank seq gap > 2 = max(1, ceil(every 1 x 60.000 Hz / 30.000 fps - 0.01)); gaps 868, max gap 5, chain breaks 0), discarded 0  hailo_warn=0 rc=0
+[05:26:03] session: activate desktop 2; masters before: 
+[05:26:04] session: desktop active=yes, labwc master=y, masters: systemd-logind(722) labwc(1073), HDMI-A-1 Enabled -> ok
+  cooling (every run, chip 72.6 C): hailo 72.5 C -> <= 65 C (max 120s)
+  cooled 45s, hailo 64.5 C
+[05:26:51] run 2 vk_source (hailo 64.5 C, cooled 45s, session desktop)
+  wall 30.128 s, 29.87 FPS cpu 2.059 ms/frame (process user+sys 1853.3 ms, 6% of one core) glass-to-glass mean 101.67 median 94.37 p90 123.88 (n=869, decode → reaches screen) display presented 900, dropped 0, recreates 1, overlay overflow 0  hailo_warn=0 rc=0
+  cooling (every run, chip 72.6 C): hailo 72.4 C -> <= 65 C (max 120s)
+  cooled 45s, hailo 64.5 C
+[05:28:10] run 2 vk_asap (hailo 64.5 C, cooled 45s, session desktop)
+  wall 25.805 s, 34.88 FPS cpu 1.884 ms/frame (process user+sys 1695.5 ms, 7% of one core) glass-to-glass mean 132.44 median 132.07 p90 140.58 (n=870, decode → reaches screen) display presented 900, dropped 0, recreates 1, overlay overflow 0  hailo_warn=0 rc=0
+  cooling (every run, chip 73.0 C): hailo 73.0 C -> <= 65 C (max 120s)
+  cooled 45s, hailo 64.7 C
+[05:29:25] run 2 wlp_source (hailo 64.7 C, cooled 45s, session desktop)
+  wall 30.794 s, 29.23 FPS cpu 1.569 ms/frame (process user+sys 1411.9 ms, 5% of one core) glass-to-glass mean 101.87 median 99.94 p90 116.52 (n=869, decode → reaches screen) display presented 899, dropped 1, recreates 0, overlay overflow 0 scanout zero_copy 1, color_ok 1, hvs_underrun delta 0 (debugfs verdict) scanout late frames 229 (vblank seq gap > 2 = max(1, ceil(every 1 x 60.000 Hz / 30.000 fps - 0.01)); gaps 868, max gap 6, chain breaks 0), discarded 0  hailo_warn=0 rc=0
+  cooling (every run, chip 72.6 C): hailo 72.5 C -> <= 65 C (max 120s)
+  cooled 45s, hailo 64.6 C
+[05:30:44] run 2 wlp_asap (hailo 64.6 C, cooled 45s, session desktop)
+  wall 29.882 s, 30.12 FPS cpu 1.528 ms/frame (process user+sys 1374.9 ms, 5% of one core) glass-to-glass mean 98.67 median 99.43 p90 100.56 (n=869, decode → reaches screen) display presented 899, dropped 1, recreates 0, overlay overflow 0 scanout zero_copy 1, color_ok 1, hvs_underrun delta 0 (debugfs verdict) scanout late frames 305 (vblank seq gap > 2 = max(1, ceil(every 1 x 60.000 Hz / 30.000 fps - 0.01)); gaps 868, max gap 5, chain breaks 0), discarded 0  hailo_warn=0 rc=0
+[05:31:15] session: activate tty 3 (desktop 2); masters before: systemd-logind(722) labwc(1073)
+[05:31:15] session: tty active=yes, masters: 
+  cooling (every run, chip 72.7 C): hailo 72.6 C -> <= 65 C (max 120s)
+  cooled 45s, hailo 64.6 C
+[05:32:03] run 2 kms_source (hailo 64.6 C, cooled 45s, session tty)
+  wall 30.615 s, 29.40 FPS cpu 1.576 ms/frame (process user+sys 1418.6 ms, 5% of one core) glass-to-glass mean 101.29 median 99.82 p90 116.33 (n=869, decode → reaches screen) display presented 899, dropped 1, recreates 0, overlay overflow 0 scanout zero_copy 1, color_ok 1, hvs_underrun delta 0 (debugfs verdict)  kms: flips 899, flip_timeouts 0, commit failures 0, busy 0, master_lost no scanout late frames 226 (vblank seq gap > 2 = max(1, ceil(every 1 x 60.000 Hz / 30.000 fps - 0.01)); gaps 868, max gap 5, chain breaks 0), discarded 0  hailo_warn=0 rc=0
+  cooling (every run, chip 72.6 C): hailo 72.3 C -> <= 65 C (max 120s)
+  cooled 45s, hailo 64.5 C
+[05:33:23] run 2 kms_asap (hailo 64.6 C, cooled 45s, session tty)
+  wall 29.740 s, 30.26 FPS cpu 1.589 ms/frame (process user+sys 1429.7 ms, 5% of one core) glass-to-glass mean 98.45 median 99.50 p90 100.48 (n=869, decode → reaches screen) display presented 899, dropped 1, recreates 0, overlay overflow 0 scanout zero_copy 1, color_ok 1, hvs_underrun delta 0 (debugfs verdict)  kms: flips 899, flip_timeouts 0, commit failures 0, busy 0, master_lost no scanout late frames 298 (vblank seq gap > 2 = max(1, ceil(every 1 x 60.000 Hz / 30.000 fps - 0.01)); gaps 868, max gap 5, chain breaks 0), discarded 0  hailo_warn=0 rc=0
+[05:33:53] session: activate desktop 2; masters before: 
+[05:33:54] session: desktop active=yes, labwc master=y, masters: systemd-logind(722) labwc(1073), HDMI-A-1 Enabled -> ok
+  cooling (every run, chip 72.5 C): hailo 72.4 C -> <= 65 C (max 120s)
+  cooled 45s, hailo 64.6 C
+[05:34:41] run 3 vk_source (hailo 64.6 C, cooled 45s, session desktop)
+  wall 30.094 s, 29.91 FPS cpu 2.016 ms/frame (process user+sys 1814.4 ms, 6% of one core) glass-to-glass mean 101.72 median 94.11 p90 123.66 (n=869, decode → reaches screen) display presented 900, dropped 0, recreates 1, overlay overflow 0  hailo_warn=0 rc=0
+  cooling (every run, chip 72.7 C): hailo 72.6 C -> <= 65 C (max 120s)
+  cooled 45s, hailo 64.7 C
+[05:36:00] run 3 vk_asap (hailo 64.6 C, cooled 45s, session desktop)
+  wall 25.812 s, 34.87 FPS cpu 1.747 ms/frame (process user+sys 1572.4 ms, 6% of one core) glass-to-glass mean 132.51 median 131.99 p90 140.62 (n=869, decode → reaches screen) display presented 900, dropped 0, recreates 1, overlay overflow 0  hailo_warn=0 rc=0
+  cooling (every run, chip 73.1 C): hailo 73.1 C -> <= 65 C (max 120s)
+  cooled 45s, hailo 64.9 C
+[05:37:15] run 3 wlp_source (hailo 64.9 C, cooled 45s, session desktop)
+  wall 30.746 s, 29.27 FPS cpu 1.520 ms/frame (process user+sys 1368.3 ms, 4% of one core) glass-to-glass mean 101.77 median 99.89 p90 116.41 (n=870, decode → reaches screen) display presented 900, dropped 0, recreates 0, overlay overflow 0 scanout zero_copy 1, color_ok 1, hvs_underrun delta 0 (debugfs verdict) scanout late frames 231 (vblank seq gap > 2 = max(1, ceil(every 1 x 60.000 Hz / 30.000 fps - 0.01)); gaps 869, max gap 4, chain breaks 0), discarded 0  hailo_warn=0 rc=0
+  cooling (every run, chip 72.9 C): hailo 72.7 C -> <= 65 C (max 120s)
+  cooled 45s, hailo 64.8 C
+[05:38:34] run 3 wlp_asap (hailo 64.8 C, cooled 45s, session desktop)
+  wall 29.812 s, 30.19 FPS cpu 1.546 ms/frame (process user+sys 1391.2 ms, 5% of one core) glass-to-glass mean 98.58 median 99.46 p90 100.52 (n=869, decode → reaches screen) display presented 899, dropped 1, recreates 0, overlay overflow 0 scanout zero_copy 1, color_ok 1, hvs_underrun delta 0 (debugfs verdict) scanout late frames 301 (vblank seq gap > 2 = max(1, ceil(every 1 x 60.000 Hz / 30.000 fps - 0.01)); gaps 868, max gap 6, chain breaks 0), discarded 0  hailo_warn=0 rc=0
+[05:39:05] session: activate tty 3 (desktop 2); masters before: systemd-logind(722) labwc(1073)
+[05:39:05] session: tty active=yes, masters: 
+  cooling (every run, chip 72.7 C): hailo 72.6 C -> <= 65 C (max 120s)
+  cooled 45s, hailo 64.8 C
+[05:39:53] run 3 kms_source (hailo 64.8 C, cooled 45s, session tty)
+  wall 30.702 s, 29.31 FPS cpu 1.629 ms/frame (process user+sys 1466.0 ms, 5% of one core) glass-to-glass mean 101.55 median 99.85 p90 116.38 (n=870, decode → reaches screen) display presented 900, dropped 0, recreates 0, overlay overflow 0 scanout zero_copy 1, color_ok 1, hvs_underrun delta 0 (debugfs verdict)  kms: flips 900, flip_timeouts 0, commit failures 0, busy 0, master_lost no scanout late frames 223 (vblank seq gap > 2 = max(1, ceil(every 1 x 60.000 Hz / 30.000 fps - 0.01)); gaps 869, max gap 4, chain breaks 0), discarded 0  hailo_warn=0 rc=0
+  cooling (every run, chip 72.8 C): hailo 72.6 C -> <= 65 C (max 120s)
+  cooled 45s, hailo 64.8 C
+[05:41:12] run 3 kms_asap (hailo 64.7 C, cooled 45s, session tty)
+  wall 29.789 s, 30.21 FPS cpu 1.603 ms/frame (process user+sys 1442.4 ms, 5% of one core) glass-to-glass mean 98.61 median 99.48 p90 100.53 (n=869, decode → reaches screen) display presented 899, dropped 1, recreates 0, overlay overflow 0 scanout zero_copy 1, color_ok 1, hvs_underrun delta 0 (debugfs verdict)  kms: flips 899, flip_timeouts 0, commit failures 0, busy 0, master_lost no scanout late frames 296 (vblank seq gap > 2 = max(1, ceil(every 1 x 60.000 Hz / 30.000 fps - 0.01)); gaps 868, max gap 6, chain breaks 0), discarded 0  hailo_warn=0 rc=0
+[05:41:43] session: activate desktop 2; masters before: 
+[05:41:43] session: desktop active=yes, labwc master=y, masters: systemd-logind(722) labwc(1073), HDMI-A-1 Enabled -> ok
+== per config (medians; fps / cpu as median (min..max); glass / present / late after --display-warmup) ==
+id         | fps                  | cpu_ms/f             | glass_med | glass_p90 | pres_med | pres_p90 | presented | dropped | late | discard | labwc_ms/f | csd_ms/f | tfu_ms/f | v3d_ms/f | color | zc | underrun | pass
+-----------+----------------------+----------------------+-----------+-----------+----------+----------+-----------+---------+------+---------+------------+----------+----------+----------+-------+----+----------+-----
+vk_source  | 29.91 (29.87..29.92) | 2.059 (2.016..2.172) | 94.37     | 123.66    | 33.08    | 66.96    | 900       | 0       | nan  | nan     | 0.533      | 6.171    | 3.717    | 10.188   | -     | -  | nan      | 3/3 
+vk_asap    | 34.88 (34.87..34.89) | 1.832 (1.747..1.884) | 131.99    | 140.62    | 18.10    | 50.45    | 900       | 0       | nan  | nan     | 0.522      | 6.938    | 4.606    | 11.925   | -     | -  | nan      | 3/3 
+wlp_source | 29.23 (29.17..29.27) | 1.569 (1.520..1.603) | 99.93     | 116.47    | 33.33    | 50.00    | 900       | 0       | 229  | 0       | 0.589      | 2.515    | 0.014    | 2.890    | 1     | 1  | 0        | 3/3 
+wlp_asap   | 30.16 (30.12..30.19) | 1.546 (1.528..1.651) | 99.43     | 100.55    | 16.67    | 66.67    | 899       | 1       | 301  | 0       | 0.567      | 2.528    | 0.014    | 2.903    | 1     | 1  | 0        | 3/3 
+kms_source | 29.33 (29.31..29.40) | 1.576 (1.526..1.629) | 99.85     | 116.38    | 33.33    | 50.00    | 899       | 1       | 226  | 0       | 0.000      | 2.513    | 0.009    | 2.861    | 1     | 1  | 0        | 3/3 
+kms_asap   | 30.26 (30.21..30.34) | 1.600 (1.589..1.603) | 99.48     | 100.48    | 16.67    | 66.67    | 899       | 1       | 296  | 0       | 0.000      | 2.525    | 0.009    | 2.876    | 1     | 1  | 0        | 3/3 
+
+runs failing checks: none
