@@ -42,11 +42,7 @@ PlaneDisplay::PlaneDisplay(yvo::vk::VulkanContext& ctx, std::unique_ptr<PlaneSca
     scanout_->register_overlay(*ov_);
 
     retained_.resize(static_cast<std::size_t>(std::max(cfg_.num_slots, 1)));
-    if (cfg_.pace == DisplayPace::Source && cfg_.source_fps > 0.0) {
-        const double period_ms = 1000.0 / cfg_.source_fps;
-        min_commit_interval_ = std::chrono::duration_cast<Clock::duration>(
-            std::chrono::duration<double, std::milli>(std::max(period_ms - 8.0, 0.0)));
-    }
+    set_source_fps(cfg_.source_fps);
 }
 
 PlaneDisplay::~PlaneDisplay() {
@@ -68,6 +64,15 @@ void PlaneDisplay::set_source_size(int w, int h) {
     cfg_.src_w = w;
     cfg_.src_h = h;
     ov_->set_source_size(w, h);
+}
+
+void PlaneDisplay::set_source_fps(double fps) {
+    // pace=source commit gate = source interval - 8 ms (half a vblank). <= 0 / NaN keeps the current value.
+    if (!(fps > 0.0)) return;
+    cfg_.source_fps = fps;
+    if (cfg_.pace == DisplayPace::Source)
+        min_commit_interval_ = std::chrono::duration_cast<Clock::duration>(
+            std::chrono::duration<double, std::milli>(std::max(1000.0 / fps - 8.0, 0.0)));
 }
 
 void PlaneDisplay::retain(int slot, const DrmFrame& f) {

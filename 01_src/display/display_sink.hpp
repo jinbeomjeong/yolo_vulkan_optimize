@@ -45,6 +45,8 @@ public:
 
     // Source frame size. Called after opening the decoder, before the first show().
     virtual void set_source_size(int w, int h) = 0;
+    // Source frame rate for pace = Source (decoder avg_frame_rate). Same timing as set_source_size(); <= 0 is ignored.
+    virtual void set_source_fps(double fps) = 0;
 
     // Right after decode: additionally holds the keepalive of the frame this slot will use. Glass-to-glass start point.
     virtual void retain(int slot, const DrmFrame& f) = 0;

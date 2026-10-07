@@ -608,7 +608,7 @@ int run(const Args& a) {
     }
 
     // Display path. Created **before** the decoder — extra_hw_frames depends on image_count().
-    // The source size is passed with set_source_size() after the decoder is opened.
+    // The source size and fps are passed with set_source_size()/set_source_fps() after the decoder is opened.
 #ifdef YVO_HAVE_DISPLAY
     // The pipeline holds only the DisplaySink interface (implementation: DisplayPipeline = V3D composition + swapchain).
     std::unique_ptr<yvo::display::DisplaySink> display;
@@ -652,7 +652,9 @@ int run(const Args& a) {
     const int src_w = dec.width(), src_h = dec.height();
     stage->set_source_size(src_w, src_h);
 #ifdef YVO_HAVE_DISPLAY
-    if (display) display->set_source_size(src_w, src_h);
+    const double dec_fps = dec.frame_rate(), src_fps = dec_fps >= 1.0 && dec_fps <= 240.0 ? dec_fps : a.disp.source_fps;  // NaN fails the range test
+    if (display && src_fps != dec_fps) std::fprintf(stderr, "warning: stream frame rate %.3f not in [1, 240], display pace keeps %.2f fps\n", dec_fps, src_fps);
+    if (display) { display->set_source_size(src_w, src_h); display->set_source_fps(src_fps); }
 #endif
 
     std::FILE* jsonl = nullptr;
@@ -674,16 +676,16 @@ int run(const Args& a) {
                     a.gpu_depth, pp_desc.c_str(), ctx.device_name());
 #ifdef YVO_HAVE_DISPLAY
         if (display && !display->describe().empty())
-            std::printf("[display] backend=%s %s | sync=%s pace=%s every=%d hw_frames=%d color_range=%s\n",
+            std::printf("[display] backend=%s %s | sync=%s pace=%s@%.2f every=%d hw_frames=%d color_range=%s\n",
                         display->backend_name(), display->describe().c_str(), yvo::display::sync_name(a.disp.sync),
-                        yvo::display::pace_name(a.disp.pace), a.disp.every, dopt.extra_hw_frames,
+                        yvo::display::pace_name(a.disp.pace), src_fps, a.disp.every, dopt.extra_hw_frames,
                         yvo::display::color_range_name(a.disp.color_range));
         else if (display)
-            std::printf("[display] backend=%s %ux%u %s / %s images=%u sync=%s pace=%s every=%d hw_frames=%d\n",
+            std::printf("[display] backend=%s %ux%u %s / %s images=%u sync=%s pace=%s@%.2f every=%d hw_frames=%d\n",
                         display->backend_name(), display->extent().width,
                         display->extent().height, display->uniform_scale() ? "uniform-scale(bilinear)" : "1:1",
                         display->blit_mode() ? "blit fallback" : "compute -> storage image", display->image_count(),
-                        yvo::display::sync_name(a.disp.sync), yvo::display::pace_name(a.disp.pace), a.disp.every,
+                        yvo::display::sync_name(a.disp.sync), yvo::display::pace_name(a.disp.pace), src_fps, a.disp.every,
                         dopt.extra_hw_frames);
 #endif
         std::fflush(stdout);

@@ -132,6 +132,7 @@ public:
 
     void set_display_done_callback(std::function<void(int)> cb) override { done_cb_ = std::move(cb); }
     void set_source_size(int w, int h) override;
+    void set_source_fps(double fps) override;
     void retain(int slot, const DrmFrame& f) override;
     bool show(int slot, const std::vector<Detection>& dets, std::string_view hud = {}) override;
     void pump() override;

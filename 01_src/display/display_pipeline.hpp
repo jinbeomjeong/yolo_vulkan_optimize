@@ -100,7 +100,7 @@ struct DisplayPipelineConfig {
 
     int src_w = 1920;                  // decoder source size (overlay affine + 1:1 decision)
     int src_h = 1080;
-    double source_fps = 30.0;          // target for pace = Source
+    double source_fps = 30.0;          // pace = Source target; set_source_fps() overrides it with the decoder fps
     int num_slots = 4;                 // number of pipeline slots (retain array size)
 
     ColorRangeRequest color_range = ColorRangeRequest::Auto;   // wayland-planes / kms only
@@ -135,6 +135,7 @@ public:
     // (`extra_hw_frames` depends on `image_count()`, so the decoder must come last).
     // This decides whether it is 1:1 or uniform scale — get it wrong and it silently takes a 2.6x slower path.
     void set_source_size(int w, int h) override;
+    void set_source_fps(double fps) override { if (fps > 0.0) cfg_.source_fps = fps; }   // before the first show()
 
     // Right after decode: **additionally** holds the keepalive of the frame this slot will use (before main's f.reset()).
     // At the same time it records this moment as the glass-to-glass start point.
