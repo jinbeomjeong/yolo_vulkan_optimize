@@ -24,8 +24,8 @@
 |---|---|---|
 | `--nms gpu\|cpu\|verify` | `01_src/pipeline/main.cpp:266-272`, 기본 gpu `:176` | `--postproc gpu`에서만 허용(`:508-509`) |
 | decode·NMS 분리 타임스탬프 | `01_src/vulkan/yolo_postproc.cpp:24-26`, `:625-627` | pass1 = ts2−ts1, nms = ts4−ts3. 배리어 구간(ts2→ts3)은 어느 값에도 안 들어간다 |
-| 종료 요약 | `main.cpp:1078-1144` | `gpu nms ms mean/median/p90/max`, `nms fallback N frames (capacity X, iou guard Y)`, glass·present 간격 |
-| `RESULT_CSV2` | `main.cpp:1177-1188` | `nms,gpu_nms_mean,gpu_nms_p90,nms_fallback,nms_verify_mismatch` + 평면 6필드. **median·fallback 원인별 값은 stdout에만** 있다 |
+| 종료 요약 | `main.cpp:1084-1152` | `gpu nms ms mean/median/p90/max`, `nms fallback N frames (capacity X, iou guard Y)`, glass·present 간격 |
+| `RESULT_CSV2` | `main.cpp:1185-1196` | `nms,gpu_nms_mean,gpu_nms_p90,nms_fallback,nms_verify_mismatch` + 평면 6필드. **median·fallback 원인별 값은 stdout에만** 있다 |
 | CPU fallback | `01_src/pipeline/gpu_postproc_stage.cpp:209-228` | 용량(후보 > 1024)·IoU 보호대로 그 프레임만 CPU 억제 |
 | 평면 표시 시각 | `wayland_plane_scanout.cpp:351-367`, `kms_scanout.cpp:876-889` | wp_presentation / page-flip 하드웨어 시각 |
 | 벤치 템플릿 | `06_tools/bench/display_bench.sh` | CSV+CSV2 59열 전체 수집, 설정은 `id\|args`. **`--nms`·`--display-backend` 설정은 없다** |
@@ -75,7 +75,7 @@
 
 ### 해석할 때 주의할 점
 1. **glass 끝점이 다르다.** 평면 경로는 하드웨어 표시 시각, Vulkan 경로는 `vkWaitForPresentKHR`를 폴링해 CPU가 알아챈 시각
-   (`display_pipeline.cpp:336-363`)이라 Vulkan 쪽이 폴링 주기만큼 불리하다. summary에 명시한다.
+   (`display_pipeline.cpp:337-367`)이라 Vulkan 쪽이 폴링 주기만큼 불리하다. summary에 명시한다.
 2. **Vulkan 경로의 숨은 V3D TFU 비용.** 표시 on에서 TFU 약 3.4 ms/f가 생기는데 `convert_ms`에 안 잡힌다
    (`../evidence/hvs_review/baseline/disp_on_source_v3d_delta.txt`, 원인은 Mesa WSI 복사로 추정·미확인).
    V3D 비교는 반드시 gpu_stats·fdinfo로 한다.
@@ -85,7 +85,7 @@
 ### 필요한 계측 보강 (코드 수정, 담당 `vulkan-expert`, kms 부분은 `cpp-expert` 검토) — 2026-10-08 완료: `--display-warmup N`, 요약의 `discarded`·`late frames`, `RESULT_CSV3`
 - glass 통계에서 **앞 N프레임 제외** 옵션. kms 첫 커밋이 블로킹 모드셋이라서다(`kms_scanout.hpp:33-36`).
   `.claude/skills/measure/SKILL.md:27`은 "display_bench가 뺀다"고 적지만 스크립트에 그 로직이 없다 → 둘을 맞춘다. → 완료: 앱 `--display-warmup N`, `display_planes_bench.sh`는 WARMUP=30, display_bench.sh 는 0.
-- `discarded_`를 ScanoutReport·요약·CSV에 노출(`plane_display.hpp:213`).
+- `discarded_`를 ScanoutReport·요약·CSV에 노출(`plane_display.hpp:215`).
 - 평면 경로에서 page-flip `seq` 간격 > 2로 늦은 프레임 집계(선례 `06_tools/probes/hvs_probe/hvs_kms_probe.cpp:872-881`).
 
 ### 스크립트
