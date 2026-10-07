@@ -107,7 +107,7 @@ GPU 전처리를 테스트하는 `test_preproc`을 빌드할 때 Wayland 라이�
 
 > ⚠ **여기 적힌 함정이 실제 함정이다.** 예를 들어 "디코더는 약 13프레임 이상 붙잡으면
 > 에러 없이 조용히 멈춘다"는 문장 때문에 `slots + gpu_depth <= 10` 검사가
-> [`main.cpp:350`](../01_src/pipeline/main.cpp) 에 들어 있다(HVS 평면 백엔드용 보유 검사는 바로 위 :336-349).
+> [`main.cpp:354`](../01_src/pipeline/main.cpp) 에 들어 있다(HVS 평면 백엔드용 보유 검사는 바로 위 :340-353).
 
 ### 3단계 — 수식의 원문을 본다 (2시간)
 
@@ -229,7 +229,7 @@ cmake -S . -B build -G Ninja && cmake --build build
 
 | 변수 | 누가 읽나 | 뜻 |
 |---|---|---|
-| `YVO_DEC_THREADS` | `yvo_pipeline` ([`main.cpp:629`](../01_src/pipeline/main.cpp)) | FFmpeg 디코더 프레임 스레드 수. 없으면 **1**(2026-09-29부터 기본), `0`이면 FFmpeg 자동(코어 수) |
+| `YVO_DEC_THREADS` | `yvo_pipeline` ([`main.cpp:633`](../01_src/pipeline/main.cpp)) | FFmpeg 디코더 프레임 스레드 수. 없으면 **1**(2026-09-29부터 기본), `0`이면 FFmpeg 자동(코어 수) |
 | `YVO_PERF_CTL` / `YVO_PERF_ACK` | `yvo_pipeline`, `yvo_gst_pipeline` ([`tool_util.hpp`](../01_src/toolkit/tool_util.hpp) `perf_window`) | perf 제어 FIFO. 도구가 보고하는 CPU 구간에서만 perf를 켠다([08장](08_method.md) §8.9) |
 | `YVO_VK_VALIDATION` | 모든 Vulkan 사용자 ([`vulkan_context.cpp`](../01_src/vulkan/vulkan_context.cpp)) | `0`이 아닌 값이면 검증 레이어를 켠다 |
 | `YVO_VK_DEVICE` | 같음 | 물리 장치 이름 힌트(CPU 장치는 늘 제외) |

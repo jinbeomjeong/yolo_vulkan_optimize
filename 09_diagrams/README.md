@@ -57,7 +57,7 @@ SVG/PNG/PDF 내보내기는 yEd GUI 에서 사람이 한다(File ▸ Export). yE
 
 - V3D 1150 MHz — 부트로더 2026-09-25. FPS·CPU 는 그대로이고 GPU 전처리가 b1 2.11→1.81 ms, b8 평균 약 2.6→2.0 ms 로 줄었다
   ([`bootloader_20260925/summary.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)).
-- 앱 디코더 프레임 스레드 기본 1 — `01_src/pipeline/main.cpp:629`, 환경변수 `YVO_DEC_THREADS`(0 = FFmpeg 자동).
+- 앱 디코더 프레임 스레드 기본 1 — `01_src/pipeline/main.cpp:633`, 환경변수 `YVO_DEC_THREADS`(0 = FFmpeg 자동).
   표시 on disp_source 에서 CPU 2.073→1.778 ms/f, glass 평균 99.48→99.52 ms, 앱 e2e p90 +1.9 ms
   ([`dec_threads/summary.md`](../07_results/dec_threads/summary.md)).
 - NMS 기본 `--nms gpu` — GPU NMS 수치는 정식 측정 전이다.
@@ -73,10 +73,10 @@ SVG/PNG/PDF 내보내기는 yEd GUI 에서 사람이 한다(File ▸ Export). yE
 | ⓒ decode call 0.107 ms(FFmpeg 자동 5스레드) · NPU median 69.7 / mean 73.9 ms · present 간격 16.955 ms · cpu nms 2.667 µs (CPU NMS 당시 측정 — 지금 기본은 GPU NMS, description 에만 남김) | [`07_results/display_e2e/raw/disp_source_run1/stdout.log`](../07_results/display_e2e/raw/disp_source_run1/stdout.log) |
 | 운용점 `b2/s4 --postproc gpu` 와 최종 실행 커맨드 | [`07_results/op_point/summary.md`](../07_results/op_point/summary.md) §8 |
 | 스레드·슬롯 규약, 종료 순서 | `01_src/pipeline/main.cpp:1-49` |
-| `slots + gpu_depth <= 10` 강제 (Vulkan 합성 경로) | `01_src/pipeline/main.cpp:350` |
-| 평면 백엔드 보유 상한 `slots + 1 (+5 latest) <= 10` | `01_src/pipeline/main.cpp:336-349` |
-| `--postproc gpu` ⇒ `--mode dmabuf --layout nhcw` 강제 | `01_src/pipeline/main.cpp:495-500` |
-| `--nms gpu\|cpu\|verify`(기본 gpu)는 `--postproc gpu` 전용 | `01_src/pipeline/main.cpp:32-34`, `:501-504` |
+| `slots + gpu_depth <= 10` 강제 (Vulkan 합성 경로) | `01_src/pipeline/main.cpp:354` |
+| 평면 백엔드 보유 상한 `slots + 1 (+5 latest) <= 10` | `01_src/pipeline/main.cpp:340-353` |
+| `--postproc gpu` ⇒ `--mode dmabuf --layout nhcw` 강제 | `01_src/pipeline/main.cpp:499-504` |
+| `--nms gpu\|cpu\|verify`(기본 gpu)는 `--postproc gpu` 전용 | `01_src/pipeline/main.cpp:32-34`, `:505-508` |
 | 스레드 규율(VkQueue 1개 → Vulkan 은 메인 스레드만) | `01_src/pipeline/infer_stage.hpp:9-17` |
 | HailoRT 콜백 람다 / CPU NMS fallback 호출 | `01_src/pipeline/gpu_postproc_stage.cpp:154` / `:202` (억제 분기 `finish()` `:190-227`) |
 | GPU NMS (`efficient_nms.comp`, yolo_decode 뒤 같은 커맨드 버퍼) | `01_src/vulkan/yolo_postproc.hpp:10`, `01_src/vulkan/efficient_nms.hpp` |
@@ -107,7 +107,7 @@ id 로 찾으면 된다 (`grep -n 'id="n_pre"' pipeline_overview.graphml`).
 
 - **디코더 스레드 수** — overview `n_dec` 라벨 4행 `[측정 조건: FFmpeg 자동 5스레드]`, detail `n0::n0` 라벨 3행
   (`FFmpeg 프레임 스레드 기본 1 (YVO_DEC_THREADS) · 측정 당시 자동 5`), 두 노드와 detail `n0` 의 `d5`.
-  기본값의 정본은 `01_src/pipeline/main.cpp:629` 다.
+  기본값의 정본은 `01_src/pipeline/main.cpp:633` 다.
 - **V3D 클럭** — overview `n_pre`·`n_post`·`n_conv`·`n_ovl` 라벨의 `[960 MHz]`와 `d5`, detail `n0::n5`·`n0::n7` 의 `d5`.
 - **공통 요약** — overview `n_note_perf` 라벨의 측정 조건 3줄과 `d5`, detail `n_src_note` 의 `측정 조건 :` 줄과 출처 3줄.
 
