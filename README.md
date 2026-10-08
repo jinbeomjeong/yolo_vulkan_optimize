@@ -358,7 +358,7 @@ grim -o HDMI-A-1 shot.png
 
 - **[`08_learn/`](08_learn/00_README.md)** — 배경지식이 없다면 **여기부터**. NPU·Vulkan·dma-buf·YOLO 텐서를
   맨 밑바닥부터 설명하고, 각 개념이 이 프로젝트의 어느 결정으로 이어졌는지 연결한 자습 교재 12장
-- **[`07_results/README.md`](07_results/README.md)** — 21개 실험의 색인과 결론. **수치를 인용하기 전에 여기부터**
+- **[`07_results/README.md`](07_results/README.md)** — 22개 실험의 색인과 결론. **수치를 인용하기 전에 여기부터**
 - [`07_results/op_point/summary.md`](07_results/op_point/summary.md) §8 — 운용점 확정 근거와 최종 결론
 - [`07_results/display_e2e/summary.md`](07_results/display_e2e/summary.md) — 표시 통합 측정
 - [`07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md`](07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md) §4.3 — 왜 이 설계인가(메모리 제약)

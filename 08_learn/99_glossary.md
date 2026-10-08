@@ -207,7 +207,7 @@
 | 순서 | 문서 | 왜 |
 |---|---|---|
 | 1 | [`README.md`](../README.md) | 실행 안내. §1 파이프라인 도식과 §4 옵션표 |
-| 2 | [`07_results/README.md`](../07_results/README.md) | **수치를 인용하기 전에 여기부터.** 실험 21개 색인과 "설계를 지배하는 사실 6개" |
+| 2 | [`07_results/README.md`](../07_results/README.md) | **수치를 인용하기 전에 여기부터.** 실험 22개 색인과 "설계를 지배하는 사실 6개" |
 | 3 | [`07_results/op_point/summary.md`](../07_results/op_point/summary.md) §8 | 최종 결론. "지금 뭘 쓰면 되나" |
 | 4 | [`07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md) §4.3 | "왜 이 설계인가"의 핵심 |
 | 5 | [`09_diagrams/`](../09_diagrams/) | yEd로 여는 파이프라인 다이어그램 2장. 노드마다 소스 경로와 수치 출처가 붙어 있다 |
