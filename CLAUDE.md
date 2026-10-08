@@ -31,7 +31,7 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행�
 - `01_src/isp/`(`yvo_isp`)는 PiSP BE 전처리 대체 경로. **구현돼 있으나 파이프라인에 연결돼 있지 않다**(검출 −2.33%로 보류).
 - 실행파일은 모두 `build/bin/`에 나온다. 도구의 기본 자산 경로는 `yvo_assets` 매크로(절대 경로)라 CWD와 무관하고,
   기본 출력은 `build/out/<도구>/`다 — `07_results`에 쓸 때는 `--out-dir`을 명시한다.
-- `04_data/videos/`에 지금 있는 입력 영상은 `video_h265.mp4`(1080p30, 약 1분) 하나다.
+- `04_data/videos/`의 기본 입력은 `video_h265.mp4`(1080p30, 약 1분)다. 혼잡 장면용 `mot20_{02,05}_h265.mp4`(MOT20, 1080p25 900프레임, 출처 `07_results/nms_crowd_stress/evidence/inputs.txt`)도 있다.
   `urban_street.mp4`·`video_h264.mp4`는 `decode_benchmark` 당시 입력이며 저장소에 없다.
   `04_data/raw_tensors/`는 `PostprocFixture.*` 테스트가 쓰는 NPU 원시 출력 픽스처(5프레임 × 6텐서).
 - `06_tools/`는 **빌드에 들어가지 않는 것**만 둔다. 언어가 아니라 그 기준으로 나눈다 — [`06_tools/README.md`](06_tools/README.md).
