@@ -1,0 +1,26 @@
+label            : cpu_vs_gpu
+frames           : 900
+detections ref   : 24084
+detections test  : 24084  (+0.00 %)
+match @ IoU 0.5 : 24084 / 24084 = 1.0000
+match @ IoU 0.7 : 24084 / 24084 = 1.0000
+match @ IoU 0.9 : 24084 / 24084 = 1.0000
+
+coord err px (max(|dx1|,|dy1|,|dx2|,|dy2|) of matched pairs)
+IoU    pairs          max         mean          p50          p90
+0.5    24084     0.000000     0.000000     0.000000     0.000000
+0.7    24084     0.000000     0.000000     0.000000     0.000000
+0.9    24084     0.000000     0.000000     0.000000     0.000000
+
+class                 ref   test    diff
+person               23340  23340    +0.00 %
+handbag                388    388    +0.00 %
+backpack               300    300    +0.00 %
+chair                   20     20    +0.00 %
+motorcycle              10     10    +0.00 %
+bicycle                  9      9    +0.00 %
+suitcase                 9      9    +0.00 %
+car                      7      7    +0.00 %
+traffic light            1      1    +0.00 %
+
+saved: /home/pi/workspace/yolo_vulkan_optimize/07_results/nms_crowd_stress/runs/mot20_05/evidence/compare_cpu_vs_gpu.csv

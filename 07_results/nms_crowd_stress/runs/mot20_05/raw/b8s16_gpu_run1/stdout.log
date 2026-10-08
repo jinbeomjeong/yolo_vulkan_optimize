@@ -1,0 +1,26 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[hevc @ 0x5555d3f75820] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+== yvo_pipeline (dmabuf, nhcw, batch 8, slots 16, gpu_depth 3, postproc gpu/export) ==
+frames          900 (decoded 900, errors 0)
+wall            17.480 s, 51.49 FPS
+cpu             0.958 ms/frame (process user+sys 862.3 ms, 5% of one core)
+decode call ms  mean 1.584  median 2.242  p90 2.854  max 26.431
+gpu shader ms   mean 1.875  median 1.875  p90 1.948  max 2.431
+npu latency ms  mean 296.517  median 297.063  p90 302.736  max 317.492
+e2e latency ms  mean 325.909  median 310.050  p90 441.851  max 529.905  (decode return → NPU completion callback)
+slot wait ms    mean 17.430  p90 132.884  (time the main thread waited for a free slot)
+gpu post ms     mean 0.887  median 0.855  p90 1.088  max 3.698  (yolo_decode.comp pass 1)
+cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+nms backend     gpu
+gpu nms ms      mean 0.1866  median 0.1866  p90 0.2093  max 0.2790  (efficient_nms.comp)
+nms fallback    0 frames (capacity 0, iou guard 0)
+candidates      mean 183.35  max 267  overflow frames 0
+slot hold ms    mean 6.669  median 5.002  p90 7.692  max 228.242  (NPU completion callback → slot return)
+held frames max 3 (decoder limit about 13), slot timeout 0
+detections      24084 total, 26.76 / frame
+hailo chip temp 64.7 -> 75.4 C
+soc temp        68.6 -> 69.7 C
+vk validation   errors 0, warnings 1
+RESULT_CSV,b8s16_gpu,dmabuf,nhcw,8,16,900,17.480,51.49,0.958,1.584,1.875,1.948,296.52,302.74,325.91,441.85,24084,64.7,75.4,68.6,69.7,1
+RESULT_CSV2,b8s16_gpu,gpu,export,0.8870,1.0878,0.000,183.35,267,0,1,off,-,-,0.0000,0.0000,0.0000,0.000,0.00,0.00,0,0,0,3,0,gpu,0.1866,0.2093,0,0,-,-,-,-,-,-
+RESULT_CSV3,b8s16_gpu,0,nan,0,nan,0,-,-,-,-,-,-,-,1,nan,nan,nan,0

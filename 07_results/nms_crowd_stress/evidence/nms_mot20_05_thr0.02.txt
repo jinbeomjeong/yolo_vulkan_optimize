@@ -1,0 +1,28 @@
+yvo_postproc_probe --probe nms   (plan §6.2 P3)
+[fixture] dir=/home/pi/workspace/yolo_vulkan_optimize/build/out/crowd_fixtures/mot20_05 frames=10  score_thr=0.0200 (HEF 0.20)
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64
+[cfg] slots=5 max_dets=4096 local=10x6  nms local=256 max_selected=1024 iou=0.70 max_per_class=100 shared=24916 B
+
+== NMS-(1) GPU NMS vs cpu_nms_greedy_by_class() on the same GPU candidates (ordered bit comparison) ==
+frame  cand  gpu_kept  cpu_kept  fallback  match
+    0   879       142       142         0  ok
+    1   981       150       150         0  ok
+    2   978       122       122         0  ok
+    3  1044         0       111         1  fallback
+    4  1008       125       125         0  ok
+[NMS-(1)] PASS  fallback frames 1/5
+
+== NMS-(2) decode + NMS in one command buffer, continuous stream of 300 frames (warm-up 30) ==
+pass1_ms  median 1.1796  p90 1.1981  min 1.1463  max 1.5004  n=300
+nms_ms    median 0.9530  p90 1.0022  min 0.0166  max 1.0997  n=300
+cmdbuf_ms median 2.1377  p90 2.2076  min 1.2026  max 2.4291  n=300
+candidates/frame mean 978.00 max 1044  fallback frames 60
+
+== NMS-(3) synthetic all-survive input via NmsHarness, continuous stream of 300 runs per n (warm-up 30) ==
+    n  classes  cpu_kept  fallback  match  nms_median_ms  p90     min     max
+   16        1        16         0     ok         0.0723  0.0748  0.0632  0.0950
+[NMS-(3)] PASS (n <= max_selected must match the CPU bit for bit; n > max_selected must fall back)
+
+[validation] errors=0 warnings=1
+[RESULT] nms PASS

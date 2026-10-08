@@ -1,0 +1,14 @@
+# nms_bench MODE=verify (A2) — not a performance result
+verify_b2s4  exit 0 ok 1 frames 900 detections 21361 nms verify verify_mismatch 0 fallback 0 (capacity 0, iou guard 0) hailort_warn 0
+cpu_b2s4     exit 0 ok 1 frames 900 detections 21361 nms cpu verify_mismatch 0 fallback 0 (capacity nan, iou guard nan) hailort_warn 0
+gpu_b2s4     exit 0 ok 1 frames 900 detections 21361 nms gpu verify_mismatch 0 fallback 0 (capacity 0, iou guard 0) hailort_warn 0
+detections.jsonl cpu vs gpu (sorted lines): identical
+detections.jsonl cpu vs verify (sorted lines, both CPU suppression — run-to-run determinism): identical
+compare_detections.py cpu vs gpu: ok
+  frames           : 900
+  detections ref   : 21361
+  detections test  : 21361  (+0.00 %)
+  match @ IoU 0.5 : 21361 / 21361 = 1.0000
+  match @ IoU 0.7 : 21361 / 21361 = 1.0000
+  match @ IoU 0.9 : 21361 / 21361 = 1.0000
+[A2] PASS: nms_verify_mismatch 0 (want 0), detections cpu == gpu True, all runs ok True

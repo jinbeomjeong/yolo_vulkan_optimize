@@ -1,0 +1,10 @@
+# nms_crowd_stress lowthr 2026-10-08T10:19:33+09:00
+git 2bacfeb
+6.18.50+rpt-rpi-2712
+pcie 8.0 GT/s PCIe x1
+temp=69.2'C
+throttled=0xe0000
+frequency(0)=2400037120
+v3d_freq v3d_freq=1150
+hailo 69.5 C
+video 04_data/videos/mot20_05_h265.mp4

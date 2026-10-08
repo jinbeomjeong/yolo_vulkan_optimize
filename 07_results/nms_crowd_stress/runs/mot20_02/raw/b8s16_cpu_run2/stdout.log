@@ -1,0 +1,24 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[hevc @ 0x55566b719820] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+== yvo_pipeline (dmabuf, nhcw, batch 8, slots 16, gpu_depth 3, postproc gpu/export) ==
+frames          900 (decoded 900, errors 0)
+wall            17.481 s, 51.49 FPS
+cpu             0.993 ms/frame (process user+sys 893.7 ms, 5% of one core)
+decode call ms  mean 1.591  median 2.065  p90 2.761  max 30.349
+gpu shader ms   mean 1.868  median 1.868  p90 1.917  max 2.451
+npu latency ms  mean 297.953  median 298.864  p90 303.251  max 318.026
+e2e latency ms  mean 326.014  median 310.040  p90 442.778  max 530.148  (decode return → NPU completion callback)
+slot wait ms    mean 17.397  p90 133.776  (time the main thread waited for a free slot)
+gpu post ms     mean 0.808  median 0.779  p90 1.025  max 1.511  (yolo_decode.comp pass 1)
+cpu nms us      mean 42.373  median 41.602  p90 56.782  max 88.297  (cpu_nms_greedy_by_class, n=900)
+nms backend     cpu
+candidates      mean 180.16  max 240  overflow frames 0
+slot hold ms    mean 6.086  median 4.401  p90 7.003  max 228.255  (NPU completion callback → slot return)
+held frames max 3 (decoder limit about 13), slot timeout 0
+detections      21361 total, 23.73 / frame
+hailo chip temp 64.6 -> 75.3 C
+soc temp        68.6 -> 65.9 C
+vk validation   errors 0, warnings 1
+RESULT_CSV,b8s16_cpu,dmabuf,nhcw,8,16,900,17.481,51.49,0.993,1.591,1.868,1.917,297.95,303.25,326.01,442.78,21361,64.6,75.3,68.6,65.9,1
+RESULT_CSV2,b8s16_cpu,gpu,export,0.8075,1.0251,42.373,180.16,240,0,1,off,-,-,0.0000,0.0000,0.0000,0.000,0.00,0.00,0,0,0,3,0,cpu,0.0000,0.0000,0,0,-,-,-,-,-,-
+RESULT_CSV3,b8s16_cpu,0,nan,0,nan,0,-,-,-,-,-,-,-,1,nan,nan,nan,0

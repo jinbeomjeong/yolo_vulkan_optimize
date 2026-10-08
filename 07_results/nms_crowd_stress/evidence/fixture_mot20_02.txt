@@ -1,0 +1,45 @@
+yvo_postproc_probe --probe fixture   (plan §6.2 P3)
+[fixture] dir=/home/pi/workspace/yolo_vulkan_optimize/build/out/crowd_fixtures/mot20_02 frames=10  letterbox scale=0.333333343 pad=(0,140) src=1920x1080
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64
+[cfg] slots=5 max_dets=4096 local=10x6  q_thr_low = P3 57 / P4 53 / P5 52
+[cfg] alloc=plain heap_sync=n/a headroom=0 B
+
+== P3-(1) G5: GPU pass 1 vs cpu_yolov8_candidates() ==
+frame  cpu  gpu  matched  onlyCPU  onlyGPU  score_bit_mismatch  max_coord_err_px  overflow
+    0  206  206      206        0        0                   0          0.000122         0
+    1  209  209      209        0        0                   0          0.000122         0
+    2  190  190      190        0        0                   0          0.000122         0
+    3  194  194      194        0        0                   0          0.000122         0
+    4  200  200      200        0        0                   0          0.000122         0
+[G5] PASS  total candidates cpu=999 gpu=999  max coordinate error 0.000122 px (limit < 0.25)
+
+== G6: same fixture repeated 10 times, fully identical after sorting by total order (score, anchor_key) ==
+[G6] PASS (10 runs x 5 frames)
+
+== byte sum: shader (kChecksum) vs CPU (valid region only, excluding P5 columns 20~23) ==
+slot tensor      shader_sum         cpu_sum  match
+   0      0           16668           16668  ok
+   0      1        39612156        39612156  ok
+   0      2           16928           16928  ok
+   0      3         8858724         8858724  ok
+   0      4             938             938  ok
+   0      5         2415634         2415634  ok
+[checksum] PASS
+
+== hybrid (plan §4.4 A): GPU candidates → host read + cpu_nms_greedy_by_class ==
+frame  cand  read_us  nms_us  final_dets  cpu_ref_dets  match
+    0   206     11.7    37.2          29            29  ok
+    1   209      9.9    35.6          24            24  ok
+    2   190      9.5    31.6          25            25  ok
+    3   194      8.9    32.4          25            25  ok
+    4   200      9.1    33.1          24            24  ok
+[hybrid] final detection count PASS (checks the plan §4.4 claim of '5~20 µs' against read_us+nms_us above)
+
+== P3-(6) pass 1 GPU timestamp, continuous stream of 300 frames (warm-up 30) ==
+pass1_ms  median 0.7412  p90 0.7845  min 0.6939  max 0.9267  n=300
+cmdbuf_ms median 0.7545  p90 0.7976
+[§4.7 estimate 0.4~0.9 ms] measured median 0.7412 ms → within estimated range
+
+[validation] errors=0 warnings=1
+[RESULT] fixture PASS

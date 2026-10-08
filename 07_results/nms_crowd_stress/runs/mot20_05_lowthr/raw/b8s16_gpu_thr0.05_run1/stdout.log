@@ -1,0 +1,28 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[cfg] video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/mot20_05_h265.mp4 1920x1080 mode=dmabuf layout=nhcw batch=8 slots=16 gpu_depth=3 postproc=gpu/export device=V3D 7.1.10.2
+[hevc @ 0x5556396b1820] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[progress] 300 frames, 53.2 FPS, hailo 69.8 C
+[progress] 600 frames, 52.8 FPS, hailo 72.8 C
+[progress] 900 frames, 52.2 FPS, hailo 75.6 C
+== yvo_pipeline (dmabuf, nhcw, batch 8, slots 16, gpu_depth 3, postproc gpu/export) ==
+frames          900 (decoded 900, errors 0)
+wall            17.481 s, 51.48 FPS
+cpu             0.904 ms/frame (process user+sys 813.2 ms, 5% of one core)
+decode call ms  mean 1.449  median 0.309  p90 2.807  max 22.107
+gpu shader ms   mean 1.859  median 1.863  p90 1.923  max 2.519
+npu latency ms  mean 294.103  median 293.936  p90 301.929  max 316.606
+e2e latency ms  mean 325.530  median 310.623  p90 438.505  max 521.946  (decode return → NPU completion callback)
+slot wait ms    mean 17.488  p90 129.590  (time the main thread waited for a free slot)
+gpu post ms     mean 1.101  median 1.074  p90 1.306  max 1.812  (yolo_decode.comp pass 1)
+cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+nms backend     gpu
+gpu nms ms      mean 0.5023  median 0.4762  p90 0.5928  max 0.7305  (efficient_nms.comp)
+nms fallback    0 frames (capacity 0, iou guard 0)
+candidates      mean 510.01  max 625  overflow frames 0
+slot hold ms    mean 7.769  median 6.752  p90 10.668  max 225.055  (NPU completion callback → slot return)
+held frames max 3 (decoder limit about 13), slot timeout 0
+detections      68696 total, 76.33 / frame
+hailo chip temp 65.0 -> 75.6 C
+soc temp        68.6 -> 69.2 C
+vk validation   errors 0, warnings 1
+rc=0
