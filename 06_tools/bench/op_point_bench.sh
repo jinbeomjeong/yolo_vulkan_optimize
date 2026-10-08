@@ -14,6 +14,7 @@
 #   RUNS=3 FRAMES=900 ONLY='b2s2|b8s8' bash ...             # subset only
 #   BIN=/path/to/yvo_pipeline bash ...                      # pin binary (guards against rebuilds mid-measurement)
 #   APPEND=1 bash ...                                       # append to existing results_raw.csv
+#   USE_GRID=1 OUT_DIR=... bash ...                         # batch x slots grid on current defaults
 #
 # Run order: repetition (run) is the outer loop, config the inner loop — spreads thermal bias evenly across configs.
 set -euo pipefail
@@ -73,6 +74,27 @@ configs_lat=(
   "lat_b2s4d1 |--mode dmabuf --layout nhcw --batch 2 --slots 4 --gpu-depth 1 --postproc host"
 )
 [[ "${USE_LAT:-0}" == "1" ]] && configs=("${configs_lat[@]}")
+
+# Batch x slots grid on the current defaults (select with USE_GRID=1): postproc gpu, nms gpu, gpu_depth 3, display off.
+#   HailoRawRunner caps slots at get_async_max_queue_size: 8 for batch 1/2/4, 16 for batch 8 (2026-10-08).
+configs_grid=(
+  "g_b1s1  |--batch 1 --slots 1"
+  "g_b1s2  |--batch 1 --slots 2"
+  "g_b1s4  |--batch 1 --slots 4"
+  "g_b1s8  |--batch 1 --slots 8"
+  "g_b2s2  |--batch 2 --slots 2"
+  "g_b2s3  |--batch 2 --slots 3"
+  "g_b2s4  |--batch 2 --slots 4"
+  "g_b2s6  |--batch 2 --slots 6"
+  "g_b2s8  |--batch 2 --slots 8"
+  "g_b4s4  |--batch 4 --slots 4"
+  "g_b4s6  |--batch 4 --slots 6"
+  "g_b4s8  |--batch 4 --slots 8"
+  "g_b8s8  |--batch 8 --slots 8"
+  "g_b8s12 |--batch 8 --slots 12"
+  "g_b8s16 |--batch 8 --slots 16"
+)
+[[ "${USE_GRID:-0}" == "1" ]] && configs=("${configs_grid[@]}")
 
 # ── end of copy ──
 

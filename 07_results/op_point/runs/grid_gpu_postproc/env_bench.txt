@@ -1,0 +1,20 @@
+# op_point_bench 2026-10-08T17:42:56+09:00
+kernel: 6.18.50+rpt-rpi-2712
+soc temp: 68.1 C, hailo temp: 59.4 C
+throttled=0xe0000
+frequency(0)=2400023808
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+libavcodec61: 8:7.1.5-0+deb13u1+rpt2
+hailort: 4.24.0
+mesa-vulkan-drivers: 26.2.2-1~bpo13+0~rpt1
+labwc: 0.20.2-1~bpo13+1
+libwlroots-0.20: 0.20.2-1+rpt4
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_pipeline
+bin md5: 00617db48b249bb87e2b66a15f51896b
+bin mtime: 2026-10-08 06:19:36.471299006 +0900
+video: /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 frames: 900 runs: 3
+wayland: /run/user/1000/wayland-0
+# after 2026-10-08T18:33:01+09:00
+soc temp: 71.9 C, hailo temp: 81.8 C
+bin md5 (after measurement): 00617db48b249bb87e2b66a15f51896b
+throttled=0xe0000
