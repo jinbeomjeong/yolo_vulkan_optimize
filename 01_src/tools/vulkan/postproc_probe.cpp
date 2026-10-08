@@ -190,7 +190,7 @@ struct Options {
 
 void usage() {
     std::puts(
-        "yvo_postproc_probe --probe {fixture|sweep|nms|stages|live|stale|heapimport|gpuab|v3} [options]\n"
+        "yvo_postproc_probe --probe {fixture|sweep|nms|stages|topk|live|stale|heapimport|gpuab|v3} [options]\n"
         "  --fixture-dir DIR      fixture directory (default <repo>/04_data/raw_tensors = YVO_FIXTURE_DIR)\n"
         "  --out-dir DIR          evidence file directory (default <repo>/build/out/yvo_postproc_probe)\n"
         "  --out-file NAME        evidence file name (default p3_<probe>.txt)\n"
@@ -2551,10 +2551,468 @@ int run_stages(const Options& o, Tee& log) {
     return pass ? 0 : 1;
 }
 
+// ─────────────────────────────────────────────────────────── topk (CPU only, offline)
+//
+//  --probe topk (**no NPU, no GPU** — no Vulkan context is created)
+//      Compares candidate-reduction rules against the reference rule (every (anchor, class) with score >= T →
+//      per-class greedy NMS IoU 0.7, 100 per class) on **every** fixture frame. All rules are built from
+//      cpu_yolov8_candidates() output, so decode and coordinates are byte-identical to the reference; only the
+//      candidate selection differs. Scores are compared as decoded floats (each scale has its own quantization step).
+//        REF(T)        every (anchor, class) with score >= T                    (= cpu_yolov8_candidates(raw, T))
+//        MAX(T)        per anchor only the best class (ties → lowest class id), kept if its score >= T
+//        SNIP(K)       per anchor the best class, top K anchors by (score desc, anchor id asc), no threshold
+//        SNIP_T(T,K)   SNIP(K), then score >= T (filtering before NMS = after NMS for scores >= T: greedy NMS
+//                      never lets a lower-scored box affect a higher-scored one, and the class quota counts in order)
+//        MC_HIST(T,K)  s_K = K-th largest per-anchor best score (0 if fewer anchors), cut = max(T, s_K);
+//                      anchors whose best score >= cut, and in them every class with score >= T
+//                      (ties at s_K are all kept, so the anchor count can exceed K)
+//      Anchor id = anchor_key >> 7 (make_anchor_key: scale<<21 | h<<14 | w<<7 | class).
+
+struct TopkOptions {
+    std::string scores = "0.2,0.05,0.02,0.003";
+    std::string ks = "100,300,1024";
+};
+
+void usage_topk() {
+    std::puts(
+        "topk mode (--probe topk: CPU only, no NPU/GPU, reads every frame in --fixture-dir):\n"
+        "  --scores LIST          score thresholds T, comma-separated (default 0.2,0.05,0.02,0.003)\n"
+        "  --ks LIST              top-K anchor counts, comma-separated (default 100,300,1024)");
+}
+
+std::vector<float> parse_float_list(const std::string& s) {
+    std::vector<float> out;
+    std::stringstream ss(s);
+    std::string tok;
+    while (std::getline(ss, tok, ','))
+        if (!tok.empty()) out.push_back(std::stof(tok));
+    return out;
+}
+
+constexpr float kTopkIou = 0.7f;           // HEF setting
+constexpr int kTopkMaxPerClass = 100;      // HEF setting
+constexpr int kTopkReps = 5;               // timing repeats per frame (median)
+constexpr std::size_t kTopkGpuNmsCap = 1024;   // GPU NMS capacity (kMaxSelected) → above it the CPU fallback runs
+constexpr std::size_t kTopkCandCap = 4096;     // pass 1 candidate buffer (max_dets)
+
+std::uint32_t topk_anchor(const DetectionKeyed& d) { return d.anchor_key >> 7; }
+
+bool topk_same_bits(const DetectionKeyed& a, const DetectionKeyed& b) {
+    return a.anchor_key == b.anchor_key && a.class_id == b.class_id && bits_of(a.score) == bits_of(b.score) &&
+           bits_of(a.x1) == bits_of(b.x1) && bits_of(a.y1) == bits_of(b.y1) && bits_of(a.x2) == bits_of(b.x2) &&
+           bits_of(a.y2) == bits_of(b.y2);
+}
+
+// Runs f() kTopkReps times and returns the last result; us = median wall time (µs).
+template <class F>
+auto topk_timed(F&& f, double& us) -> decltype(f()) {
+    std::vector<double> t;
+    decltype(f()) out{};
+    for (int r = 0; r < kTopkReps; ++r) {
+        const auto t0 = std::chrono::steady_clock::now();
+        out = f();
+        const auto t1 = std::chrono::steady_clock::now();
+        t.push_back(std::chrono::duration<double, std::micro>(t1 - t0).count());
+    }
+    us = percentile(t, 0.5);
+    return out;
+}
+
+// cpu_nms_greedy_by_class() on a copy (the copy is outside the timed region). us = median of kTopkReps.
+std::vector<DetectionKeyed> topk_nms(const std::vector<DetectionKeyed>& cand, double& us) {
+    std::vector<double> t;
+    std::vector<DetectionKeyed> work;
+    for (int r = 0; r < kTopkReps; ++r) {
+        work = cand;
+        const auto t0 = std::chrono::steady_clock::now();
+        yvo::cpu_nms_greedy_by_class(work, kTopkIou, kTopkMaxPerClass);
+        const auto t1 = std::chrono::steady_clock::now();
+        t.push_back(std::chrono::duration<double, std::micro>(t1 - t0).count());
+    }
+    us = percentile(t, 0.5);
+    return work;
+}
+
+std::size_t topk_distinct_anchors(const std::vector<DetectionKeyed>& v) {
+    std::vector<std::uint32_t> a;
+    a.reserve(v.size());
+    for (const auto& d : v) a.push_back(topk_anchor(d));
+    std::sort(a.begin(), a.end());
+    return static_cast<std::size_t>(std::unique(a.begin(), a.end()) - a.begin());
+}
+
+struct TopkRow {
+    std::string name;
+    std::vector<double> cand, anchors, nms_us, sel_us;   // per frame
+    std::size_t over_gpu = 0, over_cap = 0;
+    std::size_t dets = 0, matched = 0, coord_diff = 0, lost = 0, extra = 0, lost_nonmax = 0, iou_pairs = 0;
+    float lost_smax = -1.0f, extra_smax = -1.0f;
+    bool has_sel = false;
+
+    void add_frame(const std::vector<DetectionKeyed>& c, double nms, double sel) {
+        cand.push_back(static_cast<double>(c.size()));
+        anchors.push_back(static_cast<double>(topk_distinct_anchors(c)));
+        if (c.size() > kTopkGpuNmsCap) ++over_gpu;
+        if (c.size() > kTopkCandCap) ++over_cap;
+        nms_us.push_back(nms);
+        if (sel >= 0.0) {
+            sel_us.push_back(sel);
+            has_sel = true;
+        }
+    }
+
+    // Final detections of this case vs REF(T) final detections of the same frame.
+    // best_class(anchor id) = the anchor's highest class (MAX-family loss cause).
+    template <class BestClass>
+    void compare(const std::vector<DetectionKeyed>& ref, const std::vector<DetectionKeyed>& got, BestClass best_class) {
+        std::map<std::uint32_t, const DetectionKeyed*> refm;
+        for (const auto& d : ref) refm[d.anchor_key] = &d;
+        std::map<std::uint32_t, char> hit;
+        std::vector<const DetectionKeyed*> lv, ev;
+        dets += got.size();
+        for (const auto& d : got) {
+            const auto it = refm.find(d.anchor_key);
+            if (it == refm.end()) {
+                ev.push_back(&d);
+                continue;
+            }
+            ++matched;
+            hit[d.anchor_key] = 1;
+            if (!topk_same_bits(d, *it->second)) ++coord_diff;
+        }
+        for (const auto& d : ref)
+            if (!hit.count(d.anchor_key)) lv.push_back(&d);
+        lost += lv.size();
+        extra += ev.size();
+        for (const auto* d : lv) {
+            if (best_class(topk_anchor(*d)) != d->class_id) ++lost_nonmax;
+            lost_smax = std::max(lost_smax, d->score);
+        }
+        for (const auto* d : ev) extra_smax = std::max(extra_smax, d->score);
+        // Secondary pairing: lost ↔ extra of the same class with IoU >= 0.5 (greedy, lost in score order, best IoU).
+        std::vector<char> used(ev.size(), 0);
+        for (const auto* l : lv) {
+            int best = -1;
+            float best_iou = 0.5f;
+            for (std::size_t j = 0; j < ev.size(); ++j) {
+                if (used[j] || ev[j]->class_id != l->class_id) continue;
+                const float iou = yvo::iou_xyxy(*l, *ev[j]);
+                if (iou >= best_iou) {
+                    best_iou = iou;
+                    best = static_cast<int>(j);
+                }
+            }
+            if (best >= 0) {
+                used[static_cast<std::size_t>(best)] = 1;
+                ++iou_pairs;
+            }
+        }
+    }
+};
+
+std::string topk_smax(float v) { return v < 0.0f ? std::string("-") : fmt("%.4f", static_cast<double>(v)); }
+
+int run_topk(const Options& o, const TopkOptions& to, Tee& log) {
+    const std::vector<float> ts = parse_float_list(to.scores);
+    const std::vector<int> ks = parse_int_list(to.ks);
+    if (ts.empty() || ks.empty()) throw std::runtime_error("--scores and --ks must not be empty");
+    for (const float t : ts)
+        if (!(t > 0.0f)) throw std::runtime_error(fmt("--scores values must be > 0: %g", static_cast<double>(t)));
+    for (const int k : ks)
+        if (k < 1) throw std::runtime_error(fmt("--ks values must be >= 1: %d", k));
+
+    FixtureRig rig = load_rig(o);
+    const int nframes = rig.fs.frames;
+    const auto& lb = rig.fs.lb;
+    const int sw = rig.fs.src_w, sh = rig.fs.src_h;
+
+    // Threshold just below one quantization step: q >= 1 of every class tensor (requires zero point 0).
+    float min_step = std::numeric_limits<float>::infinity();
+    for (int s = 0; s < kYoloNumScales; ++s) {
+        if (rig.layout.s[s].cls_zp != 0.0f)
+            throw std::runtime_error(fmt("scale %d class zero point is %g, topk assumes 0", s,
+                                         static_cast<double>(rig.layout.s[s].cls_zp)));
+        min_step = std::min(min_step, rig.layout.s[s].cls_scale);
+    }
+    const float thr_q1 = 0.5f * min_step;
+    log(fmt("[topk] dir=%s frames=%d  IoU %.2f  %d per class  timing: median of %d repeats per frame", o.fixture_dir.c_str(),
+            nframes, static_cast<double>(kTopkIou), kTopkMaxPerClass, kTopkReps));
+    log(fmt("[topk] class quant step per scale: %.6g / %.6g / %.6g  → all-class decode threshold %.6g (q >= 1)",
+            static_cast<double>(rig.layout.s[0].cls_scale), static_cast<double>(rig.layout.s[1].cls_scale),
+            static_cast<double>(rig.layout.s[2].cls_scale), static_cast<double>(thr_q1)));
+    log(fmt("[topk] T = %s   K = %s", to.scores.c_str(), to.ks.c_str()));
+
+    const std::size_t nT = ts.size(), nK = ks.size();
+    const std::size_t nrows = 2 + 3 * nK;
+    auto i_snip = [&](std::size_t k) { return 2 + k; };
+    auto i_snipt = [&](std::size_t k) { return 2 + nK + k; };
+    auto i_mc = [&](std::size_t k) { return 2 + 2 * nK + k; };
+    std::vector<std::vector<TopkRow>> rows(nT, std::vector<TopkRow>(nrows));
+    for (std::size_t ti = 0; ti < nT; ++ti) {
+        rows[ti][0].name = "REF";
+        rows[ti][1].name = "MAX";
+        for (std::size_t k = 0; k < nK; ++k) {
+            rows[ti][i_snip(k)].name = fmt("SNIP(%d)", ks[k]);
+            rows[ti][i_snipt(k)].name = fmt("SNIP_T(%d)", ks[k]);
+            rows[ti][i_mc(k)].name = fmt("MC_HIST(%d)", ks[k]);
+        }
+    }
+    // Multi-class statistics of REF(T)
+    struct Multi {
+        std::size_t ref_cand = 0, multi_anchors = 0, multi_cand = 0, extra_classes = 0, ref_dets = 0, ref_dets_nonmax = 0;
+        std::size_t max_cand = 0;
+    };
+    std::vector<Multi> multi(nT);
+    std::vector<std::size_t> mc_eq_frames(nT * nK, 0), mc_eq_fail(nT * nK, 0);
+
+    bool ok_pp = true, ok_filter = true, ok_argmax = true, ok_maxdiff = true, ok_snip = true, ok_mc = true;
+
+    yvo::DecodeOptions arg_opt;
+    arg_opt.argmax_only = true;
+    const float kNoThr = -std::numeric_limits<float>::infinity();
+    std::vector<int> best_idx(1u << 16, -1);   // anchor id (< 3 << 14) → index into A
+    std::vector<int> cls_count(1u << 16, 0);
+    auto snip_cmp = [](const DetectionKeyed& a, const DetectionKeyed& b) {
+        if (a.score != b.score) return a.score > b.score;
+        return topk_anchor(a) < topk_anchor(b);
+    };
+
+    for (int f = 0; f < nframes; ++f) {
+        const std::uint8_t* ptr[kYoloNumTensors];
+        for (int t = 0; t < kYoloNumTensors; ++t)
+            ptr[t] = rig.frames[static_cast<std::size_t>(f)][static_cast<std::size_t>(t)].data();
+        const yvo::RawOutputSet raw = make_raw_set(rig.layout, ptr);
+
+        // A: one entry per anchor (best class, ties → lowest class id). B: every (anchor, class) with q >= 1.
+        const auto A = yvo::cpu_yolov8_candidates(raw, kNoThr, lb, sw, sh, arg_opt);
+        const auto B = yvo::cpu_yolov8_candidates(raw, thr_q1, lb, sw, sh);
+        std::fill(best_idx.begin(), best_idx.end(), -1);
+        for (std::size_t i = 0; i < A.size(); ++i) best_idx[topk_anchor(A[i])] = static_cast<int>(i);
+        auto best_of = [&](std::uint32_t anchor) -> const DetectionKeyed& {
+            return A[static_cast<std::size_t>(best_idx[anchor])];
+        };
+        auto best_class = [&](std::uint32_t anchor) { return best_of(anchor).class_id; };
+        // Decode consistency: the per-anchor best of A dominates every B entry of that anchor and equals it bit for bit.
+        for (const auto& b : B) {
+            if (best_idx[topk_anchor(b)] < 0) {
+                ok_argmax = false;
+                continue;
+            }
+            const auto& a = best_of(topk_anchor(b));
+            if (b.score > a.score || (b.score == a.score && b.class_id < a.class_id)) ok_argmax = false;
+            if (b.class_id == a.class_id && !topk_same_bits(a, b)) ok_argmax = false;
+        }
+
+        // SNIP(K): independent of T
+        std::vector<std::vector<DetectionKeyed>> snip_cand(nK), snip_final(nK);
+        std::vector<double> snip_sel(nK), snip_nms(nK), sk(nK), sk_us(nK);
+        for (std::size_t k = 0; k < nK; ++k) {
+            const std::size_t n = std::min(static_cast<std::size_t>(ks[k]), A.size());
+            snip_cand[k] = topk_timed(
+                [&] {
+                    std::vector<DetectionKeyed> v = A;
+                    std::partial_sort(v.begin(), v.begin() + static_cast<std::ptrdiff_t>(n), v.end(), snip_cmp);
+                    v.resize(n);
+                    return v;
+                },
+                snip_sel[k]);
+            if (snip_cand[k].size() != n) ok_snip = false;
+            snip_final[k] = topk_nms(snip_cand[k], snip_nms[k]);
+            // s_K = K-th largest per-anchor best score (0 if fewer anchors)
+            sk[k] = topk_timed(
+                [&] {
+                    if (A.size() < static_cast<std::size_t>(ks[k])) return 0.0;
+                    std::vector<float> sc;
+                    sc.reserve(A.size());
+                    for (const auto& a : A) sc.push_back(a.score);
+                    std::nth_element(sc.begin(), sc.begin() + (ks[k] - 1), sc.end(), [](float x, float y) { return x > y; });
+                    return static_cast<double>(sc[static_cast<std::size_t>(ks[k] - 1)]);
+                },
+                sk_us[k]);
+        }
+
+        for (std::size_t ti = 0; ti < nT; ++ti) {
+            const float T = ts[ti];
+            auto& R = rows[ti];
+
+            // REF(T)
+            const auto ref = yvo::cpu_yolov8_candidates(raw, T, lb, sw, sh);
+            double us = 0.0;
+            const auto ref_final = topk_nms(ref, us);
+            R[0].add_frame(ref, us, -1.0);
+            R[0].compare(ref_final, ref_final, best_class);
+            {
+                const auto pp = yvo::cpu_yolov8_postprocess(raw, T, kTopkIou, kTopkMaxPerClass, lb, sw, sh);
+                bool same = pp.size() == ref_final.size();
+                for (std::size_t i = 0; same && i < pp.size(); ++i) {
+                    const auto& a = pp[i];
+                    const auto& b = ref_final[i];
+                    same = a.class_id == b.class_id && bits_of(a.score) == bits_of(b.score) &&
+                           bits_of(a.x1) == bits_of(b.x1) && bits_of(a.y1) == bits_of(b.y1) &&
+                           bits_of(a.x2) == bits_of(b.x2) && bits_of(a.y2) == bits_of(b.y2);
+                }
+                if (!same) {
+                    ok_pp = false;
+                    log(fmt("[check] frame %d T=%g: REF final != cpu_yolov8_postprocess (%zu vs %zu)", f,
+                            static_cast<double>(T), ref_final.size(), pp.size()));
+                }
+            }
+            {   // REF(T) == B filtered by T (same order, same bits)
+                std::size_t j = 0;
+                bool same = true;
+                for (const auto& b : B) {
+                    if (!(b.score >= T)) continue;
+                    if (j >= ref.size() || !topk_same_bits(b, ref[j])) same = false;
+                    ++j;
+                }
+                if (!same || j != ref.size()) ok_filter = false;
+            }
+            // multi-class statistics
+            Multi& M = multi[ti];
+            M.ref_cand += ref.size();
+            for (const auto& d : ref) ++cls_count[topk_anchor(d)];
+            for (const auto& d : ref) {
+                const int c = cls_count[topk_anchor(d)];
+                if (c >= 2) ++M.multi_cand;
+            }
+            std::size_t extra_classes = 0;
+            for (const auto& d : ref) {
+                int& c = cls_count[topk_anchor(d)];
+                if (c >= 2) {
+                    ++M.multi_anchors;
+                    extra_classes += static_cast<std::size_t>(c - 1);
+                }
+                c = 0;   // count each anchor once, and leave the table zeroed
+            }
+            M.extra_classes += extra_classes;
+            M.ref_dets += ref_final.size();
+            for (const auto& d : ref_final)
+                if (best_class(topk_anchor(d)) != d.class_id) ++M.ref_dets_nonmax;
+
+            // MAX(T)
+            double sel = 0.0;
+            const auto mx = topk_timed(
+                [&] {
+                    std::vector<DetectionKeyed> v;
+                    for (const auto& a : A)
+                        if (a.score >= T) v.push_back(a);
+                    return v;
+                },
+                sel);
+            const auto mx_final = topk_nms(mx, us);
+            R[1].add_frame(mx, us, sel);
+            R[1].compare(ref_final, mx_final, best_class);
+            M.max_cand += mx.size();
+            if (ref.size() - mx.size() != extra_classes || mx.size() != topk_distinct_anchors(ref)) ok_maxdiff = false;
+
+            for (std::size_t k = 0; k < nK; ++k) {
+                // SNIP(K)
+                R[i_snip(k)].add_frame(snip_cand[k], snip_nms[k], snip_sel[k]);
+                R[i_snip(k)].compare(ref_final, snip_final[k], best_class);
+                // SNIP_T(T,K)
+                const auto st = topk_timed(
+                    [&] {
+                        std::vector<DetectionKeyed> v;
+                        for (const auto& a : snip_cand[k])
+                            if (a.score >= T) v.push_back(a);
+                        return v;
+                    },
+                    sel);
+                const auto st_final = topk_nms(st, us);
+                R[i_snipt(k)].add_frame(st, us, snip_sel[k] + sel);
+                R[i_snipt(k)].compare(ref_final, st_final, best_class);
+                // MC_HIST(T,K)
+                const float cut = std::max(T, static_cast<float>(sk[k]));
+                const auto mc = topk_timed(
+                    [&] {
+                        std::vector<DetectionKeyed> v;
+                        for (const auto& b : B)
+                            if (b.score >= T && best_of(topk_anchor(b)).score >= cut) v.push_back(b);
+                        return v;
+                    },
+                    sel);
+                const auto mc_final = topk_nms(mc, us);
+                R[i_mc(k)].add_frame(mc, us, sk_us[k] + sel);
+                R[i_mc(k)].compare(ref_final, mc_final, best_class);
+                if (cut == T) {   // s_K <= T: the anchor cut is T itself → must be exactly REF(T)
+                    ++mc_eq_frames[ti * nK + k];
+                    bool same = mc.size() == ref.size();
+                    for (std::size_t i = 0; same && i < mc.size(); ++i) same = topk_same_bits(mc[i], ref[i]);
+                    if (!same) {
+                        ++mc_eq_fail[ti * nK + k];
+                        ok_mc = false;
+                    }
+                }
+            }
+        }
+    }
+
+    // ── tables ──
+    log("");
+    log("columns: cand/f = candidates per frame (mean), cmax = max, >1024 = frames over GPU NMS capacity (CPU fallback),");
+    log("  >4096 = frames over the pass 1 candidate buffer, anc/f = distinct anchors per frame (mean), dets = final detections (sum),");
+    log("  match/lost/extra vs REF(T) by (class, anchor_key), lostNM = lost whose class is not the anchor's best class,");
+    log("  iouP = lost↔extra re-paired by same class IoU>=0.5, Smax = max score, cdiff = matched with different bits,");
+    log("  nms_* = cpu_nms_greedy_by_class us per frame (median/p90/max over frames), sel = selection us per frame (median):");
+    log("  MAX = filter anchors, SNIP = partial_sort of anchors, SNIP_T = SNIP + filter, MC_HIST = s_K (nth_element) + filter of");
+    log("  the q>=1 decode (CPU emulation; a GPU would apply the cut inside pass 1)");
+    bool ok_coord = true;
+    for (std::size_t ti = 0; ti < nT; ++ti) {
+        log("");
+        log(fmt("== T = %g  (%d frames) ==", static_cast<double>(ts[ti]), nframes));
+        log("case            cand/f   cmax  >1024 >4096   anc/f    dets  match   lost  extra lostNM  iouP  lostSmax extraSmax cdiff  nms_med  nms_p90  nms_max  sel_med");
+        for (const TopkRow& r : rows[ti]) {
+            double sum = 0.0, cmax = 0.0, asum = 0.0;
+            for (const double c : r.cand) {
+                sum += c;
+                cmax = std::max(cmax, c);
+            }
+            for (const double a : r.anchors) asum += a;
+            const double n = static_cast<double>(std::max<std::size_t>(1, r.cand.size()));
+            double nmax = 0.0;
+            for (const double v : r.nms_us) nmax = std::max(nmax, v);
+            if (r.coord_diff) ok_coord = false;
+            log(fmt("%-14s %7.1f %6.0f %6zu %5zu %7.1f %7zu %6zu %6zu %6zu %6zu %5zu %9s %9s %5zu %8.1f %8.1f %8.1f %8s",
+                    r.name.c_str(), sum / n, cmax, r.over_gpu, r.over_cap, asum / n, r.dets, r.matched, r.lost, r.extra,
+                    r.lost_nonmax, r.iou_pairs, topk_smax(r.lost_smax).c_str(), topk_smax(r.extra_smax).c_str(),
+                    r.coord_diff, percentile(r.nms_us, 0.5), percentile(r.nms_us, 0.9), nmax,
+                    r.has_sel ? fmt("%.1f", percentile(r.sel_us, 0.5)).c_str() : "-"));
+        }
+        for (std::size_t k = 0; k < nK; ++k)
+            log(fmt("  MC_HIST(%d): frames with s_K <= T (cut = T) %zu/%d, of which != REF %zu", ks[k],
+                    mc_eq_frames[ti * nK + k], nframes, mc_eq_fail[ti * nK + k]));
+    }
+
+    log("");
+    log("== multi-class statistics of REF(T) (sums over frames) ==");
+    log("T          ref_cand  max_cand  multi_anchors  multi_cand  multi_cand%  extra_classes  ref_dets  dets_nonmax");
+    for (std::size_t ti = 0; ti < nT; ++ti) {
+        const Multi& M = multi[ti];
+        log(fmt("%-9g %9zu %9zu %14zu %11zu %11.2f%% %14zu %9zu %12zu", static_cast<double>(ts[ti]), M.ref_cand, M.max_cand,
+                M.multi_anchors, M.multi_cand,
+                M.ref_cand ? 100.0 * static_cast<double>(M.multi_cand) / static_cast<double>(M.ref_cand) : 0.0,
+                M.extra_classes, M.ref_dets, M.ref_dets_nonmax));
+    }
+
+    log("");
+    auto pf = [](bool b) { return b ? "PASS" : "FAIL"; };
+    log(fmt("[check] ref == cpu_yolov8_postprocess %s", pf(ok_pp)));
+    log(fmt("[check] REF(T) == q>=1 decode filtered by T %s", pf(ok_filter)));
+    log(fmt("[check] per-anchor best (argmax decode) consistent with all-class decode %s", pf(ok_argmax)));
+    log(fmt("[check] REF - MAX candidates == extra classes of multi-class anchors %s", pf(ok_maxdiff)));
+    log(fmt("[check] SNIP(K) candidates == min(K, anchors) %s", pf(ok_snip)));
+    log(fmt("[check] MC_HIST == REF whenever s_K <= T %s", pf(ok_mc)));
+    log(fmt("[check] matched detections bit-identical to REF %s", pf(ok_coord)));
+    const bool pass = ok_pp && ok_filter && ok_argmax && ok_maxdiff && ok_snip && ok_mc && ok_coord;
+    log("[RESULT] topk DONE");
+    return pass ? 0 : 1;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
     Options o;
+    TopkOptions to;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         auto next = [&](const char* what) -> std::string {
@@ -2589,6 +3047,8 @@ int main(int argc, char** argv) {
             else if (a == "--v3-window") o.v3_window = std::stoi(next("--v3-window"));
             else if (a == "--nms-cand") o.nms_cands = next("--nms-cand");
             else if (a == "--nms-score" || a == "--score") o.nms_score = std::stof(next(a.c_str()));
+            else if (a == "--scores") to.scores = next("--scores");
+            else if (a == "--ks") to.ks = next("--ks");
             else if (a == "--no-headroom") o.no_headroom = true;
             else if (a == "--heapimport") o.probe = "heapimport";
             else if (a == "--validation") o.validation = true;
@@ -2602,6 +3062,7 @@ int main(int argc, char** argv) {
                 o.ly = static_cast<std::uint32_t>(std::stoul(v.substr(comma + 1)));
             } else if (a == "-h" || a == "--help") {
                 usage();
+                usage_topk();
                 return 0;
             } else {
                 std::fprintf(stderr, "unknown argument: %s\n", a.c_str());
@@ -2635,6 +3096,7 @@ int main(int argc, char** argv) {
         if (o.probe == "sweep") return run_sweep(o, log);
         if (o.probe == "nms") return run_nms(o, log);
         if (o.probe == "stages") return run_stages(o, log);
+        if (o.probe == "topk") return run_topk(o, to, log);
         if (o.probe == "live") return run_live(o, log);
         if (o.probe == "stale") return run_stale(o, log);
         log(fmt("unknown probe: %s", o.probe.c_str()));
