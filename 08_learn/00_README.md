@@ -44,6 +44,7 @@
 | 09 | [코드 지도](09_code_map.md) | 폴더 구조, 읽는 순서, 빌드, 테스트, 도구 | 01 |
 | 10 | [왜 이렇게 만들었는가](10_why_this_design.md) | **배경지식 → 관측 → 결정의 사슬 10개.** 이 교재의 목적지 | 02~08 |
 | 11 | [TensorRT EfficientNMS 구조](11_tensorrt_efficient_nms.md) | Filter → Sort → 타일+상태 방송 NMS. GPU NMS(`efficient_nms.comp`)의 설계 근거 | 03, 05 |
+| 12 | [Hailo-8 연산자 지원](12_hailo8_operator_support.md) | 칩(nn_core)·호스트(HailoRT op)·파서 세 층에서 무엇이 어디서 도는가, YOLO11 블록별 매핑, NPU 모델 최적화의 한계 | 03, 04 |
 | 99 | [용어집](99_glossary.md) | 막혔을 때 찾아보는 사전 + 다음에 읽을 것 | — |
 
 각 챕터 끝에는 **자가 점검 질문**이 있고 답이 바로 아래에 있다.

@@ -153,7 +153,7 @@
 | **DFL** | Distribution Focal Loss. 거리를 값 하나가 아니라 **분포**로 예측하고 기댓값을 취한다 → [03](03_yolo_tensor.md) |
 | **reg_max** | DFL 분포의 구간 수. 이 모델은 16 → [03](03_yolo_tensor.md) |
 | **softmax** | 숫자들을 합이 1인 확률로 바꾸는 함수 → [03](03_yolo_tensor.md) |
-| **sigmoid** | 숫자를 0~1로 누르는 함수. **이 모델의 클래스 출력에는 적용하지 않는다** → [03](03_yolo_tensor.md) |
+| **sigmoid** | 숫자를 0~1로 누르는 함수. 이 모델은 칩이 클래스 출력에 **이미 적용**했으므로 **호스트는 다시 적용하지 않는다** → [03](03_yolo_tensor.md), [12](12_hailo8_operator_support.md) |
 | **IoU** | Intersection over Union. 두 박스가 얼마나 겹치는지(0~1) → [03](03_yolo_tensor.md) |
 | **NMS** | Non-Maximum Suppression. 겹친 박스 중 점수 높은 것만 남기는 것 → [03](03_yolo_tensor.md) |
 | **EfficientNMS** | TensorRT의 GPU NMS 플러그인. Filter → Sort → 타일+상태 방송 구조. 이 프로젝트 `efficient_nms.comp`의 설계 원형 → [11](11_tensorrt_efficient_nms.md), [03](03_yolo_tensor.md) |
@@ -181,6 +181,12 @@
 | **H2D / D2H** | Host to Device / Device to Host. 데이터 전송 방향 → [04](04_npu_hailort.md) |
 | **VStream** | HailoRT의 고수준 스트림 추상화. 호스트 쪽 변환이 여기 붙는다 → [04](04_npu_hailort.md) |
 | **ROUND_ROBIN** | VDevice 스케줄링 방식. 이걸 켜지 않으면 추론이 실패한다 → [04](04_npu_hailort.md) |
+| **DFC (Dataflow Compiler)** | ONNX를 HEF로 바꾸는 Hailo 컴파일러. x86 전용이라 Pi에서는 돌릴 수 없다 → [12](12_hailo8_operator_support.md) |
+| **HN / HAR** | DFC가 파싱한 Hailo 네트워크 표현(HN)과 그것을 담은 아카이브(HAR). 양자화·컴파일의 입력 → [12](12_hailo8_operator_support.md) |
+| **alls** | DFC 모델 스크립트. 정밀도(`a8_w8` 등), NMS 위치, 입력 변환 같은 컴파일 지시를 적는다 → [12](12_hailo8_operator_support.md) |
+| **nn_core** | Hailo 칩의 신경망 연산부. "칩에서 돈다"는 여기에 배치된다는 뜻 → [12](12_hailo8_operator_support.md) |
+| **a8_w8 / a8_w4 / a16_w16** | 레이어 정밀도 표기. a = 활성값, w = 가중치 비트 수 → [12](12_hailo8_operator_support.md) |
+| **softmax chain** | 칩이 softmax를 reduce_max → 빼기·exp → reduce_sum → 곱으로 쪼개 구현한 사슬. 이 안의 레이어는 16 bit가 안 된다 → [12](12_hailo8_operator_support.md) |
 
 ---
 
