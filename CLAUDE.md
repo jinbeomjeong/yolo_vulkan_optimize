@@ -1,6 +1,14 @@
 # yolo_vulkan_optimize
 
-Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행하며, Vulkan(Pi 5 VideoCore VII GPU)을 활용해 전/후처리 등 파이프라인 가속화를 연구하는 프로젝트.
+Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론 파이프라인을 만들고 최적화하는 프로젝트.
+
+## 목적
+1. **CPU 오프로딩** — NPU(Hailo-8), GPU(V3D, Vulkan), 하드웨어 블록(HEVC 디코더, ISP(PiSP BE), HVS 표시 평면)을
+   최대한 써서 CPU가 하던 일을 넘긴다.
+2. **파이프라인 단계 간 메모리 복사 최소화** — 단계 사이 버퍼는 dma-buf 공유(zero-copy)로 넘기고,
+   CPU 복사와 레이아웃 변환을 없앤다.
+3. **YOLO 모델의 NPU 최적화** — HEF(컨텍스트 구성, 입출력 형식, 후처리 위치)를 Hailo-8에 맞춰 처리량·지연을 개선한다.
+   재컴파일(DFC)은 x86 전용이라 Pi에서는 분석·측정까지만 한다. 모델이나 HEF를 바꾸는 일은 사용자가 결정한다.
 
 ## 언어
 - **코드 주석·출력 문구는 영어**다(`01_src/`, `02_shaders/`, `05_tests/`, `06_tools/`, CMake, `.claude/hooks/`).
