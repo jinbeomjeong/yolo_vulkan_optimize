@@ -1,0 +1,6 @@
+[2026-10-08 13:51:27.505] [674131] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-10-08 13:51:27.505] [674131] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-10-08 13:51:27.531] [674131] [HailoRT] [info] [internal_buffer_manager.cpp:77] [print_execution_results] Planned internal buffer memory: CMA=0 CMA-Desc=2031616 Pinned=47976448. memory to edge layer usage factor is 0.86677086
+[2026-10-08 13:51:27.531] [674131] [HailoRT] [info] [internal_buffer_manager.cpp:86] [print_execution_results] Default Internal buffer planner executed successfully
+[2026-10-08 13:51:27.585] [674131] [HailoRT] [info] [device_internal.cpp:57] [configure] Configuring HEF took 70.904765 milliseconds
+[2026-10-08 13:51:28.063] [674133] [HailoRT] [info] [d2h_events_parser.cpp:148] [D2H_EVENTS__parse_hw_infer_manager_infer_done_notification] Got hw infer done notification - Infer took 61826750 cycles

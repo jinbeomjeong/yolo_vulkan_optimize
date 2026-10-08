@@ -1,0 +1,16 @@
+# 2026-10-08T13:51:26+09:00 hailortcli measure-nnc-performance (hidden HW-infer estimator) yolov11m.hef --batch-size 1 ; hailo temp before 58.6 C
+Starting HW infer Estimator...
+
+======================
+        Summary
+======================
+Batch count: 8
+Total transfer size [KB]: 304564
+Total frames passed: 8
+Total time [s]: 0.327251
+Total FPS [1/s]: 24.446
+BW [Gbps]: 7.62409
+======================
+    End of report
+======================
+exit=0

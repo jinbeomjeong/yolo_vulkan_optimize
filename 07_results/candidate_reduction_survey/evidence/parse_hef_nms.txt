@@ -1,0 +1,40 @@
+# parse-hef NMS excerpt for 03_models/yolov11m.hef (read-only, no device access)
+# date: 2026-10-08T13:46:08+09:00
+# hailortcli: HailoRT-CLI version 4.24.0
+# sha256: d5716578f0d18b01220db2ba89c8a3bec2bf2921cc04b4b794cfe88d573aa779
+
+## $ hailortcli parse-hef --parse-streams --parse-vstreams 03_models/yolov11m.hef
+Architecture HEF was compiled for: HAILO8
+Network group name: yolov11m, Multi Context - Number of contexts: 4
+    Network name: yolov11m/yolov11m
+        Stream infos:
+            Input  yolov11m/input_layer1 UINT8, NHCW(640x640x3)
+            Output yolov11m/conv74_178 UINT8, NHCW(80x80x80)
+            Output yolov11m/conv71_178 UINT8, NHCW(80x80x64)
+            Output yolov11m/conv90_178 UINT8, NHCW(40x40x80)
+            Output yolov11m/conv87_178 UINT8, NHCW(40x40x64)
+            Output yolov11m/conv105_178 UINT8, NHCW(20x24x80)
+            Output yolov11m/conv102_178 UINT8, NHCW(20x24x64)
+        VStream infos:
+            Input  yolov11m/input_layer1 UINT8, NHWC(640x640x3)
+            Output yolov11m/yolov8_nms_postprocess FLOAT32, HAILO NMS BY CLASS(number of classes: 80, maximum bounding boxes per class: 100, maximum frame size: 160320)
+            Operation:
+                Op YOLOV8
+                Name: YOLOV8-Post-Process
+                Score threshold: 0.200
+                IoU threshold: 0.70
+                Classes: 80
+                Max bboxes per class: 100
+                Image height: 640
+                Image width: 640
+
+## hailo_platform.HEF stream quant info (python -I, no VDevice)
+stream yolov11m/conv74_178    shape=(80, 80, 80)   FormatType.UINT8 FormatOrder.NHCW qp_zp=0 qp_scale=0.00346976 bytes=512000
+stream yolov11m/conv71_178    shape=(80, 80, 64)   FormatType.UINT8 FormatOrder.NHCW qp_zp=88 qp_scale=0.114551 bytes=409600
+stream yolov11m/conv90_178    shape=(40, 40, 80)   FormatType.UINT8 FormatOrder.NHCW qp_zp=0 qp_scale=0.00376578 bytes=128000
+stream yolov11m/conv87_178    shape=(40, 40, 64)   FormatType.UINT8 FormatOrder.NHCW qp_zp=74 qp_scale=0.0798219 bytes=102400
+stream yolov11m/conv105_178   shape=(20, 24, 80)   FormatType.UINT8 FormatOrder.NHCW qp_zp=0 qp_scale=0.00381878 bytes=38400
+stream yolov11m/conv102_178   shape=(20, 24, 64)   FormatType.UINT8 FormatOrder.NHCW qp_zp=81 qp_scale=0.0748219 bytes=30720
+raw stream total bytes/frame = 1221120
+vstream yolov11m/yolov8_nms_postprocess shape=(80, 5, 100) FormatType.FLOAT32 FormatOrder.HAILO_NMS_BY_CLASS classes=80 max_bboxes_per_class=100
+vstream -> streams: ['yolov11m/conv102_178', 'yolov11m/conv105_178', 'yolov11m/conv71_178', 'yolov11m/conv74_178', 'yolov11m/conv87_178', 'yolov11m/conv90_178']

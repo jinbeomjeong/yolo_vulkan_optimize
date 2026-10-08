@@ -1,0 +1,39 @@
+# fw-actions config-descriptor aggregation for 03_models/yolov11m.hef (Hailo-8, HailoRT/FW 4.24.0, PCIe Gen3 x1)
+# Source: fwactions_probe_b{1,8}.json (copies of 11_logs/2026-10-08_fwactions_probe_b{1,8}.json, md5 identical),
+#   produced by: hailortcli run2 -t 3 -m raw_async measure-fw-actions --output-path X.json set-net <hef> --batch-size B
+# Method: for each context in runs[0].contexts[], sum data.descriptors_count over actions of type
+#   fetch_cfg_channel_descriptors, split by data.channel_index (config channel 0/1). Bytes = descs x 512, where 512 is
+#   DEFAULT_SG_PAGE_SIZE (descriptor_list.hpp:42) forced for config buffers (config_buffer.cpp:300-311,
+#   FORCE_DEFAULT_PAGE_SIZE); no "Desc page size ... not optimal" warning was logged, so the page was not enlarged.
+#   descs x 512 is an upper bound: each CCW DMA transfer ends with a partial page and one NOP-padding descriptor is
+#   added per config buffer (config_buffer.cpp:132-156). HEF ground truth = sum of write_data_ccw_ptr.size (hef_proto_bytes.txt).
+# Context time = last - first action timestamp in the context, clock_cycle_MHz = 200 (from the JSON).
+# Inter-context / DDR actions in the JSON carry no byte counts (only channel/stream indices), so edge bytes come from the HEF.
+
+## batch 1 (run fps 23.98, batch period 41.71 ms)
+context           fetches  descs ch0  descs ch1   descs     x512 B  HEF cfg B   ratio  span ms IC/DDR/boundary activations
+activation              0          0          0       0          0          -       -     0.02 {}
+preliminary             2      10901       5279   16180    8284160    8283488  1.0001    11.06 {'inter_context_output': 6, 'boundary_input': 1}
+dynamic_0              41       4437       4135    8572    4388864    4377392  1.0026    10.11 {'inter_context_output': 6, 'boundary_input': 1}
+dynamic_1              74       4858       7057   11915    6100480    6081432  1.0031    10.85 {'ddr_buffer_output': 1, 'inter_context_output': 2, 'ddr_buffer_input': 1, 'inter_context_input': 5}
+dynamic_2              28       2223       1522    3745    1917440    1910904  1.0034     8.78 {'boundary_output': 2, 'inter_context_output': 3, 'inter_context_input': 4}
+dynamic_3              33      10759       5176   15935    8158720    8149280  1.0012    11.17 {'boundary_output': 4, 'inter_context_input': 3}
+batch_switching         0          0          0       0          0          -       -     0.00 {'inter_context_output': 6}
+dynamic total: 40167 descs x512 = 20565504 B per batch (HEF 20,519,008 B); dynamic span sum 40.92 ms
+
+## batch 8 (run fps 50.62, batch period 158.05 ms)
+context           fetches  descs ch0  descs ch1   descs     x512 B  HEF cfg B   ratio  span ms IC/DDR/boundary activations
+activation              0          0          0       0          0          -       -     0.02 {}
+preliminary             2      10901       5279   16180    8284160    8283488  1.0001    11.07 {'inter_context_output': 6, 'boundary_input': 1}
+dynamic_0              41       4437       4135    8572    4388864    4377392  1.0026    50.10 {'inter_context_output': 6, 'boundary_input': 1}
+dynamic_1              74       4858       7057   11915    6100480    6081432  1.0031    35.60 {'ddr_buffer_output': 1, 'inter_context_output': 2, 'ddr_buffer_input': 1, 'inter_context_input': 5}
+dynamic_2              28       2223       1522    3745    1917440    1910904  1.0034    49.65 {'boundary_output': 2, 'inter_context_output': 3, 'inter_context_input': 4}
+dynamic_3              33      10759       5176   15935    8158720    8149280  1.0012    19.19 {'boundary_output': 4, 'inter_context_input': 3}
+batch_switching         0          0          0       0          0          -       -     0.00 {'inter_context_output': 6}
+dynamic total: 40167 descs x512 = 20565504 B per batch (HEF 20,519,008 B); dynamic span sum 154.54 ms
+
+## Observations
+- Descriptor counts are identical for b1 and b8 -> dynamic-context config (weights + register config) is fetched once
+  per context per batch, i.e. ~20.5 MB H2D per batch independent of B. Preliminary config (8.28 MB) is fetched only at
+  activation (batch_counter 1).
+- preliminary + dynamic descs = 56,347 x 512 = 28,849,664 B vs HEF CCW section 28,802,496 B (+0.16%, page/NOP rounding).
