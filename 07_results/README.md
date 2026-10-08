@@ -70,7 +70,7 @@ build/bin/yvo_pipeline \
    > 2026-09-21 정정: 이 색인이 한때 1.48(= P2 반올림)로 적었다가 1.41(= preproc_bench)로 "고쳤는데",
    > **둘은 애초에 다른 측정이었다.** 하나로 합치려 한 것이 실수였다.
 3. **처리량 상한은 PCIe Gen3 x1 이 정한다.** `T(B) = 24.8 + 16.2·B ms`, 점근 상한 61.6 FPS, 실측 51.7.
-4. **파이프라인에서 처리량·지연을 지배하는 것은 batch 가 아니라 slots 다.** 지연 ≈ `slots × 프레임 주기`.
+4. **파이프라인에서 지연은 slots 가, 처리량의 천장은 batch 가 정한다.** 지연 ≈ `slots × 프레임 주기`, FPS = min(`B / T(B)`, 슬롯 제약)이고 천장은 slots = 2B 에서 닿는다([`grid_gpu_postproc`](op_point/runs/grid_gpu_postproc/summary.md), 2026-10-08 — `op_point/summary.md` §4 의 "batch 무의미"·§4.3 을 정정).
 5. **표시 해상도를 낮추면 오히려 비싸진다.**(V3D 960 MHz 측정) 1:1 경로 **2.04 ns/px** vs 스케일 경로 **5.72**(720p) / **5.31**(900p) ns/px.
    1920×1080 1:1 이 기본. (픽셀당 값은 `시간 ÷ 픽셀 수` 로 계산한 것이다 — 원문은 ms 만 준다.)
 6. **원시 출력에 `InferModel` 은 쓸 수 없다** — `VDevice::configure()` + `infer_async()` 저수준 경로 필수.

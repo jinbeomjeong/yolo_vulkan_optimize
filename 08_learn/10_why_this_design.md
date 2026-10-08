@@ -210,7 +210,7 @@ PCIe는 세대(Gen2 / Gen3)와 레인 수(x1)로 대역폭이 정해진다. (→
 
 ---
 
-## 사슬 4 — 지배 변수는 batch가 아니라 slots다
+## 사슬 4 — 지연은 slots가, 처리량의 천장은 batch가 정한다
 
 ### 배경지식
 
@@ -236,9 +236,13 @@ NPU에 한 번에 여러 장을 묶어 보내는 것이 **batch**, 동시에 몇
 그리고 **같은 slots에서 batch를 바꾸면 차이가 0.25%뿐이다**
 (`b4/s8` 44.44 vs `b8/s8` 44.55). 사전에 세웠던 "b8/s8이 b4/s8보다 낫다"는 가설은 **기각됐다.**
 
+**재측정이 해석을 바꿨다(2026-10-08, 15설정 격자 — [`grid_gpu_postproc`](../07_results/op_point/runs/grid_gpu_postproc/summary.md)).**
+처리량은 `min(배치 천장 B / T(B), 슬롯 제약)`이고, 천장은 **slots = 2B**에서 닿는다(네 batch 모두 0.6% 안).
+`b8/s8`은 slots = B라 슬롯 제약에 걸려 batch 4의 천장과 우연히 겹친 것이다. batch가 무의미한 게 아니었다.
+
 ### 결정
 
-**운용점을 `slots`로 고른다.** batch는 천장에 닿은 뒤로는 의미가 없다.
+**batch로 필요한 처리량 천장을 고르고, slots는 2 × batch로 둔다.** 그보다 큰 slots는 지연만 늘린다.
 30 fps 실시간 표시용 최종 운용점은 **`--batch 2 --slots 4`** 다.
 
 부수적으로 알아낸 것: `--gpu-depth`는 **지연 레버가 아니다**(1 vs 3에서 142.06 vs 142.17 ms).
@@ -249,7 +253,7 @@ NPU에 한 번에 여러 장을 묶어 보내는 것이 **batch**, 동시에 몇
 기각된 가설의 출처는 `yvo_hailo_selftest`라는 단독 도구의 수치였는데,
 **그 수치가 파이프라인 수준으로 이전되지 않았다.** 그래서 이제 그 도구 수치로 운용점을 논하지 않는다.
 
-**근거**: [`op_point/summary.md`](../07_results/op_point/summary.md) §8.2
+**근거**: [`op_point/summary.md`](../07_results/op_point/summary.md) §8.2, [`grid_gpu_postproc`](../07_results/op_point/runs/grid_gpu_postproc/summary.md) §3·§5
 
 ---
 
@@ -488,7 +492,7 @@ PCIe Gen3 x1 ──▶ T(B)=24.8+16.2B, 상한 51.7 FPS
                   ├──▶ 목표를 FPS가 아니라 CPU로              (사슬 3)
                   └──▶ 다중 스트림 불가 (측정 불필요)
 
-지연 ≈ slots × 주기 ──▶ 운용점을 slots로 고른다 (b2/s4)      (사슬 4)
+FPS = min(B/T(B), 슬롯) ──▶ batch로 천장, slots = 2B (b2/s4) (사슬 4)
 
 V3D가 타일 렌더러 ──▶ 오버레이를 컴퓨트 래스터라이저로        (사슬 5)
 

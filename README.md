@@ -126,9 +126,10 @@ build/bin/yvo_pipeline \
 > 지금 기본값(1스레드)에서는 b8/s16 e2e 318.6 ms, b1/s1(gpu-depth 1) 79.1 ms, 표시 off b2/s4 GPU 후처리 34.99 FPS 로
 > 조금씩 짧고 FPS 는 같다([`dec_threads/`](07_results/dec_threads/summary.md)).
 
-**처리량·지연을 지배하는 것은 batch 가 아니라 slots 다.** 지연 ≈ `slots × 프레임 주기` 이고,
-같은 slots 에서 batch 차이는 0.25% 뿐이다. 다만 **batch 1 은 천장이 24.4 FPS** 라
-(배치당 고정비 24.8 ms) 30 fps 소스를 따라가려면 batch ≥ 2 가 필요하다.
+**지연은 slots 가, 처리량의 천장은 batch 가 정한다.** 지연 ≈ `slots × 프레임 주기` 이고,
+FPS = min(배치 천장 `B / T(B)`, 슬롯 제약)이며 천장은 **slots = 2 × batch** 에서 닿는다
+([`grid_gpu_postproc`](07_results/op_point/runs/grid_gpu_postproc/summary.md)). 그보다 큰 slots 는 지연만 늘린다.
+**batch 1 은 천장이 24.4 FPS** 라(배치당 고정비 24.8 ms) 30 fps 소스를 따라가려면 batch ≥ 2 가 필요하다.
 
 ### 3.4 실행 중단
 

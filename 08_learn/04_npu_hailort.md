@@ -215,7 +215,7 @@ cat /sys/bus/pci/devices/0001:01:00.0/current_link_width   # Pi 5 슬롯은 1
 찍혔다([같은 summary](../07_results/npu_benchmark/runs/gen3/summary.md)).
 
 > **미리 말해 두는 반전**: 위 표는 `hailortcli` 로 잰 **NPU 단독** 값이다.
-> 실제 파이프라인에서는 **배치가 거의 무의미하고 슬롯이 지배한다.** §4.6 (6)에서 다룬다.
+> 실제 파이프라인에서는 이 배치 천장에 **slots = 2 × batch일 때만** 닿는다. 그보다 적으면 슬롯이 먼저 막는다. §4.6 (7)에서 다룬다.
 
 ---
 
@@ -476,28 +476,19 @@ Python(`hailo_platform`)에서도 똑같다. `VDevice.create_params()`의 기본
 열린 질문이었다. 이 실험이 그것을 닫았다. **배치별 FPS도 전 구간에서 1.92~1.98배**로
 거의 정확히 2배였다.
 
-> **주의 — 두 모델을 섞지 마라.** `T(B) = 24.8 + 16.2·B`는 **`hailortcli`의 랜덤 입력
-> 경로**를 설명하는 식이다. 실제 파이프라인에 적용하면 틀린다
-> ([`07_results/op_point/summary.md`](../07_results/op_point/summary.md) §4.3:
-> 이 식으로 `b4/s4`를 예측하면 44.5인데 실측은 33.4다). 다음 항목이 그 이유다.
+> **주의 — 조건을 붙여 쓴다.** `T(B) = 24.8 + 16.2·B`는 `hailortcli`의 랜덤 입력 경로에서 잰 식이다.
+> 파이프라인에서는 **slots ≥ 2B일 때의 배치 천장** `B / T(B)`로만 쓴다. 이 조건에서 실측 FPS와 0.6% 안에서 맞는다
+> ([`grid_gpu_postproc`](../07_results/op_point/runs/grid_gpu_postproc/summary.md) §3.1). slots < 2B이면 슬롯이 제약이라 이 식이 처리량을 과대 예측한다.
+> 예전에 "파이프라인에는 맞지 않는다"는 근거로 든 `b4/s4`(예측 44.5, 실측 33.4 — [`op_point/summary.md`](../07_results/op_point/summary.md) §4.3)가
+> 바로 slots = B인 경우였다. 다음 항목이 그 구조다.
 
-### (7) 처리량·지연을 지배하는 것은 batch가 아니라 **slots**다
+### (7) 지연은 slots가, 처리량의 천장은 batch가 정한다
 
-§4.4에서 "배치를 키우면 처리량이 오른다"고 배웠다. **실제 파이프라인에서는 그렇지 않았다.**
-정본은 [`07_results/op_point/summary.md`](../07_results/op_point/summary.md) §4와 §8이다.
+§4.4에서 "배치를 키우면 처리량이 오른다"고 배웠다. 파이프라인에서는 **조건이 붙는다.**
+처음 6설정 스윕([`op_point/summary.md`](../07_results/op_point/summary.md) §4)은 "batch는 거의 무의미하고 slots가 지배한다"고
+결론냈다. 2026-10-08의 15설정 격자 재측정([`grid_gpu_postproc`](../07_results/op_point/runs/grid_gpu_postproc/summary.md))이 이것을 바로잡았다.
 
-**같은 slots에서 batch를 바꿔도 거의 변화가 없다.**
-
-| 설정 | FPS | NPU 지연 |
-|---|---:|---:|
-| `b4/s8` | 44.440 | 173.12 ms |
-| `b8/s8` | 44.550 | 172.59 ms |
-| | **차이 0.25%** | **사실상 동률** |
-| `b2/s4` | **34.970** | 111.53 ms |
-| `b4/s4` | 33.420 | 107.60 ms |
-| | **작은 배치가 4.6% 빠르다** | |
-
-**slots를 바꾸면 모든 것이 바뀐다.**
+**지연은 slots가 정한다.** 처음 스윕의 네 지점이다.
 
 | slots | FPS | 프레임 주기 | NPU 지연 | **지연 ÷ 주기** |
 |---:|---:|---:|---:|---:|
@@ -519,13 +510,31 @@ Python(`hailo_platform`)에서도 똑같다. `VDevice.create_params()`의 기본
 ```
 
 **즉 `--slots`는 "큐 깊이"의 다른 이름이고, 그것이 곧 in-flight다.**
-HailoRT는 걸려 있는 요청들을 자기가 알아서 묶어 처리하므로, 우리가 지정한 `batch`는
-사실상 "스케줄러 버스트 크기" 힌트에 그친다.
 
-> **실용적 결론**([같은 summary](../07_results/op_point/summary.md) §8.2):
-> 배치의 천장에 닿은 뒤로 slots는 **순수하게 지연만 사는 손해 레버**다.
-> `b2/s8`은 `b2/s4`와 FPS가 같은데(34.97) NPU 지연만 110 → 224 ms로 늘어난다.
-> 그래서 배포 운용점이 `b2/s4`다.
+**처리량은 두 제약 중 작은 쪽이다.**
+
+```
+ FPS = min( B / T(B)   ← 배치 천장. slots ≥ 2B 일 때 닿는다
+            슬롯 제약   ← slots < 2B 이면 이쪽이 먼저 걸린다 )
+```
+
+| batch B | 배치 천장 실측 (slots = 2B) | `B / T(B)` | slots를 2B보다 늘리면 (지연은 e2e) |
+|---:|---:|---:|---|
+| 1 | 24.42 (`b1/s2`) | 24.39 | `b1/s8`도 24.42, 지연만 120 → 365 ms |
+| 2 | 34.99 (`b2/s4`) | 34.97 | `b2/s8`도 34.98, 지연만 140 → 254 ms |
+| 4 | 44.48 (`b4/s8`) | 44.64 | slots 상한 8이라 더 못 늘린다 |
+| 8 | 51.50 (`b8/s16`) | 51.81 | slots 상한 16 |
+
+slots = B이면 한 배치가 돌아오기 전에 다음 배치를 채울 수 없어 배치마다 약 24 ms가 더 걸린다(원인 미확인).
+그 결과 `b4/s4`(34.92)는 `b2/s4`(34.99)와, `b8/s8`(45.07)은 `b4/s8`(44.48)과 FPS가 거의 같다.
+**처음 스윕이 "같은 slots에서 batch는 무의미하다"고 본 것은 이 겹침 때문이다.**
+(처음 스윕의 `b4/s4` 33.42는 그 설정만 GPU 시간이 튄 회차라 재측정에서 34.92로 올랐다.)
+
+> **실용적 결론:**
+> - 천장에 닿으려면 **slots = 2B**가 필요하다. 그보다 큰 slots는 **순수하게 지연만 사는 손해 레버**다.
+> - 30 fps 소스에는 batch 2의 천장(35 FPS)이면 충분하므로 배포 운용점이 `b2/s4`다.
+> - batch 1의 천장은 24.4 FPS라 slots를 아무리 늘려도 30 fps에 못 미친다.
+> - slots 상한은 HEF 스트림 큐 깊이에서 온다(batch 1·2·4는 8, batch 8은 16).
 
 ### (8) 백프레셔 이중 계수 — in-flight 검산이 잡아낸 버그
 
@@ -762,11 +771,11 @@ SoC 쪽 `vcgencmd get_throttled`는 계속 0이었으므로 **Pi가 아니라 Ha
 **Q4. 파이프라인에서 `--batch`를 2에서 8로 올렸는데 FPS가 거의 안 변했다. 왜인가?
 무엇을 올려야 하는가?**
 
-처리량을 지배하는 것은 batch가 아니라 **slots**(= 큐 깊이 = in-flight)이기 때문이다.
-같은 slots에서 batch 차이는 0.25%뿐이다(`b4/s8` 44.440 vs `b8/s8` 44.550).
-slots를 올리면 FPS가 오르지만 **지연 ≈ slots × 프레임 주기**로 같이 나빠진다
-([`07_results/op_point/summary.md`](../07_results/op_point/summary.md) §4, §8.2).
-다만 배치 천장에 닿은 뒤의 slots는 지연만 사는 손해 레버다.
+batch를 올려도 slots를 그대로 두면 **슬롯 제약**에 걸리기 때문이다. 처리량은 `min(배치 천장 B / T(B), 슬롯 제약)`이고,
+배치 천장에는 **slots = 2 × batch**일 때만 닿는다. `b8/s8`(45.07)이 `b4/s8`(44.48)과 거의 같은 것도 이 때문이다.
+그러니 batch와 함께 slots를 2 × batch로 올려야 한다(`b8/s16` 51.50). 대가로 **지연 ≈ slots × 프레임 주기**만큼 늘어난다
+([`grid_gpu_postproc`](../07_results/op_point/runs/grid_gpu_postproc/summary.md) §3, [`op_point/summary.md`](../07_results/op_point/summary.md) §8.2).
+2 × batch를 넘는 slots는 지연만 사는 손해 레버다.
 
 **Q5. Little's law를 이 파이프라인의 말로 쓰고, 그것이 어떤 버그를 잡았는지 말하라.**
 
