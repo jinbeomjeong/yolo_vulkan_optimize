@@ -22,6 +22,7 @@ Vulkan(V3D GPU)으로 밀어낸** 프로젝트다. 디코드·전처리·추론�
 >   ([`dec_threads/summary.md`](07_results/dec_threads/summary.md) — 위 표의 101.20 은 **중앙값**이라 섞지 않는다).
 > - V3D 클럭이 바뀌어도 FPS·CPU 는 그대로이고 GPU 전처리만 약 14% 빨라졌다([`bootloader_20260925`](07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)).
 > - 현재 기본값의 **표시 off 정식 기준선**(2026-10-08): b8s16 51.50 fps · CPU 0.869 ms/frame, GPU NMS 는 CPU NMS 대비 회귀 없음·검출 바이트 동일([`gpu_nms_e2e/`](07_results/gpu_nms_e2e/summary.md)). 표시 on 정식 측정은 [`display_planes_e2e/`](07_results/display_planes_e2e/summary.md)에 있다 — Vulkan 합성 소스 페이싱 b2/s4 CPU 2.059 ms/frame, 평면 경로는 CPU −0.44 ms/f·V3D −72%·지연 같음(`--slots 6` 필요). 위 표와는 조건이 달라 섞지 않는다.
+> - 혼잡 장면(MOT20, 후보 약 11배)에서도 FPS 그대로·검출 바이트 동일·CPU로 넘긴 프레임 0이다. 디코딩 후보 버퍼 4096 넘침은 이 HEF로는 닿지 않아(양자화 바닥에서도 최대 1925) 고치지 않고 남겼다([`nms_crowd_stress/`](07_results/nms_crowd_stress/summary.md)).
 
 ---
 

@@ -604,7 +604,7 @@ NPU는 프레임마다 텐서 **6개**를 내놓는다(스케일 3개 × {클래
 표의 ms 값과 아래 워크그룹 스윕은 모두 **V3D 960 MHz** 조건이다. 1150 MHz(부트로더 2026-09-25)에서 전처리는 표시 off 기준
 b1 1.81 ms, b4·b8 약 2.0 ms다([`bootloader_20260925`](../07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)). 나머지 셰이더는 1150 MHz에서 다시 재지 않았다.
 
-¹ 정식 A/B [`gpu_nms_e2e`](../07_results/gpu_nms_e2e/summary.md)(2026-10-08, 표시 off, b2s4·b8s16, 폴백 0). 단독 프로브 0.054 ms, 후보 1024 최악 3.05 ms. CPU 억제는 약 2 µs/frame이라 CPU 절감은 보이지 않고 회귀도 없다.
+¹ 정식 A/B [`gpu_nms_e2e`](../07_results/gpu_nms_e2e/summary.md)(2026-10-08, 표시 off, b2s4·b8s16, 폴백 0). 단독 프로브 0.054 ms, 후보 1024 최악 3.05 ms. CPU 억제는 약 2 µs/frame이라 CPU 절감은 보이지 않고 회귀도 없다. 혼잡 장면(후보 평균 약 180개)에서는 0.178~0.186 ms이고, 후보가 1024개를 넘는 프레임은 CPU로 넘긴다([`nms_crowd_stress`](../07_results/nms_crowd_stress/summary.md)).
 색 변환식과 letterbox 규칙의 상세는 [07_video_display.md](07_video_display.md),
 텐서 해석은 [03_yolo_tensor.md](03_yolo_tensor.md) 에 있다.
 
