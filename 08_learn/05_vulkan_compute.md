@@ -594,7 +594,7 @@ NPU는 프레임마다 텐서 **6개**를 내놓는다(스케일 3개 × {클래
 | 셰이더 | 입력 → 출력 | 하는 일 | 실측 중앙값 |
 |---|---|---|---:|
 | [`sand_letterbox.comp`](../02_shaders/sand_letterbox.comp) | 디코더 SAND128 NV12 → NHCW 640×640×3 | de-SAND + 축소 + YUV→RGB + letterbox 패딩 | **2.088 ms** |
-| [`yolo_decode.comp`](../02_shaders/yolo_decode.comp) | 원시 6텐서 → 후보 박스 ~16개 | dequantize + DFL softmax + threshold + 좌표 역변환 | **0.626 ms** |
+| [`yolo_decode.comp`](../02_shaders/yolo_decode.comp) | 원시 6텐서 → 후보 박스 ~16개 | dequantize + DFL softmax + threshold + 좌표 역변환 | **0.626 ms** (표의 값은 960 MHz. 1150 MHz 단계 분해: 클래스 스캔 약 0.30 ms 고정, emit·DFL은 후보 수에 비례, 좌표 역변환은 0.01 ms 미만 — [`postproc_stage_cost`](../07_results/postproc_stage_cost/summary.md)) |
 | [`display_convert.comp`](../02_shaders/display_convert.comp) | 디코더 SAND128 NV12 → 스왑체인 RGBA | de-SAND + YUV→RGB (1:1) | **4.153 ms** |
 | [`overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) | 검출 목록 → 스왑체인 RGBA (변형 `overlay_boxes_buf`: → AB24 dma-buf 버퍼) | 박스 테두리 + 라벨 글자 + HUD 그리기 | **0.128 ms** (image 경로) |
 | [`efficient_nms.comp`](../02_shaders/efficient_nms.comp) | 후보 박스 → 최종 검출 | bitonic 정렬 + 클래스별 greedy 억제 | **0.049~0.050 ms** (파이프라인 중앙값, 1150 MHz ¹) |

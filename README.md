@@ -318,7 +318,7 @@ bash 06_tools/bench/gst_pipeline_bench.sh # 앱 대 GStreamer 연구 경로(yvo_
 |---|---|
 | `yvo_drm_dump` | 디코더 dma-buf descriptor 덤프, de-SAND 바이트 비교, 디코드 성능 |
 | `yvo_preproc_bench` | GPU 전처리 단독 성능·워크그룹 스윕 |
-| `yvo_postproc_probe` | GPU 후처리 프로브 (`--probe fixture` 는 **NPU 불필요**, 수 초) |
+| `yvo_postproc_probe` | GPU 후처리 프로브 (`--probe fixture` 는 **NPU 불필요**, 수 초. `--probe stages` 는 디코딩 단계별 GPU 시간) |
 | `yvo_perf_counters` | V3D 성능 카운터 열거(93개, 1 pass 최대 32개)와 쿼리 동작 확인 (`--csv`, NPU 불필요) |
 | `yvo_hailo_raw_probe` | 원시 출력 경로 프로브 (`--probe f0` 이 입출력 dma-buf 동시 사용 관문) |
 | `yvo_hailo_selftest` | NPU 러너 단독 검증 |
@@ -358,7 +358,7 @@ grim -o HDMI-A-1 shot.png
 
 - **[`08_learn/`](08_learn/00_README.md)** — 배경지식이 없다면 **여기부터**. NPU·Vulkan·dma-buf·YOLO 텐서를
   맨 밑바닥부터 설명하고, 각 개념이 이 프로젝트의 어느 결정으로 이어졌는지 연결한 자습 교재 12장
-- **[`07_results/README.md`](07_results/README.md)** — 19개 실험의 색인과 결론. **수치를 인용하기 전에 여기부터**
+- **[`07_results/README.md`](07_results/README.md)** — 20개 실험의 색인과 결론. **수치를 인용하기 전에 여기부터**
 - [`07_results/op_point/summary.md`](07_results/op_point/summary.md) §8 — 운용점 확정 근거와 최종 결론
 - [`07_results/display_e2e/summary.md`](07_results/display_e2e/summary.md) — 표시 통합 측정
 - [`07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md`](07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md) §4.3 — 왜 이 설계인가(메모리 제약)

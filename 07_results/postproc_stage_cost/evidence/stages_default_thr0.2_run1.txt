@@ -1,0 +1,40 @@
+yvo_postproc_probe --probe stages   (plan §6.2 P3)
+[fixture] dir=04_data/raw_tensors frames=5  score_thr=0.2000 (HEF 0.20)
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64  validation=0
+[cfg] slots=5 (stream frames 0..4) max_dets=4096 local=10x6 rounds=3 warmup=50 perf_frames=500
+
+== gate: Full (embedded SPIR-V) candidate count vs cpu_yolov8_candidates(), every fixture frame ==
+frame  cpu  gpu  overflow  g5_detail  count
+    0    25   25         0         ok  ok
+    1    20   20         0         ok  ok
+    2    20   20         0         ok  ok
+    3    30   30         0         ok  ok
+    4    20   20         0         ok  ok
+[gate] PASS  candidates/frame: all 5 frames 23.00, stream frames 23.00
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop1.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop2.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop3.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop1.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop2.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop3.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop1.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop2.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop3.spv
+
+== pass 1 GPU time per variant (3 rounds x 500 frames, ms) ==
+variant   median     p90      min    n     emitted(slot0)
+S1        0.3043   0.3217   0.0036  1500  0
+S2        0.3692   0.3925   0.0058  1500  0
+S3        0.3692   0.4182   0.0191  1500  0
+Full      0.5001   0.5560   0.4609  1500  25
+
+== stage differences (medians, ms) ==
+①② class scan + rejection = S1          0.3043
+③  DFL                    = S2 - S1     0.0649
+④  letterbox inverse      = S3 - S2    -0.0000
+⑤  emit                   = Full - S3   0.1309
+   Full                                  0.5001
+
+[validation] errors=0 warnings=1
+[RESULT] stages PASS

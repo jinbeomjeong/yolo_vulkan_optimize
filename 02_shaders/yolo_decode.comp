@@ -225,7 +225,7 @@ void main() {
     YVO_STOP_AT(3, floatBitsToUint(x1) ^ floatBitsToUint(y1) ^ floatBitsToUint(x2) ^ floatBitsToUint(y2))
 
     // ── ⑤ emit: **every** class exceeding the threshold (multi-class, appendix A.5) ────────────────
-    // Rescan classes per anchor. Only a few dozen groups survive, so the reload cost is negligible,
+    // Rescan classes per anchor. Measured cost of ⑤ is 26% of pass 1 (crowd: 41-45%, 07_results/postproc_stage_cost),
     // and in exchange the dynamic indexing of vec4 disappears (a is a constant-bound loop variable, so the compiler unrolls it).
     const uint key_hw = (uint(pc.scale_id) << 21) | (uint(h) << 14);
     for (int a = 0; a < 4; ++a) {
