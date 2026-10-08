@@ -175,10 +175,10 @@ struct Options {
     //   heap  = ImportHeap (dma-heap allocation + Vulkan import)
     std::string alloc = "plain";
     std::string heap_sync = "on";         // on | off | both — DMA_BUF_IOCTL_SYNC of ImportHeap (B.10 R2/R3)
-    int rounds = 3;                       // gpuab: number of plain↔heap interleaved rounds
+    int rounds = 3;                       // gpuab/stages: number of interleaved rounds
     int v3_window = 4096;                 // v3: per-tensor window size (B) used by line-dirty/stale-read
     std::string nms_cands = "16,64,256,1024";   // nms: synthetic candidate counts (1024 = kMaxSelected, worst case)
-    float nms_score = kHefScoreThreshold;       // nms: decode score threshold for the fixture stream
+    float nms_score = kHefScoreThreshold;       // nms/stages: decode score threshold (--score = --nms-score)
     bool out_dir_set = false;             // whether --out-dir was given explicitly (decides the per-probe default path)
     std::string api = "read_async";       // live: read_async | infer_async
     std::uint16_t batch = 1;
@@ -190,7 +190,7 @@ struct Options {
 
 void usage() {
     std::puts(
-        "yvo_postproc_probe --probe {fixture|sweep|nms|live|stale|heapimport|gpuab|v3} [options]\n"
+        "yvo_postproc_probe --probe {fixture|sweep|nms|stages|live|stale|heapimport|gpuab|v3} [options]\n"
         "  --fixture-dir DIR      fixture directory (default <repo>/04_data/raw_tensors = YVO_FIXTURE_DIR)\n"
         "  --out-dir DIR          evidence file directory (default <repo>/build/out/yvo_postproc_probe)\n"
         "  --out-file NAME        evidence file name (default p3_<probe>.txt)\n"
@@ -198,7 +198,7 @@ void usage() {
         "  --warmup N             warm-up before measurement (default 30)\n"
         "  --repeats N            G6 determinism repeats (default 10)\n"
         "  --slots N              YoloPostproc slot count (default 5)\n"
-        "  --local N,M            local_size_x,local_size_y (default 10,6)\n"
+        "  --local N,M            local_size_x,local_size_y (default 10,6; stages always uses the config default)\n"
         "  --max-dets N           candidate cap (default 4096)\n"
         "  --live-frames N        frame count in live mode (default 20)\n"
         "  --api NAME             live: read_async | infer_async (default read_async)\n"
@@ -207,10 +207,10 @@ void usage() {
         "  --stale-barrier X      on | off | both (default both)\n"
         "  --alloc X              plain | heap  raw output allocation path (default plain, Appendix B step 4)\n"
         "  --heap-sync X          on | off | both  DMA_BUF_IOCTL_SYNC of ImportHeap (default on)\n"
-        "  --rounds N             gpuab: plain↔heap interleaved rounds (default 3)\n"
+        "  --rounds N             gpuab: plain↔heap / stages: S1,S2,S3,Full interleaved rounds (default 3)\n"
         "  --v3-window N          v3: per-tensor window size B for line-dirty/stale-read (default 4096)\n"
         "  --nms-cand LIST        nms: synthetic all-survive candidate counts, comma-separated (default 16,64,256,1024)\n"
-        "  --nms-score T          nms: decode score threshold of the fixture stream (default 0.2 = HEF)\n"
+        "  --score T              nms/stages: decode score threshold of the fixture stream (default 0.2 = HEF; alias --nms-score)\n"
         "  --heap PATH            heapimport: dma-heap node (default vidbuf_cached → system fallback)\n"
         "  --no-headroom          heapimport: set the B.12 headroom to 0 (negative control — conv71_178 is expected to throw)\n"
         "  --validation           explicitly enable the validation layer in the context\n"
@@ -2400,6 +2400,157 @@ int run_nms(const Options& o, Tee& log) {
     return pass ? 0 : 1;
 }
 
+// ───────────────────────────────────────── stages (pass-1 stage cost by differencing, **no NPU needed**)
+//  --probe stages
+//      Runs the same fixture stream through four builds of `yolo_decode.comp` and takes differences of the pass 1 GPU time:
+//        S1 = stop after ② (class scan + group rejection), S2 = stop after ③ DFL, S3 = stop after ④ letterbox inverse,
+//        Full = the embedded production SPIR-V. ①② = S1, ③ = S2 − S1, ④ = S3 − S2, ⑤ emit = Full − S3.
+//      S1..S3 are `build/02_shaders/diag/yolo_decode_stop<N>.spv` (-DYVO_DECODE_STOP=N), injected with
+//      `YVO_YOLO_DECODE_SPV` (read once in the YoloPostproc constructor). Each cut sinks every component of the
+//      stage's result into the header's text[31] with one atomicXor per surviving group, so ⑤ = emit − that atomic.
+//      Variants are interleaved within each of `--rounds` rounds (DVFS drift), each round `--warmup` + `--perf-frames`
+//      submissions cycling the slots. Local size is the YoloPostprocConfig default (the production value).
+//      Gate: Full's candidate count == `cpu_yolov8_candidates()` on every fixture frame, and S1..S3 emit 0 candidates.
+int run_stages(const Options& o, Tee& log) {
+    if (o.perf_frames < 1) throw std::runtime_error("--perf-frames must be >= 1");
+    if (o.rounds < 1) throw std::runtime_error("--rounds must be >= 1");
+    FixtureRig rig = load_rig(o);
+    log(fmt("[fixture] dir=%s frames=%d  score_thr=%.4f (HEF %.2f)", o.fixture_dir.c_str(), rig.fs.frames,
+            static_cast<double>(o.nms_score), static_cast<double>(kHefScoreThreshold)));
+
+    struct Variant {
+        const char* name;
+        std::string spv;           // empty = embedded production SPIR-V
+        std::vector<double> ms;    // pass 1 samples over all rounds
+        std::size_t emitted = 0;   // candidates read back from slot 0 after the last round
+    };
+    const std::string dir = YVO_DECODE_STAGE_SPV_DIR;
+    std::vector<Variant> vars{{"S1", dir + "/yolo_decode_stop1.spv", {}, 0},
+                              {"S2", dir + "/yolo_decode_stop2.spv", {}, 0},
+                              {"S3", dir + "/yolo_decode_stop3.spv", {}, 0},
+                              {"Full", "", {}, 0}};
+    for (const Variant& v : vars)
+        if (!v.spv.empty() && !std::filesystem::exists(v.spv))
+            throw std::runtime_error("stage SPIR-V missing (build yvo_postproc_probe first): " + v.spv);
+    if (const char* pre = std::getenv("YVO_YOLO_DECODE_SPV"); pre && *pre)
+        log(fmt("[warn] YVO_YOLO_DECODE_SPV=%s was set; it is ignored (Full always uses the embedded SPIR-V)", pre));
+
+    yvo::vk::VulkanContextOptions co;
+    co.enable_validation = o.validation;
+    co.validation_sync = o.sync_validation;
+    co.verbose = o.verbose;
+    yvo::vk::VulkanContext ctx(co);
+    log(fmt("[vk] device=%s  timestamps=%d period=%.3f ns valid_bits=%u  validation=%d", ctx.device_name(),
+            ctx.timestamps_supported() ? 1 : 0, static_cast<double>(ctx.timestamp_period()),
+            ctx.timestamp_valid_bits(), ctx.validation_layer_active() ? 1 : 0));
+    if (!ctx.timestamps_supported()) throw std::runtime_error("--probe stages needs timestamp queries");
+
+    YoloPostprocConfig pc;   // local_size_x/y stay at the production default on purpose
+    pc.num_slots = std::max(1, std::min(o.slots, rig.fs.frames));
+    pc.max_dets = o.max_dets;
+    pc.score_thr = o.nms_score;
+    pc.input_alloc = YoloInputAlloc::Plain;
+    pc.input_sync = YoloInputSync::HostWrite;
+    pc.verbose = o.verbose;
+    log(fmt("[cfg] slots=%d (stream frames 0..%d) max_dets=%d local=%ux%u rounds=%d warmup=%d perf_frames=%d",
+            pc.num_slots, pc.num_slots - 1, pc.max_dets, pc.local_size_x, pc.local_size_y, o.rounds, o.warmup,
+            o.perf_frames));
+
+    // Builds YoloPostproc with the variant's SPIR-V. The environment variable is read only in the constructor,
+    // so it is cleared right after construction (Full never sees a leftover path).
+    auto make_pp = [&](const Variant& v) {
+        if (v.spv.empty())
+            unsetenv("YVO_YOLO_DECODE_SPV");
+        else
+            setenv("YVO_YOLO_DECODE_SPV", v.spv.c_str(), 1);
+        std::unique_ptr<YoloPostproc> pp;
+        try {
+            pp = std::make_unique<YoloPostproc>(ctx, rig.layout, pc);
+        } catch (...) {
+            unsetenv("YVO_YOLO_DECODE_SPV");
+            throw;
+        }
+        unsetenv("YVO_YOLO_DECODE_SPV");
+        return pp;
+    };
+
+    // ── gate: Full vs cpu_yolov8_candidates() on every fixture frame (slot 0 refilled per frame) ──
+    log("");
+    log("== gate: Full (embedded SPIR-V) candidate count vs cpu_yolov8_candidates(), every fixture frame ==");
+    log("frame  cpu  gpu  overflow  g5_detail  count");
+    bool gate_ok = true;
+    std::size_t total_cand = 0, stream_cand = 0;
+    {
+        auto pp = make_pp(vars.back());
+        for (int f = 0; f < rig.fs.frames; ++f) {
+            fill_slot(*pp, 0, rig.frames[static_cast<std::size_t>(f)]);
+            pp->submit(0, rig.fs.lb, rig.fs.src_w, rig.fs.src_h);
+            pp->wait(0);
+            const auto gpu = pp->read_candidates(0);
+            const std::uint8_t* ptr[kYoloNumTensors];
+            for (int t = 0; t < kYoloNumTensors; ++t) ptr[t] = pp->raw_host_ptr(0, t);
+            std::vector<DetectionKeyed> cpu;
+            {
+                const RawRead rr(*pp, 0);   // R2 (no-op for Plain; kept for symmetry with run_fixture)
+                cpu = yvo::cpu_yolov8_candidates(make_raw_set(rig.layout, ptr), o.nms_score, rig.fs.lb,
+                                                 rig.fs.src_w, rig.fs.src_h);
+            }
+            const Compare c = compare_candidates(cpu, gpu);
+            const bool eq = cpu.size() == gpu.size() && pp->overflow(0) == 0;
+            gate_ok = gate_ok && eq;
+            total_cand += gpu.size();
+            if (f < pc.num_slots) stream_cand += gpu.size();
+            log(fmt("%5d  %4zu %4zu  %8u  %9s  %s", f, cpu.size(), gpu.size(), pp->overflow(0),
+                    c.ok() ? "ok" : "DIFF", eq ? "ok" : "MISMATCH"));
+        }
+    }
+    log(fmt("[gate] %s  candidates/frame: all %d frames %.2f, stream frames %.2f", gate_ok ? "PASS" : "FAIL",
+            rig.fs.frames, static_cast<double>(total_cand) / rig.fs.frames,
+            static_cast<double>(stream_cand) / pc.num_slots));
+
+    // ── continuous stream per variant, interleaved over rounds ──────────────────────────────────
+    for (int round = 0; round < o.rounds; ++round) {
+        for (Variant& v : vars) {
+            auto pp = make_pp(v);
+            for (int s = 0; s < pp->num_slots(); ++s) fill_slot(*pp, s, rig.frames[static_cast<std::size_t>(s)]);
+            for (int i = 0; i < o.warmup + o.perf_frames; ++i) {
+                const int s = i % pp->num_slots();
+                pp->submit(s, rig.fs.lb, rig.fs.src_w, rig.fs.src_h);
+                pp->wait(s);
+                if (i >= o.warmup) v.ms.push_back(pp->last_pass1_ms());
+            }
+            v.emitted = pp->read_candidates(0).size();
+        }
+    }
+
+    log("");
+    log(fmt("== pass 1 GPU time per variant (%d rounds x %d frames, ms) ==", o.rounds, o.perf_frames));
+    log("variant   median     p90      min    n     emitted(slot0)");
+    bool cut_ok = true;
+    for (const Variant& v : vars) {
+        log(fmt("%-7s  %7.4f  %7.4f  %7.4f  %4zu  %zu", v.name, percentile(v.ms, 0.5), percentile(v.ms, 0.9),
+                *std::min_element(v.ms.begin(), v.ms.end()), v.ms.size(), v.emitted));
+        if (!v.spv.empty() && v.emitted != 0) cut_ok = false;   // a cut variant must never reach ⑤
+    }
+    const double m1 = percentile(vars[0].ms, 0.5), m2 = percentile(vars[1].ms, 0.5);
+    const double m3 = percentile(vars[2].ms, 0.5), mf = percentile(vars[3].ms, 0.5);
+    log("");
+    log("== stage differences (medians, ms) ==");
+    log(fmt("①② class scan + rejection = S1        %8.4f", m1));
+    log(fmt("③  DFL                    = S2 - S1   %8.4f", m2 - m1));
+    log(fmt("④  letterbox inverse      = S3 - S2   %8.4f", m3 - m2));
+    log(fmt("⑤  emit                   = Full - S3 %8.4f", mf - m3));
+    log(fmt("   Full                                %8.4f", mf));
+    if (!cut_ok) log("[cut] FAIL: a stage-cut variant emitted candidates (the injected SPIR-V was not used?)");
+
+    log("");
+    log(fmt("[validation] errors=%llu warnings=%llu", static_cast<unsigned long long>(ctx.validation_errors()),
+            static_cast<unsigned long long>(ctx.validation_warnings())));
+    const bool pass = gate_ok && cut_ok && ctx.validation_errors() == 0;
+    log(fmt("[RESULT] stages %s", pass ? "PASS" : "FAIL"));
+    return pass ? 0 : 1;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -2437,7 +2588,7 @@ int main(int argc, char** argv) {
             else if (a == "--rounds") o.rounds = std::stoi(next("--rounds"));
             else if (a == "--v3-window") o.v3_window = std::stoi(next("--v3-window"));
             else if (a == "--nms-cand") o.nms_cands = next("--nms-cand");
-            else if (a == "--nms-score") o.nms_score = std::stof(next("--nms-score"));
+            else if (a == "--nms-score" || a == "--score") o.nms_score = std::stof(next(a.c_str()));
             else if (a == "--no-headroom") o.no_headroom = true;
             else if (a == "--heapimport") o.probe = "heapimport";
             else if (a == "--validation") o.validation = true;
@@ -2483,6 +2634,7 @@ int main(int argc, char** argv) {
         if (o.probe == "fixture") return run_fixture(o, log);
         if (o.probe == "sweep") return run_sweep(o, log);
         if (o.probe == "nms") return run_nms(o, log);
+        if (o.probe == "stages") return run_stages(o, log);
         if (o.probe == "live") return run_live(o, log);
         if (o.probe == "stale") return run_stale(o, log);
         log(fmt("unknown probe: %s", o.probe.c_str()));

@@ -30,8 +30,9 @@ yvo_add_tool(yvo_preproc_bench vulkan/preproc_bench.cpp
 # Linking the yvo_hailo library does **not add dependencies to yvo_vulkan itself**
 # (plan §5.2 link-level isolation — the link graphs of test_preproc / yvo_preproc_bench do not change).
 # yvo_shaders_diag: embedded header of heap_sum.comp used by --probe heapimport (Appendix B step 1)
+# yvo_shaders_decode_stages: yolo_decode_stop{1,2,3}.spv + their directory macro for --probe stages
 yvo_add_tool(yvo_postproc_probe vulkan/postproc_probe.cpp
-  LIBS yvo_vulkan yvo_shaders_diag yvo_toolkit yvo_testkit_postproc
+  LIBS yvo_vulkan yvo_shaders_diag yvo_shaders_decode_stages yvo_toolkit yvo_testkit_postproc
   OPTIONAL yvo_hailo=YVO_HAVE_HAILO)
 
 # VK_KHR_performance_query counter enumeration + pass analysis (+ query-pool sanity check with heap_sum.comp).

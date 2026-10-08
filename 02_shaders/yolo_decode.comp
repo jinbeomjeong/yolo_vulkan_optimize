@@ -162,6 +162,11 @@ void emit(float x1, float y1, float x2, float y2, float score, uint cls, uint ke
     atomicMax(dispatch_x, idx + 1u);
 }
 
+#ifndef YVO_DECODE_STOP   // diagnostic stage cut (02_shaders/diag/CMakeLists.txt): 1 = after ②, 2 = after ③, 3 = after ④
+#define YVO_STOP_AT(n, u)
+#else   // sink every component into text[31] (kChecksum uses text[0..5]) so the cut stage is not dead-code eliminated
+#define YVO_STOP_AT(n, u) if (YVO_DECODE_STOP == n) { const uvec4 s_ = (u); atomicXor(text[31], s_.x ^ s_.y ^ s_.z ^ s_.w); return; }
+#endif
 void main() {
     const int wi = int(gl_GlobalInvocationID.x);
     const int h = int(gl_GlobalInvocationID.y);
@@ -196,6 +201,7 @@ void main() {
     // ── ② Group rejection ──────────────────────────────────────────────────────────────────────
     const uint gmax = max(max(gmax4.x, gmax4.y), max(gmax4.z, gmax4.w));
     if (gmax < pc.q_thr_low) return;
+    YVO_STOP_AT(1, gmax4)
 
     // ── ③ DFL decode (once per group, 4 anchors at once) ────────────────────────────────────────────
     // cpu_yolov8_decode.hpp 4): ch = coord * reg_max + bin; subtract the per-coord max before softmax.
@@ -207,6 +213,7 @@ void main() {
     const vec4 d_t = dfl_dist(b0 + side_stride, Wp);
     const vec4 d_r = dfl_dist(b0 + 2 * side_stride, Wp);
     const vec4 d_b = dfl_dist(b0 + 3 * side_stride, Wp);
+    YVO_STOP_AT(2, floatBitsToUint(d_l) ^ floatBitsToUint(d_t) ^ floatBitsToUint(d_r) ^ floatBitsToUint(d_b))
 
     // ── ④ letterbox 640 coordinates → original coordinates (cpu_yolov8_decode.hpp 5)(6)) ──────────────────
     const vec4 cx = float(w0) + vec4(0.5, 1.5, 2.5, 3.5);
@@ -215,6 +222,7 @@ void main() {
     const vec4 y1 = clamp(((cy - d_t) * pc.stride - pc.pad_y) * pc.inv_scale, 0.0, pc.max_y);
     const vec4 x2 = clamp(((cx + d_r) * pc.stride - pc.pad_x) * pc.inv_scale, 0.0, pc.max_x);
     const vec4 y2 = clamp(((cy + d_b) * pc.stride - pc.pad_y) * pc.inv_scale, 0.0, pc.max_y);
+    YVO_STOP_AT(3, floatBitsToUint(x1) ^ floatBitsToUint(y1) ^ floatBitsToUint(x2) ^ floatBitsToUint(y2))
 
     // ── ⑤ emit: **every** class exceeding the threshold (multi-class, appendix A.5) ────────────────
     // Rescan classes per anchor. Only a few dozen groups survive, so the reload cost is negligible,
