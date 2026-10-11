@@ -664,11 +664,11 @@ int run(const Args& a) {
     if (display) { display->set_source_size(src_w, src_h); display->set_source_fps(src_fps); }
 #endif
 
-    std::FILE* jsonl = nullptr;
+    std::unique_ptr<std::FILE, decltype([](std::FILE* fp) { std::fclose(fp); })> jsonl;  // closed on every exit path
     if (!a.dump_dir.empty()) {
         std::filesystem::create_directories(a.dump_dir);
         const std::string p = a.dump_dir + "/detections.jsonl";
-        jsonl = std::fopen(p.c_str(), "w");
+        jsonl.reset(std::fopen(p.c_str(), "w"));
         if (!jsonl) {
             std::fprintf(stderr, "cannot open %s\n", p.c_str());
             return 1;
@@ -725,6 +725,16 @@ int run(const Args& a) {
     double fps_now = 0.0;
 
     auto on_result = [&ex](yvo::InferResult&& r) { ex.complete(std::move(r)); };
+    // Every exit path, exceptions included: stage (HailoRT callbacks → &ex) and display (done callback → &ex, decoder
+    // frames / import pins) must be destroyed before ex and dec. Their destructors drain and never throw.
+    auto release_stages = [&]() noexcept {
+        gpu_stage = nullptr;
+        stage.reset();
+#ifdef YVO_HAVE_DISPLAY
+        display.reset();
+#endif
+    };
+    struct ReleaseOnExit { decltype(release_stages)& f; ~ReleaseOnExit() { f(); } } release_on_exit{release_stages};
 
     // Record completed results in pts order
     auto flush_results = [&]() {
@@ -748,15 +758,15 @@ int run(const Args& a) {
             }
             total_dets += static_cast<long>(r.detections.size());
             if (jsonl) {
-                std::fprintf(jsonl, "{\"frame\":%lld,\"detections\":[", static_cast<long long>(r.pts));
+                std::fprintf(jsonl.get(), "{\"frame\":%lld,\"detections\":[", static_cast<long long>(r.pts));
                 for (std::size_t i = 0; i < r.detections.size(); ++i) {
                     const auto& d = r.detections[i];
-                    std::fprintf(jsonl, "%s{\"class\":%d,\"name\":\"%s\",\"score\":%.4f,\"box\":[%.1f,%.1f,%.1f,%.1f]}",
+                    std::fprintf(jsonl.get(), "%s{\"class\":%d,\"name\":\"%s\",\"score\":%.4f,\"box\":[%.1f,%.1f,%.1f,%.1f]}",
                                  i ? "," : "", d.class_id, class_name(d.class_id), static_cast<double>(d.score),
                                  static_cast<double>(d.x1), static_cast<double>(d.y1), static_cast<double>(d.x2),
                                  static_cast<double>(d.y2));
                 }
-                std::fprintf(jsonl, "]}\n");
+                std::fprintf(jsonl.get(), "]}\n");
             }
             if (auto it = png_src.find(r.pts); it != png_src.end()) {
                 char name[64];
@@ -1039,12 +1049,8 @@ int run(const Args& a) {
     //            → display release (swapchain/window / plane transport/box ring) → export fd close (FdCloser) → ctx → window
     pre.clear_import_cache();
     dec.close();
-    gpu_stage = nullptr;
-    stage.reset();
-#ifdef YVO_HAVE_DISPLAY
-    display.reset();
-#endif
-    if (jsonl) std::fclose(jsonl);
+    release_stages();   // runner release → display release (release_on_exit is a no-op after this)
+    jsonl.reset();   // fclose: same flush point as before
     const double soc_t1 = soc_temperature();
 
     const double wall_s = std::chrono::duration<double>(t1 - t0).count();

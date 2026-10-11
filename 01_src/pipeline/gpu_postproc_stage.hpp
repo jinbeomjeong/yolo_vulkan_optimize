@@ -19,8 +19,8 @@
 //   drain_one()      [main]  finishes the front of pp_q_ with a **blocking** wait
 //
 // ── Destruction order ─────────────────────────────────────────────────────────────────────────────────
-// The runner keeps the dma-buf fds mapped, so **the runner must die first.**
-// Members are declared pp_ → raw_ and destroyed in reverse, so raw_ goes first.
+// The runner keeps the dma-buf fds mapped, and its destructor drains HailoRT callbacks that lock ready_mtx_ / push ready_.
+// So ~GpuPostprocStage() resets raw_ **explicitly first**: before pp_ (fd mappings) and while ready_* are still alive.
 // Input fds are owned by the caller (FdCloser in main.cpp), output fds by YoloPostproc.
 #pragma once
 
@@ -110,7 +110,7 @@ private:
     void finish(int slot);   // turns a slot whose pp_->wait() finished into Done via the NMS result (or CPU suppression)
     void push_ready_to_gpu();   // drains ready_ and hands it to pp_
 
-    // Declaration order = construction order. Destruction is reversed, so raw_ dies before pp_ (the runner holds the fd mappings).
+    // Declaration order = construction order. ~GpuPostprocStage() resets raw_ first (see "Destruction order" above).
     GpuPostprocStageConfig cfg_;
     std::unique_ptr<yvo::vk::YoloPostproc> pp_;
     std::unique_ptr<yvo::HailoRawRunner> raw_;

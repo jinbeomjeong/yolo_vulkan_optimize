@@ -240,7 +240,11 @@ void HailoRunner::submit(const PreprocOutput& in, InferCallback cb) {
                 cv_.notify_all();
             });
         if (!job_exp) {
-            in_flight_.fetch_sub(1);
+            {   // No callback will come: decrement under the lock + notify, as the callback does, so drain() wakes.
+                std::lock_guard<std::mutex> lk(mtx_);
+                in_flight_.fetch_sub(1);
+            }
+            cv_.notify_all();
             throw HailoError("ConfiguredInferModel::run_async", job_exp.status());
         }
         job_exp.release().detach();

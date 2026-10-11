@@ -110,7 +110,7 @@ GpuPostprocStage::GpuPostprocStage(yvo::vk::VulkanContext& ctx, const GpuPostpro
     t_done_.assign(n, Clock::time_point{});
 }
 
-GpuPostprocStage::~GpuPostprocStage() = default;
+GpuPostprocStage::~GpuPostprocStage() { raw_.reset(); }   // drain HailoRT callbacks while ready_* are alive (.hpp)
 
 const char* GpuPostprocStage::alloc_name() const {
     switch (cfg_.input_alloc) {
