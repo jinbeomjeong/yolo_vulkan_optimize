@@ -72,6 +72,10 @@ configs_lat=(
   "lat_b2s2d1 |--mode dmabuf --layout nhcw --batch 2 --slots 2 --gpu-depth 1 --postproc host"
   "lat_b2s3d2 |--mode dmabuf --layout nhcw --batch 2 --slots 3 --gpu-depth 2 --postproc host"
   "lat_b2s4d1 |--mode dmabuf --layout nhcw --batch 2 --slots 4 --gpu-depth 1 --postproc host"
+  # Current default post-processing (--postproc gpu, --nms gpu) at the minimum-latency point; lat_b1s1d1 is the host control
+  # (2026-10-12, select with ONLY='^lat_b1s1d').
+  "lat_b1s1d1_gpu |--mode dmabuf --layout nhcw --batch 1 --slots 1 --gpu-depth 1 --postproc gpu"
+  "lat_b1s1d3_gpu |--mode dmabuf --layout nhcw --batch 1 --slots 1 --gpu-depth 3 --postproc gpu"
 )
 [[ "${USE_LAT:-0}" == "1" ]] && configs=("${configs_lat[@]}")
 
