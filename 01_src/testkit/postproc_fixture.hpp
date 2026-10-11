@@ -344,6 +344,18 @@ inline yvo::RawOutputSet make_raw_set(const YoloTensorLayout& L, const std::uint
     return r;
 }
 
+// Byte sum of the **valid region** the shader runs over (h < grid_h, c < features, w < grid_w). Same range as kChecksum
+// (P5 padding columns grid_w..w_padded-1 are excluded). Compare with `YoloPostproc::checksums()`.
+inline std::uint32_t cpu_valid_sum(const std::uint8_t* p, int grid_h, int features, int grid_w, int w_padded) {
+    std::uint32_t sum = 0;
+    for (int h = 0; h < grid_h; ++h)
+        for (int c = 0; c < features; ++c) {
+            const std::uint8_t* row = p + yvo::nhcw_index(h, c, 0, features, w_padded);
+            for (int w = 0; w < grid_w; ++w) sum += row[w];
+        }
+    return sum;
+}
+
 // ─────────────────────────────────────────────────────────────────── comparison (G5 / G6)
 
 struct Compare {

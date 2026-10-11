@@ -141,17 +141,6 @@ double percentile(std::vector<double> v, double q) {
 // (risk of shadowing other system headers). The schema is fixed, so we read only what we need by hand.
 // Fixture reading and comparison live only in testkit/postproc_fixture.hpp (shared with the tests).
 
-// Byte sum of the **valid region** the shader runs over (h < grid_h, c < features, w < grid_w). Same range as kChecksum.
-std::uint32_t cpu_valid_sum(const std::uint8_t* p, int grid_h, int features, int grid_w, int w_padded) {
-    std::uint32_t sum = 0;
-    for (int h = 0; h < grid_h; ++h)
-        for (int c = 0; c < features; ++c) {
-            const std::uint8_t* row = p + yvo::nhcw_index(h, c, 0, features, w_padded);
-            for (int w = 0; w < grid_w; ++w) sum += row[w];
-        }
-    return sum;
-}
-
 // ─────────────────────────────────────────────────────────────────── options
 
 struct Options {

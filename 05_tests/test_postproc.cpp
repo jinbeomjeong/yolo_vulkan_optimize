@@ -14,6 +14,11 @@
 //        G6 determinism    : over 10 repeats the `(score, anchor_key)` total-order canonical form is byte-identical
 //      ⚠ This group does not open `/dev/hailo0`. It must run even while the NPU is held by another job.
 //
+//  PostprocFixture.ImportHeapMatchesPlainBitExact  (no NPU needed, needs an openable /dev/dma_heap node)
+//      The same fixture through `input_alloc = ImportHeap` (`--postproc-alloc heap`, probe `--alloc heap`):
+//      raw outputs allocated from dma-heap and imported into Vulkan. Candidates must be bit-identical to Plain.
+//      Also pins the V3DV import trap (range = size - 256) and the 16384 B HailoRT alignment. See the test.
+//
 //  PostprocFixture.EfficientNmsBitExact / EfficientNms.*  (no NPU needed)
 //      Is GPU NMS (`02_shaders/efficient_nms.comp`) **bit-exact** with `cpu_nms_greedy_by_class()`
 //      (count, order, class, anchor_key, score, coordinates). Frames with a fallback bit set are excluded from comparison and their count is reported.
@@ -32,6 +37,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cerrno>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -49,20 +55,25 @@
 #include <string>
 #include <vector>
 
+#include <fcntl.h>
 #include <gtest/gtest.h>
 #include <unistd.h>
 
 #include "ref/detection_match.hpp"
 
 #include "ref/cpu_yolov8_decode.hpp"
+#include "core/dma_heap_alloc.hpp"
 #include "core/frame_types.hpp"
+#include "core/hailo_align.hpp"
 #include "hailo/hailo_runner.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
 #include "pipeline/gpu_postproc_stage.hpp"
 #include "pipeline/infer_stage.hpp"
+#include "vulkan/dmabuf_import.hpp"
 #include "vulkan/efficient_nms.hpp"
 #include "vulkan/sand_letterbox.hpp"
 #include "vulkan/vk_check.hpp"
+#include "vulkan/vk_storage_headroom.hpp"
 #include "vulkan/vulkan_context.hpp"
 #include "testkit/nms_harness.hpp"
 #include "testkit/postproc_fixture.hpp"
@@ -162,6 +173,7 @@ protected:
                         break;
                     }
                 }
+            canon_plain_ = std::move(canon_ref);   // reference for ImportHeapMatchesPlainBitExact
         } catch (const std::exception& e) {
             setup_error_ = std::string("exception: ") + e.what();
         }
@@ -189,6 +201,7 @@ protected:
     static inline int repeats_ = 0;
     static inline std::vector<Compare> cmp_;
     static inline std::vector<std::uint32_t> overflow_;
+    static inline std::vector<std::string> canon_plain_;   // G6 canonical form of the Plain run, per frame
 };
 
 // G5 ①: the candidate count must be **identical** to the CPU reference. Known passing value 115 / 115.
@@ -220,6 +233,161 @@ TEST_F(PostprocFixture, DeterministicAcrossRepeats) {
     ASSERT_GE(repeats_, 2) << "determinism cannot be checked with 1 or fewer repeats";
     EXPECT_TRUE(determinism_fail_.empty()) << determinism_fail_;
     std::printf("[fixture] G6 %d runs x %zu frames\n", repeats_, cmp_.size());
+}
+
+// ═══════════════════════════════════════════════ ImportHeap input path (no NPU needed)
+//
+// `YoloInputAlloc::ImportHeap` (`yvo_pipeline --postproc-alloc heap`, `yvo_postproc_probe --alloc heap`) is not the
+// default, so nothing else in ctest runs it — unused code rots silently (07_results/dmaheap_unify/summary.md).
+// What this test guards:
+//   1) V3DV import trap. The driver adds slack (+256 B measured) to the storage-buffer requirement and the import
+//      shrinks the VkBuffer range to dma-buf size - slack. Without the queried headroom (B.12), a tensor whose size is
+//      already a multiple of 16384 (conv71_178 = 409,600 B) gets range 409,344 < hw and the shader loses its tail.
+//      Checked on every slot buffer by re-importing its fd and reading the range the driver actually gives.
+//   2) HailoRT read_async contract (appendix A.4): dma-buf size and mapping start are 16384 B aligned.
+//   3) CPU writes through the cached heap mapping (inside DMA_BUF_IOCTL_SYNC WRITE, B.10 R3) reach the GPU:
+//      kChecksum byte sums == CPU byte sums of the valid region, for all 6 tensors.
+//   4) Candidates: G5 vs the CPU reference, and the canonical form (anchor_key, score/coord bits, class_id) is
+//      byte-identical to the Plain run of this suite.
+//   5) Self-check (negative control): one buffer allocated WITHOUT the headroom must show range < hw on import and
+//      must make the enforced min_range check throw. Skipped if the driver needs no slack (the trap does not exist).
+// No openable dma-heap node → GTEST_SKIP (other boards), not a failure.
+
+// First dma-heap node DmaHeapPool would use, or "" if none can be opened.
+std::string openable_dma_heap(std::string* errs) {
+    for (const std::string& h : yvo::DmaHeapConfig{}.heaps) {
+        const int fd = ::open(h.c_str(), O_RDWR | O_CLOEXEC);
+        if (fd >= 0) {
+            ::close(fd);
+            return h;
+        }
+        *errs += h + " (" + std::strerror(errno) + ") ";
+    }
+    return {};
+}
+
+TEST_F(PostprocFixture, ImportHeapMatchesPlainBitExact) {
+    std::string heap_errs;
+    const std::string heap_node = openable_dma_heap(&heap_errs);
+    if (heap_node.empty()) GTEST_SKIP() << "no openable dma-heap node: " << heap_errs;
+
+    const std::string dir = env_str("YVO_FIXTURE_DIR", YVO_FIXTURE_DIR);
+    const FixtureSet fs = load_fixtures(dir);
+    const YoloTensorLayout layout = layout_from_fixtures(fs);
+    const auto order = tensor_order(fs);
+    std::vector<FrameTensors> frames;
+    for (int i = 0; i < fs.frames; ++i) frames.push_back(load_frame(fs, i));
+    ASSERT_EQ(canon_plain_.size(), frames.size()) << "Plain reference is missing";
+
+    yvo::vk::VulkanContext ctx;
+    YoloPostprocConfig pc;
+    pc.num_slots = fs.frames;                       // same slot/frame mapping as the Plain run
+    pc.score_thr = kScoreThr;
+    pc.input_alloc = YoloInputAlloc::ImportHeap;
+    pc.input_sync = YoloInputSync::HostWrite;
+    pc.heap_sync = true;                            // B.10 R2/R3 on (the production default)
+    pc.checksum_pipeline = true;
+    std::unique_ptr<YoloPostproc> pp;
+    try {
+        pp = std::make_unique<YoloPostproc>(ctx, layout, pc);
+    } catch (const std::exception& e) {
+        FAIL() << "ImportHeap construction failed (an import range < hw_frame_size throws here): " << e.what();
+    }
+    const int n = pp->num_slots();
+    std::printf("[heap] node %s, slots %d, headroom %zu B\n", heap_node.c_str(), n, pp->heap_headroom());
+
+    // ── 1) + 2): sizes, alignment, and the range the driver gives to each slot buffer ──
+    {
+        yvo::vk::DmaBufImportCache probe(ctx, static_cast<std::size_t>(n) * kYoloNumTensors + 4);
+        std::size_t min_margin = SIZE_MAX;
+        for (int s = 0; s < n; ++s)
+            for (int t = 0; t < kYoloNumTensors; ++t) {
+                const std::size_t hw = pp->raw_size(t);
+                const std::size_t dsz = pp->raw_dmabuf_size(s, t);
+                const auto host = reinterpret_cast<std::uintptr_t>(pp->raw_host_ptr(s, t));
+                EXPECT_EQ(dsz % yvo::kHailoAsyncAlign, 0u) << "slot " << s << " tensor " << t << ": dma-buf size";
+                EXPECT_EQ(host % yvo::kHailoAsyncAlign, 0u) << "slot " << s << " tensor " << t << ": mapping start";
+                EXPECT_GE(dsz, hw + pp->heap_headroom()) << "slot " << s << " tensor " << t << ": headroom not applied";
+                const yvo::vk::ImportedDmaBuf& e = probe.get(pp->raw_dmabuf_fd(s, t), dsz);   // min_range 0: just read it
+                EXPECT_GE(e.range, hw) << "slot " << s << " tensor " << t << ": import range " << e.range
+                                       << " < hw " << hw << " (V3DV slack ate the tail)";
+                if (e.range >= hw) min_margin = std::min(min_margin, static_cast<std::size_t>(e.range) - hw);
+            }
+        std::printf("[heap] import range - hw: min %zu B over %d buffers\n", min_margin, n * kYoloNumTensors);
+    }
+
+    // ── fill (B.10 R3: CPU writes to the cached mapping go inside START|WRITE … END|WRITE) ──
+    for (int s = 0; s < n; ++s) {
+        pp->raw_cpu_sync_begin(s, yvo::DmaSyncDir::Write);
+        for (int t = 0; t < kYoloNumTensors; ++t)
+            std::memcpy(pp->raw_host_ptr(s, t), frames[static_cast<std::size_t>(s)][static_cast<std::size_t>(t)].data(),
+                        frames[static_cast<std::size_t>(s)][static_cast<std::size_t>(t)].size());
+        pp->raw_cpu_sync_end(s, yvo::DmaSyncDir::Write);
+    }
+
+    // ── 3) + 4) ──
+    std::size_t cand_total = 0;
+    for (int s = 0; s < n; ++s) {
+        pp->submit(s, fs.lb, fs.src_w, fs.src_h);
+        pp->wait(s);
+        const auto gpu = pp->read_candidates(s);
+        EXPECT_EQ(pp->overflow(s), 0u) << "frame " << s << ": max_dets exceeded";
+        cand_total += gpu.size();
+
+        pp->submit(s, fs.lb, fs.src_w, fs.src_h, /*checksum=*/true);
+        pp->wait(s);
+        std::uint32_t shader_sum[kYoloNumTensors];
+        pp->checksums(s, shader_sum);
+
+        pp->raw_cpu_sync_begin(s, yvo::DmaSyncDir::Read);   // B.10 R2
+        const std::uint8_t* ptr[kYoloNumTensors];
+        for (int t = 0; t < kYoloNumTensors; ++t) {
+            ptr[t] = pp->raw_host_ptr(s, t);
+            const FixtureStream& m = *order[static_cast<std::size_t>(t)];
+            EXPECT_EQ(shader_sum[t], cpu_valid_sum(ptr[t], m.grid_h, m.features, m.grid_w, m.w_padded))
+                << "frame " << s << " tensor " << t << ": GPU did not read the bytes the CPU wrote";
+        }
+        const auto cpu = yvo::cpu_yolov8_candidates(make_raw_set(layout, ptr), kScoreThr, fs.lb, fs.src_w, fs.src_h);
+        pp->raw_cpu_sync_end(s, yvo::DmaSyncDir::Read);
+
+        const Compare c = compare_candidates(cpu, gpu);
+        EXPECT_TRUE(c.ok()) << "frame " << s << ": G5 vs CPU — cpu " << c.cpu << " gpu " << c.gpu << " onlyCPU "
+                            << c.only_cpu << " onlyGPU " << c.only_gpu << " score bit mismatch "
+                            << c.score_bit_mismatch << " max coord err " << c.max_coord_err;
+        EXPECT_EQ(canonical(gpu), canon_plain_[static_cast<std::size_t>(s)])
+            << "frame " << s << ": heap candidate set is not byte-identical to Plain";
+    }
+    std::printf("[heap] frames %d, candidates %zu, bit-identical to Plain checked per frame\n", n, cand_total);
+
+    // ── 5) self-check: the trap is real on this driver and the guard catches it ──
+    std::size_t trap_hw = 0, trap_slack = 0;
+    for (int t = 0; t < kYoloNumTensors && trap_hw == 0; ++t) {
+        const std::size_t hw = pp->raw_size(t);
+        const std::size_t bare = yvo::detail::align_up(hw, yvo::kHailoAsyncAlign);
+        const VkMemoryRequirements req = yvo::vk::query_dmabuf_storage_requirements(ctx.device(), bare);
+        const std::size_t slack = req.size > bare ? static_cast<std::size_t>(req.size - bare) : 0;
+        if (bare - hw < slack) {
+            trap_hw = hw;
+            trap_slack = slack;
+        }
+    }
+    if (trap_hw == 0) {
+        std::printf("[heap] self-check skipped: no tensor is truncated without headroom on this driver\n");
+        return;
+    }
+    yvo::DmaHeapConfig hc;
+    hc.device_headroom = 0;   // deliberately WITHOUT the B.12 headroom
+    hc.name = "yvo_test_noheadroom";
+    yvo::DmaHeapPool bare_pool(hc);
+    const yvo::DmaHeapBuf bare = bare_pool.at(bare_pool.allocate(trap_hw));
+    yvo::vk::DmaBufImportCache bare_cache(ctx, 4);   // destroyed before bare_pool
+    const VkDeviceSize bare_range = bare_cache.get(bare.fd, bare.dmabuf_size).range;
+    EXPECT_LT(bare_range, trap_hw) << "self-check: a buffer without headroom was not truncated — this test can no "
+                                      "longer see the trap";
+    EXPECT_THROW(bare_cache.get(bare.fd, bare.dmabuf_size, trap_hw), std::runtime_error)
+        << "self-check: the enforced min_range check did not fire";
+    std::printf("[heap] self-check: hw %zu B, dma-buf %zu B, slack %zu B → range %llu B without headroom (guard fired)\n",
+                trap_hw, bare.dmabuf_size, trap_slack, static_cast<unsigned long long>(bare_range));
 }
 
 // ═══════════════════════════════════════════════ GPU NMS (efficient_nms.comp) vs cpu_nms_greedy_by_class
