@@ -22,6 +22,7 @@ Check IDs
   C4 include layer DAG             C5 main() location              C6 .cpp CMake registration
   C7 path literals in source, asset macros  C8 forbidden CMake tokens  C9 bench shell paths
   C10 npu_guard BENCH_SCRIPTS      D1 STRUCTURE.md ↔ TOML           E1 unused exceptions
+  D2 STRUCTURE.md §4 owner table ↔ CLAUDE.md owner table
 
 Public API (imported by the Write hook)
   load_rules() -> dict
@@ -745,19 +746,28 @@ class Checker:
             except SyntaxError as e:
                 self.add(Violation("C10", guard, f"parse failed: {e}", "", level=WARN))
                 tree = None
+            # BENCH_SCRIPTS may be computed dynamically (glob), and then it matches automatically — but the hardcoded
+            # _BENCH_FALLBACK beside it is exactly what goes stale, so check every one of these names that is a literal.
+            # _BENCH_FALLBACK is optional (it may be dropped); if it is there, it has to be complete.
+            assigns: dict = {}
             for node in ast.walk(tree) if tree else ():
-                if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "BENCH_SCRIPTS" for t in node.targets):
-                    try:
-                        val = ast.literal_eval(node.value)
-                    except ValueError:
-                        break   # dynamically computed (glob etc.), so the list matches automatically
-                    want = {os.path.basename(p) for p in shs if os.path.dirname(p) == bench["dir"]}
-                    have = set(val)
-                    for x in sorted(want - have):
-                        self.add(Violation("C10", f"{guard}:{node.lineno}", f"{x} missing from BENCH_SCRIPTS", "switch to a glob or add it"))
-                    for x in sorted(have - want):
-                        self.add(Violation("C10", f"{guard}:{node.lineno}", f"{x} in BENCH_SCRIPTS is not in 06_tools/bench/", "remove it from the list"))
-                    break
+                if isinstance(node, ast.Assign):
+                    for t in node.targets:
+                        if isinstance(t, ast.Name) and t.id in ("BENCH_SCRIPTS", "_BENCH_FALLBACK"):
+                            assigns.setdefault(t.id, node)
+            want = {os.path.basename(p) for p in shs if os.path.dirname(p) == bench["dir"]}
+            for name in ("BENCH_SCRIPTS", "_BENCH_FALLBACK"):
+                node = assigns.get(name)
+                if node is None:
+                    continue
+                try:
+                    have = set(ast.literal_eval(node.value))
+                except (ValueError, TypeError):
+                    continue   # dynamically computed (glob etc.), so this name matches automatically
+                for x in sorted(want - have):
+                    self.add(Violation("C10", f"{guard}:{node.lineno}", f"{x} missing from {name}", "switch to a glob or add it"))
+                for x in sorted(have - want):
+                    self.add(Violation("C10", f"{guard}:{node.lineno}", f"{x} in {name} is not in {bench['dir']}/", "remove it from the list"))
 
     # D ────────────────────────────────────────────────────────────────────────
     def check_docs(self) -> None:
@@ -777,6 +787,32 @@ class Checker:
         for x in sorted(items - want):
             self.add(Violation("D1", sm, f"'{x}' in the table is not in TOML top_level", "add it to the TOML or remove it from the table"))
 
+    def check_owner_tables(self) -> None:
+        """D2: every path of the STRUCTURE.md §4 owner table is in the CLAUDE.md owner table with the same owner.
+
+        §4 is a summary, so paths only in CLAUDE.md are fine. Rows whose owner cell names no known owner are not compared.
+        """
+        sm = self.rules["docs"]["structure_md"]
+        summary = _owner_table(_read(sm), OWNER_HEADING_STRUCTURE)
+        canon = _owner_table(_read(OWNER_CANON_MD), OWNER_HEADING_CLAUDE)
+        if summary is None:
+            self.add(Violation("D2", sm, "owner table not found — skipping comparison with CLAUDE.md",
+                               f"heading containing '{OWNER_HEADING_STRUCTURE}' followed by a table", level=WARN))
+        if canon is None:
+            self.add(Violation("D2", OWNER_CANON_MD, "owner table not found — skipping comparison with STRUCTURE.md",
+                               f"heading containing '{OWNER_HEADING_CLAUDE}' followed by a table", level=WARN))
+        if summary is None or canon is None:
+            return
+        for path, (ln, owner) in sorted(summary.items()):
+            if path not in canon:
+                self.add(Violation("D2", f"{sm}:{ln}", f"'{path}' in the owner table is not in the {OWNER_CANON_MD} owner table",
+                                   f"fix the path or add a {OWNER_CANON_MD} row ({OWNER_CANON_MD} wins)"))
+                continue
+            cln, cowner = canon[path]
+            if owner and cowner and owner != cowner:
+                self.add(Violation("D2", f"{sm}:{ln}", f"'{path}' owner '{owner}' differs from '{cowner}' in {OWNER_CANON_MD}:{cln}",
+                                   f"make the owners match ({OWNER_CANON_MD} wins)"))
+
     # E ────────────────────────────────────────────────────────────────────────
     def check_exceptions(self) -> None:
         for idx, ex in enumerate(self.exc.items):
@@ -791,6 +827,7 @@ class Checker:
         self.check_results()
         self.check_code()
         self.check_docs()
+        self.check_owner_tables()
         self.check_exceptions()
         return self.out
 
@@ -819,9 +856,88 @@ def _first_table_col0(text: str, heading_word: str) -> set[str] | None:
     return {t.rstrip("/") for r in body for t in re.findall(r"`([^`]+)`", r[0])}
 
 
+# D2: the canonical owner table lives in CLAUDE.md; the headings are matched by these (Korean) words
+OWNER_CANON_MD = "CLAUDE.md"
+OWNER_HEADING_CLAUDE = "폴더 → 담당"      # "## 폴더 → 담당 (라우팅 정본)"
+OWNER_HEADING_STRUCTURE = "폴더별 담당"   # "## 4. 폴더별 담당"
+# Owner names searched in an owner cell; the one appearing first in the cell is the row's primary owner
+OWNER_NAMES = ("hailo-expert", "vulkan-expert", "cpp-expert", "python-expert", "gstreamer-expert", "graphml-expert",
+               "integrity-auditor", "메인 에이전트", "measure", "verify", "relocate.py", "전문가", "누구나", "쓰지 않는다")
+
+
+def _first_table_rows(text: str, heading_word: str) -> list[tuple[int, list[str]]] | None:
+    """(1-based line number, cells) of the body rows of the first table under the heading containing heading_word.
+
+    Same section/table rules as _first_table_col0. None if there is no table.
+    """
+    in_sec = False
+    rows: list[tuple[int, list[str]]] | None = None
+    for no, ln in enumerate(text.splitlines(), 1):
+        s = ln.strip()
+        if s.startswith("#"):
+            if rows:
+                break
+            in_sec = heading_word in s
+            continue
+        if not in_sec:
+            continue
+        if s.startswith("|"):
+            rows = rows or []
+            rows.append((no, [c.strip() for c in s.strip("|").split("|")]))
+        elif rows:
+            break
+    if not rows or len(rows) < 2:
+        return None
+    return [(no, r) for no, r in rows[1:] if not all(re.fullmatch(r":?-{2,}:?", c) for c in r if c)]
+
+
+def _expand_braces(path: str) -> list[str]:
+    """`a/{b,c}/d` → [`a/b/d`, `a/c/d`]. Handles several (non-nested) brace groups."""
+    m = re.search(r"\{([^{}]*)\}", path)
+    if not m:
+        return [path]
+    return [x for alt in m.group(1).split(",")
+            for x in _expand_braces(path[:m.start()] + alt.strip() + path[m.end():])]
+
+
+def _owner_token(cell: str) -> str | None:
+    """The known owner name appearing first in an owner cell, ignoring backticks and (parenthesized notes)."""
+    s = cell.replace("`", "")
+    while True:
+        t = re.sub(r"\([^()]*\)", "", s)
+        if t == s:
+            break
+        s = t
+    best: tuple[int, int, str] | None = None
+    for name in OWNER_NAMES:
+        pat = re.escape(name)
+        if name.isascii():
+            pat = rf"(?<![\w.-]){pat}(?![\w-])"   # 'verify' must not match inside 'verification'
+        m = re.search(pat, s)
+        if m and (best is None or (m.start(), -len(name)) < best[:2]):
+            best = (m.start(), -len(name), name)
+    return best[2] if best else None
+
+
+def _owner_table(text: str, heading_word: str) -> dict[str, tuple[int, str | None]] | None:
+    """Normalized path → (line number, primary owner or None) from the owner table under heading_word. None if no table."""
+    rows = _first_table_rows(text, heading_word)
+    if rows is None:
+        return None
+    out: dict[str, tuple[int, str | None]] = {}
+    for no, r in rows:
+        if len(r) < 2:
+            continue
+        owner = _owner_token(r[1])
+        for item in re.findall(r"`([^`]+)`", r[0]):
+            for path in _expand_braces(item.strip()):
+                out.setdefault(path.strip().rstrip("/"), (no, owner))
+    return out
+
+
 # ─── CLI ──────────────────────────────────────────────────────────────────────
 ORDER = ["T1", "T2", "T3", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10",
-         "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "D1", "E1"]
+         "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "D1", "D2", "E1"]
 
 
 def _print(vs: list[Violation]) -> tuple[int, int]:

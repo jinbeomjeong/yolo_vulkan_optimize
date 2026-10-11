@@ -16,7 +16,9 @@ Exit code is 1 if there is even one broken link.
 
 `--stale MAPFILE` checks, instead of links, whether any **old path** from the mapping table (relocate.py format) remains.
 Target/exclusion rules and path resolution are the same as relocate.py (regex rows are judged by fullmatch per token, so
-old paths are recognized even after the move). Exit code is 1 if even one old path remains.
+old paths are recognized even after the move). Exit code is 1 only if a mapped old path actually remains.
+The `guessed` and `manual check` lines are warnings for a human to read: they are hints that often turn out to be
+false positives (a history note in a comment, a glob), so they are printed but never affect the exit code.
 """
 import re
 import sys
@@ -83,8 +85,12 @@ def stale(map_file: str) -> int:
         print(f"old path guessed  {g.file}:{g.line} -> {g.token}  ({g.why})")
     for g in rw.manual:
         print(f"manual check      {g.file}:{g.line} -> {g.token}  (glob/placeholder)")
-    print(f"---\n{len(rows)} mapping rows, {n} old paths remaining, {len(rw.guess)} guessed, {len(rw.manual)} manual checks")
-    return 1 if n or rw.guess else 0
+    if rw.guess or rw.manual:
+        print("warning: the guessed/manual lines above are hints, not failures - they do not affect the exit code.\n"
+              "         Read them and judge by hand (e.g. a history note in a comment is a known false positive).")
+    print(f"---\n{len(rows)} mapping rows, {n} old paths remaining, "
+          f"{len(rw.guess)} guessed (warning), {len(rw.manual)} manual checks (warning)")
+    return 1 if n else 0
 
 
 def main() -> int:
