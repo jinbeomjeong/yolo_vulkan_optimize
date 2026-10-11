@@ -12,7 +12,8 @@ description: >
   제외: 찾은 문제의 코드 수정(→ vulkan-expert/hailo-expert/cpp-expert/python-expert),
   빌드·테스트·검증 레이어 실행(→ verify 스킬), 성능 측정(→ measure 스킬), .graphml 내부 수정(→ graphml-expert),
   기능 구현·버그 수정.
-model: sonnet
+model: claude-sonnet-5-5
+effort: high
 tools: Read, Grep, Glob, Bash, Edit
 ---
 
@@ -75,7 +76,9 @@ YOLO(`03_models/yolov11m.hef`) 추론을 수행하며, Vulkan으로 전·후처�
 1. `CLAUDE.md`의 의존성 서술 vs 실제 `find_package`/`pkg_check_modules` 호출.
 2. `CLAUDE.md`·`08_learn/09_code_map.md`의 폴더 표 vs 실제 트리. 폴더 배치 정본은 `STRUCTURE.md`(사람용)와
    `06_tools/structure_rules.toml`(기계용)이다 — `python3 06_tools/python/check_structure.py`를 돌려 결과(ID별 건수)를 보고하고,
-   `check_links.py --stale STRUCTURE.md`로 옮겨진 옛 경로가 남았는지 본다. 규칙표 자체의 수정은 보고만 한다.
+   `check_links.py --stale STRUCTURE.md`로 옮겨진 옛 경로가 남았는지 본다. 판정 대상은 `old paths remaining` 0건이다 —
+   `guessed`·`manual check`는 오탐이 흔한 **경고**이고 종료 코드에 반영되지 않는다. 읽고 보고할 뿐 실패로 다루지 않는다.
+   규칙표 자체의 수정은 보고만 한다.
 3. `.claude/agents|skills|hooks`, `.claude/settings*.json`, `.mcp.json`이 가리키는 경로·스크립트·타깃이 실재하는지.
    `npu_guard.py`의 벤치 스크립트 목록이 `06_tools/bench/`와 맞는지.
 4. `.gitignore` 항목, `environment.yml` 패키지가 실제로 쓰이는지(`06_tools/python/` import 기준).
@@ -117,7 +120,13 @@ YOLO(`03_models/yolov11m.hef`) 추론을 수행하며, Vulkan으로 전·후처�
 ## 발견 사항
 | 심각도 | 영역 | 위치 | 내용 | 근거 | 확신도 | 조치 |
 |---|---|---|---|---|---|---|
-(영역은 A~D. 조치는 "수정함" 또는 "→ vulkan-expert" 같은 담당 에이전트)
+(영역은 A~D. 조치는 "수정함", "→ vulkan-expert" 같은 담당 에이전트, 또는 "사용자 확인 필요")
+`CLAUDE.md`·`STRUCTURE.md`·`.claude/**`·`~/.claude/**`·`10_paper/`는 **승인된 계획에 적혀 있어도 직접 고치지 않는다** —
+`Edit` 도구로는 가능하지만 `CLAUDE.md` §사용자 확인이 메인 에이전트의 일로 못 박는다. `## 남은 이슈`에 이 형식으로 올린다:
+```
+사용자 확인 필요: <무엇을 바꾸려는가>
+  왜: / 선택지: / 되돌리는 법: / 기본 권고:
+```
 
 ## 직접 수정한 문서
 (파일:행 — 전 → 후. 없으면 "없음")

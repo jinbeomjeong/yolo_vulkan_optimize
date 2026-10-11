@@ -56,8 +56,9 @@ def judge(data: dict, root: str) -> str | None:
         return None
     rule_id, why, suggestion = v                                 # 7
     return (f"[placement_guard] blocked: {rel} — {rule_id} {why}. Correct location: {suggestion}. "
-            f"Source of truth: STRUCTURE.md. If you believe the rule is wrong, confirm with the user, then fix STRUCTURE.md and "
-            f"06_tools/structure_rules.toml together (bypass: start the session with YVO_PLACEMENT_OFF=1).\n")
+            f"Source of truth: STRUCTURE.md. Use the location above. If you believe the rule itself is wrong, do NOT ask the "
+            f"user and do NOT edit the rule table: report '규칙표 갱신 필요' to the main agent, which confirms with the user and "
+            f"fixes STRUCTURE.md and 06_tools/structure_rules.toml together (bypass: start the session with YVO_PLACEMENT_OFF=1).\n")
 
 
 def main() -> int:

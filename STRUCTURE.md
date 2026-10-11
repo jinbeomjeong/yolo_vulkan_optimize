@@ -119,7 +119,7 @@
 | `python/` | 빌드와 무관한 파이썬 도구(`check_links.py`, `check_structure.py`, `relocate.py` 등) |
 | `probes/` | 빌드하지 않는 일회성 C/C++ 프로브 |
 
-벤치 스크립트를 추가·삭제하면 `.claude/hooks/npu_guard.py`가 그 목록을 자동으로 찾는지 검사기(C10)로 확인한다.
+벤치 스크립트를 추가·삭제하면 `.claude/hooks/npu_guard.py`가 그 목록을 glob으로 찾는지, 그리고 하드코딩된 폴백 `_BENCH_FALLBACK`(있을 때)이 `bench/` 최상위 `.sh`와 같은지 검사기(C10)로 확인한다. C10은 그 파일 안의 **리터럴 목록만** 본다 — 동적으로 계산되는 이름은 자동으로 맞는 것으로 넘긴다.
 
 ## 3. `07_results/` 레이아웃
 
@@ -168,6 +168,8 @@
 ### 3.4 중복 산출물 삭제
 
 md5로 바이트 동일을 확인 → `duplicate_png.md` 대조표에 기록 → 삭제. 정본 1부는 반드시 남긴다.
+**이 절차는 바이트 동일 사본에만 쓴다.** 그 밖의 삭제(유일본·코드·문서)는 사용자 확인을 받는다(`CLAUDE.md` §사용자 확인).
+md5가 하나라도 다르면 건드리지 않는다 — 그 차이 자체가 결론일 수 있다.
 대조표의 "남긴 파일" 열은 이동을 따라 갱신하고, "지운 파일" 열은 삭제 당시 기록이라 고치지 않는다.
 
 ### 3.5 hailort.log
@@ -181,7 +183,9 @@ HailoRT는 **실행한 디렉터리(CWD)**에 `hailort.log`를 쓴다.
 
 ## 4. 폴더별 담당
 
-`CLAUDE.md`의 "폴더 → 담당" 표가 라우팅 정본이다. 요약:
+`CLAUDE.md`의 "폴더 → 담당" 표가 라우팅 정본이다. 아래는 **요약이라 행이 빠져 있고**(`06_tools/probes`, `11_logs`,
+`build*`, 저장소 밖 `~/.claude/**`), 비고 열도 없다. **두 표가 어긋나면 `CLAUDE.md`가 이긴다.**
+검사기 D2가 이 표의 경로와 담당이 `CLAUDE.md` 표와 맞는지 대조한다.
 
 | 경로 | 담당 |
 |---|---|
@@ -197,13 +201,14 @@ HailoRT는 **실행한 디렉터리(CWD)**에 `hailort.log`를 쓴다.
 | `07_results` | 쓰기는 measure·verify 스킬, 이동은 relocate.py, 정합 점검은 integrity-auditor |
 | `08_learn`, `README.md` | 메인 에이전트 (기계적 수정은 integrity-auditor) |
 | `09_diagrams` | graphml-expert (포맷), 수치는 도메인 전문가 |
-| `10_paper`, `.claude`, `CLAUDE.md`, `STRUCTURE.md`, `06_tools/structure_rules.toml` | 메인 에이전트 (사용자 확인) |
+| `10_paper`, `.claude`, `CLAUDE.md`, `STRUCTURE.md`, `06_tools/structure_rules.toml` | 메인 에이전트(사용자 확인) |
 
 ## 5. 예외 정책
 
 - 예외는 `06_tools/structure_rules.toml`의 `[[exception]]`에만 둔다. `path`, `waive`(면제할 검사), `reason`(필수)을 적는다.
 - 쓰이지 않는 예외는 검사기가 경고한다. 원인이 사라지면 예외를 지운다.
 - 규칙이 틀렸다고 판단되면 우회하지 말고, 사용자 확인 후 이 문서와 TOML을 고친다.
+  **확인을 받고 고치는 것은 메인 에이전트다** — 서브에이전트는 "규칙표 갱신 필요"라고 보고만 한다(`CLAUDE.md` §사용자 확인).
 - 일시 우회: Write 훅은 `YVO_PLACEMENT_OFF=1`로 세션을 시작하면 꺼진다. 검사기에는 우회가 없다.
 
 ## 6. 경로 이력

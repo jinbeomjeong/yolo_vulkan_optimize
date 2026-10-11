@@ -60,7 +60,8 @@ VK_LOADER_LAYERS_ENABLE='*validation' build/bin/yvo_pipeline \
   무기한 멈추고 SIGTERM도 안 먹는다. `/sys/kernel/debug/dri/1/clients`의 master 열을 보고 복구한 뒤 돌린다.
 - `wayland-planes`/`kms`: 요약의 `scanout zero_copy 1, color_ok 1, hvs_underrun delta 0`이 합격 기준이다.
   debugfs 줄(`video=plane[83] NV12/SAND128 … boxes=plane[107] AB24`)을 보고에 넣는다.
-- `kms`는 DRM master가 필요하다. `loginctl activate <tty 세션 id>`로 데스크톱을 비활성화하고(모니터가 바뀌므로 사용자에게 먼저 알린다)
+- `kms`는 DRM master가 필요하다. 화면이 사용자 눈앞에서 바뀌므로 **사용자가 자리에 있는지 먼저 확인받고** 돌린다
+  (`CLAUDE.md` §사용자 확인). 확인 전 기본은 건너뛰기다. `loginctl activate <tty 세션 id>`로 데스크톱을 비활성화하고
   실행한 뒤 `loginctl activate <데스크톱 세션 id>`로 돌아간다. **실행 중에는 VT를 바꾸지 않는다.**
   요약의 `kms: flips = presented, flip_timeouts 0, master_lost no`를 확인한다.
   종료 복원이 `restore failed (EINVAL) -> planes-off ok`로 나오는 것은 지금 알려진 동작이다.
