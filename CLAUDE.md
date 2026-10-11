@@ -106,6 +106,21 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론 파이프�
 "보류한다", "수정하지 않는다" 같은 결정도 같은 형식으로 남긴다. 누가 정했는지 없는 기록은
 나중에 근거로 쓸 수 없다. 앞으로 쓰는 문서에만 적용한다(`07_results`의 기존 결과 파일 내용은 고치지 않는다).
 
+## 긴 작업 중 상태 확인
+
+측정이 도는 동안 다른 작업이 끼어들면 **에러 없이 CPU 시간이 오염된다**. 그래서 상태를 눈으로 짐작하지 말고
+`status-reporter`(읽기 전용)에게 읽혀서 확인한다. 부르는 때는 **지점**이 주 기준이고 시간은 보조다.
+
+**지점** — 장시간 백그라운드 작업(측정·벤치·`ctest`)을 **시작하기 전**과 **끝난 뒤** ·
+여러 위임을 **병렬로 돌리기 전**(같은 파일을 건드리는지, NPU·GPU가 비어 있는지) ·
+**커밋하기 전**(무엇이 섞여 있는지) · **세션을 다시 잡았을 때**.
+
+**시간** — 한 작업이 **한 시간**을 넘기면 그 사이에 한 번 부른다.
+
+**조용한 구간에 기계적으로 부르지 않는다.** 상태가 바뀌지 않았으면 보고가 잡음이 된다.
+그리고 이 에이전트는 **부하를 거는 명령을 돌리지 않는다** — 빌드·`ctest`·`perf`·`hailortcli`·벤치는
+`npu_guard`가 막는 목록이고, 돌리면 보고하려던 그 측정을 오염시킨다.
+
 
 ## 개발 환경
 - C++: g++ 14.2, CMake 3.31 + Ninja. 빌드는 `cmake -S . -B build -G Ninja && cmake --build build`, 산출물은 `build/`.
@@ -157,15 +172,15 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론 파이프�
 | `01_src/pipeline/` | 바뀌는 단계의 전문가 | 디코더 연결은 `cpp-expert`, `gpu_postproc_stage`는 `vulkan-expert`, `infer_stage`는 `hailo-expert` |
 | `01_src/gstelem/`, `01_src/tools/gst/` | `gstreamer-expert` | `SandLetterbox` 사용·dma-buf 수명은 `vulkan-expert`, `HailoRunner` 바인딩은 `hailo-expert`, CMake 선택 의존은 `cpp-expert` 검토 |
 | `05_tests/` | 테스트 대상 도메인의 전문가 + `verify` 스킬 | |
-| `06_tools/bench/` | 실행은 `measure` 스킬, 수정은 측정 대상 도메인의 전문가 | 추가·삭제 시 `npu_guard`가 자동으로 찾는지 확인(검사기 C10) |
+| `06_tools/bench/` | 실행은 `measure` 스킬, 수정은 측정 대상 도메인의 전문가 | 추가·삭제 시 `npu_guard`가 자동으로 찾는지 확인(검사기 C10). 지금 도는 중인지는 `status-reporter` |
 | `06_tools/python/` | `python-expert` | |
 | `06_tools/probes/` | 소속 도메인의 전문가 | 빌드하지 않는다 |
 | `07_results/` | 쓰기는 `measure`(측정)·`verify`(`verification/`) 스킬, 이동은 `relocate.py`, 정합 점검은 `integrity-auditor` | 결과 파일 내용은 고치지 않는다. 삭제·`FORCE=1` 덮어쓰기는 §사용자 확인(바이트 동일 사본은 `STRUCTURE.md` §3.4 절차로 예외) |
 | `08_learn/`, `README.md` | 메인 에이전트 | 기계적 수정(경로·줄번호·개수)은 `integrity-auditor` |
 | `09_diagrams/` | `graphml-expert`(포맷) | 수치 변경은 도메인 전문가 |
 | `10_paper/`, `.claude/`, `~/.claude/agents/*`, `~/.claude/settings.json`, `CLAUDE.md`, `STRUCTURE.md`, `06_tools/structure_rules.toml` | 메인 에이전트(사용자 확인) | **§사용자 확인**이 정본이다. 승인된 계획이어도 위임하지 않는다. `.claude/agents`·훅 변경은 **다음 세션부터** 반영된다. `~/.claude/**`는 저장소 밖이라 검사기·`placement_guard` 훅이 보지 않는다 |
-| `11_logs/` | 누구나 | git 밖 |
-| `build*/` | 쓰지 않는다 | 산출물 |
+| `11_logs/` | 누구나 | git 밖. 최근 실행 흔적 조회는 `status-reporter` |
+| `build*/` | 쓰지 않는다 | 산출물. 락·`bin`/`out` 상태 **읽기**는 `status-reporter` |
 
 ## 서브에이전트 라우팅 (프로젝트 우선)
 전역 지침보다 이 규칙이 우선한다.
@@ -193,6 +208,14 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론 파이프�
   - 기능 구현·버그 수정·성능 측정은 이 에이전트에 보내지 않는다. "정리해줘"처럼 삭제까지 원하는 요청도
     먼저 이 에이전트로 후보를 찾고, 삭제는 사용자 확인 후 담당 에이전트가 한다(§사용자 확인 —
     바이트 동일 사본만 `STRUCTURE.md` §3.4 절차로 예외다).
+- 런타임 상태 확인(지금 무엇이 돌고 있나 — 벤치 락 `build/.bench_running`의 PID 생존, NPU 점유 `/dev/hailo0`,
+  벤치 진행률, 작업 트리, 검사기 3종의 수치, PCIe·온도·스로틀·V3D 클럭, 루트 잔재·산출물 신선도·DRM master)
+  → `status-reporter`(프로젝트, Sonnet 5.5 · effort high). 호출 시점은 §긴 작업 중 상태 확인.
+  - **아무것도 고치지 않고 부하를 거는 명령을 하나도 돌리지 않는다**(읽기 전용, `Edit`·`Write` 없음).
+    락·잔재 삭제와 `FORCE=1` 재측정은 §사용자 확인 대상이라 "지우십시오"로 보고만 한다.
+  - 검사기 **수치는 전하되 위반의 조사·판정·수정은 `integrity-auditor`**, 빌드·테스트는 `verify` 스킬,
+    성능 측정과 Hailo 칩 온도는 `measure` 스킬이 맡는다. 둘의 경계는 "저장소가 일관적인가"(정적·추적)
+    대 "지금 보드에서 무엇이 돌고 있나"(휘발성·git 밖)다.
 - 위임 프롬프트에 대상 파일, 목표, 제약, 검증 방법(셰이더 컴파일·검증 레이어·측정 조건)을 포함한다.
   **새 파일을 만드는 작업이면 둘 위치를 `STRUCTURE.md` 기준으로 프롬프트에 적고**, 끝에 `check_structure.py` 결과를 보고하게 한다.
   전역 에이전트(`cpp`·`python`·`gstreamer`·`graphml-expert`)는 다른 프로젝트도 쓰므로 정의 파일에 이 프로젝트 규칙을 적지 않는다 —
