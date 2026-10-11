@@ -81,6 +81,10 @@
 | **워크그룹 (workgroup)** | 셰이더 실행 단위 묶음. 크기를 어떻게 잡느냐가 성능을 크게 바꾼다 → [05](05_vulkan_compute.md) |
 | **invocation** | 셰이더의 한 번 실행. 보통 픽셀 하나나 요소 몇 개를 맡는다 → [05](05_vulkan_compute.md) |
 | **subgroup** | 하드웨어가 한꺼번에 돌리는 invocation 묶음. V3D는 16 → [05](05_vulkan_compute.md) |
+| **레지스터 (register)** | 계산 장치 안의 아주 작은 저장소. 명령이 바로 읽어 대기가 없다. V3D 7.1은 스레드당 rf0~rf63(2스레드) 또는 32개(4스레드) → [05](05_vulkan_compute.md) §5.9 |
+| **spill / fill** | 레지스터가 모자라 컴파일러가 값을 메모리에 내려 두고(spill) 다시 읽는 것(fill). 메모리 왕복이 늘어 느려진다. `V3D_DEBUG=shaderdb`로 개수를 본다 → [05](05_vulkan_compute.md) §5.9 |
+| **SWAR** | SIMD Within A Register. 32비트 하나를 바이트 4칸으로 보고 한 번의 정수 연산으로 4개를 동시에 비교·누적하는 기법(`yolo_decode`의 `ge_cnt`) → [05](05_vulkan_compute.md) §5.9 |
+| **argmax 지름길** | `yolo_decode` ⑤에서 통과 클래스가 1개면 ①이 레지스터에 남긴 `pmax4`로 바로 쓰고 클래스 텐서를 다시 읽지 않는 것 → [05](05_vulkan_compute.md) §5.9 |
 | **디스패치 (dispatch)** | 컴퓨트 셰이더를 실제로 돌리라고 시키는 명령 → [05](05_vulkan_compute.md) |
 | **SSBO** | Shader Storage Buffer Object. 셰이더가 읽고 쓰는 큰 버퍼 → [05](05_vulkan_compute.md) |
 | **descriptor set** | 셰이더가 볼 버퍼·이미지들을 미리 묶어 둔 것 → [05](05_vulkan_compute.md) |
