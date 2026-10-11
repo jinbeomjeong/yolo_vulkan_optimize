@@ -260,12 +260,12 @@ median 을 써라(V3D 가 커맨드 버퍼를 합치면서 한쪽 구간이 0에
 ## 6. 검증
 
 ```bash
-ctest --test-dir build        # 94/94 통과해야 한다
+ctest --test-dir build        # 95/95 통과해야 한다
 ```
 
 | 테스트 | NPU | 무엇을 보는가 |
 |---|---|---|
-| `PostprocFixture.*` (5개) | 불필요 | GPU 후처리 vs CPU 기준: 후보 수 동일, 점수 **비트 일치**, 좌표 < 0.25 px, 10회 결정성, GPU NMS 결과 **비트 일치** |
+| `PostprocFixture.*` (6개) | 불필요 | GPU 후처리 vs CPU 기준: 후보 수 동일, 점수 **비트 일치**, 좌표 < 0.25 px, 10회 결정성, GPU NMS 결과 **비트 일치**, heap 입력 경로(`YoloInputAlloc::ImportHeap`)가 Plain과 **비트 일치** |
 | `EfficientNms.*` (7개) | 불필요 | 합성 입력: 동점, 클래스 정원 100 초과, 클래스 간 겹침, 용량 초과·IoU 보호대 → CPU 처리 신호, 결정성 |
 | `test_postproc_live` | 필요 | host 경로 vs GPU 경로 검출 매칭 (≥ 0.95) |
 | `test_detections` | 필요 | CPU/GPU 전처리 경로 검출 일치 |
@@ -369,7 +369,7 @@ grim -o HDMI-A-1 shot.png
 
 ### 아직 열려 있는 것
 
-목록의 정본은 **[`07_results/README.md`](07_results/README.md#아직-열려-있는-것)** 다(17항목).
+목록의 정본은 **[`07_results/README.md`](07_results/README.md#아직-열려-있는-것)** 다(19항목).
 여기서는 운용에 바로 영향을 주는 셋만 적는다.
 
 - **연속 운용 발열** — 측정이 전부 26초짜리다. 몇 시간 도는 운용에서 `b2/s4` 의 30 fps 여유(+16%)가

@@ -22,8 +22,8 @@
 | | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 — 본 파이프라인 5개 + `diag/` 진단 전용 2개 (`.comp`). `overlay_boxes.comp` 는 버퍼 변형까지 SPIR-V 2개로 빌드 |
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
 | | `04_data/` | 입력 영상(기본 `video_h265.mp4`, 혼잡 장면용 `mot20_{02,05}_h265.mp4`)과 테스트용 원시 텐서 픽스처 (git에 없음) |
-| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 8개(`test_postproc_live` 를 따로 세면 9), ctest 항목 94개 |
-| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 11개), `python/`(5개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
+| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 8개(`test_postproc_live` 를 따로 세면 9), ctest 항목 95개 |
+| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 11개), `python/`(7개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
 | | [`07_results/`](../07_results/) | 실험별 측정 원시 출력과 `summary.md` |
 | **문서** | [`08_learn/`](00_README.md) | 지금 읽고 있는 이 자습 교재 13장 |
 | | [`09_diagrams/`](../09_diagrams/) | yEd로 여는 파이프라인 다이어그램 2장 |
@@ -248,7 +248,7 @@ ctest --test-dir build
 | 테스트 | NPU | 합격 기준 |
 |---|---|---|
 | `test_preproc` | 불필요 | GPU 전처리가 CPU 기준과 **NHCW에서 바이트 완전 일치**. `SandRefVsFfmpeg.*`: 기준 de-SAND가 rpi-ffmpeg SAND→NV12 변환과 **바이트 일치** — GPU ↔ `ref/` ↔ rpi-ffmpeg 사슬을 닫는다 |
-| `PostprocFixture.*` (5개) | **불필요** | 후보 수 동일, 점수 **비트 일치**, 좌표 오차 < 0.25 px, 10회 결정성, GPU NMS 결과 **비트 일치**(score 0.2·0.01) |
+| `PostprocFixture.*` (6개) | **불필요** | 후보 수 동일, 점수 **비트 일치**, 좌표 오차 < 0.25 px, 10회 결정성, GPU NMS 결과 **비트 일치**(score 0.2·0.01), heap 입력 경로(`YoloInputAlloc::ImportHeap`)가 Plain과 **비트 일치**(dma-heap 노드가 없으면 skip) |
 | `EfficientNms.*` (7개) | **불필요** | 합성 DetBuf: 동점, 클래스 정원, 클래스 간 겹침, 용량 초과·IoU 보호대 신호, 0/1개, 결정성 |
 | `test_postproc_live` | 필요 | host 경로 vs GPU 경로 검출 매칭 ≥ 0.95 |
 | `test_detections` | 필요 | 네 경로(CPU/GPU-ptr/GPU-dmabuf/NHCW) 검출 일치 |
@@ -353,7 +353,7 @@ build/bin/yvo_pipeline --video ... --hef ...
 
 **Q4. NPU가 다른 사람에게 잡혀 있을 때도 돌릴 수 있는 테스트가 있는가?**
 
-있다. `PostprocFixture.*`(5개), `EfficientNms.*`(7개), `test_preproc`, `test_overlay` 는 NPU가 필요 없다(`test_overlay` 의 `KmsScanout.*` 는 card1 과 HW 디코더를 쓴다).
+있다. `PostprocFixture.*`(6개), `EfficientNms.*`(7개), `test_preproc`, `test_overlay` 는 NPU가 필요 없다(`test_overlay` 의 `KmsScanout.*` 는 card1 과 HW 디코더를 쓴다).
 후처리 테스트를 일부러 두 개로 쪼갠 이유가 이것이다.
 
 **Q5. 처음 코드를 읽는다면 어디부터 봐야 하는가?**

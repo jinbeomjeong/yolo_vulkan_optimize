@@ -32,7 +32,7 @@ description: >
 | `gst_pipeline_bench.sh` | 앱(`yvo_pipeline` dmabuf/NHCW) 대 GStreamer 연구 경로(`yvo_gst_pipeline --sink hailo`), b1/b4/b8 같은 slots 인터리브. CSV 앞 26열은 `pipeline_bench.sh` 와 같다(gst 의 `decode_ms` 는 nan) | `07_results/gst_pipeline/` |
 | `dec_threads_bench.sh` | 앱 FFmpeg 프레임 스레드 수(`YVO_DEC_THREADS`) 스윕 + auto 대 1 회귀 A/B. 65열 raw, 매 실행 전 냉각(`COOL_EVERY=1`), 표시 실행은 HDMI-A-1 확인 + `timeout -s KILL 90` | `07_results/dec_threads/` |
 | `display_planes_bench.sh` | HVS 평면 표시 정식 측정(실험 B): vk / wayland-planes / kms × source·asap, b2/s4(`SLOTS=N`으로 변경), 900f×3, 모든 설정 `--display-warmup 30`(kms 첫 모드셋 제외). 102열 raw(RESULT_CSV3 18필드 — decode-to-screen `d2s_*`는 `ok` 뒤 — ·slot wait·labwc CPU·V3D 엔진별 포함, 2026-10-08 보관본은 96열). kms 는 `loginctl activate` 로 세션을 전환하므로 **사용자가 자리에 있는지 먼저 확인받는다**(`CLAUDE.md` §사용자 확인). 확인 전 기본은 `SKIP_KMS=1`이고, `SESSIONS_ONLY=1`·`DRYRUN=1`로 미리 점검한다 | `07_results/display_planes_e2e/` |
-| `nms_bench.sh` | GPU NMS 정식 A/B(실험 A, 표시 off): `MODE=perf` b2s4·b8s16 × `--nms cpu|gpu` 900f×3 인터리브(77열 raw), `MODE=verify` 전체 영상 cpu/gpu/verify 검출 대조. NMS 단독 GPU 비용은 `yvo_postproc_probe --probe nms`(NPU 불필요) | `07_results/gpu_nms_e2e/` |
+| `nms_bench.sh` | GPU NMS 정식 A/B(실험 A, 표시 off): `MODE=perf` b2s4·b8s16 × `--nms cpu|gpu` 900f×3 인터리브(77열 raw), `MODE=verify` 전체 영상 cpu/gpu/verify 검출 대조. ⚠ verify 는 CPU·GPU 억제끼리만 비교해(같은 `yolo_decode.comp` 후보를 받는다) **디코딩 쪽 회귀를 못 잡는다** — `BASELINE=<보관된 verify 폴더>` 로 세 `detections.jsonl` 을 기준선과 바이트 대조한다(영상·HEF·실효 프레임이 다르면 NPU 를 쓰기 전에 FAIL). `VERDICT_ONLY=1 OUT_DIR=<기존 verify 폴더>` 는 NPU 없이 판정만 다시 한다. IoU 매칭(`compare_detections.py`)은 점수만 바뀐 것을 못 보므로 판정은 바이트 비교다. NMS 단독 GPU 비용은 `yvo_postproc_probe --probe nms`(NPU 불필요) | `07_results/gpu_nms_e2e/` |
 
 > ⚠ `pipeline_bench.sh` 의 `configs` 스키마(`id|mode|layout|batch|slots` 5필드)는 **바꾸지 마라.**
 > 다른 스크립트들이 대조군 기준으로 쓴다.
@@ -133,7 +133,7 @@ grep -E '\[warning\]' hailort.log | grep -cE '[Tt]emperature|[Tt]hrottl|[Oo]verh
 
 - 공통 필수: `summary.md`, `env_bench.txt`(§1 의 환경 스냅샷). **스윕형**은 `results.csv`·`results_raw.csv`·`raw/` 도 필수,
   **프로브형**은 `evidence/` 가 필수. 유형은 `07_results/README.md` 색인 표의 "유형" 열에 적는다.
-- 실행 1회 = `raw/<설정>_run<N>/` 폴더 하나(`stdout.log` 전문 또는 `run.log` 발췌 + `hailort.log`).
+- 실행 1회 = `raw/<설정>_run<N>/` 폴더 하나(`stdout.log` 전문 또는 `run.log` 발췌 + `hailort.log`). **직접 쓰는 드라이버도 그 실행 폴더(또는 `11_logs/<날짜>_<무엇>/`)를 CWD로 삼는다** — `yvo_*` 바이너리는 NPU를 열지 않아도 `libhailort`를 로드하며 CWD에 `hailort.log`를 쓰므로 저장소 루트에서 돌리면 루트에 잔재가 남는다(`06_tools/bench`는 실행마다 `cd`한다).
   벤치의 온도 프로브가 남기는 `hailort.log` 는 `raw/_session/` 에 생긴다. `raw/` 바로 아래에 파일을 두지 않는다.
 - 같은 실험의 회차·변종은 `runs/<회차>/`(깊이 1). 1회 덤프(PNG, `detections.jsonl`)는 `samples/`.
 - **`evidence/` 와 `verification/` 은 목적으로 나눈다.** 결론의 근거(관문 통과·원인 특정·정확도 판정)는 `evidence/`,

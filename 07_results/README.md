@@ -143,7 +143,7 @@ python3 06_tools/python/check_links.py
 - **"지금 뭘 쓰면 되나"** → [`op_point/summary.md`](op_point/summary.md) §8
 - **"왜 이 설계인가"** → `pipeline_ffmpeg_vulkan_hailo/REPORT.md` §4.3 (메모리 제약) → `nms_host_cost/` (후처리 비용)
 - **"표시가 어떻게 동작하나"** → `display_vulkan_hdmi/` (프로브) → `display_e2e/` (통합) → `display_vulkan_hdmi/notes/` (HVS 평면 스캔아웃, 비정식) → `display_planes_e2e/` (평면 표시 정식 측정)
-- **"정확도를 어떻게 보장하나"** → `ctest` 94개. 특히 `test_postproc`(`PostprocFixture` 5 + `EfficientNms` 7 + live 1), `test_display_convert`,
+- **"정확도를 어떻게 보장하나"** → `ctest` 95개. 특히 `test_postproc`(`PostprocFixture` 6 — heap 입력 경로 포함 + `EfficientNms` 7 + live 1), `test_display_convert`,
   `test_detections`, `test_preproc`, `test_overlay`. 판정 규칙은 `01_src/ref/detection_match.hpp` 하나로 공용화돼 있고
   `06_tools/python/compare_detections.py` 가 같은 규칙을 구현한다
 
@@ -176,7 +176,7 @@ python3 06_tools/python/check_links.py
 | **연속 운용 발열 안정 FPS** ★ 가장 큰 구멍 | 측정이 전부 900프레임 ≈ 26초짜리다. 칩이 90 °C대로 가면 클럭이 400→250 MHz 로 떨어지고 `b2/s4` 의 여유(+16%)가 사라질 수 있다 |
 | **카메라(CSI) 입력 경로** | 디코더가 `01_src/decode/ffmpeg_drm_decoder.cpp:166` 에서 **HEVC 파일만** 받는다. 카메라로 가면 ISP 경로 재검토 조건도 함께 열린다 |
 | `--display-sync latest` 정식 측정 | 150프레임 확인 실행만 했다(glass median 28.2 ms) |
-| dma-heap 전환 (B.2 성능·V1 체크섬은 닫힘) | 별도 트랙. 성능(heap/plain 0.9994)과 Hailo 방향 3자 체크섬(V1 PASS)은 [`dmaheap_unify/`](dmaheap_unify/summary.md) 에서 확인됐다. 남은 것: `--alloc heap` 경로가 ctest 에 없다(안 쓰면 조용히 깨진다), 현재 이득 0 이라 기본 경로는 전환하지 않았다. `--postproc-alloc heap` 은 옵션만 있고 **기본값은 `export`** 다. V3D 쪽 기제는 아래 별도 행 |
+| dma-heap 전환 (B.2 성능·V1 체크섬은 닫힘) | 별도 트랙. 성능(heap/plain 0.9994)과 Hailo 방향 3자 체크섬(V1 PASS)은 [`dmaheap_unify/`](dmaheap_unify/summary.md) 에서 확인됐다. ctest 공백은 **닫혔다(2026-10-11)** — `PostprocFixture.ImportHeapMatchesPlainBitExact` 가 heap 입력 경로를 Plain 과 비트 일치로 고정하고, 헤드룸 없는 버퍼가 실제로 잘리는지(range = size − 256 함정)를 매 실행 음성 대조로 확인한다. 남은 것: 현재 이득 0 이라 기본 경로는 전환하지 않았다. `--postproc-alloc heap` 은 옵션만 있고 **기본값은 `export`** 다. V3D 쪽 기제는 아래 별도 행 |
 | 다중 스트림 | **측정 불필요** — 1080p30 2개 = 60 FPS 인데 NPU 상한이 51.7 이다 |
 | 워크그룹 최적값의 **이유** | `yolo_decode` 가 60 invocation(10×6)에서 256보다 빠르고 `display_convert` 가 3×85 에서 16×16보다 1.83배 빠른 이유를 설명하지 못했다. **측정치만이 근거인 가설**이다 |
 | V3D 쪽 캐시 일관성 **기제** | Hailo 쪽은 드라이버가 관리함을 perf 로 확인했다. V3D 는 프레임마다 매핑하지 않는데도 오염이 관측되지 않는다 — 축출 완료인지 스누핑인지 **가르지 못했다**(결정적 실험에 root 필요) |
@@ -191,3 +191,4 @@ python3 06_tools/python/check_links.py
 | 성능 카운터의 +2.6~6.3% 계단 | 1150 MHz 회차에서 실행 도중 GPU 작업 시간이 계단처럼 뛴다. 원인 미확인([`v3d_perf_counters` 회차](v3d_perf_counters/runs/bootloader_20260925/summary.md)) |
 | 표시 on 앱 내부 e2e p90 +1.9 ms | 디코더 1스레드에서 source pace 의 p90 만 3회 모두 높다(glass 평균은 같음). 원인 미확인([`dec_threads/`](dec_threads/summary.md) 결론 3) |
 | 1스레드 디코드 처리량 상한 | 약 266 FPS 는 코드 주석(`ffmpeg_drm_decoder.cpp:180`) 기준이고 직접 재지 않았다. 다중 스트림·NPU 병목이 없는 용도에서는 자동이 나을 수 있다 |
+| HEF 컨텍스트 조사 2단계 | 처리량을 실제로 움직일 지렛대는 config 20.5 MB 재적재와 컨텍스트 사이 텐서의 호스트 왕복(13.8 MB/프레임)이다([`candidate_reduction_survey/`](candidate_reduction_survey/summary.md) §5-3). 둘 다 "컨텍스트 수와 분할" 문제라 **컨텍스트가 적은 다른 분할의 HEF** 가 효과가 크지만 모델이 바뀐다 — **모델·HEF 교체는 사용자 결정**(재컴파일 DFC 는 x86 전용). 분석 도구는 저장소에 있다(`06_tools/python/hef_bytes.py`·`hef_byte_model.py`, 2026-10-11 회수) |
