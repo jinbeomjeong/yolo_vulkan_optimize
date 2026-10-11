@@ -1,0 +1,29 @@
+yvo_postproc_probe --probe groups   (plan §6.2 P3)
+[groups] dir=build/out/crowd_fixtures/mot20_05 frames=10  score_thr=0.2000 (HEF 0.20)  num_classes=80
+[groups] invocation groups per frame = 2100, so ① loads 168000 class words; ⑤ rescan loads (passing anchors) x 80
+frame  cand  anchors  groups   a/grp   n=1   n=2   n=3   n=4   cls/anchor 1/2/3/4+   rescan_words  %of①
+    0   127      127      82   1.549    42    35     5     0     127    0    0    0          10160   6.05%
+    1   160      160      98   1.633    45    44     9     0     160    0    0    0          12800   7.62%
+    2   180      180     114   1.579    52    58     4     0     180    0    0    0          14400   8.57%
+    3   190      190     123   1.545    65    49     9     0     190    0    0    0          15200   9.05%
+    4   162      162     106   1.528    55    46     5     0     162    0    0    0          12960   7.71%
+    5   179      179     127   1.409    82    39     5     1     179    0    0    0          14320   8.52%
+    6   170      170     118   1.441    72    40     6     0     170    0    0    0          13600   8.10%
+    7   186      186     131   1.420    83    42     5     1     186    0    0    0          14880   8.86%
+    8   171      171     120   1.425    72    45     3     0     171    0    0    0          13680   8.14%
+    9   161      161     115   1.400    72    40     3     0     161    0    0    0          12880   7.67%
+
+[groups] totals over 10 frames: candidates 1686, passing anchors 1686, passing groups 1134
+passing anchors per group    count     share
+  n = 1                        640    56.44%
+  n = 2                        438    38.62%
+  n = 3                         54     4.76%
+  n = 4                          2     0.18%
+  mean n                     1.487           <- ⑤ rescan load-reduction factor of a class-outer loop
+candidates per passing anchor  count   share
+   = 1                         1686   100.00%
+   = 2                            0     0.00%
+   = 3                            0     0.00%
+  >= 4                            0     0.00%
+
+[RESULT] groups PASS

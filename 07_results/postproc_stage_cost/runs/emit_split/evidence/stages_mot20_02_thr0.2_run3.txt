@@ -1,0 +1,58 @@
+yvo_postproc_probe --probe stages   (plan §6.2 P3)
+[fixture] dir=build/out/crowd_fixtures/mot20_02 frames=10  score_thr=0.2000 (HEF 0.20)
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64  validation=0
+[cfg] slots=10 (stream frames 0..9) max_dets=4096 local=10x6 rounds=3 warmup=50 perf_frames=500
+[cfg] variants=S1,S2,S3,noatomic,norescan,Full
+
+== gate: Full (embedded SPIR-V) candidate count vs cpu_yolov8_candidates(), every fixture frame ==
+frame  cpu  gpu  overflow  g5_detail  count
+    0   206  206         0         ok  ok
+    1   209  209         0         ok  ok
+    2   190  190         0         ok  ok
+    3   194  194         0         ok  ok
+    4   200  200         0         ok  ok
+    5   202  202         0         ok  ok
+    6   198  198         0         ok  ok
+    7   216  216         0         ok  ok
+    8   204  204         0         ok  ok
+    9   200  200         0         ok  ok
+[gate] PASS  candidates/frame: all 10 frames 201.90, stream frames 201.90
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop1.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop2.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop3.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_noatomic.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_norescan.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop1.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop2.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop3.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_noatomic.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_norescan.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop1.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop2.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop3.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_noatomic.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_norescan.spv
+
+== pass 1 GPU time per variant (3 rounds x 500 frames, ms) ==
+variant   median     p90      min    n     emitted(slot0)
+S1        0.3024   0.3171   0.2557  1500  0
+S2        0.4331   0.4549   0.4030  1500  0
+S3        0.4338   0.4656   0.3816  1500  0
+noatomic   0.7422   0.7860   0.6914  1500  55
+norescan   0.4491   0.4795   0.4123  1500  206
+Full      0.7411   0.7830   0.6844  1500  206
+
+== stage differences (medians, ms) ==
+①② class scan + rejection = S1          0.3024
+③  DFL                    = S2 - S1     0.1307
+④  letterbox inverse      = S3 - S2     0.0007
+⑤  emit                   = Full - S3   0.3073
+   Full                                  0.7411
+
+== ⑤ emit split (medians, ms; emitted = slot 0 candidates after the last round) ==
+atomic share = Full - noatomic    -0.0010   emitted Full 206 / noatomic 55
+rescan share = Full - norescan     0.2920   emitted Full 206 / norescan 206
+
+[validation] errors=0 warnings=1
+[RESULT] stages PASS

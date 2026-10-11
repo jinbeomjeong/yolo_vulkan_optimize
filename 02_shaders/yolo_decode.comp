@@ -119,6 +119,13 @@ layout(push_constant, std430) uniform Params {
 
 uvec4 unpack4(uint w) { return uvec4(w & 0xffu, (w >> 8) & 0xffu, (w >> 16) & 0xffu, w >> 24); }
 uint byte_of(uint w, int i) { return (w >> (uint(i) * 8u)) & 0xffu; }
+#ifndef YVO_DECODE_LEGACY_EMIT
+// ① packed key of 4 anchors: (q << 7) | c. Byte k moves to bits 7..14 in one shift + mask (k=0: <<7, else >>(8k-7)).
+// Needs c < 128 (num_classes <= 128, the same 7-bit class field as anchor_key): max (255<<7)|127 = 32767 < 2^15.
+uvec4 pack4(uint w, uint c) {
+    return uvec4((w << 7) & 0x7f80u, (w >> 1) & 0x7f80u, (w >> 9) & 0x7f80u, (w >> 17) & 0x7f80u) | c;
+}
+#endif
 
 // Solves the DFL softmax expectation of one side (16 bins) for 4 anchors at once. base is the word index of that side's first bin.
 // **Extracted into a function to avoid local arrays** (the V3D compiler cannot unroll local arrays + loops — sand_letterbox discipline).
@@ -143,8 +150,22 @@ vec4 dfl_dist(int base, int Wp) {
     return acc / sum;
 }
 
+// ── diagnostic emit variants (02_shaders/diag/CMakeLists.txt, yvo_postproc_probe --probe stages) ───────────────
+// Both produce **intentionally wrong** results; they exist only to split the measured cost of ⑤.
+//   YVO_EMIT_NOATOMIC: the slot reservation becomes a plain load/store, removing **only** the 2 device atomics per
+//     emit. The race is the point (count/dispatch_x/dets[] come out wrong), and the `idx >= max_dets` guard below
+//     still bounds every dets[] write -- a non-atomic idx never exceeds the real emit count, so no out-of-range store.
+//   YVO_EMIT_NORESCAN: ⑤ emits one record per passing anchor from the already-live `gmax4[a]`, removing **only**
+//     the class rescan. gmax4 and x1..y2 stay consumed and the atomics stay, so ①~④ are not dead-code eliminated.
+#ifdef YVO_EMIT_NOATOMIC
+#define YVO_RESERVE(i) const uint i = count; count = i + 1u
+#define YVO_PUBLISH(i) dispatch_x = (i) + 1u
+#else
+#define YVO_RESERVE(i) const uint i = atomicAdd(count, 1u)
+#define YVO_PUBLISH(i) atomicMax(dispatch_x, (i) + 1u)
+#endif
 void emit(float x1, float y1, float x2, float y2, float score, uint cls, uint key) {
-    const uint idx = atomicAdd(count, 1u);
+    YVO_RESERVE(idx);
     if (idx >= pc.max_dets) {
         atomicOr(overflow, 1u);
         return;
@@ -159,8 +180,18 @@ void emit(float x1, float y1, float x2, float y2, float score, uint cls, uint ke
     dets[idx].keep = 1u;
     // In case it is wired directly to the overlay, raise dispatch.x to the number of live candidates.
     // The host initializes it to (1,1,1), so workgroup 0 (HUD) runs even with 0 candidates.
-    atomicMax(dispatch_x, idx + 1u);
+    YVO_PUBLISH(idx);
 }
+
+// YVO_DECODE_LEGACY_EMIT (diag build yolo_decode_legacy): the pre-shortcut ① + ⑤, for A/B and multiset comparison.
+// The stage-1 sink mixes **both** new accumulators -- sinking only one lets DCE delete the other and under-measure ①.
+#ifdef YVO_DECODE_LEGACY_EMIT
+#define YVO_STAGE1_SINK (gmax4)
+#define YVO_ANCHOR_QMAX(a) (gmax4[a])
+#else
+#define YVO_STAGE1_SINK (pmax4 ^ uvec4(ge_cnt))
+#define YVO_ANCHOR_QMAX(a) (pmax4[a] >> 7)
+#endif
 
 #ifndef YVO_DECODE_STOP   // diagnostic stage cut (02_shaders/diag/CMakeLists.txt): 1 = after ②, 2 = after ③, 3 = after ④
 #define YVO_STOP_AT(n, u)
@@ -178,14 +209,37 @@ void main() {
     // ── ① Class scan: integer maximum of the group (4 anchors x 80 classes) ────────────────────────────────
     // The address advances by Wp per c (no 32-bit multiplication inside the loop).
     int ci = (h * pc.num_classes) * Wp + wi;
-    uvec4 gmax4 = uvec4(0u);
     uint cls_sum = 0u;
+#ifdef YVO_DECODE_LEGACY_EMIT
+    uvec4 gmax4 = uvec4(0u);
     for (int c = 0; c < pc.num_classes; ++c) {
         const uvec4 q = unpack4(cls_w[ci]);
         gmax4 = max(gmax4, q);
         if (kChecksum) cls_sum += q.x + q.y + q.z + q.w;
         ci += Wp;
     }
+#else
+    // pmax4[a] = max_c ((q_c << 7) | c): pmax4 >> 7 is exactly the integer max, pmax4 & 0x7f its argmax class.
+    // ge_cnt byte a = #{c : q_c >= t_sw} (SWAR, 4 anchors per word). With t_sw <= 128 every byte of (w | 0x80..) - t
+    // stays >= 0, so no borrow crosses a byte lane, and (q & 0x7f) >= t | q >= 128 is exactly q >= t_sw.
+    // Do NOT "simplify" to the 6-op hasless form ((w - t) & ~w & 0x80..): its borrow marks a lane equal to t_sw as
+    // below t_sw whenever the lane underneath is below it, i.e. it UNDER-counts passes and can open the shortcut
+    // for an anchor with 2 passing classes (yvo_postproc_probe --probe groups replays both forms bit for bit).
+    // No byte overflows: num_classes <= 128 < 256 increments per lane.
+    const uint t_sw4 = min(pc.q_thr_low, 128u) * 0x01010101u;
+    uvec4 pmax4 = uvec4(0u);
+    uint ge_cnt = 0u;
+    for (int c = 0; c < pc.num_classes; ++c) {
+        const uint word = cls_w[ci];
+        pmax4 = max(pmax4, pack4(word, uint(c)));
+        ge_cnt += ((((word | 0x80808080u) - t_sw4) | word) & 0x80808080u) >> 7;
+        if (kChecksum) {
+            const uvec4 q = unpack4(word);
+            cls_sum += q.x + q.y + q.z + q.w;
+        }
+        ci += Wp;
+    }
+#endif
     if (kChecksum) {
         uint box_sum = 0u;
         int bi = (h * kBoxChannels) * Wp + wi;
@@ -199,9 +253,16 @@ void main() {
     }
 
     // ── ② Group rejection ──────────────────────────────────────────────────────────────────────
+#ifdef YVO_DECODE_LEGACY_EMIT
     const uint gmax = max(max(gmax4.x, gmax4.y), max(gmax4.z, gmax4.w));
     if (gmax < pc.q_thr_low) return;
-    YVO_STOP_AT(1, gmax4)
+#else
+    // pmax >= (T << 7) <=> (pmax >> 7) >= T because the low 7 bits are c < 128. min(.., 256) guards the shift.
+    const uint thr_pk = min(pc.q_thr_low, 256u) << 7;
+    const uint pmax = max(max(pmax4.x, pmax4.y), max(pmax4.z, pmax4.w));
+    if (pmax < thr_pk) return;
+#endif
+    YVO_STOP_AT(1, YVO_STAGE1_SINK)
 
     // ── ③ DFL decode (once per group, 4 anchors at once) ────────────────────────────────────────────
     // cpu_yolov8_decode.hpp 4): ch = coord * reg_max + bin; subtract the per-coord max before softmax.
@@ -225,14 +286,36 @@ void main() {
     YVO_STOP_AT(3, floatBitsToUint(x1) ^ floatBitsToUint(y1) ^ floatBitsToUint(x2) ^ floatBitsToUint(y2))
 
     // ── ⑤ emit: **every** class exceeding the threshold (multi-class, appendix A.5) ────────────────
-    // Rescan classes per anchor. Measured cost of ⑤ is 26% of pass 1 (crowd: 41-45%, 07_results/postproc_stage_cost),
-    // and in exchange the dynamic indexing of vec4 disappears (a is a constant-bound loop variable, so the compiler unrolls it).
+    // argmax shortcut: if exactly one class passes the prefilter (ge_cnt byte == 1), emit it from registers with
+    // **0 class loads**. The prefilter is a loose necessary condition of the definitive test (D(c) => P(c):
+    // q_thr_low = floor(thr/cls_scale), q integer), so at most one class can pass the definitive test, and that class
+    // is above every other q -- necessarily the argmax pmax4 & 0x7f. Ties cannot reach the shortcut (both would pass).
+    // t_sw = min(q_thr_low, 128) <= q_thr_low only OVER-counts passes, so a clamp error sends an anchor to the
+    // fallback, never to the shortcut -- safe for every q_thr_low. The pmax4 >= thr_pk check above already gives
+    // q_argmax >= q_thr_low, so the emitted set equals the rescan's exactly. Otherwise the unchanged rescan below is the
+    // fallback. (V3D shaderdb: this a-loop is NOT unrolled in either build, so pmax4[a]/gmax4[a] are dynamic selects.)
     const uint key_hw = (uint(pc.scale_id) << 21) | (uint(h) << 14);
     for (int a = 0; a < 4; ++a) {
         const int w = w0 + a;
         if (w >= pc.grid_w) break;
+#ifdef YVO_DECODE_LEGACY_EMIT
         if (gmax4[a] < pc.q_thr_low) continue;   // this anchor has no class exceeding the threshold
+#else
+        if (pmax4[a] < thr_pk) continue;          // this anchor has no class exceeding the threshold
+#endif
         const uint key_a = key_hw | (uint(w) << 7);
+#ifdef YVO_EMIT_NORESCAN   // diagnostic: no class rescan -- one emit per passing anchor from the group max in registers
+        const float g_score = (float(YVO_ANCHOR_QMAX(a)) - pc.cls_zp) * pc.cls_scale;
+        if (g_score >= pc.thr) emit(x1[a], y1[a], x2[a], y2[a], g_score, 0u, key_a);
+#else
+#ifndef YVO_DECODE_LEGACY_EMIT
+        if (((ge_cnt >> (8u * uint(a))) & 0xffu) == 1u) {   // argmax shortcut (see above)
+            const uint c1 = pmax4[a] & 0x7fu;
+            const float score = (float(pmax4[a] >> 7) - pc.cls_zp) * pc.cls_scale;
+            if (score >= pc.thr) emit(x1[a], y1[a], x2[a], y2[a], score, c1, key_a | c1);
+            continue;
+        }
+#endif
         int cj = (h * pc.num_classes) * Wp + wi;
         for (int c = 0; c < pc.num_classes; ++c) {
             const uint q = byte_of(cls_w[cj], a);
@@ -242,5 +325,6 @@ void main() {
             if (score < pc.thr) continue;                      // definitive comparison: score >= thr
             emit(x1[a], y1[a], x2[a], y2[a], score, uint(c), key_a | uint(c));
         }
+#endif
     }
 }

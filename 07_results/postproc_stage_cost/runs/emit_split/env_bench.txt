@@ -1,0 +1,17 @@
+date: 2026-10-11T13:23:34+09:00
+git: f3535cd (+uncommitted emit-split instrumentation)
+6.18.50+rpt-rpi-2712
+pcie: 8.0 GT/s PCIe x1 (NPU not used)
+temp=68.6'C
+throttled=0xe0000
+frequency(0)=2400030464
+frequency(0)=1150018048
+v3d_freq=1150
+bootloader: 1accd6659983613cd104973ce2432da14f1a7682
+mesa: 26.2.2-1~bpo13+0~rpt1
+spv production md5: 2bb79b8b700b9a2eca7925183a9fbe1b
+b4c2f64cb8f6b13ce219db4c12d0236c  build/02_shaders/diag/yolo_decode_noatomic.spv
+15310bf9f7dcf7f08ee9d919640df9fb  build/02_shaders/diag/yolo_decode_norescan.spv
+dc7f9de14434c6835a2097bad9f1c92f  build/02_shaders/diag/yolo_decode_stop1.spv
+d596e66472e6bab4ca046c3773d4b17d  build/02_shaders/diag/yolo_decode_stop2.spv
+cda06d756c30c7a63517e18c61dcbee8  build/02_shaders/diag/yolo_decode_stop3.spv

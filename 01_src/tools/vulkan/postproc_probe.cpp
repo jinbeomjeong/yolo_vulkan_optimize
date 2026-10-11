@@ -42,6 +42,7 @@
 #include <filesystem>
 #include <unistd.h>
 #include <fstream>
+#include <limits>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -176,6 +177,7 @@ struct Options {
     std::string alloc = "plain";
     std::string heap_sync = "on";         // on | off | both — DMA_BUF_IOCTL_SYNC of ImportHeap (B.10 R2/R3)
     int rounds = 3;                       // gpuab/stages: number of interleaved rounds
+    std::string variants = "S1,S2,S3,Full";     // stages: which yolo_decode builds to run (Full is always added)
     int v3_window = 4096;                 // v3: per-tensor window size (B) used by line-dirty/stale-read
     std::string nms_cands = "16,64,256,1024";   // nms: synthetic candidate counts (1024 = kMaxSelected, worst case)
     float nms_score = kHefScoreThreshold;       // nms/stages: decode score threshold (--score = --nms-score)
@@ -190,7 +192,7 @@ struct Options {
 
 void usage() {
     std::puts(
-        "yvo_postproc_probe --probe {fixture|sweep|nms|stages|topk|live|stale|heapimport|gpuab|v3} [options]\n"
+        "yvo_postproc_probe --probe {fixture|sweep|nms|stages|groups|topk|live|stale|heapimport|gpuab|v3} [options]\n"
         "  --fixture-dir DIR      fixture directory (default <repo>/04_data/raw_tensors = YVO_FIXTURE_DIR)\n"
         "  --out-dir DIR          evidence file directory (default <repo>/build/out/yvo_postproc_probe)\n"
         "  --out-file NAME        evidence file name (default p3_<probe>.txt)\n"
@@ -207,7 +209,10 @@ void usage() {
         "  --stale-barrier X      on | off | both (default both)\n"
         "  --alloc X              plain | heap  raw output allocation path (default plain, Appendix B step 4)\n"
         "  --heap-sync X          on | off | both  DMA_BUF_IOCTL_SYNC of ImportHeap (default on)\n"
-        "  --rounds N             gpuab: plain↔heap / stages: S1,S2,S3,Full interleaved rounds (default 3)\n"
+        "  --rounds N             gpuab: plain↔heap / stages: per-variant interleaved rounds (default 3)\n"
+        "  --variants LIST        stages: yolo_decode builds to run, comma-separated (default S1,S2,S3,Full;\n"
+        "                         S1|S2|S3 = stage cuts, noatomic|norescan = ⑤ emit split, legacy|stop1_legacy =\n"
+        "                         pre-argmax-shortcut build (+ multiset check vs Full); Full is always added)\n"
         "  --v3-window N          v3: per-tensor window size B for line-dirty/stale-read (default 4096)\n"
         "  --nms-cand LIST        nms: synthetic all-survive candidate counts, comma-separated (default 16,64,256,1024)\n"
         "  --score T              nms/stages: decode score threshold of the fixture stream (default 0.2 = HEF; alias --nms-score)\n"
@@ -2264,6 +2269,15 @@ std::vector<int> parse_int_list(const std::string& s) {
     return out;
 }
 
+std::vector<std::string> parse_name_list(const std::string& s) {
+    std::vector<std::string> out;
+    std::stringstream ss(s);
+    std::string tok;
+    while (std::getline(ss, tok, ','))
+        if (!tok.empty()) out.push_back(tok);
+    return out;
+}
+
 int run_nms(const Options& o, Tee& log) {
     constexpr float kIouThr = 0.7f;      // HEF setting (gpu_postproc_stage.hpp)
     constexpr int kMaxPerClass = 100;    // HEF setting
@@ -2408,9 +2422,22 @@ int run_nms(const Options& o, Tee& log) {
 //      S1..S3 are `build/02_shaders/diag/yolo_decode_stop<N>.spv` (-DYVO_DECODE_STOP=N), injected with
 //      `YVO_YOLO_DECODE_SPV` (read once in the YoloPostproc constructor). Each cut sinks every component of the
 //      stage's result into the header's text[31] with one atomicXor per surviving group, so ⑤ = emit − that atomic.
+//      `--variants` selects which builds run (default S1,S2,S3,Full; Full is always added because every difference
+//      is taken against it). Two further builds split ⑤ itself, both **emitting intentionally wrong values**:
+//        noatomic = non-atomic slot reservation → `Full - noatomic` = the device-atomic share of ⑤
+//        norescan = no per-anchor class rescan   → `Full - norescan` = the class-rescan share of ⑤
+//      Those two still emit, so their emitted counts are reported and differ from Full's (norescan emits once per
+//      passing **anchor**, noatomic undercounts because the increments race) -- correct the difference with the
+//      per-candidate marginal cost before reading it as a pure share.
+//      `legacy` / `stop1_legacy` are the pre-argmax-shortcut ① + ⑤ (-DYVO_DECODE_LEGACY_EMIT, correct output):
+//        `Full - legacy` = the shortcut's net Δ, `S1 - stop1_legacy` = the ① cost of the packed max + SWAR counter.
+//      With `legacy` selected, every fixture frame is also decoded by both builds and the emitted candidates are
+//      compared as maps anchor_key -> (score bits, class_id, coordinate bits): the shortcut emits the same multiset,
+//      so this must match exactly (no NMS permutation to hide behind).
 //      Variants are interleaved within each of `--rounds` rounds (DVFS drift), each round `--warmup` + `--perf-frames`
 //      submissions cycling the slots. Local size is the YoloPostprocConfig default (the production value).
-//      Gate: Full's candidate count == `cpu_yolov8_candidates()` on every fixture frame, and S1..S3 emit 0 candidates.
+//      Gate: Full's candidate count == `cpu_yolov8_candidates()` on every fixture frame, stage cuts emit 0
+//      candidates, and the emit-split variants emit **non-zero** (that is the dead-code-elimination guard).
 int run_stages(const Options& o, Tee& log) {
     if (o.perf_frames < 1) throw std::runtime_error("--perf-frames must be >= 1");
     if (o.rounds < 1) throw std::runtime_error("--rounds must be >= 1");
@@ -2421,14 +2448,39 @@ int run_stages(const Options& o, Tee& log) {
     struct Variant {
         const char* name;
         std::string spv;           // empty = embedded production SPIR-V
+        bool expect_emit;          // false = stage cut (must emit 0); true = must emit (dead-code-elimination guard)
         std::vector<double> ms;    // pass 1 samples over all rounds
         std::size_t emitted = 0;   // candidates read back from slot 0 after the last round
     };
+    // Table order is the interleaving order. 02_shaders/diag/CMakeLists.txt builds every .spv listed here.
+    struct VariantDef {
+        const char* name;
+        const char* spv_name;      // nullptr = embedded production SPIR-V
+        bool expect_emit;
+    };
+    static constexpr VariantDef kDefs[] = {{"S1", "yolo_decode_stop1", false},
+                                           {"stop1_legacy", "yolo_decode_stop1_legacy", false},
+                                           {"S2", "yolo_decode_stop2", false},
+                                           {"S3", "yolo_decode_stop3", false},
+                                           {"noatomic", "yolo_decode_noatomic", true},
+                                           {"norescan", "yolo_decode_norescan", true},
+                                           {"legacy", "yolo_decode_legacy", true},
+                                           {"Full", nullptr, true}};
     const std::string dir = YVO_DECODE_STAGE_SPV_DIR;
-    std::vector<Variant> vars{{"S1", dir + "/yolo_decode_stop1.spv", {}, 0},
-                              {"S2", dir + "/yolo_decode_stop2.spv", {}, 0},
-                              {"S3", dir + "/yolo_decode_stop3.spv", {}, 0},
-                              {"Full", "", {}, 0}};
+    const std::vector<std::string> want = parse_name_list(o.variants);
+    if (want.empty()) throw std::runtime_error("--variants must not be empty");
+    for (const std::string& w : want) {
+        bool known = false;
+        for (const VariantDef& d : kDefs) known = known || w == d.name;
+        if (!known)
+            throw std::runtime_error("--variants: unknown variant '" + w + "' (S1,S2,S3,noatomic,norescan,legacy,stop1_legacy,Full)");
+    }
+    std::vector<Variant> vars;
+    for (const VariantDef& d : kDefs) {
+        const bool last = d.spv_name == nullptr;   // Full always runs: every difference is taken against it
+        if (!last && std::find(want.begin(), want.end(), std::string(d.name)) == want.end()) continue;
+        vars.push_back({d.name, last ? std::string() : dir + "/" + d.spv_name + ".spv", d.expect_emit, {}, 0});
+    }
     for (const Variant& v : vars)
         if (!v.spv.empty() && !std::filesystem::exists(v.spv))
             throw std::runtime_error("stage SPIR-V missing (build yvo_postproc_probe first): " + v.spv);
@@ -2455,6 +2507,9 @@ int run_stages(const Options& o, Tee& log) {
     log(fmt("[cfg] slots=%d (stream frames 0..%d) max_dets=%d local=%ux%u rounds=%d warmup=%d perf_frames=%d",
             pc.num_slots, pc.num_slots - 1, pc.max_dets, pc.local_size_x, pc.local_size_y, o.rounds, o.warmup,
             o.perf_frames));
+    std::string vnames;
+    for (const Variant& v : vars) vnames += (vnames.empty() ? "" : ",") + std::string(v.name);
+    log(fmt("[cfg] variants=%s", vnames.c_str()));
 
     // Builds YoloPostproc with the variant's SPIR-V. The environment variable is read only in the constructor,
     // so it is cleared right after construction (Full never sees a leftover path).
@@ -2508,6 +2563,58 @@ int run_stages(const Options& o, Tee& log) {
             rig.fs.frames, static_cast<double>(total_cand) / rig.fs.frames,
             static_cast<double>(stream_cand) / pc.num_slots));
 
+    // ── multiset check: Full vs legacy on every fixture frame (only when legacy is selected) ───────
+    bool multiset_ok = true;
+    if (const auto it = std::find_if(vars.begin(), vars.end(),
+                                     [](const Variant& v) { return std::strcmp(v.name, "legacy") == 0; });
+        it != vars.end()) {
+        using Rec = std::array<std::uint32_t, 6>;   // score, class_id, x1, y1, x2, y2 (float bits)
+        auto decode_all = [&](const Variant& v) {
+            auto pp = make_pp(v);
+            std::vector<std::map<std::uint32_t, Rec>> out;
+            std::size_t dup = 0;
+            for (int f = 0; f < rig.fs.frames; ++f) {
+                fill_slot(*pp, 0, rig.frames[static_cast<std::size_t>(f)]);
+                pp->submit(0, rig.fs.lb, rig.fs.src_w, rig.fs.src_h);
+                pp->wait(0);
+                if (pp->overflow(0) != 0) multiset_ok = false;
+                std::map<std::uint32_t, Rec> m;
+                for (const DetectionKeyed& d : pp->read_candidates(0)) {
+                    const Rec r = {bits_of(d.score), static_cast<std::uint32_t>(d.class_id), bits_of(d.x1),
+                                   bits_of(d.y1), bits_of(d.x2), bits_of(d.y2)};
+                    if (!m.emplace(d.anchor_key, r).second) ++dup;
+                }
+                out.push_back(std::move(m));
+            }
+            if (dup != 0) multiset_ok = false;   // anchor_key is unique per (anchor, class) by construction
+            return out;
+        };
+        const auto full = decode_all(vars.back());
+        const auto legacy = decode_all(*it);
+        log("");
+        log("== multiset: Full vs legacy, anchor_key -> (score bits, class_id, coordinate bits), every fixture frame ==");
+        log("frame  full  legacy  only_full  only_legacy  value_diff");
+        std::size_t tot = 0, bad = 0;
+        for (int f = 0; f < rig.fs.frames; ++f) {
+            const auto& a = full[static_cast<std::size_t>(f)];
+            const auto& b = legacy[static_cast<std::size_t>(f)];
+            std::size_t only_a = 0, only_b = 0, diff = 0;
+            for (const auto& kv : a) {
+                const auto jt = b.find(kv.first);
+                if (jt == b.end())
+                    ++only_a;
+                else if (jt->second != kv.second)
+                    ++diff;
+            }
+            for (const auto& kv : b) only_b += a.count(kv.first) == 0 ? 1u : 0u;
+            tot += a.size();
+            bad += only_a + only_b + diff;
+            log(fmt("%5d  %4zu  %6zu  %9zu  %11zu  %10zu", f, a.size(), b.size(), only_a, only_b, diff));
+        }
+        multiset_ok = multiset_ok && bad == 0 && tot > 0;
+        log(fmt("[multiset] %s  %zu candidates, %zu mismatches", multiset_ok ? "PASS" : "FAIL", tot, bad));
+    }
+
     // ── continuous stream per variant, interleaved over rounds ──────────────────────────────────
     for (int round = 0; round < o.rounds; ++round) {
         for (Variant& v : vars) {
@@ -2530,25 +2637,249 @@ int run_stages(const Options& o, Tee& log) {
     for (const Variant& v : vars) {
         log(fmt("%-7s  %7.4f  %7.4f  %7.4f  %4zu  %zu", v.name, percentile(v.ms, 0.5), percentile(v.ms, 0.9),
                 *std::min_element(v.ms.begin(), v.ms.end()), v.ms.size(), v.emitted));
-        if (!v.spv.empty() && v.emitted != 0) cut_ok = false;   // a cut variant must never reach ⑤
+        // a stage cut must never reach ⑤; an emit-split variant must emit, or it was dead-code eliminated
+        if (v.expect_emit != (v.emitted != 0)) cut_ok = false;
     }
-    const double m1 = percentile(vars[0].ms, 0.5), m2 = percentile(vars[1].ms, 0.5);
-    const double m3 = percentile(vars[2].ms, 0.5), mf = percentile(vars[3].ms, 0.5);
+    auto med = [&](const char* name) -> double {
+        for (const Variant& v : vars)
+            if (std::strcmp(v.name, name) == 0) return percentile(v.ms, 0.5);
+        return std::numeric_limits<double>::quiet_NaN();
+    };
+    auto emitted_of = [&](const char* name) -> std::size_t {
+        for (const Variant& v : vars)
+            if (std::strcmp(v.name, name) == 0) return v.emitted;
+        return 0;
+    };
+    auto has = [&](const char* name) { return !std::isnan(med(name)); };
+    const double mf = med("Full");
     log("");
     log("== stage differences (medians, ms) ==");
-    log(fmt("①② class scan + rejection = S1        %8.4f", m1));
-    log(fmt("③  DFL                    = S2 - S1   %8.4f", m2 - m1));
-    log(fmt("④  letterbox inverse      = S3 - S2   %8.4f", m3 - m2));
-    log(fmt("⑤  emit                   = Full - S3 %8.4f", mf - m3));
+    if (has("S1") && has("S2") && has("S3")) {
+        const double m1 = med("S1"), m2 = med("S2"), m3 = med("S3");
+        log(fmt("①② class scan + rejection = S1        %8.4f", m1));
+        log(fmt("③  DFL                    = S2 - S1   %8.4f", m2 - m1));
+        log(fmt("④  letterbox inverse      = S3 - S2   %8.4f", m3 - m2));
+        log(fmt("⑤  emit                   = Full - S3 %8.4f", mf - m3));
+    }
     log(fmt("   Full                                %8.4f", mf));
-    if (!cut_ok) log("[cut] FAIL: a stage-cut variant emitted candidates (the injected SPIR-V was not used?)");
+    // ⑤ split. The emitted counts differ from Full's, so these are upper bounds until corrected by the
+    // per-candidate marginal cost (07_results/postproc_stage_cost).
+    if (has("noatomic") || has("norescan")) {
+        log("");
+        log("== ⑤ emit split (medians, ms; emitted = slot 0 candidates after the last round) ==");
+        if (has("noatomic"))
+            log(fmt("atomic share = Full - noatomic   %8.4f   emitted Full %zu / noatomic %zu", mf - med("noatomic"),
+                    emitted_of("Full"), emitted_of("noatomic")));
+        if (has("norescan"))
+            log(fmt("rescan share = Full - norescan   %8.4f   emitted Full %zu / norescan %zu", mf - med("norescan"),
+                    emitted_of("Full"), emitted_of("norescan")));
+    }
+    if (has("legacy") || has("stop1_legacy")) {
+        log("");
+        log("== argmax shortcut (medians, ms; legacy = pre-shortcut build) ==");
+        if (has("legacy"))
+            log(fmt("shortcut net = Full - legacy      %8.4f   emitted Full %zu / legacy %zu", mf - med("legacy"),
+                    emitted_of("Full"), emitted_of("legacy")));
+        if (has("S1") && has("stop1_legacy"))
+            log(fmt("① cost       = S1 - stop1_legacy  %8.4f", med("S1") - med("stop1_legacy")));
+    }
+    if (!cut_ok)
+        log("[cut] FAIL: a stage cut emitted candidates or an emit-split variant emitted none "
+            "(the injected SPIR-V was not used, or the emit was dead-code eliminated?)");
 
     log("");
     log(fmt("[validation] errors=%llu warnings=%llu", static_cast<unsigned long long>(ctx.validation_errors()),
             static_cast<unsigned long long>(ctx.validation_warnings())));
-    const bool pass = gate_ok && cut_ok && ctx.validation_errors() == 0;
+    const bool pass = gate_ok && cut_ok && multiset_ok && ctx.validation_errors() == 0;
     log(fmt("[RESULT] stages %s", pass ? "PASS" : "FAIL"));
     return pass ? 0 : 1;
+}
+
+// Same formula as YoloPostproc::q_thr_low() (01_src/vulkan/yolo_postproc.cpp) -- the groups probe builds no
+// YoloPostproc, so it is mirrored here. floor(thr / scale + zp), clamped to 0..255.
+std::uint32_t mirror_q_thr_low(float thr, const yvo::vk::YoloScaleSpec& s) {
+    const double q = static_cast<double>(thr) / static_cast<double>(s.cls_scale) + static_cast<double>(s.cls_zp);
+    if (q <= 0.0) return 0;
+    if (q >= 255.0) return 255;
+    return static_cast<std::uint32_t>(std::floor(q));
+}
+
+// ⑤ argmax-shortcut hit rate (yolo_decode.comp). The shortcut gate is the **prefilter** count
+// #{c : q_c >= t_sw} == 1 (t_sw = min(q_thr_low, 128)), one notch looser than the definitive judgement.
+// Every anchor that reaches ⑤ (prefilter count >= 1) is classified, straight from the raw class tensors.
+// It also replays two SWAR per-byte counters bit for bit against the scalar count #{c : q_c >= t_sw}:
+//   borrow : lanes below t_sw, ((w - t4) & ~w & 0x80808080) -- the rejected design. Borrows cross byte lanes, so a
+//            lane equal to t_sw above a lane below t_sw is counted as "below" (passes are UNDER-counted)
+//   exact  : lanes at or above t_sw, (((w | 0x80808080) - t4) | w) & 0x80808080 -- the shader's ge_cnt, literally.
+//            The high bit stops every borrow (t_sw <= 128)
+struct PrefilterHist {
+    std::array<std::size_t, 5> n{};   // [k] = anchors with k prefilter-passing classes (k = 1..3, 4 = 4 or more)
+    std::size_t hit_emit = 0;          // k == 1 and the class also passes the definitive test (shortcut emits)
+    std::size_t hit_none = 0;          // k == 1 but the definitive test fails (shortcut emits nothing)
+    std::size_t swar_bad[2] = {0, 0};  // anchors whose SWAR count differs from the scalar count (borrow, exact)
+    std::size_t swar_unsafe[2] = {0, 0};   // ... where the SWAR gate says 1 but the true prefilter count is not 1
+    std::size_t swar_drop[2] = {0, 0};     // ... and >= 2 classes pass the definitive test (the shortcut loses emits)
+};
+
+void accumulate_prefilter(const FixtureRig& rig, int f, float thr, PrefilterHist& ph) {
+    const int C = rig.layout.num_classes;
+    for (int sc = 0; sc < kYoloNumScales; ++sc) {
+        const yvo::vk::YoloScaleSpec& s = rig.layout.s[sc];
+        const std::uint8_t* cls =
+            rig.frames[static_cast<std::size_t>(f)][static_cast<std::size_t>(yolo_cls_tensor(sc))].data();
+        const std::uint32_t qlow = mirror_q_thr_low(thr, s);
+        const std::uint32_t t_sw = std::min(qlow, 128u);
+        const std::uint32_t t4 = t_sw * 0x01010101u;
+        for (int h = 0; h < s.grid_h; ++h)
+            for (int w0 = 0; w0 < s.grid_w; w0 += 4) {
+                std::array<int, 4> k{}, kdef{};
+                std::uint32_t lt = 0u, ge = 0u;   // borrow form counts lanes below, exact form lanes at/above
+                for (int c = 0; c < C; ++c) {
+                    const std::size_t base =
+                        (static_cast<std::size_t>(h) * static_cast<std::size_t>(C) + static_cast<std::size_t>(c)) *
+                            static_cast<std::size_t>(s.w_padded) +
+                        static_cast<std::size_t>(w0);
+                    std::uint32_t word = 0;
+                    for (int a = 0; a < 4; ++a) {
+                        const std::uint32_t q = cls[base + static_cast<std::size_t>(a)];
+                        word |= q << (8 * a);
+                        if (q >= qlow) {
+                            ++k[static_cast<std::size_t>(a)];
+                            const float score = (static_cast<float>(q) - s.cls_zp) * s.cls_scale;   // shader's float form
+                            if (score >= thr) ++kdef[static_cast<std::size_t>(a)];
+                        }
+                    }
+                    lt += ((word - t4) & ~word & 0x80808080u) >> 7;
+                    ge += ((((word | 0x80808080u) - t4) | word) & 0x80808080u) >> 7;
+                }
+                for (int a = 0; a < 4; ++a) {
+                    const auto ua = static_cast<std::size_t>(a);
+                    // scalar prefilter count against t_sw (what the SWAR counter must reproduce)
+                    int k_sw = 0;
+                    for (int c = 0; c < C; ++c)
+                        k_sw += cls[(static_cast<std::size_t>(h) * static_cast<std::size_t>(C) +
+                                     static_cast<std::size_t>(c)) *
+                                        static_cast<std::size_t>(s.w_padded) +
+                                    static_cast<std::size_t>(w0 + a)] >= t_sw;
+                    for (int v = 0; v < 2; ++v) {
+                        const int pass = v == 0 ? C - static_cast<int>((lt >> (8 * a)) & 0xffu)
+                                                : static_cast<int>((ge >> (8 * a)) & 0xffu);
+                        if (pass != k_sw) ++ph.swar_bad[v];
+                        if (pass == 1 && k[ua] != 1 && k[ua] > 0) ++ph.swar_unsafe[v];
+                        if (pass == 1 && kdef[ua] >= 2) ++ph.swar_drop[v];
+                    }
+                    if (k[ua] == 0) continue;   // never reaches ⑤
+                    ++ph.n[static_cast<std::size_t>(std::min(k[ua], 4))];
+                    if (k[ua] == 1) ++(kdef[ua] == 1 ? ph.hit_emit : ph.hit_none);
+                }
+            }
+    }
+}
+
+// ───────────────────────────────────── groups (passing anchors per invocation group, **no NPU, no GPU**)
+//  --probe groups
+//      Histogram of **passing anchors per invocation group**, which bounds the gain of exchanging the ⑤ loops in
+//      `yolo_decode.comp`. Today ⑤ rescans all `num_classes` class words once **per passing anchor** of a group,
+//      so a group with n passing anchors loads n x num_classes words where a class-outer loop would load
+//      num_classes. The mean of n is therefore the load-reduction factor, and it is 1.00 (no gain at all) when
+//      every group has exactly one passing anchor.
+//      One group = one shader invocation = (scale_id, h, w >> 2), because 1 class word covers 4 anchors in the w
+//      direction. Anchor id = anchor_key >> 7 = (scale << 14) | (h << 7) | w (ref/cpu_yolov8_decode.hpp
+//      make_anchor_key), so the group key is (scale << 12) | (h << 5) | (w >> 2).
+//      Everything is derived from `cpu_yolov8_candidates()`, the same reference the ⑤ emit rule follows, and no
+//      Vulkan context is created -- it runs on any fixture directory (the 5-frame default or a crowd fixture).
+int run_groups(const Options& o, Tee& log) {
+    FixtureRig rig = load_rig(o);
+    const int C = rig.layout.num_classes;
+    std::size_t groups_total = 0;   // invocation groups of one frame over all 3 scales (① reads C words in each)
+    for (int sc = 0; sc < kYoloNumScales; ++sc)
+        groups_total += static_cast<std::size_t>(rig.layout.s[sc].grid_w / 4) *
+                        static_cast<std::size_t>(rig.layout.s[sc].grid_h);
+    const std::size_t stage1_words = groups_total * static_cast<std::size_t>(C);
+    log(fmt("[groups] dir=%s frames=%d  score_thr=%.4f (HEF %.2f)  num_classes=%d", o.fixture_dir.c_str(),
+            rig.fs.frames, static_cast<double>(o.nms_score), static_cast<double>(kHefScoreThreshold), C));
+    log(fmt("[groups] invocation groups per frame = %zu, so ① loads %zu class words;"
+            " ⑤ rescan loads (passing anchors) x %d",
+            groups_total, stage1_words, C));
+    log("frame  cand  anchors  groups   a/grp   n=1   n=2   n=3   n=4   cls/anchor 1/2/3/4+   rescan_words  %of①");
+    std::array<std::size_t, 5> ahist{};   // [n] = groups with n passing anchors (n = 1..4)
+    std::array<std::size_t, 5> chist{};   // [k] = anchors with k candidates (k = 1..3, 4 = 4 or more)
+    std::size_t tot_cand = 0, tot_anchor = 0, tot_group = 0;
+    bool ok = true;
+    PrefilterHist ph;
+    for (int f = 0; f < rig.fs.frames; ++f) {
+        accumulate_prefilter(rig, f, o.nms_score, ph);
+        const std::uint8_t* ptr[kYoloNumTensors];
+        for (int t = 0; t < kYoloNumTensors; ++t)
+            ptr[t] = rig.frames[static_cast<std::size_t>(f)][static_cast<std::size_t>(t)].data();
+        const auto cand = yvo::cpu_yolov8_candidates(make_raw_set(rig.layout, ptr), o.nms_score, rig.fs.lb,
+                                                     rig.fs.src_w, rig.fs.src_h);
+        std::map<std::uint32_t, int> per_anchor;   // anchor id -> candidates emitted for that anchor
+        for (const auto& d : cand) ++per_anchor[d.anchor_key >> 7];
+        std::map<std::uint32_t, int> per_group;    // group key -> passing anchors of that group
+        std::array<std::size_t, 5> fc{};
+        for (const auto& kv : per_anchor) {
+            const std::uint32_t a = kv.first;
+            ++per_group[((a >> 14) << 12) | (((a >> 7) & 0x7fu) << 5) | ((a & 0x7fu) >> 2)];
+            if (kv.second < 1) ok = false;
+            const std::size_t k = static_cast<std::size_t>(std::min(kv.second, 4));
+            ++fc[k];
+            ++chist[k];
+        }
+        std::array<std::size_t, 5> fa{};
+        for (const auto& kv : per_group) {
+            if (kv.second < 1 || kv.second > 4) {   // impossible: 1 class word covers exactly 4 anchors
+                ok = false;
+                continue;
+            }
+            const std::size_t n = static_cast<std::size_t>(kv.second);
+            ++fa[n];
+            ++ahist[n];
+        }
+        const double mean =
+            per_group.empty() ? 0.0
+                              : static_cast<double>(per_anchor.size()) / static_cast<double>(per_group.size());
+        const std::size_t rescan = per_anchor.size() * static_cast<std::size_t>(C);
+        tot_cand += cand.size();
+        tot_anchor += per_anchor.size();
+        tot_group += per_group.size();
+        log(fmt("%5d  %4zu  %7zu  %6zu  %6.3f  %4zu  %4zu  %4zu  %4zu   %5zu %4zu %4zu %4zu       %8zu  %5.2f%%", f,
+                cand.size(), per_anchor.size(), per_group.size(), mean, fa[1], fa[2], fa[3], fa[4], fc[1], fc[2],
+                fc[3], fc[4], rescan, 100.0 * static_cast<double>(rescan) / static_cast<double>(stage1_words)));
+    }
+    const std::size_t gsum = ahist[1] + ahist[2] + ahist[3] + ahist[4];
+    const double mean_all = gsum == 0 ? 0.0 : static_cast<double>(tot_anchor) / static_cast<double>(gsum);
+    log("");
+    log(fmt("[groups] totals over %d frames: candidates %zu, passing anchors %zu, passing groups %zu",
+            rig.fs.frames, tot_cand, tot_anchor, tot_group));
+    log("passing anchors per group    count     share");
+    for (std::size_t n = 1; n <= 4; ++n)
+        log(fmt("  n = %zu                    %7zu  %7.2f%%", n, ahist[n],
+                gsum == 0 ? 0.0 : 100.0 * static_cast<double>(ahist[n]) / static_cast<double>(gsum)));
+    log(fmt("  mean n                   %7.3f           <- ⑤ rescan load-reduction factor of a class-outer loop",
+            mean_all));
+    const std::size_t csum = chist[1] + chist[2] + chist[3] + chist[4];
+    log("candidates per passing anchor  count   share");
+    for (std::size_t k = 1; k <= 4; ++k)
+        log(fmt("  %s %zu                      %7zu  %7.2f%%", k == 4 ? ">=" : " =", k, chist[k],
+                csum == 0 ? 0.0 : 100.0 * static_cast<double>(chist[k]) / static_cast<double>(csum)));
+    const std::size_t psum = ph.n[1] + ph.n[2] + ph.n[3] + ph.n[4];
+    log(fmt("prefilter-passing classes per anchor reaching ⑤ (q >= q_thr_low = P3 %u / P4 %u / P5 %u)",
+            mirror_q_thr_low(o.nms_score, rig.layout.s[0]), mirror_q_thr_low(o.nms_score, rig.layout.s[1]),
+            mirror_q_thr_low(o.nms_score, rig.layout.s[2])));
+    for (std::size_t k = 1; k <= 4; ++k)
+        log(fmt("  %s %zu                      %7zu  %7.2f%%", k == 4 ? ">=" : " =", k, ph.n[k],
+                psum == 0 ? 0.0 : 100.0 * static_cast<double>(ph.n[k]) / static_cast<double>(psum)));
+    log(fmt("[shortcut] hit rate (prefilter count == 1) %7.2f%%  of %zu anchors  (emit %zu / no emit %zu)",
+            psum == 0 ? 0.0 : 100.0 * static_cast<double>(ph.n[1]) / static_cast<double>(psum), psum, ph.hit_emit,
+            ph.hit_none));
+    log(fmt("[shortcut] SWAR counter vs scalar: borrow form %zu mismatched anchors (%zu unsafe gate=1, %zu lose emits), "
+            "exact form %zu (%zu unsafe, %zu lose emits)",
+            ph.swar_bad[0], ph.swar_unsafe[0], ph.swar_drop[0], ph.swar_bad[1], ph.swar_unsafe[1], ph.swar_drop[1]));
+    if (ph.swar_bad[1] != 0 || ph.swar_drop[1] != 0) ok = false;
+    log("");
+    log(fmt("[RESULT] groups %s", ok && tot_cand > 0 ? "PASS" : "FAIL"));
+    return ok && tot_cand > 0 ? 0 : 1;
 }
 
 // ─────────────────────────────────────────────────────────── topk (CPU only, offline)
@@ -3044,6 +3375,7 @@ int main(int argc, char** argv) {
             else if (a == "--alloc") o.alloc = next("--alloc");
             else if (a == "--heap-sync") o.heap_sync = next("--heap-sync");
             else if (a == "--rounds") o.rounds = std::stoi(next("--rounds"));
+            else if (a == "--variants") o.variants = next("--variants");
             else if (a == "--v3-window") o.v3_window = std::stoi(next("--v3-window"));
             else if (a == "--nms-cand") o.nms_cands = next("--nms-cand");
             else if (a == "--nms-score" || a == "--score") o.nms_score = std::stof(next(a.c_str()));
@@ -3096,6 +3428,7 @@ int main(int argc, char** argv) {
         if (o.probe == "sweep") return run_sweep(o, log);
         if (o.probe == "nms") return run_nms(o, log);
         if (o.probe == "stages") return run_stages(o, log);
+        if (o.probe == "groups") return run_groups(o, log);
         if (o.probe == "topk") return run_topk(o, to, log);
         if (o.probe == "live") return run_live(o, log);
         if (o.probe == "stale") return run_stale(o, log);

@@ -1,0 +1,17 @@
+date: 2026-10-11T14:38:38+09:00
+git: e0112b7 (+uncommitted argmax shortcut)
+6.18.50+rpt-rpi-2712
+pcie: 8.0 GT/s PCIe x1 (NPU not used)
+temp=69.2'C
+throttled=0xe0000
+frequency(0)=2400033792
+frequency(0)=1150008192
+v3d_freq=1150
+bootloader: 1accd6659983613cd104973ce2432da14f1a7682
+mesa: 26.2.2-1~bpo13+0~rpt1
+spv production md5: d35113fb6692182ab240757993b67caa
+1f7e8ef0b969eccf78ef6b80dd917726  build/02_shaders/diag/yolo_decode_legacy.spv
+dc7f9de14434c6835a2097bad9f1c92f  build/02_shaders/diag/yolo_decode_stop1_legacy.spv
+e27bae0c0a9680f5645272e0ddf953b5  build/02_shaders/diag/yolo_decode_stop1.spv
+5940d2bc5628119cc127251282be776d  build/02_shaders/diag/yolo_decode_stop2.spv
+1bd24f5aa8c0e0a7d35dc14528ad5e99  build/02_shaders/diag/yolo_decode_stop3.spv

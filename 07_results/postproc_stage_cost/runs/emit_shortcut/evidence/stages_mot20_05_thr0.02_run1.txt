@@ -1,0 +1,73 @@
+yvo_postproc_probe --probe stages   (plan §6.2 P3)
+[fixture] dir=build/out/crowd_fixtures/mot20_05 frames=10  score_thr=0.0200 (HEF 0.20)
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64  validation=0
+[cfg] slots=10 (stream frames 0..9) max_dets=4096 local=10x6 rounds=3 warmup=50 perf_frames=500
+[cfg] variants=S1,stop1_legacy,S2,S3,legacy,Full
+
+== gate: Full (embedded SPIR-V) candidate count vs cpu_yolov8_candidates(), every fixture frame ==
+frame  cpu  gpu  overflow  g5_detail  count
+    0   879  879         0         ok  ok
+    1   981  981         0         ok  ok
+    2   978  978         0         ok  ok
+    3  1044 1044         0         ok  ok
+    4  1008 1008         0         ok  ok
+    5  1020 1020         0         ok  ok
+    6  1014 1014         0         ok  ok
+    7  1001 1001         0         ok  ok
+    8   977  977         0         ok  ok
+    9  1025 1025         0         ok  ok
+[gate] PASS  candidates/frame: all 10 frames 992.70, stream frames 992.70
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_legacy.spv
+
+== multiset: Full vs legacy, anchor_key -> (score bits, class_id, coordinate bits), every fixture frame ==
+frame  full  legacy  only_full  only_legacy  value_diff
+    0   879     879          0            0           0
+    1   981     981          0            0           0
+    2   978     978          0            0           0
+    3  1044    1044          0            0           0
+    4  1008    1008          0            0           0
+    5  1020    1020          0            0           0
+    6  1014    1014          0            0           0
+    7  1001    1001          0            0           0
+    8   977     977          0            0           0
+    9  1025    1025          0            0           0
+[multiset] PASS  9927 candidates, 0 mismatches
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop1.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop1_legacy.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop2.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop3.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_legacy.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop1.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop1_legacy.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop2.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop3.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_legacy.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop1.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop1_legacy.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop2.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_stop3.spv
+[YoloPostproc] using external SPIR-V /home/pi/workspace/yolo_vulkan_optimize/build/02_shaders/diag/yolo_decode_legacy.spv
+
+== pass 1 GPU time per variant (3 rounds x 500 frames, ms) ==
+variant   median     p90      min    n     emitted(slot0)
+S1        0.3423   0.3509   0.2831  1500  0
+stop1_legacy   0.3050   0.3175   0.2561  1500  0
+S2        0.5281   0.5386   0.5120  1500  0
+S3        0.5309   0.5416   0.5164  1500  0
+legacy    1.1645   1.1913   0.8348  1500  879
+Full      0.6711   0.7335   0.5818  1500  879
+
+== stage differences (medians, ms) ==
+①② class scan + rejection = S1          0.3423
+③  DFL                    = S2 - S1     0.1858
+④  letterbox inverse      = S3 - S2     0.0028
+⑤  emit                   = Full - S3   0.1402
+   Full                                  0.6711
+
+== argmax shortcut (medians, ms; legacy = pre-shortcut build) ==
+shortcut net = Full - legacy       -0.4934   emitted Full 879 / legacy 879
+① cost       = S1 - stop1_legacy    0.0373
+
+[validation] errors=0 warnings=1
+[RESULT] stages PASS

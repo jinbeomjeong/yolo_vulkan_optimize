@@ -1,0 +1,24 @@
+yvo_postproc_probe --probe groups   (plan §6.2 P3)
+[groups] dir=04_data/raw_tensors frames=5  score_thr=0.2000 (HEF 0.20)  num_classes=80
+[groups] invocation groups per frame = 2100, so ① loads 168000 class words; ⑤ rescan loads (passing anchors) x 80
+frame  cand  anchors  groups   a/grp   n=1   n=2   n=3   n=4   cls/anchor 1/2/3/4+   rescan_words  %of①
+    0    25       25      20   1.250    15     5     0     0      25    0    0    0           2000   1.19%
+    1    20       20      14   1.429     8     6     0     0      20    0    0    0           1600   0.95%
+    2    20       20      14   1.429     8     6     0     0      20    0    0    0           1600   0.95%
+    3    30       30      22   1.364    14     8     0     0      30    0    0    0           2400   1.43%
+    4    20       20      14   1.429     9     4     1     0      20    0    0    0           1600   0.95%
+
+[groups] totals over 5 frames: candidates 115, passing anchors 115, passing groups 84
+passing anchors per group    count     share
+  n = 1                         54    64.29%
+  n = 2                         29    34.52%
+  n = 3                          1     1.19%
+  n = 4                          0     0.00%
+  mean n                     1.369           <- ⑤ rescan load-reduction factor of a class-outer loop
+candidates per passing anchor  count   share
+   = 1                          115   100.00%
+   = 2                            0     0.00%
+   = 3                            0     0.00%
+  >= 4                            0     0.00%
+
+[RESULT] groups PASS

@@ -60,6 +60,7 @@ void YoloPostproc::validate() {
         throw std::invalid_argument("YoloPostproc: reg_max must be " + std::to_string(kDflRegMax) +
                                     " (it is a compile-time constant of the shader)");
     if (layout_.num_classes <= 0) throw std::invalid_argument("YoloPostproc: num_classes must be > 0");
+    if (layout_.num_classes > 128) throw std::invalid_argument("YoloPostproc: num_classes must be <= 128 (7-bit class)");
 
     const auto& lim = ctx_.properties().limits;
     if (cfg_.local_size_x == 0 || cfg_.local_size_y == 0 ||

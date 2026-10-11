@@ -1,0 +1,38 @@
+== stages (variant differencing), variants=S1,S2,S3,noatomic,norescan
+[13:23:49] run 1 default_thr0.2 (v3d 1150008192, 68.6'C, throttled=0xe0000)
+[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64  validation=0 [validation] errors=0 warnings=1 [RESULT] stages PASS 
+[13:23:54] run 1 mot20_02_thr0.2 (v3d 1150014720, 70.3'C, throttled=0xe0000)
+[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64  validation=0 [validation] errors=0 warnings=1 [RESULT] stages PASS 
+[13:24:01] run 1 mot20_05_thr0.2 (v3d 1150014720, 70.8'C, throttled=0xe0000)
+[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64  validation=0 [validation] errors=0 warnings=1 [RESULT] stages PASS 
+[13:24:07] run 1 mot20_05_thr0.02 (v3d 1150011520, 73.0'C, throttled=0xe0000)
+[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64  validation=0 [validation] errors=0 warnings=1 [RESULT] stages PASS 
+[13:24:16] run 1 mot20_05_thr0.003 (v3d 1150011520, 73.6'C, throttled=0xe0000)
+[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64  validation=0 [validation] errors=0 warnings=1 [RESULT] stages PASS 
+[13:24:26] run 2 default_thr0.2 (v3d 1150014720, 74.1'C, throttled=0xe0000)
+[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64  validation=0 [validation] errors=0 warnings=1 [RESULT] stages PASS 
+[13:24:31] run 2 mot20_02_thr0.2 (v3d 1150008192, 73.0'C, throttled=0xe0000)
+[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64  validation=0 [validation] errors=0 warnings=1 [RESULT] stages PASS 
+[13:24:38] run 2 mot20_05_thr0.2 (v3d 1150014720, 73.6'C, throttled=0xe0000)
+[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64  validation=0 [validation] errors=0 warnings=1 [RESULT] stages PASS 
+[13:24:45] run 2 mot20_05_thr0.02 (v3d 1150011520, 74.1'C, throttled=0xe0000)
+[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64  validation=0 [validation] errors=0 warnings=1 [RESULT] stages PASS 
+[13:24:53] run 2 mot20_05_thr0.003 (v3d 1150011520, 74.7'C, throttled=0xe0000)
+[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64  validation=0 [validation] errors=0 warnings=1 [RESULT] stages PASS 
+[13:25:03] run 3 default_thr0.2 (v3d 1150014720, 73.6'C, throttled=0xe0000)
+[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64  validation=0 [validation] errors=0 warnings=1 [RESULT] stages PASS 
+[13:25:09] run 3 mot20_02_thr0.2 (v3d 1150014720, 73.0'C, throttled=0xe0000)
+[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64  validation=0 [validation] errors=0 warnings=1 [RESULT] stages PASS 
+[13:25:15] run 3 mot20_05_thr0.2 (v3d 1150014720, 71.9'C, throttled=0xe0000)
+[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64  validation=0 [validation] errors=0 warnings=1 [RESULT] stages PASS 
+[13:25:22] run 3 mot20_05_thr0.02 (v3d 1150014720, 71.4'C, throttled=0xe0000)
+[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64  validation=0 [validation] errors=0 warnings=1 [RESULT] stages PASS 
+[13:25:30] run 3 mot20_05_thr0.003 (v3d 1150011520, 71.4'C, throttled=0xe0000)
+[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64  validation=0 [validation] errors=0 warnings=1 [RESULT] stages PASS 
+== groups (passing-anchor distribution)
+  mean n                     1.369           <- ⑤ rescan load-reduction factor of a class-outer loop
+[RESULT] groups PASS
+  mean n                     1.738           <- ⑤ rescan load-reduction factor of a class-outer loop
+[RESULT] groups PASS
+  mean n                     1.487           <- ⑤ rescan load-reduction factor of a class-outer loop
+[RESULT] groups PASS
