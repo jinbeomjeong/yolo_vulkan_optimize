@@ -24,11 +24,11 @@ GST_PIPELINE = "yvo_gst_pipeline"
 _GST_SINK_RE = re.compile(r"--sink(?:\s+|=)(\S+)")
 # yvo_postproc_probe depends on the mode (postproc_probe.cpp main()):
 #   live, stale, v3 -> opens a VDevice (exclusive NPU)
-#   gpuab, nms, stages -> uses only fixtures, but measures GPU/CPU time, so it is classified as load
-#   fixture (default), sweep, heapimport, topk -> no NPU needed
+#   gpuab, nms, stages, sweep -> uses only fixtures, but measures GPU/CPU time, so it is classified as load
+#   fixture (default), heapimport, topk -> no NPU needed
 POSTPROC_PROBE = "yvo_postproc_probe"
 POSTPROC_NPU_MODES = {"live", "stale", "v3"}
-POSTPROC_LOAD_MODES = {"gpuab", "nms", "stages"}
+POSTPROC_LOAD_MODES = {"gpuab", "nms", "stages", "sweep"}
 _PROBE_MODE_RE = re.compile(r"--probe(?:\s+|=)(\S+)|--(live|stale|fixture|sweep|heapimport)\b")
 
 # The bench list is found by globbing 06_tools/bench/*_bench.sh. If root resolution fails, fall back to the list below.
