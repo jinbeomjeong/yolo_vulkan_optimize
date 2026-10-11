@@ -1,0 +1,14 @@
+date: 2026-10-11T15:46:24+09:00
+git: 71c1266 (+uncommitted npu_guard sweep classification, 08_learn count fix)
+6.18.50+rpt-rpi-2712
+pcie: 8.0 GT/s PCIe x1 (NPU not used)
+temp=69.2'C
+throttled=0xe0000
+frequency(0)=2400023808
+frequency(0)=1150018048
+v3d_freq=1150
+bootloader: 1accd6659983613cd104973ce2432da14f1a7682
+mesa: 26.2.2-1~bpo13+0~rpt1
+bin md5: a35515bffb9d95df6597bfc954d11916  build/bin/yvo_postproc_probe
+bin mtime: 2026-10-11 14:30:17.319057924 +0900
+spv production md5: d35113fb6692182ab240757993b67caa

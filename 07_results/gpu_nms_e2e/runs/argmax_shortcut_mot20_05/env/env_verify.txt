@@ -1,0 +1,43 @@
+# nms_bench MODE=verify before 2026-10-11T16:25:37+09:00
+kernel: 6.18.50+rpt-rpi-2712
+soc temp: 70.3 C, hailo temp: 58.2 C
+throttled=0xe0000
+frequency(0)=2400037120
+frequency(0)=1150011520
+v3d_freq=1150
+bootloader: 2026/09/25 15:59:09
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+libavcodec61: 8:7.1.5-0+deb13u1+rpt2
+hailort: 4.24.0
+mesa-vulkan-drivers: 26.2.2-1~bpo13+0~rpt1
+labwc: 0.20.2-1~bpo13+1
+libwlroots-0.20: 0.20.2-1+rpt4
+git HEAD: 71c12667a8b1df6ddabc4198efc037dec9e7b676 (tracked changes)
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_pipeline md5 665098b08e0920324f669c0ecd06bb89 mtime 2026-10-11 14:29:59.575184505 +0900
+video: /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/mot20_05_h265.mp4
+hef: /home/pi/workspace/yolo_vulkan_optimize/03_models/yolov11m.hef
+verify frames: 0 (0 = whole video) dump-every: 100000
+cool: COOL_C=65 COOL_MAX_S=120 HOT_C=75 COOL_EVERY=1
+caller YVO_DEC_THREADS: <unset> (removed for every child: app default)
+env: 
+configs (id|args):
+  verify_b2s4|--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --gpu-depth 3 --display off --batch 2 --slots 4 --nms verify
+  cpu_b2s4|--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --gpu-depth 3 --display off --batch 2 --slots 4 --nms cpu
+  gpu_b2s4|--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --gpu-depth 3 --display off --batch 2 --slots 4 --nms gpu
+# nms_bench MODE=verify after 2026-10-11T16:28:44+09:00
+kernel: 6.18.50+rpt-rpi-2712
+soc temp: 73.6 C, hailo temp: 72.3 C
+throttled=0xe0000
+frequency(0)=2400030464
+frequency(0)=1150014720
+v3d_freq=1150
+bootloader: 2026/09/25 15:59:09
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+libavcodec61: 8:7.1.5-0+deb13u1+rpt2
+hailort: 4.24.0
+mesa-vulkan-drivers: 26.2.2-1~bpo13+0~rpt1
+labwc: 0.20.2-1~bpo13+1
+libwlroots-0.20: 0.20.2-1+rpt4
+git HEAD: 71c12667a8b1df6ddabc4198efc037dec9e7b676 (tracked changes)
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_pipeline md5 665098b08e0920324f669c0ecd06bb89 mtime 2026-10-11 14:29:59.575184505 +0900
+bin md5 (after): 665098b08e0920324f669c0ecd06bb89
