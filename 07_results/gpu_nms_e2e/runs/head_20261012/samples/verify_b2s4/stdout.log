@@ -1,0 +1,27 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[hevc @ 0x555609622e10] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+== yvo_pipeline (dmabuf, nhcw, batch 2, slots 4, gpu_depth 3, postproc gpu/export) ==
+frames          1816 (decoded 1816, errors 0)
+wall            51.884 s, 35.00 FPS
+cpu             0.930 ms/frame (process user+sys 1688.8 ms, 3% of one core)
+decode call ms  mean 2.941  median 3.682  p90 5.050  max 26.950
+gpu shader ms   mean 1.808  median 1.802  p90 1.863  max 2.954
+npu latency ms  mean 106.305  median 106.525  p90 108.400  max 141.411
+e2e latency ms  mean 139.523  median 146.771  p90 166.582  max 206.876  (decode return → NPU completion callback)
+slot wait ms    mean 25.502  p90 53.088  (time the main thread waited for a free slot)
+gpu post ms     mean 0.481  median 0.470  p90 0.529  max 4.559  (yolo_decode.comp pass 1)
+cpu nms us      mean 3.444  median 2.685  p90 6.648  max 14.704  (cpu_nms_greedy_by_class, n=1816)
+nms backend     verify
+gpu nms ms      mean 0.0585  median 0.0560  p90 0.0768  max 0.1083  (efficient_nms.comp)
+nms fallback    0 frames (capacity 0, iou guard 0)
+nms verify mismatch 0 frames (frames where the GPU result differs bitwise from the CPU reference, excluding fallback)
+candidates      mean 26.08  max 78  overflow frames 0
+slot hold ms    mean 3.993  median 3.783  p90 5.641  max 42.916  (NPU completion callback → slot return)
+held frames max 2 (decoder limit about 13), slot timeout 0
+detections      9457 total, 5.21 / frame
+hailo chip temp 64.9 -> 81.8 C
+soc temp        72.5 -> 72.5 C
+vk validation   errors 0, warnings 1
+RESULT_CSV,verify_b2s4,dmabuf,nhcw,2,4,1816,51.884,35.00,0.930,2.941,1.808,1.863,106.30,108.40,139.52,166.58,9457,64.9,81.8,72.5,72.5,1
+RESULT_CSV2,verify_b2s4,gpu,export,0.4809,0.5293,3.444,26.08,78,0,1,off,-,-,0.0000,0.0000,0.0000,0.000,0.00,0.00,0,0,0,2,0,verify,0.0585,0.0768,0,0,-,-,-,-,-,-
+RESULT_CSV3,verify_b2s4,0,nan,0,nan,0,-,-,-,-,-,-,-,1,nan,nan,nan,0
