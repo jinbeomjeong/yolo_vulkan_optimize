@@ -73,8 +73,8 @@ cmake -S . -B build -G Ninja && cmake --build build
 
 빌드 경고는 **0줄**이어야 한다. 셰이더는 `glslc -Werror` + `spirv-val` 을 자동으로 통과한다.
 
-의존: HailoRT 4.24.0, Vulkan(V3DV), libavcodec(RPi 빌드 7.1.5 rpt2 — v4l2-request·SAND), libdrm, wayland-client + wayland-protocols, OpenCV, GTest.
-선택: GStreamer ≥ 1.24(`-base`·`-video`·`-allocators`) — 없으면 연구 경로 `yvo_gstelem` 과 `tools/gst/` 도구만 빠진다.
+필수: HailoRT 4.24.0, Vulkan(V3DV), libavcodec(RPi 빌드 7.1.5 rpt2 — v4l2-request·SAND), libdrm. 테스트를 빌드하면(`YVO_BUILD_TESTS`, 기본 ON) GTest.
+선택: OpenCV — 없으면 경고만 내고 OpenCV 를 쓰는 타깃(PNG 덤프 등)이 빠진다. wayland-client + wayland-protocols. libpisp — 없으면 `yvo_isp` 전체가 빠진다. GStreamer ≥ 1.24(`-base`·`-video`·`-allocators`·`-app`) — 없으면 연구 경로 `yvo_gstelem` 과 `tools/gst/` 도구만 빠진다.
 표시 경로(`yvo_display`, kms 백엔드 포함)는 wayland 가 없으면 조용히 빠지고 나머지는 그대로 빌드된다.
 wayland-protocols 에 staging `color-representation` XML 이 없으면 그 요청만 빠진다(`wayland-planes` 의 색 range 지정 불가).
 
@@ -206,9 +206,9 @@ loginctl activate <데스크톱 세션 id>    # (또는 sudo chvt 7) 데스크�
 
 | 옵션 | 기본 | 설명 |
 |---|---|---|
-| `--mode ptr\|dmabuf` | `ptr` | **`dmabuf` 필수.** V3D 포인터는 Hailo 가 DMA 매핑하지 못한다 |
-| `--layout nhwc\|nhcw` | `nhwc` | **`nhcw` 필수.** HailoRT 의 CPU 입력 변환(약 14 ms/f)을 없앤다. dmabuf 전용 |
-| `--postproc host\|gpu` | `host` | `gpu` 는 원시 출력 + `yolo_decode.comp` + `--nms` 억제. **`dmabuf`+`nhcw` 전용** |
+| `--mode ptr\|dmabuf` | `dmabuf` | **`dmabuf` 필수.** V3D 포인터는 Hailo 가 DMA 매핑하지 못한다 |
+| `--layout nhwc\|nhcw` | `nhcw` | **`nhcw` 필수.** HailoRT 의 CPU 입력 변환(약 14 ms/f)을 없앤다. dmabuf 전용 |
+| `--postproc host\|gpu` | `gpu` | `gpu` 는 원시 출력 + `yolo_decode.comp` + `--nms` 억제. **`dmabuf`+`nhcw` 전용** |
 | `--nms gpu\|cpu\|verify` | `gpu` | `--postproc gpu` 의 억제 위치. `gpu` 는 `efficient_nms.comp`(CPU 기준과 비트 일치, 보장 못 하는 프레임만 자동 CPU 처리), `cpu` 는 `cpu_nms_greedy_by_class`, `verify` 는 매 프레임 둘을 비트 비교 |
 | `--batch N` / `--slots N` | 8 / `max(4,batch*2)` | 운용점. §3.3 참조 |
 | `--gpu-depth N` | 3 | GPU 동시 프레임 상한. **지연에 영향 없음**(실측 1 vs 3 동일) |
@@ -295,7 +295,7 @@ bash 06_tools/bench/dec_threads_bench.sh # 디코더 프레임 스레드 수 스
 bash 06_tools/bench/gst_pipeline_bench.sh # 앱 대 GStreamer 연구 경로(yvo_gst_pipeline)
 ```
 
-벤치 스크립트는 모두 9개다. 나머지(`backpressure`·`isp`·`isp_pipeline`)까지 포함한 목록은
+벤치 스크립트는 모두 11개다. 나머지(`backpressure`·`isp`·`isp_pipeline`·`display_planes`·`nms`)까지 포함한 목록은
 [`08_learn/09_code_map.md`](08_learn/09_code_map.md) §9.7.
 
 공통 환경변수: `RUNS`(기본 3), `FRAMES`, `ONLY`(설정 id grep), `APPEND=1`, `BIN`, `OUT_DIR`,

@@ -23,7 +23,7 @@
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
 | | `04_data/` | 입력 영상(기본 `video_h265.mp4`, 혼잡 장면용 `mot20_{02,05}_h265.mp4`)과 테스트용 원시 텐서 픽스처 (git에 없음) |
 | **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 8개(`test_postproc_live` 를 따로 세면 9), ctest 항목 94개 |
-| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 9개), `python/`(5개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
+| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 11개), `python/`(5개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
 | | [`07_results/`](../07_results/) | 실험별 측정 원시 출력과 `summary.md` |
 | **문서** | [`08_learn/`](00_README.md) | 지금 읽고 있는 이 자습 교재 13장 |
 | | [`09_diagrams/`](../09_diagrams/) | yEd로 여는 파이프라인 다이어그램 2장 |
@@ -275,7 +275,7 @@ C++ 테스트의 판정 규칙([`01_src/ref/detection_match.hpp`](../01_src/ref/
 
 ## 9.7 측정 스크립트
 
-[`06_tools/bench/`](../06_tools/bench/) 의 셸 스크립트 9개가 `07_results/` 의 결과를 만들어 낸다.
+[`06_tools/bench/`](../06_tools/bench/) 의 셸 스크립트 11개가 `07_results/` 의 결과를 만들어 낸다.
 
 | 스크립트 | 무엇을 재나 |
 |---|---|
@@ -286,6 +286,8 @@ C++ 테스트의 판정 규칙([`01_src/ref/detection_match.hpp`](../01_src/ref/
 | `dec_threads_bench.sh` | 앱의 FFmpeg 프레임 스레드 수 스윕과 auto 대 1스레드 회귀 A/B |
 | `decode_bench.sh` | 디코드 경로 비교 |
 | `backpressure_bench.sh` | 백프레셔 결함 전후 비교 |
+| `nms_bench.sh` | **GPU NMS** 회귀 — `--nms cpu` 대 `gpu` 성능과 `MODE=verify` 검출 대조 |
+| `display_planes_bench.sh` | **HVS 평면 스캔아웃** 비교 — Vulkan 합성 대 wayland-planes 대 kms, 디코드→화면 지연과 V3D 엔진별 비용 |
 | `isp_bench.sh` / `isp_pipeline_bench.sh` | ISP 경로 |
 
 공통 규약(설정당 3회 중앙값, 냉각 게이트, 환경 스냅샷)은 [08_method.md](08_method.md)에서 다룬다.
@@ -293,7 +295,7 @@ C++ 테스트의 판정 규칙([`01_src/ref/detection_match.hpp`](../01_src/ref/
 > `pipeline_bench.sh`의 설정 형식은 **바꾸면 안 된다.** 다른 스크립트들이
 > 이걸 대조군 기준으로 쓴다.
 
-아홉 스크립트 모두 시작할 때 `build/.bench_running` 에 자기 PID를 쓰고 끝날 때 지운다.
+11개 스크립트 모두 시작할 때 `build/.bench_running` 에 자기 PID를 쓰고 끝날 때 지운다.
 [`.claude/hooks/npu_guard.sh`](../.claude/hooks/npu_guard.sh) 가 이 파일을 보고 **측정 중에는
 빌드·테스트 명령을 막는다** — 측정 중 다른 작업이 돌면 CPU 시간이 에러 없이 오염되기 때문이다.
 Ctrl+C(INT)나 TERM을 받으면 락을 지우고 바로 끝난다(종료 코드 130·143, [`lib/common.sh`](../06_tools/bench/lib/common.sh)).

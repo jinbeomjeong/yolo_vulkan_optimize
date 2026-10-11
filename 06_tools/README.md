@@ -7,7 +7,7 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 나뉘어 있었는데, 파이썬 파일 2개가 서로 다른 폴더에 흩어져 경계가 무너진 상태였다.
 실제 구분선은 "언어"가 아니라 **"빌드에 들어가는가"** 다.
 
-## `bench/` — 측정 자동화 셸 9개
+## `bench/` — 측정 자동화 셸 11개
 
 | 스크립트 | 무엇을 재나 | 출력 |
 |---|---|---|
@@ -35,7 +35,7 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 
 ### 벤치 락
 
-아홉 스크립트 모두 시작할 때 `build/.bench_running` 에 자기 PID를 쓰고 `trap` 으로 지운다.
+11개 스크립트 모두 시작할 때 `build/.bench_running` 에 자기 PID를 쓰고 `trap` 으로 지운다.
 [`.claude/hooks/npu_guard.sh`](../.claude/hooks/npu_guard.sh) 가 이 파일을 보고 **측정 중에는
 빌드·테스트 명령을 막는다.** 측정 중에 다른 작업이 돌면 CPU 시간 측정이 **에러 없이 조용히
 오염되기** 때문이다. 훅이 PID 생존 여부를 보므로 비정상 종료로 남은 락은 자동 무효가 된다.
@@ -44,7 +44,7 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 
 | 파일 | 하는 일 | 실행 환경 |
 |---|---|---|
-| `check_links.py` | 저장소 모든 `.md` 의 마크다운 링크와 `파일:행` 범위가 실재하는지 검사. 깨진 링크가 있으면 종료 코드 1. `--stale STRUCTURE.md` 는 옮겨진 옛 경로가 남았는지 본다 | 시스템 python3 |
+| `check_links.py` | 저장소 모든 `.md` 의 마크다운 링크와 `파일:행` 범위가 실재하는지 검사. 깨진 링크가 있으면 종료 코드 1. `--stale STRUCTURE.md` 는 옮겨진 옛 경로가 남았는지 본다 — 종료 코드는 **실제로 남은 옛 경로만** 반영하고, `guessed`·`manual check` 줄은 사람이 읽고 판단하는 경고다(오탐이 흔하다) | 시스템 python3 |
 | `check_structure.py` | 폴더 배치 규칙 검사(최상위·코드 계층·include DAG·07_results 레이아웃). 규칙표는 [`structure_rules.toml`](structure_rules.toml), 정본 문서는 [`STRUCTURE.md`](../STRUCTURE.md). 위반이 있으면 종료 코드 1. Write 훅 `placement_guard` 가 이 파일의 `classify_new_path()` 를 쓴다 | 시스템 python3 |
 | `relocate.py` | `STRUCTURE.md` §6 매핑표로 `git mv`(`--apply-moves`)와 참조 재작성(`--apply-refs`)을 한다. 먼저 `--dry-run` | 시스템 python3 |
 | `compare_detections.py` | 두 `detections.jsonl` 비교(IoU 매칭·좌표 오차). 판정 규칙이 [`01_src/ref/detection_match.hpp`](../01_src/ref/detection_match.hpp) 와 **의도적으로 동일**하다 | conda `hailo-yolo` |
