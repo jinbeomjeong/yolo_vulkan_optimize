@@ -1,0 +1,16 @@
+date: 2026-10-11T19:37:56+09:00
+git HEAD: cd3627f94178d5ee4faf38ebb6ac7c88723b4469
+6.18.50+rpt-rpi-2712
+pcie: pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+soc: 69.7 C
+throttled=0xe0000
+frequency(0)=2400030464
+frequency(0)=1150011520
+v3d_freq=1150
+bootloader: 1accd6659983613cd104973ce2432da14f1a7682
+mesa: 26.2.2-1~bpo13+0~rpt1
+hailort: 4.24.0
+bin md5: 665098b08e0920324f669c0ecd06bb89  build/bin/yvo_pipeline
+bin mtime: 2026-10-11 14:29:59.575184505 +0900
+input: build/out/thermal_soak/mot20_05_loop.mp4 = 04_data/videos/mot20_05_h265.mp4 x160 (ffmpeg -stream_loop 159 -map 0:v -c copy), 144000 frames, 4403347036 B
+soak: SOAK_MIN=40 per config, COOL_C=65 (hailo) COOL_MAX_S=600, SOC_STOP_C=85

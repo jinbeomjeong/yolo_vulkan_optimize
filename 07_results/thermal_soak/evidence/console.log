@@ -1,0 +1,8 @@
+  cooling (before b2s4): hailo 58.6 C -> <= 65 C (max 600s)
+  cooled 0s, hailo 58.6 C
+[19:38:04] start b2s4  batch=2 slots=4  soak=40min  cooled 0s  soc 70.8 C
+[20:18:05] end   b2s4  rc=124  hailort warnings=9 errors=0  soc 72.5 C  throttled=0xe0000
+  cooling (before b8s16): hailo 106.7 C -> <= 65 C (max 600s)
+  cooled 235s, hailo 64.9 C
+[20:22:11] start b8s16  batch=8 slots=16  soak=40min  cooled 235s  soc 72.5 C
+[20:32:49] end   b8s16  rc=1  hailort warnings=0 errors=0  soc 74.7 C  throttled=0xe0000

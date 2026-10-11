@@ -117,8 +117,8 @@ build/bin/yvo_pipeline \
 
 | 목적 | 인자 | 결과 |
 |---|---|---|
-| **실시간 표시** (권장) | `--batch 2 --slots 4` | 표시 off 34.95 FPS / 표시 on `pace source` **29.91 FPS, glass 101 ms** |
-| 최대 처리량 | `--batch 8 --slots 16` | 51.5 FPS, e2e 325 ms |
+| **실시간 표시** (권장) | `--batch 2 --slots 4` | 표시 off 34.95 FPS / 표시 on `pace source` **29.91 FPS, glass 101 ms**. 40분 연속 운용에서도 칩이 데워진 평형 상태로 34.25~34.75 FPS 를 유지한다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
+| 최대 처리량 (**단시간만**) | `--batch 8 --slots 16` | 51.5 FPS, e2e 325 ms. ⚠ **추가 냉각 없이는 약 5분 만에 Hailo 칩이 red zone(약 120 °C)에 닿아 칩이 추론을 멈춘다** — 51.5 FPS 는 칩이 식어 있는 처음 약 2분의 값이다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
 | 최소 지연 | `--batch 1 --slots 1` | e2e 81.6 ms, 단 **24.4 FPS 로 30 fps 를 못 따라간다** |
 | 영상만 저지연 표시 | 위에 `--display-sync latest` 추가 | 화면 glass 28 ms, 박스만 뒤처진다 |
 
@@ -347,7 +347,7 @@ grim -o HDMI-A-1 shot.png
 | 표시가 조용히 2.6배 느림 | 창 모드다. `--display-fullscreen` 을 켜라 |
 | 디코더가 멈춤(에러 없음) | 프레임을 13개 넘게 붙잡았다. `slots + gpu_depth ≤ 10` 을 지켜라 |
 | `HAILO_OUT_OF_PHYSICAL_DEVICES` | 다른 프로세스가 NPU 를 쓰고 있다. Hailo-8 은 보드에 하나뿐이다 |
-| 성능이 들쭉날쭉 | 칩 온도를 봐라. 90 °C대에서 클럭이 400→250 MHz 로 떨어진다 |
+| 성능이 들쭉날쭉 | 칩 온도를 봐라. 약 104 °C(orange zone)부터 클럭이 400→350→300 MHz… 로 단계적으로 떨어지고, 약 120 °C(red zone)에서 칩이 추론을 멈춘다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
 | FPS 가 예상의 절반 | 과거에 러너 백프레셔 이중 계수 결함이 있었다(해소됨). `in-flight = FPS × npu_latency` 가 `slots` 에 가까운지 봐라 |
 | 표시 on 인데 멈춤, SIGTERM 도 안 먹음 | labwc 가 HDMI 를 잃었다(`wlr-randr` 에 `Headless output` 만 보임). 활성 VT 가 데스크톱이 아니거나 Xwayland 가 DRM master 를 가져간 경우다. `kill -9` 로 끝내고, `cat /sys/kernel/debug/dri/1/clients` 에서 master 를 확인한 뒤 Xwayland 를 끝내고 VT 를 한 번 토글(`loginctl activate` 로 tty ↔ 데스크톱)한다 |
 | `--display-backend kms` 가 종료 코드 2 | DRM master 를 못 얻었다(데스크톱이 활성). §3.5 대로 비데스크톱 VT 를 활성화한 뒤 실행 |
@@ -372,8 +372,8 @@ grim -o HDMI-A-1 shot.png
 목록의 정본은 **[`07_results/README.md`](07_results/README.md#아직-열려-있는-것)** 다(19항목).
 여기서는 운용에 바로 영향을 주는 셋만 적는다.
 
-- **연속 운용 발열** — 측정이 전부 26초짜리다. 몇 시간 도는 운용에서 `b2/s4` 의 30 fps 여유(+16%)가
-  클럭 강등을 버티는지 미검증
+- **연속 운용 발열** (일부 닫힘) — `b2/s4` 는 40분 지속 가능(평형 34.25~34.75 FPS), `b8/s16` 은 추가 냉각 없이
+  약 5분에 칩 보호 정지. 중간 운용점·냉각 장치·40분 초과는 미검증
 - **카메라(CSI) 입력** — 디코더가 HEVC 파일만 받는다(`01_src/decode/ffmpeg_drm_decoder.cpp:166`).
   카메라로 가면 ISP 전처리 경로 재검토 조건도 함께 열린다
 - **다중 스트림은 불가능하다** — 1080p30 두 개 = 60 FPS 인데 NPU 상한이 51.7 이다.

@@ -1,0 +1,17 @@
+[2026-10-11 19:38:05.263] [1099756] [HailoRT] [info] [vdevice.cpp:535] [create] Creating vdevice with params: device_count: 1, scheduling_algorithm: ROUND_ROBIN, multi_process_service: false
+[2026-10-11 19:38:05.276] [1099756] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-10-11 19:38:05.276] [1099756] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-10-11 19:38:05.276] [1099756] [HailoRT] [info] [vdevice.cpp:682] [create] VDevice Infos: 0001:01:00.0
+[2026-10-11 19:38:05.284] [1099756] [HailoRT] [info] [internal_buffer_manager.cpp:77] [print_execution_results] Planned internal buffer memory: CMA=0 CMA-Desc=983040 Pinned=13570048. memory to edge layer usage factor is 0.8803268
+[2026-10-11 19:38:05.284] [1099756] [HailoRT] [info] [internal_buffer_manager.cpp:86] [print_execution_results] Default Internal buffer planner executed successfully
+[2026-10-11 19:38:05.318] [1099756] [HailoRT] [info] [device_internal.cpp:57] [configure] Configuring HEF took 41.167443 milliseconds
+[2026-10-11 19:38:05.318] [1099756] [HailoRT] [info] [vdevice.cpp:780] [configure] Configuring HEF on VDevice took 41.436741 milliseconds
+[2026-10-11 19:43:30.467] [1099763] [HailoRT] [warning] [d2h_events_parser.cpp:112] [D2H_EVENTS__parse_health_monitor_temperature_alarm_notification] Got health monitor notification - temperature reached orange zone. sensor id=0, TS00=103.98878c, TS01=103.634674c
+[2026-10-11 19:43:33.373] [1099763] [HailoRT] [warning] [d2h_events_parser.cpp:139] [D2H_EVENTS__parse_health_monitor_clock_changed_event_notification] Got health monitor notification - System's clock has been changed from 400000000 to 350000000
+[2026-10-11 19:48:51.376] [1099763] [HailoRT] [warning] [d2h_events_parser.cpp:139] [D2H_EVENTS__parse_health_monitor_clock_changed_event_notification] Got health monitor notification - System's clock has been changed from 350000000 to 300000000
+[2026-10-11 19:50:51.377] [1099763] [HailoRT] [warning] [d2h_events_parser.cpp:139] [D2H_EVENTS__parse_health_monitor_clock_changed_event_notification] Got health monitor notification - System's clock has been changed from 300000000 to 350000000
+[2026-10-11 19:54:55.379] [1099763] [HailoRT] [warning] [d2h_events_parser.cpp:139] [D2H_EVENTS__parse_health_monitor_clock_changed_event_notification] Got health monitor notification - System's clock has been changed from 350000000 to 300000000
+[2026-10-11 20:00:51.379] [1099763] [HailoRT] [warning] [d2h_events_parser.cpp:139] [D2H_EVENTS__parse_health_monitor_clock_changed_event_notification] Got health monitor notification - System's clock has been changed from 300000000 to 350000000
+[2026-10-11 20:02:16.380] [1099763] [HailoRT] [warning] [d2h_events_parser.cpp:139] [D2H_EVENTS__parse_health_monitor_clock_changed_event_notification] Got health monitor notification - System's clock has been changed from 350000000 to 300000000
+[2026-10-11 20:11:02.381] [1099763] [HailoRT] [warning] [d2h_events_parser.cpp:139] [D2H_EVENTS__parse_health_monitor_clock_changed_event_notification] Got health monitor notification - System's clock has been changed from 300000000 to 350000000
+[2026-10-11 20:13:18.382] [1099763] [HailoRT] [warning] [d2h_events_parser.cpp:139] [D2H_EVENTS__parse_health_monitor_clock_changed_event_notification] Got health monitor notification - System's clock has been changed from 350000000 to 300000000

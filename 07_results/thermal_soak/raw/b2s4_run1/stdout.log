@@ -1,0 +1,313 @@
+1791715085.250442272 [vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+1791715085.348473422 [cfg] video=/home/pi/workspace/yolo_vulkan_optimize/build/out/thermal_soak/mot20_05_loop.mp4 1920x1080 mode=dmabuf layout=nhcw batch=2 slots=4 gpu_depth=3 postproc=gpu/export device=V3D 7.1.10.2
+1791715085.351829494 [hevc @ 0x5555f90ae1a0] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+1791715093.868887758 soc=69.7 throttled=0xe0000 [progress] 300 frames, 35.2 FPS, hailo 63.9 C
+1791715102.432116394 soc=71.9 throttled=0xe0000 [progress] 600 frames, 35.1 FPS, hailo 67.4 C
+1791715110.990854820 soc=70.3 throttled=0xe0000 [progress] 900 frames, 35.1 FPS, hailo 70.6 C
+1791715119.552283701 soc=71.4 throttled=0xe0000 [progress] 1200 frames, 35.1 FPS, hailo 73.0 C
+1791715128.113576374 soc=70.8 throttled=0xe0000 [progress] 1500 frames, 35.1 FPS, hailo 75.4 C
+1791715136.671961845 soc=71.9 throttled=0xe0000 [progress] 1800 frames, 35.1 FPS, hailo 77.5 C
+1791715145.233231438 soc=70.3 throttled=0xe0000 [progress] 2100 frames, 35.1 FPS, hailo 79.5 C
+1791715153.792252444 soc=71.4 throttled=0xe0000 [progress] 2400 frames, 35.1 FPS, hailo 81.1 C
+1791715162.352891287 soc=71.4 throttled=0xe0000 [progress] 2700 frames, 35.1 FPS, hailo 82.8 C
+1791715170.912104973 soc=70.3 throttled=0xe0000 [progress] 3000 frames, 35.1 FPS, hailo 84.3 C
+1791715179.470656819 soc=71.4 throttled=0xe0000 [progress] 3300 frames, 35.1 FPS, hailo 85.7 C
+1791715188.031961565 soc=71.9 throttled=0xe0000 [progress] 3600 frames, 35.1 FPS, hailo 86.9 C
+1791715196.590614092 soc=70.3 throttled=0xe0000 [progress] 3900 frames, 35.1 FPS, hailo 88.0 C
+1791715205.151244755 soc=70.8 throttled=0xe0000 [progress] 4200 frames, 35.1 FPS, hailo 89.4 C
+1791715213.711583822 soc=69.7 throttled=0xe0000 [progress] 4500 frames, 35.1 FPS, hailo 90.4 C
+1791715222.271672459 soc=70.3 throttled=0xe0000 [progress] 4800 frames, 35.1 FPS, hailo 91.2 C
+1791715230.831682353 soc=69.2 throttled=0xe0000 [progress] 5100 frames, 35.1 FPS, hailo 92.2 C
+1791715239.392435711 soc=70.3 throttled=0xe0000 [progress] 5400 frames, 35.1 FPS, hailo 93.1 C
+1791715247.950054458 soc=70.3 throttled=0xe0000 [progress] 5700 frames, 35.1 FPS, hailo 93.9 C
+1791715256.510863404 soc=69.7 throttled=0xe0000 [progress] 6000 frames, 35.1 FPS, hailo 94.6 C
+1791715265.068654925 soc=70.8 throttled=0xe0000 [progress] 6300 frames, 35.1 FPS, hailo 95.3 C
+1791715273.628787844 soc=69.7 throttled=0xe0000 [progress] 6600 frames, 35.1 FPS, hailo 96.0 C
+1791715282.188026961 soc=71.4 throttled=0xe0000 [progress] 6900 frames, 35.1 FPS, hailo 96.9 C
+1791715290.747521669 soc=69.2 throttled=0xe0000 [progress] 7200 frames, 35.1 FPS, hailo 97.2 C
+1791715299.307901601 soc=69.2 throttled=0xe0000 [progress] 7500 frames, 35.1 FPS, hailo 97.8 C
+1791715307.869333592 soc=70.8 throttled=0xe0000 [progress] 7800 frames, 35.1 FPS, hailo 98.5 C
+1791715316.427602436 soc=70.3 throttled=0xe0000 [progress] 8100 frames, 35.1 FPS, hailo 99.0 C
+1791715324.990046928 soc=70.3 throttled=0xe0000 [progress] 8400 frames, 35.1 FPS, hailo 99.6 C
+1791715333.550489815 soc=70.3 throttled=0xe0000 [progress] 8700 frames, 35.1 FPS, hailo 100.1 C
+1791715342.110785589 soc=70.3 throttled=0xe0000 [progress] 9000 frames, 35.1 FPS, hailo 100.4 C
+1791715350.670305727 soc=69.7 throttled=0xe0000 [progress] 9300 frames, 35.1 FPS, hailo 100.8 C
+1791715359.228302782 soc=70.8 throttled=0xe0000 [progress] 9600 frames, 35.1 FPS, hailo 101.4 C
+1791715367.788181714 soc=71.4 throttled=0xe0000 [progress] 9900 frames, 35.1 FPS, hailo 101.6 C
+1791715376.348214979 soc=69.7 throttled=0xe0000 [progress] 10200 frames, 35.1 FPS, hailo 102.1 C
+1791715384.906352047 soc=70.3 throttled=0xe0000 [progress] 10500 frames, 35.1 FPS, hailo 103.1 C
+1791715393.465503748 soc=70.3 throttled=0xe0000 [progress] 10800 frames, 35.1 FPS, hailo 103.5 C
+1791715402.025586063 soc=70.3 throttled=0xe0000 [progress] 11100 frames, 35.1 FPS, hailo 103.7 C
+1791715410.469013303 [HailoRT] [warning] Got health monitor notification - temperature reached orange zone. sensor id=0, TS00=103.98878c, TS01=103.634674c
+1791715410.585103263 soc=69.2 throttled=0xe0000 [progress] 11400 frames, 35.1 FPS, hailo 103.9 C
+1791715413.374823115 [HailoRT] [warning] Got health monitor notification - System's clock has been changed from 400000000 to 350000000
+1791715419.196507141 soc=71.4 throttled=0xe0000 [progress] 11700 frames, 35.0 FPS, hailo 104.0 C
+1791715427.830322518 soc=70.3 throttled=0xe0000 [progress] 12000 frames, 35.0 FPS, hailo 104.1 C
+1791715436.463859409 soc=70.3 throttled=0xe0000 [progress] 12300 frames, 35.0 FPS, hailo 104.3 C
+1791715445.098610935 soc=71.9 throttled=0xe0000 [progress] 12600 frames, 35.0 FPS, hailo 104.4 C
+1791715453.729600088 soc=70.3 throttled=0xe0000 [progress] 12900 frames, 35.0 FPS, hailo 104.6 C
+1791715462.363933349 soc=70.3 throttled=0xe0000 [progress] 13200 frames, 35.0 FPS, hailo 104.7 C
+1791715470.999123298 soc=69.7 throttled=0xe0000 [progress] 13500 frames, 35.0 FPS, hailo 104.9 C
+1791715479.633975985 soc=70.3 throttled=0xe0000 [progress] 13800 frames, 35.0 FPS, hailo 105.1 C
+1791715488.267934110 soc=70.3 throttled=0xe0000 [progress] 14100 frames, 35.0 FPS, hailo 105.1 C
+1791715496.902285754 soc=70.3 throttled=0xe0000 [progress] 14400 frames, 35.0 FPS, hailo 105.3 C
+1791715505.534534756 soc=70.3 throttled=0xe0000 [progress] 14700 frames, 35.0 FPS, hailo 105.3 C
+1791715514.169640956 soc=70.8 throttled=0xe0000 [progress] 15000 frames, 35.0 FPS, hailo 105.5 C
+1791715522.804848267 soc=70.3 throttled=0xe0000 [progress] 15300 frames, 35.0 FPS, hailo 105.5 C
+1791715531.437479063 soc=70.8 throttled=0xe0000 [progress] 15600 frames, 35.0 FPS, hailo 105.7 C
+1791715540.069851097 soc=70.3 throttled=0xe0000 [progress] 15900 frames, 35.0 FPS, hailo 105.7 C
+1791715548.704909792 soc=70.8 throttled=0xe0000 [progress] 16200 frames, 35.0 FPS, hailo 105.8 C
+1791715557.338404903 soc=70.8 throttled=0xe0000 [progress] 16500 frames, 35.0 FPS, hailo 105.9 C
+1791715565.971032194 soc=70.8 throttled=0xe0000 [progress] 16800 frames, 35.0 FPS, hailo 106.0 C
+1791715574.606591331 soc=70.8 throttled=0xe0000 [progress] 17100 frames, 35.0 FPS, hailo 106.1 C
+1791715583.239053508 soc=71.9 throttled=0xe0000 [progress] 17400 frames, 34.9 FPS, hailo 106.2 C
+1791715591.874069603 soc=70.3 throttled=0xe0000 [progress] 17700 frames, 34.9 FPS, hailo 106.4 C
+1791715600.509696126 soc=70.3 throttled=0xe0000 [progress] 18000 frames, 34.9 FPS, hailo 106.6 C
+1791715609.141601888 soc=71.9 throttled=0xe0000 [progress] 18300 frames, 34.9 FPS, hailo 106.7 C
+1791715617.774866693 soc=70.8 throttled=0xe0000 [progress] 18600 frames, 34.9 FPS, hailo 106.8 C
+1791715626.409777357 soc=70.8 throttled=0xe0000 [progress] 18900 frames, 34.9 FPS, hailo 106.9 C
+1791715635.044818410 soc=70.8 throttled=0xe0000 [progress] 19200 frames, 34.9 FPS, hailo 106.9 C
+1791715643.677865303 soc=70.3 throttled=0xe0000 [progress] 19500 frames, 34.9 FPS, hailo 107.0 C
+1791715652.312193257 soc=71.4 throttled=0xe0000 [progress] 19800 frames, 34.9 FPS, hailo 107.0 C
+1791715660.944871128 soc=70.8 throttled=0xe0000 [progress] 20100 frames, 34.9 FPS, hailo 107.2 C
+1791715669.579603674 soc=71.9 throttled=0xe0000 [progress] 20400 frames, 34.9 FPS, hailo 107.3 C
+1791715678.213599827 soc=70.8 throttled=0xe0000 [progress] 20700 frames, 34.9 FPS, hailo 107.4 C
+1791715686.848019166 soc=70.8 throttled=0xe0000 [progress] 21000 frames, 34.9 FPS, hailo 107.5 C
+1791715695.481377295 soc=70.3 throttled=0xe0000 [progress] 21300 frames, 34.9 FPS, hailo 107.6 C
+1791715704.116215597 soc=71.4 throttled=0xe0000 [progress] 21600 frames, 34.9 FPS, hailo 107.7 C
+1791715712.750179931 soc=71.4 throttled=0xe0000 [progress] 21900 frames, 34.9 FPS, hailo 107.9 C
+1791715721.382558645 soc=70.3 throttled=0xe0000 [progress] 22200 frames, 34.9 FPS, hailo 107.9 C
+1791715730.019649029 soc=71.9 throttled=0xe0000 [progress] 22500 frames, 34.9 FPS, hailo 108.0 C
+1791715731.377348848 [HailoRT] [warning] Got health monitor notification - System's clock has been changed from 350000000 to 300000000
+1791715738.759396620 soc=71.9 throttled=0xe0000 [progress] 22800 frames, 34.9 FPS, hailo 107.7 C
+1791715747.518202397 soc=71.4 throttled=0xe0000 [progress] 23100 frames, 34.9 FPS, hailo 107.7 C
+1791715756.276454337 soc=70.8 throttled=0xe0000 [progress] 23400 frames, 34.9 FPS, hailo 107.5 C
+1791715765.035908560 soc=72.5 throttled=0xe0000 [progress] 23700 frames, 34.9 FPS, hailo 107.3 C
+1791715773.796780029 soc=70.8 throttled=0xe0000 [progress] 24000 frames, 34.9 FPS, hailo 107.1 C
+1791715782.557006402 soc=70.8 throttled=0xe0000 [progress] 24300 frames, 34.9 FPS, hailo 107.0 C
+1791715791.314894132 soc=71.4 throttled=0xe0000 [progress] 24600 frames, 34.8 FPS, hailo 107.0 C
+1791715800.074345685 soc=72.5 throttled=0xe0000 [progress] 24900 frames, 34.8 FPS, hailo 106.9 C
+1791715808.831758800 soc=72.5 throttled=0xe0000 [progress] 25200 frames, 34.8 FPS, hailo 106.9 C
+1791715817.592411709 soc=72.5 throttled=0xe0000 [progress] 25500 frames, 34.8 FPS, hailo 106.9 C
+1791715826.354815106 soc=73.0 throttled=0xe0000 [progress] 25800 frames, 34.8 FPS, hailo 106.8 C
+1791715835.114648509 soc=73.0 throttled=0xe0000 [progress] 26100 frames, 34.8 FPS, hailo 106.7 C
+1791715843.874880098 soc=75.2 throttled=0xe0000 [progress] 26400 frames, 34.8 FPS, hailo 106.5 C
+1791715851.378994831 [HailoRT] [warning] Got health monitor notification - System's clock has been changed from 300000000 to 350000000
+1791715852.614375789 soc=74.7 throttled=0xe0000 [progress] 26700 frames, 34.8 FPS, hailo 105.7 C
+1791715861.248792962 soc=72.5 throttled=0xe0000 [progress] 27000 frames, 34.8 FPS, hailo 103.7 C
+1791715869.882273463 soc=70.3 throttled=0xe0000 [progress] 27300 frames, 34.8 FPS, hailo 102.1 C
+1791715878.518170939 soc=71.9 throttled=0xe0000 [progress] 27600 frames, 34.8 FPS, hailo 102.5 C
+1791715887.149456205 soc=72.5 throttled=0xe0000 [progress] 27900 frames, 34.8 FPS, hailo 103.4 C
+1791715895.786131980 soc=71.4 throttled=0xe0000 [progress] 28200 frames, 34.8 FPS, hailo 103.6 C
+1791715904.419916146 soc=71.9 throttled=0xe0000 [progress] 28500 frames, 34.8 FPS, hailo 103.7 C
+1791715913.052942568 soc=70.8 throttled=0xe0000 [progress] 28800 frames, 34.8 FPS, hailo 103.8 C
+1791715921.685120614 soc=72.5 throttled=0xe0000 [progress] 29100 frames, 34.8 FPS, hailo 104.1 C
+1791715930.319097910 soc=71.9 throttled=0xe0000 [progress] 29400 frames, 34.8 FPS, hailo 104.5 C
+1791715938.953192131 soc=73.0 throttled=0xe0000 [progress] 29700 frames, 34.8 FPS, hailo 104.8 C
+1791715947.586026401 soc=71.9 throttled=0xe0000 [progress] 30000 frames, 34.8 FPS, hailo 105.1 C
+1791715956.220447826 soc=71.9 throttled=0xe0000 [progress] 30300 frames, 34.8 FPS, hailo 105.4 C
+1791715964.854959121 soc=71.9 throttled=0xe0000 [progress] 30600 frames, 34.8 FPS, hailo 105.5 C
+1791715973.487011589 soc=71.9 throttled=0xe0000 [progress] 30900 frames, 34.8 FPS, hailo 105.7 C
+1791715982.122183331 soc=73.0 throttled=0xe0000 [progress] 31200 frames, 34.8 FPS, hailo 105.9 C
+1791715990.756985441 soc=71.9 throttled=0xe0000 [progress] 31500 frames, 34.8 FPS, hailo 106.0 C
+1791715999.391170684 soc=71.9 throttled=0xe0000 [progress] 31800 frames, 34.8 FPS, hailo 106.2 C
+1791716008.026996699 soc=73.0 throttled=0xe0000 [progress] 32100 frames, 34.8 FPS, hailo 106.5 C
+1791716016.660348929 soc=73.0 throttled=0xe0000 [progress] 32400 frames, 34.8 FPS, hailo 106.6 C
+1791716025.293205642 soc=71.4 throttled=0xe0000 [progress] 32700 frames, 34.8 FPS, hailo 106.9 C
+1791716033.927810682 soc=71.9 throttled=0xe0000 [progress] 33000 frames, 34.8 FPS, hailo 106.9 C
+1791716042.561926711 soc=71.4 throttled=0xe0000 [progress] 33300 frames, 34.8 FPS, hailo 107.0 C
+1791716051.196425611 soc=71.9 throttled=0xe0000 [progress] 33600 frames, 34.8 FPS, hailo 107.1 C
+1791716059.829079374 soc=71.9 throttled=0xe0000 [progress] 33900 frames, 34.8 FPS, hailo 107.4 C
+1791716068.463410326 soc=71.9 throttled=0xe0000 [progress] 34200 frames, 34.8 FPS, hailo 107.6 C
+1791716077.098178027 soc=72.5 throttled=0xe0000 [progress] 34500 frames, 34.8 FPS, hailo 107.8 C
+1791716085.732402187 soc=73.0 throttled=0xe0000 [progress] 34800 frames, 34.8 FPS, hailo 107.9 C
+1791716094.366721900 soc=71.9 throttled=0xe0000 [progress] 35100 frames, 34.8 FPS, hailo 108.0 C
+1791716095.380532668 [HailoRT] [warning] Got health monitor notification - System's clock has been changed from 350000000 to 300000000
+1791716103.110735800 soc=71.9 throttled=0xe0000 [progress] 35400 frames, 34.8 FPS, hailo 107.8 C
+1791716111.870713899 soc=72.5 throttled=0xe0000 [progress] 35700 frames, 34.8 FPS, hailo 107.8 C
+1791716120.628744737 soc=73.0 throttled=0xe0000 [progress] 36000 frames, 34.8 FPS, hailo 107.6 C
+1791716129.388264015 soc=71.9 throttled=0xe0000 [progress] 36300 frames, 34.8 FPS, hailo 107.4 C
+1791716138.148127775 soc=72.5 throttled=0xe0000 [progress] 36600 frames, 34.8 FPS, hailo 107.3 C
+1791716146.905375119 soc=73.0 throttled=0xe0000 [progress] 36900 frames, 34.8 FPS, hailo 107.3 C
+1791716155.662747936 soc=72.5 throttled=0xe0000 [progress] 37200 frames, 34.8 FPS, hailo 107.2 C
+1791716164.422426984 soc=72.5 throttled=0xe0000 [progress] 37500 frames, 34.8 FPS, hailo 107.1 C
+1791716173.183397844 soc=72.5 throttled=0xe0000 [progress] 37800 frames, 34.7 FPS, hailo 106.9 C
+1791716181.944614375 soc=71.9 throttled=0xe0000 [progress] 38100 frames, 34.7 FPS, hailo 107.0 C
+1791716190.702579384 soc=71.9 throttled=0xe0000 [progress] 38400 frames, 34.7 FPS, hailo 107.0 C
+1791716199.461838682 soc=72.5 throttled=0xe0000 [progress] 38700 frames, 34.7 FPS, hailo 106.9 C
+1791716208.221444925 soc=72.5 throttled=0xe0000 [progress] 39000 frames, 34.7 FPS, hailo 106.9 C
+1791716216.979981102 soc=73.6 throttled=0xe0000 [progress] 39300 frames, 34.7 FPS, hailo 106.9 C
+1791716225.737662515 soc=72.5 throttled=0xe0000 [progress] 39600 frames, 34.7 FPS, hailo 106.9 C
+1791716234.497252704 soc=72.5 throttled=0xe0000 [progress] 39900 frames, 34.7 FPS, hailo 106.9 C
+1791716243.255170826 soc=71.9 throttled=0xe0000 [progress] 40200 frames, 34.7 FPS, hailo 106.9 C
+1791716252.014502589 soc=72.5 throttled=0xe0000 [progress] 40500 frames, 34.7 FPS, hailo 106.9 C
+1791716260.774989521 soc=71.9 throttled=0xe0000 [progress] 40800 frames, 34.7 FPS, hailo 106.9 C
+1791716269.534049590 soc=72.5 throttled=0xe0000 [progress] 41100 frames, 34.7 FPS, hailo 106.8 C
+1791716278.291847582 soc=73.0 throttled=0xe0000 [progress] 41400 frames, 34.7 FPS, hailo 106.9 C
+1791716287.050313188 soc=71.9 throttled=0xe0000 [progress] 41700 frames, 34.7 FPS, hailo 106.9 C
+1791716295.810186749 soc=74.1 throttled=0xe0000 [progress] 42000 frames, 34.7 FPS, hailo 106.8 C
+1791716304.567465330 soc=73.0 throttled=0xe0000 [progress] 42300 frames, 34.7 FPS, hailo 106.9 C
+1791716313.327317807 soc=71.9 throttled=0xe0000 [progress] 42600 frames, 34.7 FPS, hailo 106.7 C
+1791716322.086129467 soc=71.9 throttled=0xe0000 [progress] 42900 frames, 34.7 FPS, hailo 106.7 C
+1791716330.845321503 soc=71.9 throttled=0xe0000 [progress] 43200 frames, 34.7 FPS, hailo 106.7 C
+1791716339.603090923 soc=71.9 throttled=0xe0000 [progress] 43500 frames, 34.7 FPS, hailo 106.7 C
+1791716348.363231626 soc=72.5 throttled=0xe0000 [progress] 43800 frames, 34.7 FPS, hailo 106.7 C
+1791716357.122506525 soc=71.9 throttled=0xe0000 [progress] 44100 frames, 34.7 FPS, hailo 106.7 C
+1791716365.881998077 soc=73.6 throttled=0xe0000 [progress] 44400 frames, 34.7 FPS, hailo 106.6 C
+1791716374.641282660 soc=72.5 throttled=0xe0000 [progress] 44700 frames, 34.7 FPS, hailo 106.5 C
+1791716383.401033523 soc=71.9 throttled=0xe0000 [progress] 45000 frames, 34.7 FPS, hailo 106.5 C
+1791716392.159531915 soc=71.9 throttled=0xe0000 [progress] 45300 frames, 34.7 FPS, hailo 106.6 C
+1791716400.918509256 soc=72.5 throttled=0xe0000 [progress] 45600 frames, 34.7 FPS, hailo 106.5 C
+1791716409.676575295 soc=71.4 throttled=0xe0000 [progress] 45900 frames, 34.7 FPS, hailo 106.4 C
+1791716418.434955523 soc=71.9 throttled=0xe0000 [progress] 46200 frames, 34.7 FPS, hailo 106.3 C
+1791716427.193406932 soc=71.4 throttled=0xe0000 [progress] 46500 frames, 34.7 FPS, hailo 106.2 C
+1791716435.952868402 soc=71.9 throttled=0xe0000 [progress] 46800 frames, 34.7 FPS, hailo 106.2 C
+1791716444.711094147 soc=73.0 throttled=0xe0000 [progress] 47100 frames, 34.6 FPS, hailo 106.2 C
+1791716451.381080135 [HailoRT] [warning] Got health monitor notification - System's clock has been changed from 300000000 to 350000000
+1791716453.439487633 soc=71.9 throttled=0xe0000 [progress] 47400 frames, 34.6 FPS, hailo 106.2 C
+1791716462.076243918 soc=71.4 throttled=0xe0000 [progress] 47700 frames, 34.6 FPS, hailo 106.6 C
+1791716470.710749960 soc=71.9 throttled=0xe0000 [progress] 48000 frames, 34.6 FPS, hailo 106.8 C
+1791716479.343592712 soc=71.4 throttled=0xe0000 [progress] 48300 frames, 34.6 FPS, hailo 106.9 C
+1791716487.977346928 soc=71.9 throttled=0xe0000 [progress] 48600 frames, 34.6 FPS, hailo 107.0 C
+1791716496.611035492 soc=71.9 throttled=0xe0000 [progress] 48900 frames, 34.6 FPS, hailo 107.2 C
+1791716505.245137784 soc=73.0 throttled=0xe0000 [progress] 49200 frames, 34.7 FPS, hailo 107.4 C
+1791716513.881291151 soc=72.5 throttled=0xe0000 [progress] 49500 frames, 34.7 FPS, hailo 107.6 C
+1791716522.514022247 soc=72.5 throttled=0xe0000 [progress] 49800 frames, 34.7 FPS, hailo 107.9 C
+1791716531.149153646 soc=71.4 throttled=0xe0000 [progress] 50100 frames, 34.7 FPS, hailo 107.9 C
+1791716536.382137845 [HailoRT] [warning] Got health monitor notification - System's clock has been changed from 350000000 to 300000000
+1791716539.832822628 soc=72.5 throttled=0xe0000 [progress] 50400 frames, 34.7 FPS, hailo 107.9 C
+1791716548.592987193 soc=71.9 throttled=0xe0000 [progress] 50700 frames, 34.6 FPS, hailo 107.8 C
+1791716557.350601806 soc=72.5 throttled=0xe0000 [progress] 51000 frames, 34.6 FPS, hailo 107.7 C
+1791716566.111025837 soc=73.0 throttled=0xe0000 [progress] 51300 frames, 34.6 FPS, hailo 107.6 C
+1791716574.869903997 soc=72.5 throttled=0xe0000 [progress] 51600 frames, 34.6 FPS, hailo 107.6 C
+1791716583.628901818 soc=73.0 throttled=0xe0000 [progress] 51900 frames, 34.6 FPS, hailo 107.4 C
+1791716592.388178387 soc=72.5 throttled=0xe0000 [progress] 52200 frames, 34.6 FPS, hailo 107.4 C
+1791716601.146116955 soc=71.9 throttled=0xe0000 [progress] 52500 frames, 34.6 FPS, hailo 107.2 C
+1791716609.904396907 soc=71.9 throttled=0xe0000 [progress] 52800 frames, 34.6 FPS, hailo 107.1 C
+1791716618.662969738 soc=72.5 throttled=0xe0000 [progress] 53100 frames, 34.6 FPS, hailo 107.0 C
+1791716627.421261070 soc=72.5 throttled=0xe0000 [progress] 53400 frames, 34.6 FPS, hailo 107.0 C
+1791716636.181078826 soc=72.5 throttled=0xe0000 [progress] 53700 frames, 34.6 FPS, hailo 107.0 C
+1791716644.939724792 soc=73.0 throttled=0xe0000 [progress] 54000 frames, 34.6 FPS, hailo 106.9 C
+1791716653.698028170 soc=72.5 throttled=0xe0000 [progress] 54300 frames, 34.6 FPS, hailo 107.0 C
+1791716662.456868713 soc=73.0 throttled=0xe0000 [progress] 54600 frames, 34.6 FPS, hailo 106.9 C
+1791716671.215497766 soc=73.0 throttled=0xe0000 [progress] 54900 frames, 34.6 FPS, hailo 106.9 C
+1791716679.974891919 soc=72.5 throttled=0xe0000 [progress] 55200 frames, 34.6 FPS, hailo 106.9 C
+1791716688.733447758 soc=72.5 throttled=0xe0000 [progress] 55500 frames, 34.6 FPS, hailo 106.9 C
+1791716697.492623704 soc=72.5 throttled=0xe0000 [progress] 55800 frames, 34.6 FPS, hailo 106.8 C
+1791716706.252018753 soc=72.5 throttled=0xe0000 [progress] 56100 frames, 34.6 FPS, hailo 106.9 C
+1791716715.011608751 soc=71.9 throttled=0xe0000 [progress] 56400 frames, 34.6 FPS, hailo 106.8 C
+1791716723.769492986 soc=72.5 throttled=0xe0000 [progress] 56700 frames, 34.6 FPS, hailo 106.8 C
+1791716732.527875847 soc=72.5 throttled=0xe0000 [progress] 57000 frames, 34.6 FPS, hailo 106.7 C
+1791716741.286925662 soc=70.3 throttled=0xe0000 [progress] 57300 frames, 34.6 FPS, hailo 106.7 C
+1791716750.045369036 soc=74.1 throttled=0xe0000 [progress] 57600 frames, 34.6 FPS, hailo 106.7 C
+1791716758.804213819 soc=72.5 throttled=0xe0000 [progress] 57900 frames, 34.6 FPS, hailo 106.7 C
+1791716767.563658061 soc=70.8 throttled=0xe0000 [progress] 58200 frames, 34.6 FPS, hailo 106.6 C
+1791716776.322995016 soc=73.0 throttled=0xe0000 [progress] 58500 frames, 34.6 FPS, hailo 106.6 C
+1791716785.082935607 soc=73.6 throttled=0xe0000 [progress] 58800 frames, 34.6 FPS, hailo 106.6 C
+1791716793.840177287 soc=71.9 throttled=0xe0000 [progress] 59100 frames, 34.6 FPS, hailo 106.5 C
+1791716802.599231504 soc=72.5 throttled=0xe0000 [progress] 59400 frames, 34.6 FPS, hailo 106.5 C
+1791716811.360062719 soc=72.5 throttled=0xe0000 [progress] 59700 frames, 34.6 FPS, hailo 106.4 C
+1791716820.119088623 soc=73.0 throttled=0xe0000 [progress] 60000 frames, 34.6 FPS, hailo 106.4 C
+1791716828.877144213 soc=73.6 throttled=0xe0000 [progress] 60300 frames, 34.6 FPS, hailo 106.5 C
+1791716837.634554968 soc=72.5 throttled=0xe0000 [progress] 60600 frames, 34.6 FPS, hailo 106.4 C
+1791716846.393097759 soc=71.9 throttled=0xe0000 [progress] 60900 frames, 34.6 FPS, hailo 106.3 C
+1791716855.152430118 soc=73.0 throttled=0xe0000 [progress] 61200 frames, 34.6 FPS, hailo 106.4 C
+1791716863.911470095 soc=71.9 throttled=0xe0000 [progress] 61500 frames, 34.6 FPS, hailo 106.3 C
+1791716872.673713918 soc=73.6 throttled=0xe0000 [progress] 61800 frames, 34.6 FPS, hailo 106.2 C
+1791716881.431583340 soc=73.6 throttled=0xe0000 [progress] 62100 frames, 34.6 FPS, hailo 106.2 C
+1791716890.190207373 soc=73.0 throttled=0xe0000 [progress] 62400 frames, 34.6 FPS, hailo 106.3 C
+1791716898.949460103 soc=73.6 throttled=0xe0000 [progress] 62700 frames, 34.6 FPS, hailo 106.2 C
+1791716907.709105233 soc=72.5 throttled=0xe0000 [progress] 63000 frames, 34.6 FPS, hailo 106.2 C
+1791716916.468880442 soc=72.5 throttled=0xe0000 [progress] 63300 frames, 34.6 FPS, hailo 106.2 C
+1791716925.228343819 soc=73.0 throttled=0xe0000 [progress] 63600 frames, 34.6 FPS, hailo 106.1 C
+1791716933.988556160 soc=72.5 throttled=0xe0000 [progress] 63900 frames, 34.6 FPS, hailo 106.2 C
+1791716942.747283363 soc=71.9 throttled=0xe0000 [progress] 64200 frames, 34.6 FPS, hailo 106.3 C
+1791716951.506234300 soc=71.9 throttled=0xe0000 [progress] 64500 frames, 34.6 FPS, hailo 106.3 C
+1791716960.266525656 soc=73.0 throttled=0xe0000 [progress] 64800 frames, 34.6 FPS, hailo 106.4 C
+1791716969.026163330 soc=73.6 throttled=0xe0000 [progress] 65100 frames, 34.6 FPS, hailo 106.4 C
+1791716977.784273206 soc=71.9 throttled=0xe0000 [progress] 65400 frames, 34.6 FPS, hailo 106.3 C
+1791716986.542848749 soc=74.1 throttled=0xe0000 [progress] 65700 frames, 34.6 FPS, hailo 106.3 C
+1791716995.302490607 soc=71.9 throttled=0xe0000 [progress] 66000 frames, 34.6 FPS, hailo 106.4 C
+1791717004.060585361 soc=73.0 throttled=0xe0000 [progress] 66300 frames, 34.6 FPS, hailo 106.3 C
+1791717012.821420873 soc=71.9 throttled=0xe0000 [progress] 66600 frames, 34.6 FPS, hailo 106.3 C
+1791717021.581384261 soc=72.5 throttled=0xe0000 [progress] 66900 frames, 34.6 FPS, hailo 106.3 C
+1791717030.340214797 soc=73.6 throttled=0xe0000 [progress] 67200 frames, 34.6 FPS, hailo 106.3 C
+1791717039.097817424 soc=73.6 throttled=0xe0000 [progress] 67500 frames, 34.5 FPS, hailo 106.3 C
+1791717047.859689322 soc=74.7 throttled=0xe0000 [progress] 67800 frames, 34.5 FPS, hailo 106.3 C
+1791717056.619956694 soc=73.6 throttled=0xe0000 [progress] 68100 frames, 34.5 FPS, hailo 106.3 C
+1791717062.382593965 [HailoRT] [warning] Got health monitor notification - System's clock has been changed from 300000000 to 350000000
+1791717065.337839931 soc=74.1 throttled=0xe0000 [progress] 68400 frames, 34.5 FPS, hailo 105.3 C
+1791717073.971482236 soc=72.5 throttled=0xe0000 [progress] 68700 frames, 34.5 FPS, hailo 103.6 C
+1791717082.606857531 soc=70.3 throttled=0xe0000 [progress] 69000 frames, 34.5 FPS, hailo 101.4 C
+1791717091.241832605 soc=71.9 throttled=0xe0000 [progress] 69300 frames, 34.5 FPS, hailo 101.5 C
+1791717099.874476837 soc=71.4 throttled=0xe0000 [progress] 69600 frames, 34.5 FPS, hailo 102.0 C
+1791717108.508867832 soc=71.4 throttled=0xe0000 [progress] 69900 frames, 34.5 FPS, hailo 102.9 C
+1791717117.144259622 soc=71.4 throttled=0xe0000 [progress] 70200 frames, 34.6 FPS, hailo 103.6 C
+1791717125.778217104 soc=72.5 throttled=0xe0000 [progress] 70500 frames, 34.6 FPS, hailo 103.6 C
+1791717134.411186222 soc=72.5 throttled=0xe0000 [progress] 70800 frames, 34.6 FPS, hailo 104.3 C
+1791717143.044867072 soc=72.5 throttled=0xe0000 [progress] 71100 frames, 34.6 FPS, hailo 105.1 C
+1791717151.679047226 soc=74.1 throttled=0xe0000 [progress] 71400 frames, 34.6 FPS, hailo 105.5 C
+1791717160.312809142 soc=73.0 throttled=0xe0000 [progress] 71700 frames, 34.6 FPS, hailo 105.9 C
+1791717168.946143558 soc=71.4 throttled=0xe0000 [progress] 72000 frames, 34.6 FPS, hailo 106.6 C
+1791717177.579984994 soc=73.6 throttled=0xe0000 [progress] 72300 frames, 34.6 FPS, hailo 106.9 C
+1791717186.215187117 soc=74.1 throttled=0xe0000 [progress] 72600 frames, 34.6 FPS, hailo 107.4 C
+1791717194.850101403 soc=73.0 throttled=0xe0000 [progress] 72900 frames, 34.6 FPS, hailo 107.9 C
+1791717198.383718154 [HailoRT] [warning] Got health monitor notification - System's clock has been changed from 350000000 to 300000000
+1791717203.560896652 soc=73.6 throttled=0xe0000 [progress] 73200 frames, 34.6 FPS, hailo 108.1 C
+1791717212.319403422 soc=74.1 throttled=0xe0000 [progress] 73500 frames, 34.6 FPS, hailo 108.2 C
+1791717221.079518357 soc=73.6 throttled=0xe0000 [progress] 73800 frames, 34.6 FPS, hailo 108.3 C
+1791717229.838088205 soc=74.1 throttled=0xe0000 [progress] 74100 frames, 34.6 FPS, hailo 108.5 C
+1791717238.597018545 soc=72.5 throttled=0xe0000 [progress] 74400 frames, 34.6 FPS, hailo 108.4 C
+1791717247.356375671 soc=73.6 throttled=0xe0000 [progress] 74700 frames, 34.6 FPS, hailo 108.3 C
+1791717256.116810195 soc=73.0 throttled=0xe0000 [progress] 75000 frames, 34.5 FPS, hailo 108.2 C
+1791717264.875699810 soc=75.2 throttled=0xe0000 [progress] 75300 frames, 34.5 FPS, hailo 108.2 C
+1791717273.635477486 soc=72.5 throttled=0xe0000 [progress] 75600 frames, 34.5 FPS, hailo 108.1 C
+1791717282.393935861 soc=71.9 throttled=0xe0000 [progress] 75900 frames, 34.5 FPS, hailo 108.1 C
+1791717291.153128627 soc=73.0 throttled=0xe0000 [progress] 76200 frames, 34.5 FPS, hailo 108.0 C
+1791717299.911672166 soc=72.5 throttled=0xe0000 [progress] 76500 frames, 34.5 FPS, hailo 108.0 C
+1791717308.670495275 soc=72.5 throttled=0xe0000 [progress] 76800 frames, 34.5 FPS, hailo 107.9 C
+1791717317.429830715 soc=73.0 throttled=0xe0000 [progress] 77100 frames, 34.5 FPS, hailo 107.9 C
+1791717326.189686759 soc=72.5 throttled=0xe0000 [progress] 77400 frames, 34.5 FPS, hailo 107.8 C
+1791717334.948106106 soc=72.5 throttled=0xe0000 [progress] 77700 frames, 34.5 FPS, hailo 107.8 C
+1791717343.707731094 soc=72.5 throttled=0xe0000 [progress] 78000 frames, 34.5 FPS, hailo 107.7 C
+1791717352.465594843 soc=73.0 throttled=0xe0000 [progress] 78300 frames, 34.5 FPS, hailo 107.7 C
+1791717361.225270011 soc=73.0 throttled=0xe0000 [progress] 78600 frames, 34.5 FPS, hailo 107.7 C
+1791717369.982043137 soc=72.5 throttled=0xe0000 [progress] 78900 frames, 34.5 FPS, hailo 107.6 C
+1791717378.741360218 soc=72.5 throttled=0xe0000 [progress] 79200 frames, 34.5 FPS, hailo 107.6 C
+1791717387.501838880 soc=73.0 throttled=0xe0000 [progress] 79500 frames, 34.5 FPS, hailo 107.5 C
+1791717396.260703907 soc=72.5 throttled=0xe0000 [progress] 79800 frames, 34.5 FPS, hailo 107.5 C
+1791717405.021418643 soc=71.9 throttled=0xe0000 [progress] 80100 frames, 34.5 FPS, hailo 107.4 C
+1791717413.778413346 soc=72.5 throttled=0xe0000 [progress] 80400 frames, 34.5 FPS, hailo 107.5 C
+1791717422.539802949 soc=73.0 throttled=0xe0000 [progress] 80700 frames, 34.5 FPS, hailo 107.4 C
+1791717431.298777855 soc=72.5 throttled=0xe0000 [progress] 81000 frames, 34.5 FPS, hailo 107.3 C
+1791717440.059117741 soc=72.5 throttled=0xe0000 [progress] 81300 frames, 34.5 FPS, hailo 107.3 C
+1791717448.817633780 soc=72.5 throttled=0xe0000 [progress] 81600 frames, 34.5 FPS, hailo 107.2 C
+1791717457.575380254 soc=73.0 throttled=0xe0000 [progress] 81900 frames, 34.5 FPS, hailo 107.2 C
+1791717466.336861453 soc=72.5 throttled=0xe0000 [progress] 82200 frames, 34.5 FPS, hailo 107.2 C
+1791717475.095208224 soc=71.9 throttled=0xe0000 [progress] 82500 frames, 34.5 FPS, hailo 107.2 C
+1791717483.857204756 soc=72.5 throttled=0xe0000 [progress] 82800 frames, 34.5 FPS, hailo 107.1 C
+1791717485.020329647 [interrupted] SIGINT received — stopped at frame 82833 (the stats below are partial-run values, ok=0)
+1791717485.021763337 == yvo_pipeline (dmabuf, nhcw, batch 2, slots 4, gpu_depth 3, postproc gpu/export) ==
+1791717485.023059194 frames          82833 (decoded 82833, errors 0)
+1791717485.024312531 wall            2399.562 s, 34.52 FPS
+1791717485.025603888 cpu             0.985 ms/frame (process user+sys 81597.6 ms, 3% of one core)
+1791717485.026799151 decode call ms  mean 1.220  median 0.287  p90 2.648  max 19.602
+1791717485.028035489 gpu shader ms   mean 1.875  median 1.867  p90 1.934  max 5.960
+1791717485.029225216 npu latency ms  mean 109.562  median 109.760  p90 111.257  max 145.914
+1791717485.030242664 e2e latency ms  mean 143.519  median 151.794  p90 172.240  max 231.011  (decode return → NPU completion callback)
+1791717485.031206741 slot wait ms    mean 27.686  p90 55.354  (time the main thread waited for a free slot)
+1791717485.032140411 gpu post ms     mean 0.558  median 0.548  p90 0.584  max 5.516  (yolo_decode.comp pass 1)
+1791717485.033194785 cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+1791717485.034191678 nms backend     gpu
+1791717485.035070921 gpu nms ms      mean 0.1845  median 0.1842  p90 0.2076  max 3.6989  (efficient_nms.comp)
+1791717485.035852295 nms fallback    0 frames (capacity 0, iou guard 0)
+1791717485.036582649 candidates      mean 183.34  max 267  overflow frames 0
+1791717485.037387226 slot hold ms    mean 3.622  median 3.648  p90 4.580  max 61.466  (NPU completion callback → slot return)
+1791717485.038160636 held frames max 2 (decoder limit about 13), slot timeout 0
+1791717485.038915028 detections      2216499 total, 26.76 / frame
+1791717485.039594771 hailo chip temp 58.9 -> 107.1 C
+1791717485.040266421 soc temp        71.4 -> 72.5 C
+1791717485.040992665 vk validation   errors 0, warnings 1
+1791717485.041751316 RESULT_CSV,b2s4,dmabuf,nhcw,2,4,82833,2399.562,34.52,0.985,1.220,1.875,1.934,109.56,111.26,143.52,172.24,2216499,58.9,107.1,71.4,72.5,0
+1791717485.042490781 RESULT_CSV2,b2s4,gpu,export,0.5582,0.5844,0.000,183.34,267,0,0,off,-,-,0.0000,0.0000,0.0000,0.000,0.00,0.00,0,0,0,2,0,gpu,0.1845,0.2076,0,0,-,-,-,-,-,-
+1791717485.043213080 RESULT_CSV3,b2s4,0,nan,0,nan,0,-,-,-,-,-,-,-,0,nan,nan,nan,0
