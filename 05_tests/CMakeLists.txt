@@ -134,7 +134,7 @@ if(TARGET yvo_display)
 endif()
 
 # Display conversion (display_convert.comp, 1:1) vs CPU reference implementation — bit-exact (GPU + HEVC HW decoder, no NPU needed)
-# Closes the hole where the third copy of the BT.709 coefficients had no gate (2026-09-21). The verdict is in testkit/display_convert_check.hpp.
+# Closes the hole where the display copy of the BT.709 formula had no gate (2026-09-21; shared 02_shaders/bt709.glsl since 2026-10-11). Verdict: testkit/display_convert_check.hpp.
 if(TARGET yvo_display AND TARGET yvo_decoder)
   add_executable(test_display_convert test_display_convert.cpp)
   target_link_libraries(test_display_convert PRIVATE yvo_display yvo_decoder yvo_testkit_display yvo_assets GTest::gtest_main)

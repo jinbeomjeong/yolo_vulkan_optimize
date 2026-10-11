@@ -37,7 +37,7 @@ ctest --test-dir build --output-on-failure
   합격 기준은 **max 오차 0**(근사가 아니라 비트 단위 일치)이다.
 - `test_detections` — CPU / GPU ptr / GPU dmabuf / GPU dmabuf NHCW 경로의 검출을 비교한다.
   NPU를 독점하므로 `RUN_SERIAL`이고 느리다(약 19초). 합격 기준은 **매칭 비율 1.0000**이다.
-- 전체 개수는 **95**이다(2026-10-11 — `PostprocFixture.ImportHeapMatchesPlainBitExact` 추가: heap 입력 경로가 Plain과 비트 일치, NPU 불필요, dma-heap 노드가 없으면 skip. 이전 2026-09-29, `test_preproc` 의 `SandRefVsFfmpeg` 5개 — ref de-SAND 대 rpi-ffmpeg 바이트 일치; `test_gst_adapter` 10개 — HW HEVC 디코더와 GPU 필요, 없으면 skip; `test_gst_detections` 1개 — NPU 필요, RUN_SERIAL). `test_overlay`의 `KmsScanout.*`는 `/dev/dri/card1`을 열지만 **DRM master를
+- 전체 개수는 **147**이다(2026-10-11 — 하드웨어 없는 `test_pipeline_logic`(SlotExchange·SlotBudget·ResultCsv·CliParse)·`test_display_options` 추가로 95 → 147. NPU가 필요한 3개(`test_detections`·`test_postproc_live`·`test_gst_detections`)는 `npu` 라벨이 있어 `ctest -LE npu` 로 뺄 수 있다. 같은 날 앞서 `PostprocFixture.ImportHeapMatchesPlainBitExact` 추가: heap 입력 경로가 Plain과 비트 일치, NPU 불필요, dma-heap 노드가 없으면 skip. 이전 2026-09-29, `test_preproc` 의 `SandRefVsFfmpeg` 5개 — ref de-SAND 대 rpi-ffmpeg 바이트 일치; `test_gst_adapter` 10개 — HW HEVC 디코더와 GPU 필요, 없으면 skip; `test_gst_detections` 1개 — NPU 필요, RUN_SERIAL). `test_overlay`의 `KmsScanout.*`는 `/dev/dri/card1`을 열지만 **DRM master를
   가져가지 않는다** — 다른 프로세스(labwc)가 master일 때만 돌고, 아무도 master가 아니면 skip한다.
 
 ## 3. Vulkan 검증 레이어 — errors 0
@@ -71,13 +71,13 @@ VK_LOADER_LAYERS_ENABLE='*validation' build/bin/yvo_pipeline \
 **반드시 별도 빌드 디렉터리를 쓴다.** `build/`를 새니타이저로 덮으면 측정이 무의미해진다.
 
 ```bash
-cmake -S . -B build-asan -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-  -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer"
+cmake -S . -B build-asan -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DYVO_SANITIZE=ON
 cmake --build build-asan
 build-asan/bin/yvo_pipeline --video 04_data/videos/video_h265.mp4 \
     --mode dmabuf --layout nhcw --frames 100
 ```
 
+- `YVO_SANITIZE=ON`(2026-10-11)은 C 스텁까지 모든 타깃의 컴파일·링크에 `-fsanitize=address,undefined`를 넣는다. 예전 방식(`CMAKE_CXX_FLAGS`)으로 설정된 `build-asan/` 캐시가 남아 있어도 플래그가 겹칠 뿐 해롭지 않다. TSan은 이 보드에서 돌지 않는다(47비트 VMA 미지원).
 - 합격: ASan/UBSan 출력 없음, `LeakSanitizer` 누수 0. (위 명령은 기본값인 GPU 후처리 경로를 돈다. host NMS 경로를 보려면 `--postproc host`.)
 - 디코더·dma-buf 수명·슬롯 반납을 건드렸으면 반드시 돈다.
   (과거에 `avcodec_flush_buffers()` 누락으로 1448 B 누수가 이렇게 잡혔다.)

@@ -71,7 +71,8 @@ dma-buf 세 그룹(디코더 SAND / 전처리 NHCW / 원시 텐서)이 전부 ze
 cmake -S . -B build -G Ninja && cmake --build build
 ```
 
-빌드 경고는 **0줄**이어야 한다. 셰이더는 `glslc -Werror` + `spirv-val` 을 자동으로 통과한다.
+빌드 경고는 **0줄**이어야 한다(`-Wall -Wextra -Wpedantic -Wshadow -Wnon-virtual-dtor`). 셰이더는 `glslc -Werror` + `spirv-val` 을 자동으로 통과한다.
+ASan + UBSan 빌드는 별도 폴더에 `-DYVO_SANITIZE=ON` 을 준다(`cmake -S . -B build-asan -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DYVO_SANITIZE=ON`).
 
 필수: HailoRT 4.24.0, Vulkan(V3DV), libavcodec(RPi 빌드 7.1.5 rpt2 — v4l2-request·SAND), libdrm. 테스트를 빌드하면(`YVO_BUILD_TESTS`, 기본 ON) GTest.
 선택: OpenCV — 없으면 경고만 내고 OpenCV 를 쓰는 타깃(PNG 덤프 등)이 빠진다. wayland-client + wayland-protocols. libpisp — 없으면 `yvo_isp` 전체가 빠진다. GStreamer ≥ 1.24(`-base`·`-video`·`-allocators`·`-app`) — 없으면 연구 경로 `yvo_gstelem` 과 `tools/gst/` 도구만 빠진다.
@@ -260,7 +261,7 @@ median 을 써라(V3D 가 커맨드 버퍼를 합치면서 한쪽 구간이 0에
 ## 6. 검증
 
 ```bash
-ctest --test-dir build        # 95/95 통과해야 한다
+ctest --test-dir build        # 147/147 통과해야 한다
 ```
 
 | 테스트 | NPU | 무엇을 보는가 |
@@ -271,10 +272,14 @@ ctest --test-dir build        # 95/95 통과해야 한다
 | `test_detections` | 필요 | CPU/GPU 전처리 경로 검출 일치 |
 | `test_preproc` | 불필요 | GPU 전처리가 CPU 기준과 **비트 일치**(max 오차 0). `SandRefVsFfmpeg.*`(GPU 불필요): 기준 de-SAND(`ref/sand.hpp`)가 rpi-ffmpeg `av_hwframe_transfer_data`(NV12)와 **바이트 일치**(프레임 0/100/500/900/1815, 보이는 1920×1080) |
 | `test_overlay` | 불필요 | 오버레이 셰이더 vs CPU 기준 비트 일치. 박스 평면 dma-buf(`OverlayPlane.*`, 잔상 0), debugfs 파서(`DrmState.*`), KMS 탐색·AddFB2(`KmsScanout.*` — card1 사용, master 는 가져가지 않는다) |
-| `test_display_convert` | 불필요 | 표시 변환 셰이더(1:1) vs CPU 기준 **비트 일치**. BT.709 계수 세 번째 사본의 게이트 |
+| `test_display_convert` | 불필요 | 표시 변환 셰이더(1:1) vs CPU 기준 **비트 일치**. 표시 경로 BT.709(`02_shaders/bt709.glsl` 공유 include)의 게이트 |
+| `test_pipeline_logic` | 불필요 | (하드웨어 없음) `SlotExchange` 슬롯 반납·중복 신호·다중 스레드, `validate_slot_budget` 보유 상한, RESULT_CSV 서식 바이트 일치, 엄격한 숫자 옵션 파싱 |
+| `test_display_options` | 불필요 | (하드웨어 없음) 표시 옵션 문자열 → enum 파서 |
 | `test_isp_preproc` | 불필요(ISP 필요) | ISP 전처리 vs CPU 기준. **비트 일치가 아니다**(리샘플 커널이 다르다) — 패딩만 오차 0, 내용은 MAE ≤ 3.0 |
 | `test_gst_adapter` | 불필요 | (선택, GStreamer 연구 경로) 어댑터 `DrmFrame`·`yvosandletterbox` 출력이 FFmpeg 경로 NHCW와 **바이트 일치**(프레임 0/100/1815), 텐서 메타·슬롯 fd 고정, sink caps 는 SAND DMA_DRM 만, 슬롯 메모리를 다른 버퍼로 옮겨도 덮어쓰지 않고 메모리 교체로 슬롯이 새지 않음(`GstElementSlots.*`) |
 | `test_gst_detections` | 필요 | (선택, GStreamer 연구 경로) `yvohailosink` 검출이 `yvo_pipeline --mode dmabuf --layout nhcw --postproc host` 추론 경로와 **프레임마다 동일**(앞 120프레임, 배치 4, `YVO_GST_DET_FRAMES`·`YVO_GST_DET_BATCH`) |
+
+NPU 가 필요한 3개(`test_detections`·`test_postproc_live`·`test_gst_detections`)에는 `npu` 라벨이 있어 `ctest --test-dir build -LE npu` 로 뺄 수 있다.
 
 두 경로의 검출을 직접 비교하려면:
 
@@ -350,6 +355,7 @@ grim -o HDMI-A-1 shot.png
 | 성능이 들쭉날쭉 | 칩 온도를 봐라. 약 104 °C(orange zone)부터 클럭이 400→350→300 MHz… 로 단계적으로 떨어지고, 약 120 °C(red zone)에서 칩이 추론을 멈춘다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
 | FPS 가 예상의 절반 | 과거에 러너 백프레셔 이중 계수 결함이 있었다(해소됨). `in-flight = FPS × npu_latency` 가 `slots` 에 가까운지 봐라 |
 | 표시 on 인데 멈춤, SIGTERM 도 안 먹음 | labwc 가 HDMI 를 잃었다(`wlr-randr` 에 `Headless output` 만 보임). 활성 VT 가 데스크톱이 아니거나 Xwayland 가 DRM master 를 가져간 경우다. `kill -9` 로 끝내고, `cat /sys/kernel/debug/dri/1/clients` 에서 master 를 확인한 뒤 Xwayland 를 끝내고 VT 를 한 번 토글(`loginctl activate` 로 tty ↔ 데스크톱)한다 |
+| 숫자 옵션에 `<prog>: invalid value for <opt>: '<text>'` 로 종료 코드 2 | 숫자가 아니거나, 뒤에 문자가 붙었거나(`10x`), 정수 자리에 소수(`4.5`)거나, 범위 밖이다. 2026-10-11 전에는 `--frames abc` 가 조용히 0(= 전체 영상)이 됐다 |
 | `--display-backend kms` 가 종료 코드 2 | DRM master 를 못 얻었다(데스크톱이 활성). §3.5 대로 비데스크톱 VT 를 활성화한 뒤 실행 |
 | 평면 백엔드인데 `color_ok 0` | 컴포지터 COLOR_RANGE 처리가 바뀌었을 수 있다. `--display-color-range` 를 바꿔 보고 debugfs `range=` 를 확인 |
 

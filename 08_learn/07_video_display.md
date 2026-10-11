@@ -196,10 +196,10 @@ if (st->codecpar->codec_id != AV_CODEC_ID_HEVC) return fail("video stream is not
 **BT.709** 는 HD 영상의 색 규격 이름이다(SD 시대에는 BT.601, 4K HDR은 BT.2020).
 위의 계수 1.5748, 0.187324 … 가 BT.709에서 나온 값이다.
 
-> ★ 이 프로젝트는 이 수식을 **두 셰이더에 똑같이** 넣었다 —
-> `sand_letterbox.comp`(추론용)와 `display_convert.comp`(표시용). 주석이 이렇게 말한다:
-> "**BT.709 수식은 02_shaders/sand_letterbox.comp:94-101 을 그대로 옮긴 것이다**(precise 포함) —
-> 표시 색이 전처리 경로와 한 비트도 달라지면 안 된다."
+> ★ 이 수식은 **`02_shaders/bt709.glsl` 한 파일**에 있고 `sand_letterbox.comp`(추론용)와
+> `display_convert.comp`(표시용)가 `#include` 한다(2026-10-11 전에는 두 셰이더에 사본이 따로 있었다).
+> 헤더 주석: "모든 중간값은 precise(FMA 축약 금지)다 — CPU 기준과 오차 0이어야 하니 **연산 순서를 바꾸지 마라**."
+> 표시 색이 전처리 경로와 한 비트도 달라지면 안 되기 때문이다.
 > `precise` 한정자까지 맞춘 이유는 **부동소수점 연산 순서가 바뀌면 결과가 1 LSB 달라질 수 있어서**다.
 
 ### 감마와 sRGB — 왜 "그냥 통과"인가

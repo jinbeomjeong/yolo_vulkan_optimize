@@ -442,7 +442,7 @@ GPU 구간의 **시간**을 재는 수단은 **timestamp query**다. 시간이 *
 장치마다 다른 단위다. `VkPhysicalDeviceLimits::timestampPeriod` 가 **"틱 1이 몇 나노초인가"** 를
 알려준다(vk.xml 1.4.309: "number of nanoseconds it takes for timestamp query value to increment by 1").
 이 보드는 1 ns이지만, **코드에 1을 박지 않고 런타임에 읽는다**
-([`sand_letterbox.cpp:586-589`](../01_src/vulkan/sand_letterbox.cpp)).
+([`sand_letterbox.cpp:497-500`](../01_src/vulkan/sand_letterbox.cpp)).
 
 주의할 것이 두 가지 더 있다.
 

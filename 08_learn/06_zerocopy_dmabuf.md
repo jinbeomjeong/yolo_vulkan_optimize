@@ -349,7 +349,7 @@ Vulkan 스펙의 동기화 챕터에 별도 절로 있다(`chapters/synchronizat
 이 프로젝트는 확장이 있으면 `FOREIGN_EXT`, 없으면 `EXTERNAL` 을 쓴다
 ([`vulkan_context.hpp`](../01_src/vulkan/vulkan_context.hpp): "선택 확장: VK_EXT_queue_family_foreign
 (있으면 외부 소유권 전환에 FOREIGN, 없으면 EXTERNAL)"). 실제 코드는
-[`sand_letterbox.cpp:364-386`](../01_src/vulkan/sand_letterbox.cpp)(acquire) 와 `:402-444`(release)다.
+[`sand_letterbox.cpp:275-297`](../01_src/vulkan/sand_letterbox.cpp)(acquire) 와 `:313-355`(release)다.
 
 ### ⚠ "배리어를 빼도 결과가 맞더라"는 배리어가 불필요하다는 뜻이 아니다
 

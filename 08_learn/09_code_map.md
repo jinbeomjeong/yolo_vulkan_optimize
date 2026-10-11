@@ -22,7 +22,7 @@
 | | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 — 본 파이프라인 5개 + `diag/` 진단 전용 2개 (`.comp`). `overlay_boxes.comp` 는 버퍼 변형까지 SPIR-V 2개로 빌드 |
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
 | | `04_data/` | 입력 영상(기본 `video_h265.mp4`, 혼잡 장면용 `mot20_{02,05}_h265.mp4`)과 테스트용 원시 텐서 픽스처 (git에 없음) |
-| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 8개(`test_postproc_live` 를 따로 세면 9), ctest 항목 95개 |
+| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 10개(`test_postproc_live` 를 따로 세면 11), ctest 항목 147개 |
 | | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 11개), `python/`(7개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
 | | [`07_results/`](../07_results/) | 실험별 측정 원시 출력과 `summary.md` |
 | **문서** | [`08_learn/`](00_README.md) | 지금 읽고 있는 이 자습 교재 13장 |
@@ -47,14 +47,14 @@
 01_src/
 ├── core/       헤더만. 공용 계약 타입·OS 글루 — 다른 모든 폴더가 여기에 의존 (include 루트는 여기서만 지정)
 ├── ref/        헤더만. CPU 기준 구현 — 수식의 단일 진실 원천 (셰이더는 이것의 번역본)
-├── toolkit/    헤더만. 도구·앱 전용 헬퍼(CLI·이미지 저장·통계·perf 구간 제어 `perf_window`) — 라이브러리는 include 하지 않는다
+├── toolkit/    헤더만. 도구·앱 전용 헬퍼(CLI·엄격한 숫자 파싱 `cli_parse.hpp`·RESULT_CSV 서식 `result_csv.hpp`·이미지 저장·통계·perf 구간 제어 `perf_window`) — 라이브러리는 include 하지 않는다
 ├── testkit/    헤더만. 테스트·프로브가 공유하는 검증 하네스(픽스처 파서, 오프스크린 타깃, 비트 일치 판정)
 ├── decode/     HW HEVC 디코더 (FFmpeg DRM_PRIME → DrmFrame)
 ├── hailo/      NPU (HailoRT)                    ┐ 이 둘은 서로
-├── vulkan/     GPU (Vulkan 컴퓨트)              ┘ 링크하지 않는다
+├── vulkan/     GPU (Vulkan 컴퓨트, 공용 compute_pipeline·sand_column_lut) ┘ 링크하지 않는다
 ├── display/    화면 표시 (Vulkan 합성·스왑체인 + HVS 평면 스캔아웃: Wayland linux-dmabuf / KMS atomic)   — vulkan과 별도 라이브러리
 ├── isp/        ISP 전처리 — 구현됐지만 미사용
-├── pipeline/   이 전부를 묶는 실행 파일 main.cpp
+├── pipeline/   이 전부를 묶는 실행 파일 main.cpp + slot_exchange(슬롯 풀·슬롯 예산 검사, 단위 테스트 대상)
 ├── gstelem/    (선택) GStreamer 연구 경로 — 레터박스 요소 + HailoRT 싱크(`yvohailosink`). 앱 본체는 쓰지 않는다
 └── tools/      빌드되는 진단·측정 도구 13개 ({hailo,vulkan,display,isp,decode,gst}/ — 측정 대상 도메인 기준)
 ```
@@ -107,7 +107,7 @@ GPU 전처리를 테스트하는 `test_preproc`을 빌드할 때 Wayland 라이�
 
 > ⚠ **여기 적힌 함정이 실제 함정이다.** 예를 들어 "디코더는 약 13프레임 이상 붙잡으면
 > 에러 없이 조용히 멈춘다"는 문장 때문에 `slots + gpu_depth <= 10` 검사가
-> [`main.cpp:357`](../01_src/pipeline/main.cpp) 에 들어 있다(HVS 평면 백엔드용 보유 검사는 바로 위 :343-356).
+> [`slot_exchange.cpp:30-53`](../01_src/pipeline/slot_exchange.cpp) 의 `validate_slot_budget()` 에 들어 있다(`slots + gpu_depth` 합 검사는 :47-52, HVS 평면 백엔드용 보유 검사는 :33-46, 호출은 `main.cpp:348-359`).
 
 ### 3단계 — 수식의 원문을 본다 (2시간)
 
@@ -142,7 +142,7 @@ GPU 셰이더는 전부 CPU 기준 구현의 **번역본**이고, 원문은 `01_
 
 ## 9.4 셰이더 — 본 5개 + 진단 2개
 
-전부 `02_shaders/` 에 있고 확장자는 `.comp`(컴퓨트 셰이더)다. 진단 전용 2개는 `02_shaders/diag/` 에 따로 두고
+전부 `02_shaders/` 에 있고 확장자는 `.comp`(컴퓨트 셰이더)다. 예외 하나: `bt709.glsl` 은 `sand_letterbox.comp`·`display_convert.comp` 가 `#include` 하는 공유 조각이라 혼자 빌드되지 않는다. 진단 전용 2개는 `02_shaders/diag/` 에 따로 두고
 (`yvo_shaders_diag`), 도구만 링크한다. 본 5개는 `yvo_shaders` 다.
 `yvo_shaders` 의 SPIR-V 산출물은 6개다 — `overlay_boxes.comp` 를 `YVO_OVERLAY_BUFFER` 로 한 번 더 컴파일한
 `overlay_boxes_buf.spv`(HVS 박스 평면용, storage buffer 에 그린다)가 더 있다. 문법은 [05장](05_vulkan_compute.md) 빌드 파이프라인.
@@ -187,7 +187,7 @@ cmake -S . -B build -G Ninja && cmake --build build
 | `yvo_ref` | 헤더만 (INTERFACE) | CPU 기준 구현 |
 | `yvo_toolkit` | 헤더만 (INTERFACE) | 도구·앱 전용 헬퍼. 라이브러리는 링크하지 않는다 |
 | `yvo_testkit_postproc` / `yvo_testkit_display` | 헤더만 (INTERFACE) | 테스트·프로브 공용 검증 하네스(`nms_harness.hpp`: `efficient_nms` 단독 실행 — `test_postproc` 의 `EfficientNms.*` 와 `yvo_postproc_probe --probe nms` 가 공유) |
-| `yvo_warnings` | 경고 플래그만 | `-Wall -Wextra -Wpedantic` |
+| `yvo_warnings` | 경고 플래그만 | `-Wall -Wextra -Wpedantic -Wshadow -Wnon-virtual-dtor` |
 | `yvo_shaders` | 컴파일된 셰이더 헤더 (본 5개 + 버퍼 변형 1 = 6개) | 링크하면 include 경로가 붙는다 |
 | `yvo_shaders_diag` | 진단 셰이더 헤더 (`diag/` 2개) | 도구만 링크한다 |
 | `yvo_shaders_decode_stages` | `yolo_decode.comp`를 `-DYVO_DECODE_STOP=1\|2\|3`(단계 멈춤 3개), `YVO_EMIT_NOATOMIC`·`YVO_EMIT_NORESCAN`(⑤ emit 분리 2개), `YVO_DECODE_LEGACY_EMIT`(지름길 이전 ①+⑤ 기준선 `legacy`·`stop1_legacy` 2개)로 컴파일한 변형 `.spv` 7개 + 그 디렉터리 매크로 | `yvo_postproc_probe --probe stages`만 링크한다 |
@@ -230,7 +230,7 @@ cmake -S . -B build -G Ninja && cmake --build build
 
 | 변수 | 누가 읽나 | 뜻 |
 |---|---|---|
-| `YVO_DEC_THREADS` | `yvo_pipeline` ([`main.cpp:636`](../01_src/pipeline/main.cpp)) | FFmpeg 디코더 프레임 스레드 수. 없으면 **1**(2026-09-29부터 기본), `0`이면 FFmpeg 자동(코어 수) |
+| `YVO_DEC_THREADS` | `yvo_pipeline` ([`main.cpp:317`](../01_src/pipeline/main.cpp)) | FFmpeg 디코더 프레임 스레드 수. 없으면 **1**(2026-09-29부터 기본), `0`이면 FFmpeg 자동(코어 수) |
 | `YVO_PERF_CTL` / `YVO_PERF_ACK` | `yvo_pipeline`, `yvo_gst_pipeline` ([`tool_util.hpp`](../01_src/toolkit/tool_util.hpp) `perf_window`) | perf 제어 FIFO. 도구가 보고하는 CPU 구간에서만 perf를 켠다([08장](08_method.md) §8.9) |
 | `YVO_VK_VALIDATION` | 모든 Vulkan 사용자 ([`vulkan_context.cpp`](../01_src/vulkan/vulkan_context.cpp)) | `0`이 아닌 값이면 검증 레이어를 켠다 |
 | `YVO_VK_DEVICE` | 같음 | 물리 장치 이름 힌트(CPU 장치는 늘 제외) |
@@ -253,7 +253,9 @@ ctest --test-dir build
 | `test_postproc_live` | 필요 | host 경로 vs GPU 경로 검출 매칭 ≥ 0.95 |
 | `test_detections` | 필요 | 네 경로(CPU/GPU-ptr/GPU-dmabuf/NHCW) 검출 일치 |
 | `test_overlay` | 불필요 | 오버레이 GPU vs CPU 기준 **오차 0**. `OverlayPlane.*`·`Clear/OverlayPlaneMode.*`(박스 평면 dma-buf 비트 일치·잔상 0), `DrmState.*`(debugfs 파서), `KmsScanout.*`(card1 탐색·AddFB2 — DRM master 를 가져가지 않고, 아무도 master 가 아니면 skip) |
-| `test_display_convert` | 불필요 | 표시 변환(1:1)이 CPU 기준과 **오차 0**. BT.709 계수의 세 번째 사본을 지킨다 |
+| `test_display_convert` | 불필요 | 표시 변환(1:1)이 CPU 기준과 **오차 0**. 표시 경로의 BT.709(`bt709.glsl` 공유 include)를 지킨다 |
+| `test_pipeline_logic` | 불필요 | (하드웨어 없음) `SlotExchange` 반납 조건·중복 신호·다중 스레드, `validate_slot_budget`(합성/평면 보유 상한), RESULT_CSV 서식 바이트 일치, 엄격한 숫자 옵션 파싱 |
+| `test_display_options` | 불필요 | (하드웨어 없음) `--display-backend/-color-range/-sync/-pace`, `--present-mode` 문자열 → enum 파서 |
 | `test_isp_preproc` | 불필요(ISP 필요) | 패딩은 오차 0, 내용은 MAE ≤ 3.0 |
 | `test_gst_adapter` | 불필요 | (선택, GStreamer) 어댑터·`yvosandletterbox` 출력이 FFmpeg 경로 NHCW와 **바이트 일치**, 텐서 메타·슬롯 fd 고정, SAND 외 caps 거부, 슬롯 수명 오용 회귀(`GstElementSlots.*`) |
 | `test_gst_detections` | 필요 | (선택, GStreamer) `yvohailosink` 검출이 `yvo_pipeline` 추론 경로(NHCW dma-buf, 같은 배치)와 **프레임마다 동일**(앞 120프레임, 배치 4) |
@@ -320,7 +322,7 @@ build/bin/yvo_pipeline --video ... --hef ...
 인자 없이 돌리면 `--mode dmabuf --layout nhcw --postproc gpu --display off` 로 간다. 2026-10-08 전에는 가장 느린 `--mode ptr --layout nhwc --postproc host` 였다.
 과거 측정과 비교할 때는 옛 플래그를 명시한다(벤치 스크립트는 명시한다). `--mode ptr` 만 주면 나머지는 호환 값(nhwc·host)으로 내려간다(`parse()` 의 `note:`).
 
-> **예외 하나:** FFmpeg 디코더 프레임 스레드 수는 2026-09-29에 자동(5) → **1**로 바꿨다(`main.cpp:636`).
+> **예외 하나:** FFmpeg 디코더 프레임 스레드 수는 2026-09-29에 자동(5) → **1**로 바꿨다(`main.cpp:185`, 환경변수 읽기 `:317`).
 > 모든 모드에서 FPS·검출이 같고 CPU·지연이 줄었기 때문이다([`dec_threads`](../07_results/dec_threads/summary.md)).
 > 그 이전 측정과 CPU·e2e를 맞대 비교하려면 `YVO_DEC_THREADS=0`으로 돌린다.
 
