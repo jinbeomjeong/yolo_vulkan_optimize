@@ -33,14 +33,14 @@
 // (appendix A.6).
 //
 // ── pass 1 algorithm ───────────────────────────────────────────────────────────────────────────
-//  ① Class scan: load words for c = 0..79 → compare the 4 bytes with the **integer** `q_thr_low` (group joint max).
-//     `q_thr_low = floor(thr/cls_scale)`, so it is a loose necessary condition (P3 57 / P4 53 / P5 52).
-//     **This is almost the entire cost**: 672,000 float multiplies/compares turn into byte compares.
+//  ① Class scan: words for c = 0..79 → one uint max of `(q << 7) | c` (`pack4()`) gives each anchor's max **and argmax** (`pmax4`);
+//     SWAR byte compares count classes with q >= the **integer** `q_thr_low` (`ge_cnt`). `q_thr_low = floor(thr/cls_scale)`,
+//     a loose necessary condition (P3 57 / P4 53 / P5 52). ①② is a fixed ≈0.34 ms: most, not all, of pass 1 (less with many candidates).
 //  ② If the group's max does not pass, return (of 2100 groups, only a few dozen survive).
 //  ③ DFL decode (once per group): the same word holds the same bin of 4 anchors, so **4 anchors are solved at once as vec4**.
 //     The per-coord max is found in the integer domain (scale>0, so argmax is the same), subtracted, then 16 exps → softmax → distance.
 //  ④ Inverse letterbox → **original 1920×1080 coordinates**.
-//  ⑤ emit: `atomicAdd(det.count,1)`, and `atomicOr(det.overflow,1)` if the cap is exceeded.
+//  ⑤ emit: 1 `ge_cnt` pass → argmax shortcut from `pmax4`, no class reload (see ⑤ below), else rescan; `atomicAdd` count, `atomicOr` overflow past cap.
 //
 // ── V3D discipline (same measured basis as the comments in `02_shaders/sand_letterbox.comp`) ───────────────────────
 //   · **word load + shift instead of byte loads** (byte loads cost 4x the instructions)

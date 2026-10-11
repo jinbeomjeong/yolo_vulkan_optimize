@@ -190,7 +190,7 @@ cmake -S . -B build -G Ninja && cmake --build build
 | `yvo_warnings` | 경고 플래그만 | `-Wall -Wextra -Wpedantic` |
 | `yvo_shaders` | 컴파일된 셰이더 헤더 (본 5개 + 버퍼 변형 1 = 6개) | 링크하면 include 경로가 붙는다 |
 | `yvo_shaders_diag` | 진단 셰이더 헤더 (`diag/` 2개) | 도구만 링크한다 |
-| `yvo_shaders_decode_stages` | `yolo_decode.comp`를 `-DYVO_DECODE_STOP=1\|2\|3`으로 컴파일한 단계 멈춤 변형 `.spv` 3개 + 그 디렉터리 매크로 | `yvo_postproc_probe --probe stages`만 링크한다 |
+| `yvo_shaders_decode_stages` | `yolo_decode.comp`를 `-DYVO_DECODE_STOP=1\|2\|3`(단계 멈춤 3개), `YVO_EMIT_NOATOMIC`·`YVO_EMIT_NORESCAN`(⑤ emit 분리 2개), `YVO_DECODE_LEGACY_EMIT`(지름길 이전 ①+⑤ 기준선 `legacy`·`stop1_legacy` 2개)로 컴파일한 변형 `.spv` 7개 + 그 디렉터리 매크로 | `yvo_postproc_probe --probe stages`만 링크한다 |
 | `yvo_hailo` | NPU | **`yvo_vulkan`에 의존하지 않는다** |
 | `yvo_vulkan` | GPU | |
 | `yvo_display` | 화면 표시 (Vulkan 합성 + HVS 평면: wayland-planes / kms, libdrm 링크) | Wayland 없으면 조용히 빠진다(kms 백엔드도 함께) |
@@ -210,7 +210,7 @@ cmake -S . -B build -G Ninja && cmake --build build
 |---|---|---|
 | `yvo_drm_dump` | 디코더가 내놓는 버퍼의 실제 모양 | 아니오 |
 | `yvo_preproc_bench` | GPU 전처리만, 워크그룹 크기 스윕 | 아니오 |
-| `yvo_postproc_probe` | GPU 후처리. `--probe fixture`는 저장된 텐서로 검증, `--probe stages`는 디코딩 단계별 GPU 시간(차분법) | `fixture`·`stages`는 불필요 |
+| `yvo_postproc_probe` | GPU 후처리. `--probe fixture`는 저장된 텐서로 검증, `--probe stages`는 디코딩 단계별 GPU 시간(차분법, `--variants`로 변형 선택), `--probe groups`는 그룹당 통과 앵커·프리필터 통과 수 분포(CPU 전용), `--probe sweep`은 local size 26조합 | `fixture`·`stages`·`groups`·`sweep`은 불필요 |
 | `yvo_perf_counters` | V3D 성능 카운터(`VK_KHR_performance_query`) 열거·pass 분석, 작은 dispatch로 쿼리 동작 확인 | 아니오 |
 | `yvo_hailo_selftest` | NPU 러너만 | 예 |
 | `yvo_hailo_raw_probe` | 원시 출력 경로, dma-buf 동시 사용 관문 | 예 |

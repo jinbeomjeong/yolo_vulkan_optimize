@@ -319,7 +319,7 @@ bash 06_tools/bench/gst_pipeline_bench.sh # 앱 대 GStreamer 연구 경로(yvo_
 |---|---|
 | `yvo_drm_dump` | 디코더 dma-buf descriptor 덤프, de-SAND 바이트 비교, 디코드 성능 |
 | `yvo_preproc_bench` | GPU 전처리 단독 성능·워크그룹 스윕 |
-| `yvo_postproc_probe` | GPU 후처리 프로브 (`--probe fixture` 는 **NPU 불필요**, 수 초. `--probe stages` 는 디코딩 단계별 GPU 시간) |
+| `yvo_postproc_probe` | GPU 후처리 프로브 (`--probe fixture` 는 **NPU 불필요**, 수 초. `--probe stages` 는 디코딩 단계별 GPU 시간 — `--variants` 로 진단 변형 선택. `--probe groups` 는 프리필터 통과 수 분포(CPU 전용), `--probe sweep` 은 local size 스윕) |
 | `yvo_perf_counters` | V3D 성능 카운터 열거(93개, 1 pass 최대 32개)와 쿼리 동작 확인 (`--csv`, NPU 불필요) |
 | `yvo_hailo_raw_probe` | 원시 출력 경로 프로브 (`--probe f0` 이 입출력 dma-buf 동시 사용 관문) |
 | `yvo_hailo_selftest` | NPU 러너 단독 검증 |
