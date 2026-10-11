@@ -18,6 +18,11 @@
 #          verify (--nms verify: GPU and CPU both run, nms_verify_mismatch counts bitwise differences),
 #          cpu and gpu, all with --dump-dir; then compare_detections.py cpu vs gpu and a sorted-line diff.
 #          **Not a performance run** — nothing goes into results*.csv (verify runs both suppressions).
+#          [A2] PASS needs all of: nms_verify_mismatch 0, cpu == gpu detection count, detections.jsonl cpu/gpu and
+#          cpu/verify identical (sorted lines), all three runs present in nms_verify.csv with exit 0 and ok 1, and
+#          (with BASELINE=) all three detections.jsonl identical to the baseline's.
+#          ⚠ verify alone cannot catch decoder-side regressions — use BASELINE= for that. The three runs suppress the
+#          SAME yolo_decode.comp candidates, so a broken decoder makes them agree and the mismatch stays 0.
 #   Every flag that matters is passed explicitly, although the CLI defaults are the same since 72f88a7
 #   (--mode dmabuf --layout nhcw --postproc gpu --nms gpu --batch 8): defaults can move, archived commands must not.
 #
@@ -31,6 +36,19 @@
 #   APPEND=1 FORCE=1 bash ...                                     # perf: append to an existing results_raw.csv
 #   COOL_C=65 COOL_MAX_S=120 HOT_C=75 COOL_EVERY=1 bash ...       # cool-down (see below)
 #   VERIFY_FRAMES=0 DUMP_EVERY=100000 bash ...                    # verify: 0 = full video; PNG every K frames
+#   MODE=verify VIDEO=.../mot20_05_h265.mp4 BASELINE=07_results/nms_crowd_stress/runs/mot20_05 bash ...
+#                                                                 # verify + byte-compare against an archived verify
+#   MODE=verify VERDICT_ONLY=1 OUT_DIR=<verify folder> [BASELINE=...] bash ...  # re-judge existing samples/ only
+#
+# BASELINE=<archived MODE=verify folder> (verify only; the folder is only read):
+#   Before the lock and any NPU use, checks that $BASELINE/samples/{cpu,gpu,verify}_b2s4/detections.jsonl exist and
+#   that $BASELINE/env/env_verify.txt names the same video and hef (realpath) and the same effective frame count
+#   (VERIFY_FRAMES, 0 = the container frame count from ffprobe). Any mismatch exits 1 without running.
+#   After the runs, each new detections.jsonl is compared with the baseline's (sorted lines, byte-exact); a pair that
+#   differs fails the verdict and gets evidence/compare_baseline_<id>.txt (compare_detections.py baseline vs new).
+# VERDICT_ONLY=1 (verify only): no runs, no lock, no NPU. Re-judges OUT_DIR's samples/ + evidence/nms_verify.csv
+#   (the run's own values come from OUT_DIR/env/env_verify.txt) and writes the evidence files to VERDICT_OUT
+#   (default build/out/nms_bench/verdict_only). A VERDICT_OUT inside 07_results/ needs FORCE=1.
 #
 # Cool-down: COOL_EVERY=1 (default) cools the Hailo chip to <= COOL_C before every run, because the A/B deltas looked
 #   for are smaller than the thermal drift between runs. COOL_EVERY=0 keeps only the measure-skill rule (chip > HOT_C,
@@ -42,7 +60,8 @@
 #   perf:   env_bench.txt, results_raw.csv, results.csv, raw/<id>_run<N>/{stdout.log,hailort.log,gpu_stats_{pre,post}.txt},
 #           raw/_session/hailort.log (temperature probe)
 #   verify: env/env_verify.txt, samples/{verify,cpu,gpu}_b2s4/{stdout.log,hailort.log,detections.jsonl,frame*.png},
-#           evidence/nms_verify.csv, evidence/compare_cpu_vs_gpu.{txt,csv}, evidence/nms_verify_summary.txt
+#           evidence/nms_verify.csv, evidence/compare_cpu_vs_gpu.{txt,csv}, evidence/nms_verify_summary.txt,
+#           evidence/compare_baseline_<id>.txt (BASELINE= only, for pairs that differ)
 # results_raw.csv = 10 script columns + RESULT_CSV (22) + RESULT_CSV2 after label without its duplicate ok (33)
 #                   + 12 stdout-only / V3D columns (STDOUT_COLS below) = 77 columns.
 set -euo pipefail
@@ -66,12 +85,18 @@ HOT_C="${HOT_C:-75}"
 COOL_EVERY="${COOL_EVERY:-1}"
 APPEND="${APPEND:-0}"
 DRYRUN="${DRYRUN:-0}"
+BASELINE="${BASELINE:-}"               # verify mode: archived verify folder to byte-compare against
+VERDICT_ONLY="${VERDICT_ONLY:-0}"      # verify mode: re-judge OUT_DIR's existing samples/ (no runs)
+VERDICT_OUT="${VERDICT_OUT:-$BUILD_DIR/out/nms_bench/verdict_only}"
 COMPARE_PY="$PROJ/06_tools/python/compare_detections.py"
 GPU_STATS="/sys/class/drm/renderD128/device/gpu_stats"
 
 [[ "$MODE" == "perf" || "$MODE" == "verify" ]] || { echo "MODE must be perf | verify: $MODE" >&2; exit 2; }
 [[ "$FRAMES" =~ ^[1-9][0-9]*$ ]] || { echo "FRAMES must be a positive integer: $FRAMES" >&2; exit 2; }
 [[ "$VERIFY_FRAMES" =~ ^[0-9]+$ ]] || { echo "VERIFY_FRAMES must be >= 0: $VERIFY_FRAMES" >&2; exit 2; }
+if [[ "$MODE" != "verify" ]] && [[ -n "$BASELINE" || "$VERDICT_ONLY" == "1" ]]; then
+  echo "BASELINE= and VERDICT_ONLY=1 apply to MODE=verify only" >&2; exit 2
+fi
 require_bin "$BIN" yvo_pipeline
 [[ -f "$COMPARE_PY" ]] || { echo "compare_detections.py not found: $COMPARE_PY" >&2; exit 1; }
 check_only_exit
@@ -119,6 +144,181 @@ run_dir_of() {   # run_dir_of <id> <run>
   if [[ "$MODE" == "perf" ]]; then echo "$OUT_DIR/raw/${1}_run${2}"; else echo "$OUT_DIR/samples/$1"; fi
 }
 
+# ── verify: baseline pre-check and verdict ─────────────────────────────────────────
+VIDS=(cpu_b2s4 gpu_b2s4 verify_b2s4)
+env_field() {   # env_field <env_verify.txt> <key> -> first "<key>: value" (empty if absent)
+  sed -n "s/^$2: //p" "$1" 2>/dev/null | head -1
+}
+effective_frames() {   # effective_frames <VERIFY_FRAMES> <video> -> frames the run decodes (literal if unknown)
+  local n="$1" nb
+  nb=$(ffprobe -v error -select_streams v:0 -show_entries stream=nb_frames -of default=nw=1:nk=1 "$2" 2>/dev/null \
+       | head -1 || true)
+  if [[ "$nb" =~ ^[1-9][0-9]*$ ]] && (( n == 0 || n > nb )); then echo "$nb"; else echo "$n"; fi
+}
+# baseline_precheck: prints [baseline] lines; returns 1 if the baseline cannot be compared with this run.
+#   The run's own video/hef/frames are the current knobs, or OUT_DIR/env/env_verify.txt under VERDICT_ONLY=1.
+baseline_precheck() {
+  local benv="$BASELINE/env/env_verify.txt" bad=() id f bv bh bf rv rh rf src
+  echo "[baseline] $BASELINE"
+  [[ -d "$BASELINE" ]] || { echo "[baseline] FAIL: not a directory"; return 1; }
+  for id in "${VIDS[@]}"; do
+    f="$BASELINE/samples/$id/detections.jsonl"
+    [[ -s "$f" ]] || bad+=("missing or empty $f")
+  done
+  if [[ -f "$benv" ]]; then
+    bv=$(env_field "$benv" video); bh=$(env_field "$benv" hef)
+    bf=$(env_field "$benv" "verify frames"); bf="${bf%% *}"
+  else
+    bad+=("missing $benv")
+  fi
+  if [[ "$VERDICT_ONLY" == "1" ]]; then
+    src="$OUT_DIR/env/env_verify.txt"
+    rv=$(env_field "$src" video); rh=$(env_field "$src" hef)
+    rf=$(env_field "$src" "verify frames"); rf="${rf%% *}"
+  else
+    src="current VIDEO/HEF/VERIFY_FRAMES"; rv="$VIDEO"; rh="$HEF"; rf="$VERIFY_FRAMES"
+  fi
+  if [[ -f "$benv" ]]; then
+    [[ -n "$bv" && -n "$bh" && "$bf" =~ ^[0-9]+$ ]] || bad+=("$benv lacks video:/hef:/verify frames: lines")
+    [[ -n "$rv" && -n "$rh" && "$rf" =~ ^[0-9]+$ ]] || bad+=("$src lacks video/hef/verify frames")
+    echo "[baseline] video  baseline $bv | run $rv"
+    echo "[baseline] hef    baseline $bh | run $rh"
+    if [[ -n "$bv" && -n "$rv" ]]; then
+      [[ "$(realpath -m "$bv")" == "$(realpath -m "$rv")" ]] || bad+=("video differs")
+    fi
+    if [[ -n "$bh" && -n "$rh" ]]; then
+      [[ "$(realpath -m "$bh")" == "$(realpath -m "$rh")" ]] || bad+=("hef differs")
+    fi
+    if [[ "$bf" =~ ^[0-9]+$ && "$rf" =~ ^[0-9]+$ ]]; then
+      local ebf erf
+      ebf=$(effective_frames "$bf" "$rv"); erf=$(effective_frames "$rf" "$rv")
+      echo "[baseline] frames baseline VERIFY_FRAMES=$bf (effective $ebf) | run VERIFY_FRAMES=$rf (effective $erf)"
+      [[ "$ebf" == "$erf" ]] || bad+=("effective frame count differs ($ebf vs $erf)")
+    fi
+  fi
+  if (( ${#bad[@]} )); then
+    local b; for b in "${bad[@]}"; do echo "[baseline] FAIL: $b"; done
+    return 1
+  fi
+  echo "[baseline] OK: comparable (video, hef, frames match; 3 detections.jsonl present)"
+}
+
+# Line order follows NPU completion, so compare sorted lines (one line per frame, keyed by "frame").
+same_sorted() { [[ -s "$1" && -s "$2" ]] || { echo missing; return; }
+                if diff -q <(sort "$1") <(sort "$2") >/dev/null; then echo identical; else echo differ; fi; }
+
+# verify_verdict <evidence dir>: judges OUT_DIR/samples + OUT_DIR/evidence/nms_verify.csv, writes
+#   compare_cpu_vs_gpu.{txt,csv}, compare_baseline_<id>.txt and nms_verify_summary.txt into <evidence dir>,
+#   prints the summary and returns 0 only on "[A2] PASS".
+verify_verdict() {
+  local evid="$1" cj gj vj cmp_status id bl_res=() r
+  mkdir -p "$evid"
+  rm -f "$evid"/compare_baseline_*.txt
+  cj="$OUT_DIR/samples/cpu_b2s4/detections.jsonl"; gj="$OUT_DIR/samples/gpu_b2s4/detections.jsonl"
+  vj="$OUT_DIR/samples/verify_b2s4/detections.jsonl"
+  cmp_status=missing
+  if [[ -s "$cj" && -s "$gj" ]]; then
+    "$PY_HAILO" "$COMPARE_PY" "$cj" "$gj" --csv "$evid/compare_cpu_vs_gpu.csv" --label cpu_vs_gpu \
+      > "$evid/compare_cpu_vs_gpu.txt" 2>&1 && cmp_status=ok || cmp_status=failed
+  fi
+  if [[ -n "$BASELINE" ]]; then
+    for id in "${VIDS[@]}"; do
+      r=$(same_sorted "$BASELINE/samples/$id/detections.jsonl" "$OUT_DIR/samples/$id/detections.jsonl")
+      bl_res+=("$r")
+      if [[ "$r" == "differ" ]]; then
+        "$PY_HAILO" "$COMPARE_PY" "$BASELINE/samples/$id/detections.jsonl" "$OUT_DIR/samples/$id/detections.jsonl" \
+          --label "baseline_vs_${id}" > "$evid/compare_baseline_${id}.txt" 2>&1 || true
+      fi
+    done
+  else
+    bl_res=(- - -)
+  fi
+  # Verdict line from the CSV (python, NaN-safe).
+  /usr/bin/python3 - "$OUT_DIR/evidence/nms_verify.csv" "$(same_sorted "$cj" "$gj")" "$(same_sorted "$cj" "$vj")" \
+      "$cmp_status" "$evid/compare_cpu_vs_gpu.txt" "$OUT_DIR/samples" "$BASELINE" "${bl_res[@]}" "$evid" \
+      > "$evid/nms_verify_summary.txt" <<'PYEOF' || true   # a crash leaves no PASS line -> FAIL
+import csv, json, os, sys
+try:
+    rows = {r["id"]: r for r in csv.DictReader(open(sys.argv[1], newline=""))}
+except OSError as e:
+    print(f"cannot read nms_verify.csv: {e}")
+    rows = {}
+jsonl_cg, jsonl_cv, cmp_status, cmp_txt, samples, baseline = sys.argv[2:8]
+bl = dict(zip(("cpu_b2s4", "gpu_b2s4", "verify_b2s4"), sys.argv[8:11]))
+evid = sys.argv[11]
+IDS = ("verify_b2s4", "cpu_b2s4", "gpu_b2s4")
+def g(i, k): return rows.get(i, {}).get(k, "nan")
+def excerpt(path):
+    try:
+        for line in open(path):
+            if line.startswith(("[warn]", "detections", "match @ IoU", "frames")):
+                print("  " + line.rstrip())
+    except OSError:
+        pass
+print("# nms_bench MODE=verify (A2) — not a performance result")
+print(f"samples: {samples}")
+for i in IDS:
+    print(f"{i:12s} exit {g(i, 'exit_code')} ok {g(i, 'ok')} frames {g(i, 'frames')} detections {g(i, 'detections')} "
+          f"nms {g(i, 'nms')} verify_mismatch {g(i, 'nms_verify_mismatch')} fallback {g(i, 'nms_fallback')} "
+          f"(capacity {g(i, 'nms_fb_capacity')}, iou guard {g(i, 'nms_fb_guard')}) hailort_warn {g(i, 'hailort_warnings')}")
+print(f"detections.jsonl cpu vs gpu (sorted lines): {jsonl_cg}")
+print(f"detections.jsonl cpu vs verify (sorted lines, both CPU suppression — run-to-run determinism): {jsonl_cv}")
+print(f"compare_detections.py cpu vs gpu: {cmp_status}")
+excerpt(cmp_txt)
+if baseline:
+    print(f"baseline: {baseline}")
+    for i in ("cpu_b2s4", "gpu_b2s4", "verify_b2s4"):
+        print(f"detections.jsonl baseline vs new {i} (sorted lines): {bl[i]}")
+        if bl[i] == "differ":
+            print(f"  compare_detections.py baseline vs new -> {os.path.join(evid, f'compare_baseline_{i}.txt')}")
+            excerpt(os.path.join(evid, f"compare_baseline_{i}.txt"))
+            try:   # frame-level diff: compare_detections.py is IoU-based and does not show score-only changes
+                fr = [{json.loads(l)["frame"]: l.strip() for l in open(f) if l.strip()}
+                      for f in (os.path.join(baseline, "samples", i, "detections.jsonl"),
+                                os.path.join(samples, i, "detections.jsonl"))]
+                dif = sorted(k for k in set(fr[0]) | set(fr[1]) if fr[0].get(k) != fr[1].get(k))
+                print(f"  frames whose line differs: {len(dif)} (first: {dif[:5]})")
+            except (OSError, ValueError, KeyError) as e:
+                print(f"  frame-level diff unavailable: {e}")
+else:
+    print("baseline: none (decoder-side regressions are NOT checked — pass BASELINE= for that)")
+mm = g("verify_b2s4", "nms_verify_mismatch")
+det_eq = g("cpu_b2s4", "detections") == g("gpu_b2s4", "detections") and g("cpu_b2s4", "detections") != "nan"
+missing = [i for i in IDS if i not in rows]
+ok_all = not missing and all(g(i, "exit_code") == "0" and g(i, "ok") == "1" for i in IDS)
+jsonl_ok = jsonl_cg == "identical" and jsonl_cv == "identical"
+bl_ok = (not baseline) or all(v == "identical" for v in bl.values())
+verdict = "PASS" if (mm == "0" and det_eq and ok_all and jsonl_ok and bl_ok) else "FAIL"
+bl_txt = ("none" if not baseline else
+          "cpu/gpu/verify " + "/".join(bl[i] for i in ("cpu_b2s4", "gpu_b2s4", "verify_b2s4")))
+print(f"[A2] {verdict}: nms_verify_mismatch {mm} (want 0), detections cpu == gpu {det_eq}, "
+      f"jsonl cpu/gpu {jsonl_cg}, jsonl cpu/verify {jsonl_cv}, "
+      f"all 3 runs ok {ok_all}{' (missing rows: ' + ','.join(missing) + ')' if missing else ''}, "
+      f"baseline {bl_txt}")
+PYEOF
+  cat "$evid/nms_verify_summary.txt"
+  grep -q '^\[A2\] PASS' "$evid/nms_verify_summary.txt"
+}
+
+if [[ -n "$BASELINE" ]]; then
+  baseline_precheck || { echo "[A2] FAIL: baseline not comparable — nothing was run (no lock, no NPU)" >&2; exit 1; }
+fi
+
+if [[ "$VERDICT_ONLY" == "1" ]]; then
+  # Re-judge an existing verify folder: no lock, no NPU, nothing written into OUT_DIR.
+  [[ -f "$OUT_DIR/evidence/nms_verify.csv" && -d "$OUT_DIR/samples" ]] || {
+    echo "VERDICT_ONLY=1 needs $OUT_DIR/evidence/nms_verify.csv and $OUT_DIR/samples/" >&2; exit 1; }
+  case "$(realpath -m "$VERDICT_OUT")/" in
+    "$(realpath -m "$PROJ/07_results")"/*)
+      [[ "${FORCE:-0}" == "1" ]] || { echo "VERDICT_OUT is inside 07_results/ (archived results): needs FORCE=1" >&2; exit 1; } ;;
+  esac
+  [[ "$(realpath -m "$VERDICT_OUT")" != "$(realpath -m "$OUT_DIR/evidence")" || "${FORCE:-0}" == "1" ]] || {
+    echo "VERDICT_OUT would overwrite $OUT_DIR/evidence: needs FORCE=1" >&2; exit 1; }
+  echo "VERDICT_ONLY: judging $OUT_DIR/samples -> $VERDICT_OUT"
+  verify_verdict "$VERDICT_OUT"
+  exit $?
+fi
+
 if [[ "$DRYRUN" == "1" ]]; then
   echo "DRYRUN: $(basename "$0") MODE=$MODE OUT_DIR=$OUT_DIR RUNS=$RUNS FRAMES=$FRAMES VERIFY_FRAMES=$VERIFY_FRAMES ONLY='$ONLY' COOL_EVERY=$COOL_EVERY"
   echo "DRYRUN: caller YVO_DEC_THREADS=$CALLER_DEC_THREADS (removed for every child)"
@@ -135,6 +335,14 @@ if [[ "$DRYRUN" == "1" ]]; then
     printf '[compare] %q %q %q %q --csv %q --label cpu_vs_gpu\n' "$PY_HAILO" "$COMPARE_PY" \
       "$OUT_DIR/samples/cpu_b2s4/detections.jsonl" "$OUT_DIR/samples/gpu_b2s4/detections.jsonl" \
       "$OUT_DIR/evidence/compare_cpu_vs_gpu.csv"
+    for id in "${VIDS[@]}"; do
+      if [[ -n "$BASELINE" ]]; then
+        printf '[baseline compare] sorted-line diff %q vs %q (differ -> compare_detections.py -> evidence/compare_baseline_%s.txt)\n' \
+          "$BASELINE/samples/$id/detections.jsonl" "$OUT_DIR/samples/$id/detections.jsonl" "$id"
+      fi
+    done
+    [[ -n "$BASELINE" ]] || echo "[baseline compare] none (BASELINE unset: decoder-side regressions are not checked)"
+    echo "[verdict] mismatch 0 + det cpu==gpu + jsonl cpu/gpu & cpu/verify identical + 3 rows ok${BASELINE:+ + 3 baseline pairs identical}"
   fi
   exit 0
 fi
@@ -185,7 +393,8 @@ if [[ "$MODE" == "perf" ]]; then ENV_FILE="$OUT_DIR/env_bench.txt"; else mkdir -
   echo "video: $VIDEO"
   echo "hef: $HEF"
   if [[ "$MODE" == "perf" ]]; then echo "runs: $RUNS frames: $FRAMES only: $ONLY"
-  else echo "verify frames: $VERIFY_FRAMES (0 = whole video) dump-every: $DUMP_EVERY"; fi
+  else echo "verify frames: $VERIFY_FRAMES (0 = whole video) dump-every: $DUMP_EVERY"
+       echo "baseline: ${BASELINE:-none}"; fi
   echo "cool: COOL_C=$COOL_C COOL_MAX_S=$COOL_MAX_S HOT_C=$HOT_C COOL_EVERY=$COOL_EVERY"
   echo "caller YVO_DEC_THREADS: $CALLER_DEC_THREADS (removed for every child: app default)"
   echo "env: $(env | grep -E '^(VK_|HAILO|AV_|FFREPORT|YVO_)' | paste -sd ' ' || true)"
@@ -330,46 +539,8 @@ if [[ "$MODE" == "verify" ]]; then
     make_row "$id" 1 "$rc" "$COOL_WAITED" "$nwarn" "$nerr" "$t_pre" "$run_dir" "$args" >> "$VCSV"
     echo "  $(grep -E '^frames|^nms verify|^nms fallback|^detections' "$run_dir/stdout.log" | tr -s ' ' | tr '\n' ' ') hailo_warn=$nwarn rc=$rc"
   done
-  cj="$OUT_DIR/samples/cpu_b2s4/detections.jsonl"; gj="$OUT_DIR/samples/gpu_b2s4/detections.jsonl"
-  vj="$OUT_DIR/samples/verify_b2s4/detections.jsonl"
-  cmp_status=missing
-  if [[ -s "$cj" && -s "$gj" ]]; then
-    "$PY_HAILO" "$COMPARE_PY" "$cj" "$gj" --csv "$OUT_DIR/evidence/compare_cpu_vs_gpu.csv" --label cpu_vs_gpu \
-      > "$OUT_DIR/evidence/compare_cpu_vs_gpu.txt" 2>&1 && cmp_status=ok || cmp_status=failed
-  fi
-  # Line order follows NPU completion, so compare sorted lines (one line per frame, keyed by "frame").
-  same_sorted() { [[ -s "$1" && -s "$2" ]] || { echo missing; return; }
-                  if diff -q <(sort "$1") <(sort "$2") >/dev/null; then echo identical; else echo differ; fi; }
-  # Verdict line from the CSV (python, NaN-safe).
-  /usr/bin/python3 - "$VCSV" "$(same_sorted "$cj" "$gj")" "$(same_sorted "$cj" "$vj")" "$cmp_status" \
-      "$OUT_DIR/evidence/compare_cpu_vs_gpu.txt" > "$OUT_DIR/evidence/nms_verify_summary.txt" <<'PYEOF'
-import csv, sys
-rows = {r["id"]: r for r in csv.DictReader(open(sys.argv[1], newline=""))}
-jsonl_cg, jsonl_cv, cmp_status, cmp_txt = sys.argv[2:6]
-def g(i, k): return rows.get(i, {}).get(k, "nan")
-print("# nms_bench MODE=verify (A2) — not a performance result")
-for i in ("verify_b2s4", "cpu_b2s4", "gpu_b2s4"):
-    print(f"{i:12s} exit {g(i, 'exit_code')} ok {g(i, 'ok')} frames {g(i, 'frames')} detections {g(i, 'detections')} "
-          f"nms {g(i, 'nms')} verify_mismatch {g(i, 'nms_verify_mismatch')} fallback {g(i, 'nms_fallback')} "
-          f"(capacity {g(i, 'nms_fb_capacity')}, iou guard {g(i, 'nms_fb_guard')}) hailort_warn {g(i, 'hailort_warnings')}")
-print(f"detections.jsonl cpu vs gpu (sorted lines): {jsonl_cg}")
-print(f"detections.jsonl cpu vs verify (sorted lines, both CPU suppression — run-to-run determinism): {jsonl_cv}")
-print(f"compare_detections.py cpu vs gpu: {cmp_status}")
-try:
-    for line in open(cmp_txt):
-        if line.startswith(("detections", "match @ IoU", "frames")):
-            print("  " + line.rstrip())
-except OSError:
-    pass
-mm = g("verify_b2s4", "nms_verify_mismatch")
-det_eq = g("cpu_b2s4", "detections") == g("gpu_b2s4", "detections") and g("cpu_b2s4", "detections") != "nan"
-ok_all = all(g(i, "exit_code") == "0" and g(i, "ok") == "1" for i in rows)
-verdict = "PASS" if (mm == "0" and det_eq and ok_all) else "FAIL"
-print(f"[A2] {verdict}: nms_verify_mismatch {mm} (want 0), detections cpu == gpu {det_eq}, all runs ok {ok_all}")
-PYEOF
-  cat "$OUT_DIR/evidence/nms_verify_summary.txt"
   { env_snapshot after; echo "bin md5 (after): $(md5sum "$BIN" | cut -d' ' -f1)"; } >> "$ENV_FILE"
-  grep -q '^\[A2\] PASS' "$OUT_DIR/evidence/nms_verify_summary.txt"
+  verify_verdict "$OUT_DIR/evidence"
   exit $?
 fi
 
