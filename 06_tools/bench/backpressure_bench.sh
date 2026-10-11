@@ -10,7 +10,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 BIN="${BIN:-$BIN_DIR/yvo_pipeline}"
 VIDEO="${VIDEO:-$PROJ/04_data/videos/video_h265.mp4}"
 HEF="${HEF:-$PROJ/03_models/yolov11m.hef}"
-OUT_DIR="${OUT_DIR:-$PROJ/07_results/raw_runner_backpressure}"
+OUT_DIR="$(realpath -m "${OUT_DIR:-$PROJ/07_results/raw_runner_backpressure}")"   # absolute: runs cd into raw/<run>/
 RUNS="${RUNS:-3}"; FRAMES="${FRAMES:-900}"; ONLY="${ONLY:-.}"
 COOL_C="${COOL_C:-65}"; COOL_MAX_S="${COOL_MAX_S:-120}"; HOT_C="${HOT_C:-75}"
 require_bin "$BIN" yvo_pipeline

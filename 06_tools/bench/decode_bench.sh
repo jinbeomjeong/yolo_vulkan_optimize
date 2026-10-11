@@ -42,7 +42,7 @@ PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # They used to be copy-pasted into 7 scripts and had actually diverged (e.g. pcie_link's Gen5 branch).
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 VID="$PROJ/04_data/videos"
-OUT_DIR="${OUT_DIR:-$PROJ/07_results/decode_benchmark}"
+OUT_DIR="$(realpath -m "${OUT_DIR:-$PROJ/07_results/decode_benchmark}")"   # absolute: runs cd into raw/<run>/
 RUNS="${RUNS:-3}"
 ONLY_SET="${ONLY:+1}"         # non-empty only when the caller passed an explicit ONLY pattern (gates opt-in combos)
 ONLY="${ONLY:-.}"

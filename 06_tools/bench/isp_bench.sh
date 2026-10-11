@@ -25,7 +25,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 ISP_BIN="${ISP_BIN:-$BIN_DIR/yvo_isp_bench}"
 GPU_BIN="${GPU_BIN:-$BIN_DIR/yvo_preproc_bench}"
 VIDEO="${VIDEO:-$PROJ/04_data/videos/video_h265.mp4}"
-OUT_DIR="${OUT_DIR:-$PROJ/07_results/isp_resize}"
+OUT_DIR="$(realpath -m "${OUT_DIR:-$PROJ/07_results/isp_resize}")"   # absolute: runs cd into raw/<run>/
 RUNS="${RUNS:-3}"
 FRAMES="${FRAMES:-0}"
 WARMUP="${WARMUP:-60}"
