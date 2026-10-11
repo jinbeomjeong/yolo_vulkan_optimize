@@ -27,25 +27,39 @@
 
 namespace yvo {
 
+// Formula 2): source sample coordinate of destination index d (pixel-center aligned). inv = 1 / scale.
+inline float letterbox_src_coord(int d, int pad, float inv) {
+    return (static_cast<float>(d - pad) + 0.5f) * inv - 0.5f;
+}
+
+// Formula 3)/4): one axis of a bilinear sample. Clamps s to [0, n-1] (edge replication) and returns the two taps and the weight.
+// Also used by the GPU column LUT builders (vulkan/sand_column_lut.hpp), so the sample rule exists only here.
+struct BilinearTap {
+    int i0 = 0, i1 = 0;
+    float f = 0.0f;
+};
+inline BilinearTap bilinear_tap(float s, int n) {
+    s = std::clamp(s, 0.0f, static_cast<float>(n - 1));
+    BilinearTap t;
+    t.i0 = static_cast<int>(s);
+    t.i1 = std::min(t.i0 + 1, n - 1);
+    t.f = s - static_cast<float>(t.i0);
+    return t;
+}
+
 namespace detail {
 
 inline float bilinear_u8(const std::uint8_t* plane, std::size_t pitch, int w, int h, float x, float y,
                          int stride = 1, int offset = 0) {
-    x = std::clamp(x, 0.0f, static_cast<float>(w - 1));
-    y = std::clamp(y, 0.0f, static_cast<float>(h - 1));
-    const int x0 = static_cast<int>(x);
-    const int y0 = static_cast<int>(y);
-    const int x1 = std::min(x0 + 1, w - 1);
-    const int y1 = std::min(y0 + 1, h - 1);
-    const float fx = x - static_cast<float>(x0);
-    const float fy = y - static_cast<float>(y0);
-    const std::uint8_t* r0 = plane + static_cast<std::size_t>(y0) * pitch;
-    const std::uint8_t* r1 = plane + static_cast<std::size_t>(y1) * pitch;
-    const float a = r0[x0 * stride + offset], b = r0[x1 * stride + offset];
-    const float c = r1[x0 * stride + offset], d = r1[x1 * stride + offset];
-    const float top = a + (b - a) * fx;
-    const float bot = c + (d - c) * fx;
-    return top + (bot - top) * fy;
+    const BilinearTap tx = bilinear_tap(x, w);
+    const BilinearTap ty = bilinear_tap(y, h);
+    const std::uint8_t* r0 = plane + static_cast<std::size_t>(ty.i0) * pitch;
+    const std::uint8_t* r1 = plane + static_cast<std::size_t>(ty.i1) * pitch;
+    const float a = r0[tx.i0 * stride + offset], b = r0[tx.i1 * stride + offset];
+    const float c = r1[tx.i0 * stride + offset], d = r1[tx.i1 * stride + offset];
+    const float top = a + (b - a) * tx.f;
+    const float bot = c + (d - c) * tx.f;
+    return top + (bot - top) * ty.f;
 }
 
 inline std::uint8_t to_u8(float v) {
@@ -67,7 +81,7 @@ inline void cpu_letterbox_nv12_bt709(const std::uint8_t* y_plane, std::size_t y_
     for (int dy = 0; dy < lb.dst_h; ++dy) {
         std::uint8_t* row = dst + static_cast<std::size_t>(dy) * lb.dst_w * 3;
         const bool row_in = dy >= lb.pad_y && dy < lb.pad_y + new_h;
-        const float sy = (static_cast<float>(dy - lb.pad_y) + 0.5f) * inv - 0.5f;
+        const float sy = letterbox_src_coord(dy, lb.pad_y, inv);
         const float cy = (sy + 0.5f) * 0.5f - 0.5f;
         for (int dx = 0; dx < lb.dst_w; ++dx) {
             std::uint8_t* px = row + dx * 3;
@@ -75,7 +89,7 @@ inline void cpu_letterbox_nv12_bt709(const std::uint8_t* y_plane, std::size_t y_
                 px[0] = px[1] = px[2] = lb.pad_value;
                 continue;
             }
-            const float sx = (static_cast<float>(dx - lb.pad_x) + 0.5f) * inv - 0.5f;
+            const float sx = letterbox_src_coord(dx, lb.pad_x, inv);
             const float cx = sx * 0.5f;
             const float Y = detail::bilinear_u8(y_plane, y_pitch, src_w, src_h, sx, sy);
             const float U = detail::bilinear_u8(uv_plane, uv_pitch, cw, ch, cx, cy, 2, 0);

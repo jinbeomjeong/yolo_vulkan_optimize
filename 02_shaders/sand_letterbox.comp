@@ -12,7 +12,7 @@
 //   Y(x, y)   = y_offset  + (x >> 7) * y_col_stride  + y  * 128 + (x & 127)
 //   UV(x, cy) = uv_offset + (x >> 7) * uv_col_stride + cy * 128 + (x & 127)   (x even = U, odd = V)
 //
-// Column LUT (binding 3): values precomputed by the host per output column dx (SandLetterbox::build_lut, same float operations as the CPU reference).
+// Column LUT (binding 3): values precomputed by the host per output column dx (01_src/vulkan/sand_column_lut.hpp, same float operations as the CPU reference).
 //   col_lut[2*dx+0] = (Y x0 column word, Y x1 column word, UV cx0 column word, UV cx1 column word)
 //                     column word = ((x >> 7) * col_stride + (x & 127)) >> 2  (the shader adds the row component)
 //   col_lut[2*dx+1] = (byte shift pack: y0 | y1 << 8 | uv0 << 16 | uv1 << 24 (each 0/8/16/24),
@@ -52,10 +52,9 @@ layout(push_constant, std430) uniform Params {
 
 float byte_at(uint w, uint sh) { return float((w >> sh) & 0xffu); }
 
-uint to_u8(float v) {
-    precise float c = clamp(v, 0.0, 255.0) + 0.5;
-    return uint(c);
-}
+// to_u8() + bt709_to_rgb(): BT.709 limited → RGB, shared with display_convert.comp
+#extension GL_GOOGLE_include_directive : require
+#include "bt709.glsl"
 
 // RGB of one content pixel (each component 0..255)
 // yw0/yw1: row word addresses of luma rows y0/y1, cw0/cw1: row word addresses of chroma rows cy0/cy1
@@ -91,14 +90,8 @@ uvec3 shade(int dx, uint pv, uint yw0, uint yw1, float fy, uint cw0, uint cw1, f
     precise vec2 cbot = uc + (ud - uc) * fcx;
     precise vec2 UV = ctop + (cbot - ctop) * fcy;
 
-    // BT.709 limited → RGB
-    precise float yf = (Y - 16.0) * (255.0 / 219.0);
-    precise float uf = (UV.x - 128.0) * (255.0 / 224.0);
-    precise float vf = (UV.y - 128.0) * (255.0 / 224.0);
-    precise float R = yf + 1.5748 * vf;
-    precise float G = yf - 0.187324 * uf - 0.468124 * vf;
-    precise float B = yf + 1.8556 * uf;
-    const uvec3 rgb = uvec3(to_u8(R), to_u8(G), to_u8(B));
+    // BT.709 limited → RGB (bt709.glsl)
+    const uvec3 rgb = bt709_to_rgb(Y, UV.x, UV.y);
     return (aux.w != 0u) ? uvec3(pv) : rgb;
 }
 

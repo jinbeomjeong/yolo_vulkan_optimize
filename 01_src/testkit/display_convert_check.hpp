@@ -4,9 +4,9 @@
 // Used by: 05_tests/test_display_convert.cpp (ctest gate), tools/display/display_probe.cpp (P8).
 //
 // Why this is needed (2026-09-21):
-//   There are three copies of the BT.709 limited → RGB coefficients — ref/cpu_letterbox.hpp (CPU reference),
-//   sand_letterbox.comp (preprocessing), display_convert.comp (display). test_preproc enforces bit-exactness
-//   for the first two, but **the third, display-side copy had no ctest, only a manual probe**.
+//   There were three copies of the BT.709 limited → RGB coefficients — ref/cpu_letterbox.hpp (CPU reference),
+//   sand_letterbox.comp (preprocessing), display_convert.comp (display); since 2026-10-11 both shaders include 02_shaders/bt709.glsl.
+//   test_preproc enforces bit-exactness for preprocessing, but **the display side had no ctest, only a manual probe**.
 //   "CPU reference implementation + bit-exact test" is this project's core verification mechanism, and only this spot was missing it.
 //   The judgment logic lives only here and is shared by the probe and the test (so the judgment does not split into two copies).
 //

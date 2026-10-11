@@ -2,13 +2,11 @@
 
 #include <array>
 #include <cmath>
-#include <cstdio>
-#include <cstdlib>
 #include <cstring>
-#include <fstream>
 #include <stdexcept>
 #include <string>
 
+#include "vulkan/compute_pipeline.hpp"
 #include "vulkan/vk_check.hpp"
 #include "vulkan/vulkan_context.hpp"
 #include "vulkan/yolo_postproc.hpp"   // YoloDetBufHeader / YoloDetGpu (input/output DetBuf contract)
@@ -71,69 +69,17 @@ void EfficientNms::create_pipeline() {
     VkDevice dev = ctx_.device();
 
     // 0: input DetBuf (decode result), 1: output DetBuf
-    std::array<VkDescriptorSetLayoutBinding, 2> b{};
-    for (std::uint32_t i = 0; i < 2; ++i) {
-        b[i].binding = i;
-        b[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        b[i].descriptorCount = 1;
-        b[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-    }
-    VkDescriptorSetLayoutCreateInfo dl{};
-    dl.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    dl.bindingCount = static_cast<std::uint32_t>(b.size());
-    dl.pBindings = b.data();
-    YVO_VK_CHECK(vkCreateDescriptorSetLayout(dev, &dl, nullptr, &set_layout_));
-
-    VkPushConstantRange pcr{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(EfficientNmsPush)};
-    VkPipelineLayoutCreateInfo pl{};
-    pl.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pl.setLayoutCount = 1;
-    pl.pSetLayouts = &set_layout_;
-    pl.pushConstantRangeCount = 1;
-    pl.pPushConstantRanges = &pcr;
-    YVO_VK_CHECK(vkCreatePipelineLayout(dev, &pl, nullptr, &pipeline_layout_));
+    set_layout_ = create_compute_set_layout(dev, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER});
+    pipeline_layout_ = create_compute_pipeline_layout(dev, set_layout_, sizeof(EfficientNmsPush));
 
     // For development: inject an external .spv via YVO_EFFICIENT_NMS_SPV (same convention as yolo_postproc.cpp)
-    std::vector<std::uint32_t> ext_spv;
-    if (const char* path = std::getenv("YVO_EFFICIENT_NMS_SPV"); path && *path) {
-        std::ifstream in(path, std::ios::binary | std::ios::ate);
-        if (!in) throw std::runtime_error(std::string("EfficientNms: cannot open ") + path);
-        const auto n = static_cast<std::size_t>(in.tellg());
-        if (n == 0 || n % 4) throw std::runtime_error(std::string("EfficientNms: bad SPIR-V size: ") + path);
-        ext_spv.resize(n / 4);
-        in.seekg(0);
-        in.read(reinterpret_cast<char*>(ext_spv.data()), static_cast<std::streamsize>(n));
-        std::fprintf(stderr, "[EfficientNms] using external SPIR-V %s\n", path);
-    }
-    VkShaderModuleCreateInfo smi{};
-    smi.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    smi.codeSize = ext_spv.empty() ? sizeof(kEfficientNmsSpv) : ext_spv.size() * 4;
-    smi.pCode = ext_spv.empty() ? kEfficientNmsSpv : ext_spv.data();
-    VkShaderModule module = VK_NULL_HANDLE;
-    YVO_VK_CHECK(vkCreateShaderModule(dev, &smi, nullptr, &module));
-
+    const std::vector<std::uint32_t> spv =
+        spirv_with_env_override(kEfficientNmsSpv, "YVO_EFFICIENT_NMS_SPV", "EfficientNms");
     // spec 0 local_size, 1 kMaxSelected, 2 kNumClasses, 3 kScoreSigmoid, 4 kClassAgnostic (bool is 32-bit)
     const std::array<std::uint32_t, 5> spec_data{cfg_.local_size, cfg_.max_selected, cfg_.num_classes,
                                                  cfg_.score_sigmoid ? VK_TRUE : VK_FALSE,
                                                  cfg_.class_agnostic ? VK_TRUE : VK_FALSE};
-    const std::array<VkSpecializationMapEntry, 5> spec_map{{{0, 0, 4}, {1, 4, 4}, {2, 8, 4}, {3, 12, 4}, {4, 16, 4}}};
-    VkSpecializationInfo spec{};
-    spec.mapEntryCount = static_cast<std::uint32_t>(spec_map.size());
-    spec.pMapEntries = spec_map.data();
-    spec.dataSize = sizeof(spec_data);
-    spec.pData = spec_data.data();
-
-    VkComputePipelineCreateInfo cpi{};
-    cpi.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    cpi.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    cpi.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-    cpi.stage.module = module;
-    cpi.stage.pName = "main";
-    cpi.stage.pSpecializationInfo = &spec;
-    cpi.layout = pipeline_layout_;
-    const VkResult r = vkCreateComputePipelines(dev, VK_NULL_HANDLE, 1, &cpi, nullptr, &pipeline_);
-    vkDestroyShaderModule(dev, module, nullptr);
-    YVO_VK_CHECK(r);
+    pipeline_ = create_compute_pipeline(dev, pipeline_layout_, spv, spec_data);
 }
 
 void EfficientNms::create_slots(const std::vector<VkBuffer>& inputs, VkDeviceSize input_size) {

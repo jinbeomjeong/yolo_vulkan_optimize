@@ -11,7 +11,7 @@
 //   finish() releases the import pin and drops the DrmFrame keepalive (returned to the decoder pool).
 //
 // Synchronization: the input dma-buf is owned by external_qf (FOREIGN_EXT), so acquire/release barriers are placed before and after the command buffer
-//   exactly following the sand_letterbox.cpp:363-387 / :401-445 pattern (both preprocessing and display **only read** it).
+//   exactly following the sand_letterbox.cpp:274-298 / :312-356 pattern (both preprocessing and display **only read** it).
 //   The output image layout transitions are recorded by VulkanSwapchain (UNDEFINED → GENERAL → PRESENT_SRC).
 #pragma once
 
@@ -23,6 +23,7 @@
 
 #include "core/frame_types.hpp"
 #include "vulkan/dmabuf_import.hpp"
+#include "vulkan/sand_column_lut.hpp"
 
 namespace yvo::vk {
 class VulkanContext;
@@ -117,12 +118,7 @@ private:
         yvo::vk::ImportedDmaBuf* y = nullptr;
         yvo::vk::ImportedDmaBuf* uv = nullptr;
     };
-    struct LutKey {
-        int src_w = 0, src_h = 0, dst_w = 0, dst_h = 0, pad_x = 0, pad_y = 0;
-        float scale = 0.0f;
-        std::uint32_t y_col_stride = 0, uv_col_stride = 0;
-        bool operator==(const LutKey&) const = default;
-    };
+    using LutKey = yvo::vk::SandColumnLutKey;
 
     void create_pipeline();
     void destroy_pipeline();

@@ -4,12 +4,11 @@
 #include <array>
 #include <cmath>
 #include <cstdio>
-#include <cstdlib>
 #include <cstring>
-#include <fstream>
 #include <stdexcept>
 #include <string>
 
+#include "vulkan/compute_pipeline.hpp"
 #include "vulkan/dmabuf_export.hpp"
 #include "vulkan/dmabuf_import.hpp"
 #include "vulkan/vk_check.hpp"
@@ -106,72 +105,20 @@ void YoloPostproc::create_pipelines() {
     VkDevice dev = ctx_.device();
 
     // 0: class tensor, 1: box tensor, 2: DetBuf — a single dispatch sees only these 3 SSBOs
-    std::array<VkDescriptorSetLayoutBinding, 3> b{};
-    for (std::uint32_t i = 0; i < 3; ++i) {
-        b[i].binding = i;
-        b[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        b[i].descriptorCount = 1;
-        b[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-    }
-    VkDescriptorSetLayoutCreateInfo dl{};
-    dl.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    dl.bindingCount = static_cast<std::uint32_t>(b.size());
-    dl.pBindings = b.data();
-    YVO_VK_CHECK(vkCreateDescriptorSetLayout(dev, &dl, nullptr, &set_layout_));
-
-    VkPushConstantRange pcr{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(YoloDecodePush)};
-    VkPipelineLayoutCreateInfo pl{};
-    pl.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pl.setLayoutCount = 1;
-    pl.pSetLayouts = &set_layout_;
-    pl.pushConstantRangeCount = 1;
-    pl.pPushConstantRanges = &pcr;
-    YVO_VK_CHECK(vkCreatePipelineLayout(dev, &pl, nullptr, &pipeline_layout_));
+    const VkDescriptorType sb = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    set_layout_ = create_compute_set_layout(dev, {sb, sb, sb});
+    pipeline_layout_ = create_compute_pipeline_layout(dev, set_layout_, sizeof(YoloDecodePush));
 
     // For development: the environment variable YVO_YOLO_DECODE_SPV can use an external .spv instead of the embedded one (shader experiments/tuning).
-    // Same convention as sand_letterbox.cpp:84-96.
-    std::vector<std::uint32_t> ext_spv;
-    if (const char* path = std::getenv("YVO_YOLO_DECODE_SPV"); path && *path) {
-        std::ifstream in(path, std::ios::binary | std::ios::ate);
-        if (!in) throw std::runtime_error(std::string("YoloPostproc: cannot open ") + path);
-        const auto n = static_cast<std::size_t>(in.tellg());
-        if (n == 0 || n % 4) throw std::runtime_error(std::string("YoloPostproc: bad SPIR-V size: ") + path);
-        ext_spv.resize(n / 4);
-        in.seekg(0);
-        in.read(reinterpret_cast<char*>(ext_spv.data()), static_cast<std::streamsize>(n));
-        std::fprintf(stderr, "[YoloPostproc] using external SPIR-V %s\n", path);
-    }
-    VkShaderModuleCreateInfo smi{};
-    smi.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    smi.codeSize = ext_spv.empty() ? sizeof(kYoloDecodeSpv) : ext_spv.size() * 4;
-    smi.pCode = ext_spv.empty() ? kYoloDecodeSpv : ext_spv.data();
-    VkShaderModule module = VK_NULL_HANDLE;
-    YVO_VK_CHECK(vkCreateShaderModule(dev, &smi, nullptr, &module));
-
+    const std::vector<std::uint32_t> spv =
+        spirv_with_env_override(kYoloDecodeSpv, "YVO_YOLO_DECODE_SPV", "YoloPostproc");
     // spec 0/1 = local_size_x/y, 2 = kChecksum (SPIR-V bool is passed as 32 bit)
     std::array<std::uint32_t, 3> spec_data{cfg_.local_size_x, cfg_.local_size_y, VK_FALSE};
-    const std::array<VkSpecializationMapEntry, 3> spec_map{{{0, 0, 4}, {1, 4, 4}, {2, 8, 4}}};
-    VkSpecializationInfo spec{};
-    spec.mapEntryCount = static_cast<std::uint32_t>(spec_map.size());
-    spec.pMapEntries = spec_map.data();
-    spec.dataSize = sizeof(spec_data);
-    spec.pData = spec_data.data();
-
-    VkComputePipelineCreateInfo cpi{};
-    cpi.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    cpi.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    cpi.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-    cpi.stage.module = module;
-    cpi.stage.pName = "main";
-    cpi.stage.pSpecializationInfo = &spec;
-    cpi.layout = pipeline_layout_;
-    VkResult r = vkCreateComputePipelines(dev, VK_NULL_HANDLE, 1, &cpi, nullptr, &pipeline_);
-    if (r == VK_SUCCESS && cfg_.checksum_pipeline) {
+    pipeline_ = create_compute_pipeline(dev, pipeline_layout_, spv, spec_data);
+    if (cfg_.checksum_pipeline) {
         spec_data[2] = VK_TRUE;
-        r = vkCreateComputePipelines(dev, VK_NULL_HANDLE, 1, &cpi, nullptr, &pipeline_sum_);
+        pipeline_sum_ = create_compute_pipeline(dev, pipeline_layout_, spv, spec_data);
     }
-    vkDestroyShaderModule(dev, module, nullptr);
-    YVO_VK_CHECK(r);
 
     const auto n = static_cast<std::uint32_t>(cfg_.num_slots * kYoloNumScales);
     VkDescriptorPoolSize ps{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 * n};
@@ -506,7 +453,7 @@ void YoloPostproc::record(Slot& s, int slot, const LetterboxParams& lb, int src_
 
     // ── Exit barriers ───────────────────────────────────────────────────────────────────────────
     // ① Raw output release (only when Foreign). Only read, so there are no writes to make available → srcAccessMask NONE.
-    //    In a release operation dstStageMask/dstAccessMask are ignored (same as sand_letterbox.cpp:401-424).
+    //    In a release operation dstStageMask/dstAccessMask are ignored (same as sand_letterbox.cpp:312-335).
     // ② DetBuf: shader writes (including atomics — atomics are read+write accesses) → host read visibility.
     std::array<VkBufferMemoryBarrier2, 2 + kYoloNumTensors> rel{};
     std::uint32_t nrel = 0;
@@ -619,7 +566,7 @@ void YoloPostproc::wait(int slot, std::uint64_t timeout_ns) {
                                              sizeof(ts), ts.data(), sizeof(std::uint64_t), VK_QUERY_RESULT_64_BIT);
     if (r == VK_NOT_READY) return;
     YVO_VK_CHECK(r);
-    // Same computation as the valid-bit masking in sand_letterbox.cpp:579-593
+    // Same computation as the valid-bit masking in sand_letterbox.cpp:490-504
     const std::uint32_t bits = ctx_.timestamp_valid_bits();
     const std::uint64_t mask = bits >= 64 ? ~0ull : ((1ull << bits) - 1);
     const double period = static_cast<double>(ctx_.timestamp_period());

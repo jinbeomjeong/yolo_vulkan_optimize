@@ -8,7 +8,7 @@
 //      ① In Vulkan an _SRGB format cannot be a storage image
 //      ② shaderStorageImageWriteWithoutFormat=false, so a GLSL format qualifier is mandatory, and GLSL has no bgra8,
 //         so the only direct compute write is rgba8 = R8G8B8A8_UNORM
-//      ③ The values the preprocessing shader (sand_letterbox.comp:94-101) produces are already gamma-encoded sRGB 0~255 →
+//      ③ The values the preprocessing shader (bt709.glsl in sand_letterbox.comp) produces are already gamma-encoded sRGB 0~255 →
 //         with UNORM they pass through with no conversion
 //  · usage = STORAGE | COLOR_ATTACHMENT | TRANSFER_DST.
 //    Even if supportedUsageFlags reports STORAGE, **per-format optimalTilingFeatures is a separate query**, so

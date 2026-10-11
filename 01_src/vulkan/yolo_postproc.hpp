@@ -36,7 +36,7 @@
 // ── Synchronization (`input_sync`) ─────────────────────────────────────────────────────────────────────
 //   Foreign   : the raw output is **external memory written by Hailo PCIe DMA** →
 //               a `FOREIGN_EXT → compute` acquire before the command buffer, a `compute → FOREIGN_EXT` release after.
-//               Same pattern as `sand_letterbox.cpp:363-387 / :401-445` (both **only read**).
+//               Same pattern as `sand_letterbox.cpp:274-298 / :312-356` (both **only read**).
 //   HostWrite : fixture mode. Makes contents memcpy'd by the host available via `HOST_WRITE → SHADER_STORAGE_READ`.
 //   None      : **inserts no barrier at all.** Only for plan §6.2 P3-④ (evidence that the barrier is required).
 //               Not used in production.

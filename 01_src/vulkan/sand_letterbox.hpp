@@ -27,6 +27,7 @@
 
 #include "core/frame_types.hpp"
 #include "vulkan/dmabuf_import.hpp"
+#include "vulkan/sand_column_lut.hpp"
 
 namespace yvo::vk {
 
@@ -111,12 +112,7 @@ private:
         LetterboxParams lb;
     };
 
-    struct LutKey {
-        int src_w = 0, src_h = 0, dst_w = 0, dst_h = 0, pad_x = 0, pad_y = 0;
-        float scale = 0.0f;
-        std::uint32_t y_col_stride = 0, uv_col_stride = 0;
-        bool operator==(const LutKey&) const = default;
-    };
+    using LutKey = SandColumnLutKey;
 
     void create_pipeline();
     void create_slots();

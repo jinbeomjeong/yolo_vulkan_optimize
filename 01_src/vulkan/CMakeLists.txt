@@ -1,6 +1,7 @@
 # Vulkan compute preprocessing: V3D context, dma-buf import, SAND128 → letterbox RGB888
 add_library(yvo_vulkan STATIC
   vulkan_context.cpp
+  compute_pipeline.cpp
   dmabuf_import.cpp
   dmabuf_export.cpp
   sand_letterbox.cpp
