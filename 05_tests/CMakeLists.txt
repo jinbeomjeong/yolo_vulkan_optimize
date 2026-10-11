@@ -56,7 +56,8 @@ if(TARGET yvo_vulkan AND TARGET yvo_hailo AND TARGET yvo_decoder)
   set_tests_properties(test_detections PROPERTIES
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     TIMEOUT 600
-    RUN_SERIAL TRUE)
+    RUN_SERIAL TRUE
+    LABELS "npu")
 endif()
 
 # GPU postprocessing (--postproc gpu) regression lock — plan [G]
@@ -83,7 +84,32 @@ if(TARGET yvo_stages AND TARGET yvo_decoder)
   set_tests_properties(test_postproc_live PROPERTIES
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     TIMEOUT 600
-    RUN_SERIAL TRUE)
+    RUN_SERIAL TRUE
+    LABELS "npu")
+endif()
+
+# yvo_pipeline app logic (pipeline/slot_exchange.hpp): SlotExchange slot pool + validate_slot_budget gate.
+# **No NPU, GPU or display needed** — yvo_stages is linked only for headers/symbols, nothing opens a device.
+if(TARGET yvo_stages)
+  add_executable(test_pipeline_logic test_pipeline_logic.cpp)
+  target_link_libraries(test_pipeline_logic PRIVATE yvo_stages yvo_assets GTest::gtest_main)
+  yvo_target_defaults(test_pipeline_logic)
+  gtest_discover_tests(test_pipeline_logic
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    PROPERTIES TIMEOUT 120
+    DISCOVERY_TIMEOUT 60)
+endif()
+
+# Display option parsers (--display-backend/-color-range/-sync/-pace, --present-mode): string → enum, no GPU or display.
+# Built only with yvo_display (optional: needs wayland-client/protocols), like the other display tests.
+if(TARGET yvo_display)
+  add_executable(test_display_options test_display_options.cpp)
+  target_link_libraries(test_display_options PRIVATE yvo_display yvo_assets GTest::gtest_main)
+  yvo_target_defaults(test_display_options)
+  gtest_discover_tests(test_display_options
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    PROPERTIES TIMEOUT 60
+    DISCOVERY_TIMEOUT 60)
 endif()
 
 # Overlay (boxes, labels, HUD) GPU shader vs CPU reference implementation — bit-exact (no NPU needed, offscreen)

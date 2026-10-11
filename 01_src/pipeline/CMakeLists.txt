@@ -5,8 +5,10 @@
 #   gpu_postproc_stage: HailoRawRunner + YoloPostproc + cpu_nms glue
 # It used to be compiled only into the yvo_pipeline executable, so tests could not link this glue.
 # **Logic left as is; only the wiring was pulled out into a library** (used by PostprocLive in 05_tests/test_postproc.cpp).
+#   slot_exchange     : SlotExchange (slot pool + completion queue) + validate_slot_budget, moved out of main.cpp
+#                       unchanged (2026-10-11) so 05_tests/test_pipeline_logic.cpp can test them without NPU/GPU.
 if(TARGET yvo_vulkan AND TARGET yvo_hailo)
-  add_library(yvo_stages STATIC gpu_postproc_stage.cpp)
+  add_library(yvo_stages STATIC gpu_postproc_stage.cpp slot_exchange.cpp)
   target_link_libraries(yvo_stages PUBLIC yvo_vulkan yvo_hailo PRIVATE yvo_ref)
   yvo_target_defaults(yvo_stages)
 endif()

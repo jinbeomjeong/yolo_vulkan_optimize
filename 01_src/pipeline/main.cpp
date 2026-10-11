@@ -53,7 +53,6 @@
 #include <cerrno>
 #include <chrono>
 #include <cmath>
-#include <condition_variable>
 #include <csignal>
 #include <cstdint>
 #include <cstdio>
@@ -84,6 +83,7 @@
 #include "decode/ffmpeg_drm_decoder.hpp"
 #include "pipeline/gpu_postproc_stage.hpp"
 #include "pipeline/infer_stage.hpp"
+#include "pipeline/slot_exchange.hpp"
 #include "vulkan/sand_letterbox.hpp"
 #include "vulkan/vulkan_context.hpp"
 
@@ -340,112 +340,25 @@ bool parse(int argc, char** argv, Args& a) {
     //               (PlaneDisplay::kExtraHeldBeyondSlots = on screen 1 + waiting for next flip 1 + release delay 1 + pending 2).
     //               → at most slots + 1 + 5.
     //     Blocked with the same margin (10). The actual maximum is measured as held_frames_max.
-    if (a.display && planes) {
-        const int hold = a.slots + 1 +
-                         (a.disp.sync == yvo::display::DisplaySync::Latest
-                              ? yvo::display::PlaneDisplay::kExtraHeldBeyondSlots
-                              : 0);
-        if (hold > 10) {
-            std::fprintf(stderr,
-                         "--display-backend %s: decoder frames held would be %d, exceeding 10 "
-                         "(slots %d + 1 awaiting decode%s).\nThe decoder stalls without an error when more than about 13 frames are held at once. "
-                         "Reduce --slots.\n",
-                         a.disp.backend == yvo::display::DisplayBackendKind::Kms ? "kms" : "wayland-planes", hold,
-                         a.slots, a.disp.sync == yvo::display::DisplaySync::Latest ? " + 5 held by display" : "");
+    if (a.display) {
+        const std::string err = yvo::pipeline::validate_slot_budget(
+            !planes ? yvo::pipeline::SlotBudgetPath::Composite
+            : a.disp.backend == yvo::display::DisplayBackendKind::Kms ? yvo::pipeline::SlotBudgetPath::Kms
+                                                                       : yvo::pipeline::SlotBudgetPath::WaylandPlanes,
+            a.disp.sync == yvo::display::DisplaySync::Latest, a.slots, a.gpu_depth,
+            yvo::display::PlaneDisplay::kExtraHeldBeyondSlots);
+        if (!err.empty()) {
+            std::fputs(err.c_str(), stderr);
             return false;
         }
-    } else if (a.display && a.slots + a.gpu_depth > 10) {
-        std::fprintf(stderr,
-                     "--display on requires slots + gpu_depth <= 10 (now %d + %d = %d).\n"
-                     "The decoder stalls without an error when more than about 13 frames are held at once. Reduce --slots or --gpu-depth.\n",
-                     a.slots, a.gpu_depth, a.slots + a.gpu_depth);
-        return false;
     }
 #endif
     return true;
 }
 
-// Thread-safe slot pool + completion queue (HailoRT callback ↔ main thread)
-struct Completion {
-    yvo::InferResult result;
-    Clock::time_point t_done;
-};
-
-// There are two slot return conditions (compute done + display done). With need_display == false there is no display condition,
-// giving **exactly the same behavior as before** (--display off regression path).
-class SlotExchange {
-public:
-    SlotExchange(int n, bool need_display)
-        : need_display_(need_display), ready_(static_cast<std::size_t>(n), {false, false}),
-          out_(static_cast<std::size_t>(n), false) {
-        for (int i = 0; i < n; ++i) free_.push_back(i);
-    }
-    // HailoRT callback thread (host) or main thread (gpu post-processing)
-    void complete(yvo::InferResult&& r) {
-        Completion c{std::move(r), Clock::now()};
-        {
-            std::lock_guard<std::mutex> lk(m_);
-            const int slot = c.result.slot;
-            done_.push_back(std::move(c));
-            mark(slot, 0);
-        }
-        cv_.notify_all();
-    }
-    // Main thread only. Display has finished (display completion callback) or display was skipped.
-    void display_done(int slot) {
-        {
-            std::lock_guard<std::mutex> lk(m_);
-            mark(slot, 1);
-        }
-        cv_.notify_all();
-    }
-    std::optional<int> try_acquire() {
-        std::lock_guard<std::mutex> lk(m_);
-        return pop_locked();
-    }
-    // Waits only for slice (no blocking — the one who sets display_done is the caller itself).
-    std::optional<int> acquire_poll(std::chrono::milliseconds slice) {
-        std::unique_lock<std::mutex> lk(m_);
-        if (free_.empty()) cv_.wait_for(lk, slice, [&] { return !free_.empty(); });
-        return pop_locked();
-    }
-    std::vector<Completion> take_done() {
-        std::lock_guard<std::mutex> lk(m_);
-        std::vector<Completion> out(std::make_move_iterator(done_.begin()), std::make_move_iterator(done_.end()));
-        done_.clear();
-        return out;
-    }
-
-private:
-    // Called with m_ held. Signals for slots that are not out are ignored (makes duplicate calls harmless).
-    void mark(int slot, int which) {
-        const auto i = static_cast<std::size_t>(slot);
-        if (i >= out_.size() || !out_[i]) return;
-        ready_[i][static_cast<std::size_t>(which)] = true;
-        if (ready_[i][0] && (ready_[i][1] || !need_display_)) {
-            ready_[i] = {false, false};
-            out_[i] = false;
-            free_.push_back(slot);
-        }
-    }
-    std::optional<int> pop_locked() {
-        if (free_.empty()) return std::nullopt;
-        const int s = free_.front();
-        free_.pop_front();
-        const auto i = static_cast<std::size_t>(s);
-        ready_[i] = {false, false};
-        out_[i] = true;
-        return s;
-    }
-
-    std::mutex m_;
-    std::condition_variable cv_;
-    bool need_display_;
-    std::vector<std::array<bool, 2>> ready_;   // [0] = compute done, [1] = display done
-    std::vector<bool> out_;                    // whether the slot is out (guards against duplicate signals)
-    std::deque<int> free_;
-    std::deque<Completion> done_;
-};
+// Thread-safe slot pool + completion queue (HailoRT callback ↔ main thread): pipeline/slot_exchange.hpp
+using yvo::pipeline::Completion;
+using yvo::pipeline::SlotExchange;
 
 void draw_and_save(const std::string& path, const std::vector<std::uint8_t>& rgb, const yvo::LetterboxParams& lb,
                    const std::vector<yvo::Detection>& dets) {

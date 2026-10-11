@@ -10,6 +10,18 @@
 add_library(yvo_warnings INTERFACE)
 target_compile_options(yvo_warnings INTERFACE -Wall -Wextra -Wpedantic)
 
+# ── Sanitizers ───────────────────────────────────────────────────────────────────
+# -DYVO_SANITIZE=ON adds ASan + UBSan to compile **and** link of every target defined after this include (all of
+# 01_src/, 02_shaders/, 05_tests/; C and C++, so the generated wayland-scanner C stubs too). Default OFF: the default
+# build is unchanged. Always use a separate build directory (e.g. build-asan/) — a sanitized build/ ruins measurements.
+# TSan is not offered here: it cannot be combined with ASan.
+option(YVO_SANITIZE "Build every target with -fsanitize=address,undefined (use a separate build directory)" OFF)
+if(YVO_SANITIZE)
+  add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=address,undefined)
+  message(STATUS "YVO_SANITIZE: ASan + UBSan on every target")
+endif()
+
 # ── CPU flags ───────────────────────────────────────────────────────────────
 # Pi 5 = Cortex-A76. When building on another board, change it like -DYVO_CPU_FLAGS=-mcpu=native.
 set(YVO_CPU_FLAGS "-mcpu=cortex-a76" CACHE STRING "CPU tuning flags added to C++ targets (semicolon/space separated)")
