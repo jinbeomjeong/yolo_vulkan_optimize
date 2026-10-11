@@ -68,6 +68,7 @@
 // (row/bit order) and the color formula once more **at compile time**.
 #include "core/coco_labels.hpp"
 #include "ref/glyph_font_8x16.hpp"
+#include "toolkit/cli_parse.hpp"
 #include "toolkit/stats.hpp"
 
 using yvo::Stats;
@@ -147,19 +148,19 @@ bool parse(int argc, char** argv, Args& a) {
         else if (s == "--display-blit") a.blit = true;
         else if (s == "--lean-images") a.lean_images = true;
         else if (s == "--sweep") a.sweep = true;
-        else if (s == "--resize-every" && (v = next())) a.resize_every = std::atoi(v);
-        else if (s == "--overlay-line-width" && (v = next())) a.line_width = std::atoi(v);
-        else if (s == "--overlay-text-scale" && (v = next())) a.text_scale = std::atoi(v);
-        else if (s == "--overlay-local" && (v = next())) a.overlay_local = static_cast<std::uint32_t>(std::atoi(v));
+        else if (s == "--resize-every" && (v = next())) a.resize_every = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--overlay-line-width" && (v = next())) a.line_width = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--overlay-text-scale" && (v = next())) a.text_scale = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--overlay-local" && (v = next())) a.overlay_local = static_cast<std::uint32_t>(yvo::tool::arg_number<int>(argv[0], s, v));
         else if (s == "--with-overlay") a.with_overlay = true;
-        else if (s == "--overlay-dets" && (v = next())) a.overlay_dets = std::atoi(v);
-        else if (s == "--frames" && (v = next())) a.frames = std::atoi(v);
-        else if (s == "--hold-seconds" && (v = next())) a.hold_seconds = std::atof(v);
+        else if (s == "--overlay-dets" && (v = next())) a.overlay_dets = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--frames" && (v = next())) a.frames = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--hold-seconds" && (v = next())) a.hold_seconds = yvo::tool::arg_number<double>(argv[0], s, v);
         else if (s == "--video" && (v = next())) a.video = v;
         else if (s == "--no-display") a.no_display = true;
         else if (s == "--local" && i + 2 < argc) {
-            a.lx = static_cast<std::uint32_t>(std::atoi(argv[++i]));
-            a.ly = static_cast<std::uint32_t>(std::atoi(argv[++i]));
+            a.lx = static_cast<std::uint32_t>(yvo::tool::arg_number<int>(argv[0], s, argv[++i]));
+            a.ly = static_cast<std::uint32_t>(yvo::tool::arg_number<int>(argv[0], s, argv[++i]));
         }
         else if (s == "--validation") a.validation = true;
         else if (s == "--sync-validation") a.validation = a.sync_validation = true;

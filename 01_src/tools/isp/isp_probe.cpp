@@ -24,6 +24,7 @@
 
 #include "isp/isp_resizer.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
+#include "toolkit/cli_parse.hpp"
 
 namespace {
 
@@ -60,11 +61,11 @@ bool parse(int argc, char** argv, Args& a) {
         else if (s == "--media" && (v = next())) a.media = v;
         else if (s == "--png" && (v = next())) a.png = v;
         else if (s == "--filter" && (v = next())) a.filter = v;
-        else if (s == "--frame" && (v = next())) a.frame = std::atoi(v);
-        else if (s == "--frames" && (v = next())) a.frames = std::atoi(v);
-        else if (s == "--slots" && (v = next())) a.slots = std::atoi(v);
-        else if (s == "--buffers" && (v = next())) a.buffers = std::atoi(v);
-        else if (s == "--branch" && (v = next())) a.branch = static_cast<unsigned int>(std::atoi(v));
+        else if (s == "--frame" && (v = next())) a.frame = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--frames" && (v = next())) a.frames = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--slots" && (v = next())) a.slots = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--buffers" && (v = next())) a.buffers = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--branch" && (v = next())) a.branch = static_cast<unsigned int>(yvo::tool::arg_number<int>(argv[0], s, v));
         else if (s == "--dump") a.dump = true;
         else if (s == "--convert") a.convert = true;
         else if (s == "--check-padding") a.check_padding = true;

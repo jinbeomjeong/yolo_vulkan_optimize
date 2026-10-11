@@ -53,6 +53,7 @@
 #include "vulkan/vk_check.hpp"
 
 #include "heap_sum_spv.h"
+#include "toolkit/cli_parse.hpp"
 #include "toolkit/stats.hpp"
 #include "toolkit/tool_util.hpp"
 
@@ -143,13 +144,13 @@ Options parse_args(int argc, char** argv) {
         } else if (a == "--label") {
             o.label = next("--label");
         } else if (a == "--iters") {
-            o.iters = std::atoi(next("--iters").c_str());
+            o.iters = yvo::tool::arg_number<int>(argv[0], a, next("--iters").c_str());
             if (o.iters <= 0) throw std::runtime_error("--iters must be > 0");
         } else if (a == "--warmup") {
-            o.warmup = std::atoi(next("--warmup").c_str());
+            o.warmup = yvo::tool::arg_number<int>(argv[0], a, next("--warmup").c_str());
             if (o.warmup < 0) throw std::runtime_error("--warmup must be >= 0");
         } else if (a == "--load") {
-            o.load_sec = std::atof(next("--load").c_str());
+            o.load_sec = yvo::tool::arg_number<double>(argv[0], a, next("--load").c_str());
             if (o.load_sec <= 0) throw std::runtime_error("--load must be > 0");
         } else {
             throw std::runtime_error("unknown option: " + a + " (see --help)");

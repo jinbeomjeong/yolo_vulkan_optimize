@@ -33,7 +33,7 @@ std::string validate_slot_budget(SlotBudgetPath path, bool latest_sync, int slot
     if (path == SlotBudgetPath::WaylandPlanes || path == SlotBudgetPath::Kms) {
         // matched: every frame held by the display occupies its own slot → slots + 1 (one decoded frame awaiting a slot).
         // latest : the slot comes back right after show, and the display holds extra_held_beyond_slots more outside the slots.
-        const long long hold = static_cast<long long>(slots) + 1 + (latest_sync ? extra_held_beyond_slots : 0);
+        const long long hold = plane_frames_held(latest_sync, slots, extra_held_beyond_slots);
         if (hold > kMaxDecoderFramesHeld) {
             const std::string by_display = latest_sync ? format(" + %d held by display", extra_held_beyond_slots) : "";
             return format("--display-backend %s: decoder frames held would be %lld, exceeding %d "

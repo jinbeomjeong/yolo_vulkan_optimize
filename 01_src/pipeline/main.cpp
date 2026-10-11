@@ -84,6 +84,10 @@
 #include "pipeline/gpu_postproc_stage.hpp"
 #include "pipeline/infer_stage.hpp"
 #include "pipeline/slot_exchange.hpp"
+#include "toolkit/cli_parse.hpp"
+#include "toolkit/result_csv.hpp"
+#include "toolkit/stats.hpp"
+#include "toolkit/tool_util.hpp"
 #include "vulkan/sand_letterbox.hpp"
 #include "vulkan/vulkan_context.hpp"
 
@@ -93,15 +97,13 @@
 #include "display/plane_display.hpp"
 #include "display/kms_scanout.hpp"
 #include "display/wayland_plane_scanout.hpp"
-#include "toolkit/stats.hpp"
-#include "toolkit/tool_util.hpp"
-
-using yvo::Stats;
-using yvo::stats;
 #endif
 
 namespace {
 
+using yvo::Stats;
+using yvo::stats;
+using yvo::tool::arg_number;
 using yvo::tool::cpu_ms;
 using yvo::tool::soc_temperature;
 
@@ -179,6 +181,8 @@ struct Args {
     int dump_every = 100;
     bool quiet = false;
     std::string csv_label;  // if set, print one CSV line (RESULT_CSV,...) at the end
+    // Decoder frame threads: 1 (07_results/dec_threads). Research knob YVO_DEC_THREADS (environment); 0 -> FFmpeg auto.
+    int dec_threads = 1;
 
     // ── Display (all defaults are "off": running without arguments takes the same path as before) ──
     bool display = false;
@@ -240,7 +244,7 @@ bool parse(int argc, char** argv, Args& a) {
         const char* v = nullptr;
         if (s == "--video" && (v = next())) a.video = v;
         else if (s == "--hef" && (v = next())) a.hef = v;
-        else if (s == "--frames" && (v = next())) a.frames = std::atol(v);
+        else if (s == "--frames" && (v = next())) a.frames = arg_number<long>(argv[0], s, v);
         else if (s == "--mode" && (v = next())) {
             const std::string m = v;
             if (m == "ptr") a.mode = Mode::Ptr;
@@ -251,9 +255,9 @@ bool parse(int argc, char** argv, Args& a) {
             if (l == "nhwc") a.layout = yvo::TensorLayout::Nhwc;
             else if (l == "nhcw") a.layout = yvo::TensorLayout::Nhcw;
             else return false;
-        } else if (s == "--batch" && (v = next())) a.batch = std::atoi(v);
-        else if (s == "--slots" && (v = next())) a.slots = std::atoi(v);
-        else if (s == "--gpu-depth" && (v = next())) a.gpu_depth = std::atoi(v);
+        } else if (s == "--batch" && (v = next())) a.batch = arg_number<int>(argv[0], s, v);
+        else if (s == "--slots" && (v = next())) a.slots = arg_number<int>(argv[0], s, v);
+        else if (s == "--gpu-depth" && (v = next())) a.gpu_depth = arg_number<int>(argv[0], s, v);
         else if (s == "--postproc" && (v = next())) {
             const std::string p = v;  a.postproc_explicit = true;
             if (p == "host") a.postproc = Postproc::Host;
@@ -271,9 +275,9 @@ bool parse(int argc, char** argv, Args& a) {
             else return false;
             a.nms_explicit = true;
         }
-        else if (s == "--score" && (v = next())) a.score = static_cast<float>(std::atof(v));
+        else if (s == "--score" && (v = next())) a.score = arg_number<float>(argv[0], s, v);
         else if (s == "--dump-dir" && (v = next())) a.dump_dir = v;
-        else if (s == "--dump-every" && (v = next())) a.dump_every = std::atoi(v);
+        else if (s == "--dump-every" && (v = next())) a.dump_every = arg_number<int>(argv[0], s, v);
         else if (s == "--csv-label" && (v = next())) a.csv_label = v;
         else if (s == "--quiet") a.quiet = true;
 #ifdef YVO_HAVE_DISPLAY
@@ -299,17 +303,18 @@ bool parse(int argc, char** argv, Args& a) {
             if (std::sscanf(v, "%dx%d", &w, &h) != 2 || w <= 0 || h <= 0) return false;
             a.disp.width = w;
             a.disp.height = h;
-        } else if (s == "--display-every" && (v = next())) a.disp.every = std::atoi(v);
-        else if (s == "--display-warmup" && (v = next())) a.disp.warmup = std::atoi(v);
+        } else if (s == "--display-every" && (v = next())) a.disp.every = arg_number<int>(argv[0], s, v);
+        else if (s == "--display-warmup" && (v = next())) a.disp.warmup = arg_number<int>(argv[0], s, v);
         else if (s == "--present-mode" && (v = next())) {
             if (!yvo::display::parse_present_mode(v, &a.disp.present_mode)) return false;
         } else if (s == "--display-blit") a.disp.force_blit = true;
-        else if (s == "--overlay-line-width" && (v = next())) a.disp.overlay_line_width = std::atoi(v);
-        else if (s == "--overlay-text-scale" && (v = next())) a.disp.overlay_text_scale = std::atoi(v);
+        else if (s == "--overlay-line-width" && (v = next())) a.disp.overlay_line_width = arg_number<int>(argv[0], s, v);
+        else if (s == "--overlay-text-scale" && (v = next())) a.disp.overlay_text_scale = arg_number<int>(argv[0], s, v);
 #endif
         else if (s == "-h" || s == "--help") return false;
         else return false;
     }
+    if (const char* e = std::getenv("YVO_DEC_THREADS")) a.dec_threads = arg_number<int>(argv[0], "YVO_DEC_THREADS", e);
     const bool lay_dn = !a.layout_explicit && a.mode == Mode::Ptr;  // implicit dependents follow an explicit --mode ptr / --layout nhwc
     const bool pp_dn = !a.postproc_explicit && (a.mode == Mode::Ptr || a.layout == yvo::TensorLayout::Nhwc);
     if (lay_dn || pp_dn) std::fprintf(stderr, "note: default lowered to%s%s (nhcw needs --mode dmabuf, --postproc gpu needs dmabuf + nhcw)\n", lay_dn ? " --layout nhwc" : "", pp_dn ? " --postproc host" : "");
@@ -400,7 +405,30 @@ const char* nms_name(yvo::pipeline::NmsBackend b) {
     return "?";
 }
 
-int run(const Args& a) {
+// detections.jsonl: one line per frame (yvo_gst_pipeline's yvohailosink writes the same line format).
+void write_jsonl_line(std::FILE* fp, const yvo::InferResult& r) {
+    std::fprintf(fp, "{\"frame\":%lld,\"detections\":[", static_cast<long long>(r.pts));
+    for (std::size_t i = 0; i < r.detections.size(); ++i) {
+        const auto& d = r.detections[i];
+        std::fprintf(fp, "%s{\"class\":%d,\"name\":\"%s\",\"score\":%.4f,\"box\":[%.1f,%.1f,%.1f,%.1f]}",
+                     i ? "," : "", d.class_id, class_name(d.class_id), static_cast<double>(d.score),
+                     static_cast<double>(d.x1), static_cast<double>(d.y1), static_cast<double>(d.x2),
+                     static_cast<double>(d.y2));
+    }
+    std::fprintf(fp, "]}\n");
+}
+
+// Letterbox input of a frame to dump as PNG. draw_and_save() expects packed RGB, so NHCW output is converted back.
+void copy_letterbox_rgb(const yvo::PreprocOutput& out, std::vector<std::uint8_t>& buf) {
+    buf.resize(out.size);
+    if (out.layout == yvo::TensorLayout::Nhcw)
+        yvo::nhcw_to_rgb_packed(out.host_ptr, out.lb.dst_w, out.lb.dst_h, buf.data());
+    else
+        std::memcpy(buf.data(), out.host_ptr, out.size);
+}
+
+// Option combinations parse() accepts but run() cannot serve. Returns the exit code (2), or 0 when the combination is fine.
+int check_mode_combination(const Args& a) {
     const bool dmabuf = a.mode == Mode::Dmabuf;
     // With NHCW, HailoRT DMA-maps the input buffer directly, but DMA mapping fails for V3D GEM mmap pointers.
     // Reject it at startup rather than letting the runner throw on the first submit.
@@ -422,6 +450,301 @@ int run(const Args& a) {
         std::fprintf(stderr, "--nms is only for --postproc gpu (on the host path HailoRT does NMS per the HEF settings).\n");
         return 2;
     }
+    return 0;
+}
+
+// GPU post-processing stats, snapshotted before the stage is released (all empty/zero for --postproc host).
+struct GpuPostSnapshot {
+    Stats sp, sq, sc, sh, sgn;   // post_ms, nms_us, cand, hold_ms, gpu_nms_ms
+    long cand_overflow = 0, nms_fb = 0, nms_fb_cap = 0, nms_fb_guard = 0, nms_mismatch = 0;
+};
+
+GpuPostSnapshot snapshot_gpu_post(const yvo::pipeline::GpuPostprocStage* gpu_stage) {
+    GpuPostSnapshot g;
+    if (gpu_stage) {
+        g.sgn = stats(gpu_stage->gpu_nms_ms());
+        g.nms_fb = gpu_stage->nms_fallback_frames();
+        g.nms_fb_cap = gpu_stage->nms_fallback_capacity();
+        g.nms_fb_guard = gpu_stage->nms_fallback_guard();
+        g.nms_mismatch = gpu_stage->nms_verify_mismatch();
+        g.sp = stats(gpu_stage->post_ms());
+        g.sq = stats(gpu_stage->nms_us());
+        g.sc = stats(gpu_stage->cand());
+        g.sh = stats(gpu_stage->hold_ms());
+        g.cand_overflow = gpu_stage->overflow_frames();
+    }
+    return g;
+}
+
+// Display stats, snapshotted before the display is released. Defaults are the --display off values.
+struct DisplaySnapshot {
+    Stats sdc, sdo, sdi, sdg, sdd;   // convert, overlay, present interval, glass, decode-to-screen
+    unsigned long long presented = 0, disp_dropped = 0, recreates = 0, ov_overflow = 0;
+    const char* disp_backend = "off";
+    // Plane scanout verdict (wayland-planes / kms only. Otherwise "-")
+    std::string sc_zero_copy = "-", sc_color_ok = "-", sc_underrun = "-", sc_ov_skipped = "-", sc_cb_timeouts = "-",
+                sc_zc_feedback = "-";
+    std::vector<std::string> sc_lines, sc_transport_lines;
+    std::string sc_fatal;
+    unsigned long long sc_busy_reuse = 0, sc_feedback = 0;
+    bool sc_applicable = false;
+    // RESULT_CSV3: warmup cut (--display-warmup) and plane-path late frames. "-" = not applicable
+    std::size_t disp_warmup = 0, glass_raw_n = 0;
+    std::string sc_late = "-", sc_late_gap = "-", sc_gap_max = "-", sc_gaps = "-", sc_discarded = "-", sc_refresh = "-",
+                sc_late_rule = "-", sc_breaks = "-";
+};
+
+#ifdef YVO_HAVE_DISPLAY
+DisplaySnapshot snapshot_display(const yvo::display::DisplaySink& display, const Args& a, double src_fps) {
+    DisplaySnapshot d;
+    d.sdc = stats(display.convert_ms());
+    d.sdo = stats(display.overlay_ms());
+    // The same first-N cut for every backend: interval j ends at presentation j+1, so dropping N of each series
+    // removes every sample that touches the first N presentations.
+    d.disp_warmup = static_cast<std::size_t>(a.disp.warmup);
+    auto cut = [&](const std::vector<double>& v) {
+        return std::vector<double>(v.begin() + static_cast<std::ptrdiff_t>(std::min(v.size(), d.disp_warmup)), v.end());
+    };
+    d.glass_raw_n = display.glass_ms().size();
+    d.sdi = stats(cut(display.present_interval_ms()));
+    d.sdg = stats(cut(display.glass_ms()));
+    d.sdd = stats(cut(display.decode_to_screen_ms()));   // pairs with glass_ms (same screen time), so the same cut
+    d.presented = display.presented();
+    d.disp_dropped = display.display_dropped();
+    d.recreates = display.recreates();
+    d.ov_overflow = display.overlay_overflows();
+    d.disp_backend = display.backend_name();
+    const yvo::display::DisplaySink::ScanoutReport rep = display.scanout_report();
+    if (rep.applicable) {
+        d.sc_applicable = true;
+        d.sc_zero_copy = rep.zero_copy;
+        d.sc_color_ok = rep.color_ok;
+        d.sc_underrun = rep.underrun_delta >= 0 ? std::to_string(rep.underrun_delta) : std::string("unverified");
+        d.sc_ov_skipped = std::to_string(rep.overlay_skipped);
+        d.sc_cb_timeouts = std::to_string(rep.frame_cb_timeouts);
+        d.sc_zc_feedback = std::to_string(rep.zero_copy_feedback);
+        d.sc_lines = rep.lines;
+        d.sc_transport_lines = rep.transport_lines;
+        d.sc_fatal = rep.fatal;
+        d.sc_busy_reuse = rep.busy_reuse;
+        d.sc_feedback = rep.feedback_presented;
+        d.sc_late = rep.late_frames >= 0 ? std::to_string(rep.late_frames) : std::string("unverified");
+        d.sc_late_gap = rep.late_expected_gap > 0 ? std::to_string(rep.late_expected_gap) : std::string("unverified");
+        d.sc_gap_max = std::to_string(rep.seq_gap_max);
+        d.sc_gaps = std::to_string(rep.seq_gaps);
+        d.sc_breaks = std::to_string(rep.seq_breaks);
+        d.sc_discarded = std::to_string(rep.discarded);
+        char hz[96];
+        std::snprintf(hz, sizeof(hz), "%.3f", rep.refresh_hz);
+        d.sc_refresh = rep.refresh_hz > 0.0 ? std::string(hz) : std::string("unverified");
+        std::snprintf(hz, sizeof(hz), "gap > %d = max(1, ceil(every %d x %.3f Hz / %.3f fps - 0.01))",
+                      rep.late_expected_gap, a.disp.every, rep.refresh_hz, src_fps);
+        d.sc_late_rule = rep.late_expected_gap > 0 ? std::string(hz) : std::string("gap rule unverified: refresh unknown");
+    }
+    return d;
+}
+#endif
+
+#ifdef YVO_HAVE_DISPLAY
+// The [display] start line (after [cfg]). Plane scanout describes itself; Vulkan composition prints its swapchain setup.
+void print_display_config(const Args& a, const yvo::display::DisplaySink& display, double src_fps, int hw_frames) {
+    if (!display.describe().empty())
+        std::printf("[display] backend=%s %s | sync=%s pace=%s@%.2f every=%d hw_frames=%d color_range=%s\n",
+                    display.backend_name(), display.describe().c_str(), yvo::display::sync_name(a.disp.sync),
+                    yvo::display::pace_name(a.disp.pace), src_fps, a.disp.every, hw_frames,
+                    yvo::display::color_range_name(a.disp.color_range));
+    else
+        std::printf("[display] backend=%s %ux%u %s / %s images=%u sync=%s pace=%s@%.2f every=%d hw_frames=%d\n",
+                    display.backend_name(), display.extent().width,
+                    display.extent().height, display.uniform_scale() ? "uniform-scale(bilinear)" : "1:1",
+                    display.blit_mode() ? "blit fallback" : "compute -> storage image", display.image_count(),
+                    yvo::display::sync_name(a.disp.sync), yvo::display::pace_name(a.disp.pace), src_fps, a.disp.every,
+                    hw_frames);
+}
+#endif
+
+// Main-loop totals for the end-of-run summary.
+struct RunTotals {
+    long n = 0;                  // decoded (= submitted to the GPU)
+    long completed = 0, errors = 0, total_dets = 0, held_frames_max = 0, slot_timeout_count = 0;
+    double wall_s = 0.0;
+    double cpu_ms = 0.0;         // process user+sys over the timed window (c1 - c0)
+    Stats sd, sg, sn, se, sw;    // decode call, gpu shader, npu latency, e2e latency, slot wait
+    float hailo_t0 = 0.0f, hailo_t1 = 0.0f;
+    double soc_t0 = 0.0, soc_t1 = 0.0;
+    int stop_signal = 0;         // 0 = ran to the end; otherwise the stop signal (exit code 128 + signo)
+};
+
+// End-of-run summary on stdout (+ RESULT_CSV/RESULT_CSV2/RESULT_CSV3 with --csv-label). A display transport failure
+// is reported on stderr where the display lines start and makes the run fail. Returns the updated fail flag.
+bool print_summary(const Args& a, const RunTotals& t, const GpuPostSnapshot& g, const DisplaySnapshot& d,
+                   const yvo::vk::VulkanContext& ctx, bool fail) {
+    const bool dmabuf = a.mode == Mode::Dmabuf;
+    const bool interrupted = t.stop_signal != 0;
+    const long n = t.n, completed = t.completed, errors = t.errors, total_dets = t.total_dets;
+    const double wall_s = t.wall_s;
+    const double fps = static_cast<double>(completed) / wall_s;
+    const double cpu_per_frame = completed ? t.cpu_ms / static_cast<double>(completed) : 0.0;
+    const Stats &sd = t.sd, &sg = t.sg, &sn = t.sn, &se = t.se, &sw = t.sw;
+    const Stats &sp = g.sp, &sq = g.sq, &sc = g.sc, &sh = g.sh, &sgn = g.sgn;
+    const Stats &sdc = d.sdc, &sdo = d.sdo, &sdi = d.sdi, &sdg = d.sdg, &sdd = d.sdd;
+    // Empty after the --display-warmup cut (or display off) → "nan", not a 0 that looks like a measurement.
+    char num_buf[32];
+    std::snprintf(num_buf, sizeof(num_buf), "%.2f", sdg.median);
+    const std::string glass_med_s = sdg.n ? std::string(num_buf) : std::string("nan");
+    std::snprintf(num_buf, sizeof(num_buf), "%.3f", sdi.p90);
+    const std::string pres_p90_s = sdi.n ? std::string(num_buf) : std::string("nan");
+    const auto num2 = [&](double v) {   // decode-to-screen: "nan" when empty after the cut, like glass_median
+        std::snprintf(num_buf, sizeof(num_buf), "%.2f", v);
+        return sdd.n ? std::string(num_buf) : std::string("nan");
+    };
+    const std::string d2s_mean_s = num2(sdd.mean), d2s_med_s = num2(sdd.median), d2s_p90_s = num2(sdd.p90);
+
+    const std::string postproc_desc =
+        a.postproc == Postproc::Gpu ? std::string("gpu/") + a.postproc_alloc : std::string("host");
+    if (interrupted)
+        std::printf("[interrupted] %s — stopped at frame %ld (the stats below are partial-run values, ok=0)\n",
+                    g_stop_by_key                  ? "display window key press (Esc/q/Ctrl+C)"
+                    : t.stop_signal == SIGTERM ? "SIGTERM received"
+                                               : "SIGINT received",
+                    n);
+    std::printf("== yvo_pipeline (%s, %s, batch %d, slots %d, gpu_depth %d, postproc %s) ==\n",
+                dmabuf ? "dmabuf" : "ptr", layout_name(a.layout), a.batch, a.slots, a.gpu_depth,
+                postproc_desc.c_str());
+    std::printf("frames          %ld (decoded %ld, errors %ld)\n", completed, n, errors);
+    std::printf("wall            %.3f s, %.2f FPS\n", wall_s, fps);
+    std::printf("cpu             %.3f ms/frame (process user+sys %.1f ms, %.0f%% of one core)\n", cpu_per_frame,
+                t.cpu_ms, t.cpu_ms / (wall_s * 10.0));
+    std::printf("decode call ms  mean %.3f  median %.3f  p90 %.3f  max %.3f\n", sd.mean, sd.median, sd.p90, sd.max);
+    std::printf("gpu shader ms   mean %.3f  median %.3f  p90 %.3f  max %.3f\n", sg.mean, sg.median, sg.p90, sg.max);
+    std::printf("npu latency ms  mean %.3f  median %.3f  p90 %.3f  max %.3f\n", sn.mean, sn.median, sn.p90, sn.max);
+    std::printf("e2e latency ms  mean %.3f  median %.3f  p90 %.3f  max %.3f  (decode return → NPU completion callback)\n", se.mean,
+                se.median, se.p90, se.max);
+    std::printf("slot wait ms    mean %.3f  p90 %.3f  (time the main thread waited for a free slot)\n", sw.mean, sw.p90);
+    if (a.postproc == Postproc::Gpu) {
+        std::printf("gpu post ms     mean %.3f  median %.3f  p90 %.3f  max %.3f  (yolo_decode.comp pass 1)\n", sp.mean,
+                    sp.median, sp.p90, sp.max);
+        std::printf("cpu nms us      mean %.3f  median %.3f  p90 %.3f  max %.3f  (cpu_nms_greedy_by_class, n=%zu)\n",
+                    sq.mean, sq.median, sq.p90, sq.max, sq.n);
+        std::printf("nms backend     %s\n", nms_name(a.nms));
+        if (a.nms != yvo::pipeline::NmsBackend::Cpu) {
+            std::printf("gpu nms ms      mean %.4f  median %.4f  p90 %.4f  max %.4f  (efficient_nms.comp)\n", sgn.mean,
+                        sgn.median, sgn.p90, sgn.max);
+            std::printf("nms fallback    %ld frames (capacity %ld, iou guard %ld)\n", g.nms_fb, g.nms_fb_cap, g.nms_fb_guard);
+        }
+        if (a.nms == yvo::pipeline::NmsBackend::Verify)
+            std::printf("nms verify mismatch %ld frames (frames where the GPU result differs bitwise from the CPU reference, excluding fallback)\n",
+                        g.nms_mismatch);
+        std::printf("candidates      mean %.2f  max %.0f  overflow frames %ld\n", sc.mean, sc.max, g.cand_overflow);
+        std::printf("slot hold ms    mean %.3f  median %.3f  p90 %.3f  max %.3f  (NPU completion callback → slot return)\n",
+                    sh.mean, sh.median, sh.p90, sh.max);
+    }
+    if (!d.sc_fatal.empty()) {
+        std::fprintf(stderr, "[error] display transport: %s\n", d.sc_fatal.c_str());
+        fail = true;
+    }
+    if (a.display && d.sc_applicable) {
+        std::printf("disp convert ms -  (%s: YUV→RGB conversion is done by the HVS during scanout, V3D 0)\n", d.disp_backend);
+        std::printf("disp overlay ms mean %.3f  median %.3f  p90 %.3f  (overlay_boxes_buf.spv + clear, box plane)\n",
+                    sdo.mean, sdo.median, sdo.p90);
+    } else if (a.display) {
+        std::printf("disp convert ms mean %.3f  median %.3f  p90 %.3f  (display_convert.comp)\n", sdc.mean,
+                    sdc.median, sdc.p90);
+        std::printf("disp overlay ms mean %.3f  median %.3f  p90 %.3f  (overlay_boxes.comp)\n", sdo.mean, sdo.median,
+                    sdo.p90);
+    }
+    if (a.display) {
+        std::printf("present interval ms median %.3f  p90 %.3f  (n=%zu)\n", sdi.median, sdi.p90, sdi.n);
+        std::printf("glass-to-glass  mean %.2f  median %.2f  p90 %.2f  (n=%zu, slot acquired → reaches screen)\n", sdg.mean,
+                    sdg.median, sdg.p90, sdg.n);
+        std::printf("decode-to-screen mean %.2f  median %.2f  p90 %.2f  (n=%zu, decode return → reaches screen, includes slot wait)\n",
+                    sdd.mean, sdd.median, sdd.p90, sdd.n);
+        std::printf("display         presented %llu, dropped %llu, recreates %llu, overlay overflow %llu\n",
+                    d.presented, d.disp_dropped, d.recreates, d.ov_overflow);
+        std::printf("display warmup  %zu presentations excluded from glass / decode-to-screen / present interval / late frames "
+                    "(glass n %zu of %zu, glass median %s)\n", d.disp_warmup, sdg.n, d.glass_raw_n, glass_med_s.c_str());
+        if (d.sc_applicable) {
+            std::printf("scanout         zero_copy %s, color_ok %s, hvs_underrun delta %s (debugfs verdict)\n",
+                        d.sc_zero_copy.c_str(), d.sc_color_ok.c_str(), d.sc_underrun.c_str());
+            for (const auto& l : d.sc_lines) std::printf("  debugfs %s\n", l.c_str());
+            for (const auto& l : d.sc_transport_lines) std::printf("  %s\n", l.c_str());
+            std::printf("scanout         overlay skipped %s, frame-callback timeouts %s, busy reuse %llu, "
+                        "presentation ZERO_COPY %s/%llu\n",
+                        d.sc_ov_skipped.c_str(), d.sc_cb_timeouts.c_str(), d.sc_busy_reuse, d.sc_zc_feedback.c_str(),
+                        d.sc_feedback);
+            std::printf("scanout         late frames %s (vblank seq %s; gaps %s, max gap %s, chain breaks %s), discarded %s\n",
+                        d.sc_late.c_str(), d.sc_late_rule.c_str(), d.sc_gaps.c_str(), d.sc_gap_max.c_str(),
+                        d.sc_breaks.c_str(), d.sc_discarded.c_str());
+        }
+    }
+    std::printf("held frames max %ld (decoder limit about 13), slot timeout %ld\n", t.held_frames_max, t.slot_timeout_count);
+    std::printf("detections      %ld total, %.2f / frame\n", total_dets,
+                completed ? static_cast<double>(total_dets) / static_cast<double>(completed) : 0.0);
+    std::printf("hailo chip temp %.1f -> %.1f C\n", static_cast<double>(t.hailo_t0), static_cast<double>(t.hailo_t1));
+    std::printf("soc temp        %.1f -> %.1f C\n", t.soc_t0, t.soc_t1);
+    if (ctx.debug_messenger_active())
+        std::printf("vk validation   errors %llu, warnings %llu\n",
+                    static_cast<unsigned long long>(ctx.validation_errors()),
+                    static_cast<unsigned long long>(ctx.validation_warnings()));
+    if (!a.csv_label.empty()) {
+        // 22 fields, shared with yvo_gst_pipeline: toolkit/result_csv.hpp
+        yvo::tool::print_result_csv({.label = a.csv_label, .mode = dmabuf ? "dmabuf" : "ptr",
+                                     .layout = layout_name(a.layout), .batch = a.batch, .slots = a.slots,
+                                     .frames = completed, .wall_s = wall_s, .fps = fps, .cpu_ms_per_frame = cpu_per_frame,
+                                     .decode_mean = sd.mean, .gpu_mean = sg.mean, .gpu_p90 = sg.p90, .npu_mean = sn.mean,
+                                     .npu_p90 = sn.p90, .e2e_mean = se.mean, .e2e_p90 = se.p90, .detections = total_dets,
+                                     .hailo_t0 = static_cast<double>(t.hailo_t0),
+                                     .hailo_t1 = static_cast<double>(t.hailo_t1), .soc_t0 = t.soc_t0,
+                                     .soc_t1 = t.soc_t1, .ok = !fail});
+        // New metrics go on a **separate line**. The 22 fields of RESULT_CSV do not change order or count
+        // (06_tools/bench/pipeline_bench.sh:120 compares the header with grep -qx).
+        // label,postproc,alloc,gpu_post_mean,gpu_post_p90,cpu_nms_us_mean,cand_mean,cand_max,cand_overflow,ok
+        // + display metrics are appended **only at the end** (the first 10 fields do not change order or count):
+        //   display,sync,pace,disp_convert_mean,disp_convert_p90,disp_overlay_mean,present_interval_median,
+        //   e2e_glass_mean,e2e_glass_p90,presented,display_dropped,recreates,held_frames_max,slot_timeout_count
+        // + GPU NMS metrics are also appended **only at the end**: nms,gpu_nms_mean,gpu_nms_p90,nms_fallback,nms_verify_mismatch
+        // + plane scanout metrics are also appended **only at the end** (all "-" except for wayland-planes / kms):
+        //   scanout_zero_copy,plane_color_ok,hvs_underrun_delta,overlay_skipped,frame_cb_timeouts,zero_copy_feedback
+        //   (scanout_zero_copy/plane_color_ok = 1/0/unverified — judged from debugfs state; hvs_underrun_delta is unverified if it cannot be read)
+        const char* sync_s = "-";
+        const char* pace_s = "-";
+#ifdef YVO_HAVE_DISPLAY
+        if (a.display) {
+            sync_s = yvo::display::sync_name(a.disp.sync);
+            pace_s = yvo::display::pace_name(a.disp.pace);
+        }
+#endif
+        std::printf("RESULT_CSV2,%s,%s,%s,%.4f,%.4f,%.3f,%.2f,%.0f,%ld,%d"
+                    ",%s,%s,%s,%.4f,%.4f,%.4f,%.3f,%.2f,%.2f,%llu,%llu,%llu,%ld,%ld"
+                    ",%s,%.4f,%.4f,%ld,%ld"
+                    ",%s,%s,%s,%s,%s,%s\n",
+                    a.csv_label.c_str(), a.postproc == Postproc::Gpu ? "gpu" : "host",
+                    a.postproc == Postproc::Gpu ? a.postproc_alloc.c_str() : "-", sp.mean, sp.p90, sq.mean, sc.mean,
+                    sc.max, g.cand_overflow, fail ? 0 : 1,
+                    d.disp_backend, sync_s, pace_s, sdc.mean, sdc.p90, sdo.mean, sdi.median, sdg.mean, sdg.p90,
+                    d.presented, d.disp_dropped, d.recreates, t.held_frames_max, t.slot_timeout_count,
+                    a.postproc == Postproc::Gpu ? nms_name(a.nms) : "-", sgn.mean, sgn.p90, g.nms_fb, g.nms_mismatch,
+                    d.sc_zero_copy.c_str(), d.sc_color_ok.c_str(), d.sc_underrun.c_str(), d.sc_ov_skipped.c_str(),
+                    d.sc_cb_timeouts.c_str(), d.sc_zc_feedback.c_str());
+        // Third line (RESULT_CSV/RESULT_CSV2 keep their field counts: display_bench.sh 59, dec_threads_bench.sh 65 and
+        // nms_bench.sh 77 columns check them). label first, ok at field 14 (d2s_* follow it):
+        //   label,display_warmup,glass_median,glass_n,present_interval_p90,present_interval_n,late_frames,late_expected_gap,
+        //   seq_gap_max,seq_gaps,seq_breaks,discarded,refresh_hz,ok,d2s_mean,d2s_median,d2s_p90,d2s_n
+        // d2s_* (decode-to-screen) are appended **after ok** (fields 1..14 keep their positions; same cut as glass_*).
+        // glass_* / present_interval_* use the same --display-warmup cut as RESULT_CSV2's e2e_glass_* / present_interval_median
+        // (nan when nothing is left after the cut). late_frames .. refresh_hz are "-" except for wayland-planes / kms;
+        // late_frames / late_expected_gap / refresh_hz are "unverified" when there is no vblank seq, refresh or gap to judge.
+        std::printf("RESULT_CSV3,%s,%zu,%s,%zu,%s,%zu,%s,%s,%s,%s,%s,%s,%s,%d,%s,%s,%s,%zu\n", a.csv_label.c_str(), d.disp_warmup,
+                    glass_med_s.c_str(), sdg.n, pres_p90_s.c_str(), sdi.n, d.sc_late.c_str(), d.sc_late_gap.c_str(),
+                    d.sc_gap_max.c_str(), d.sc_gaps.c_str(), d.sc_breaks.c_str(), d.sc_discarded.c_str(), d.sc_refresh.c_str(),
+                    fail ? 0 : 1, d2s_mean_s.c_str(), d2s_med_s.c_str(), d2s_p90_s.c_str(), sdd.n);
+    }
+    return fail;
+}
+
+int run(const Args& a) {
+    if (const int rc = check_mode_combination(a)) return rc;
+    const bool dmabuf = a.mode == Mode::Dmabuf;
     const double soc_t0 = soc_temperature();
 
     // Export fds must be closed later than the runner (unmap), so they are declared first (reverse destruction).
@@ -546,15 +869,15 @@ int run(const Args& a) {
 #endif
 
     yvo::FfmpegDrmDecoder dec;
-    yvo::FfmpegDrmDecoder::Options dopt; dopt.threads = 1; if (const char* e = std::getenv("YVO_DEC_THREADS")) dopt.threads = std::atoi(e);  // 1 frame thread (07_results/dec_threads); YVO_DEC_THREADS=0 -> FFmpeg auto
+    yvo::FfmpegDrmDecoder::Options dopt;
+    dopt.threads = a.dec_threads;  // 1 frame thread (07_results/dec_threads); YVO_DEC_THREADS=0 -> FFmpeg auto
     dopt.extra_hw_frames = std::max(2 * yvo::kNumSlots, a.gpu_depth + 4);
 #ifdef YVO_HAVE_DISPLAY
     if (display && planes) {
         // wayland-planes / kms: margin of 4 on top of parse()'s holding count (matched slots+1, latest slots+1+5).
-        const int hold = a.slots + 1 +
-                         (a.disp.sync == yvo::display::DisplaySync::Latest
-                              ? yvo::display::PlaneDisplay::kExtraHeldBeyondSlots
-                              : 0);
+        // parse() already capped it at kMaxDecoderFramesHeld, so the int conversion cannot overflow.
+        const int hold = static_cast<int>(yvo::pipeline::plane_frames_held(
+            a.disp.sync == yvo::display::DisplaySync::Latest, a.slots, yvo::display::PlaneDisplay::kExtraHeldBeyondSlots));
         dopt.extra_hw_frames = std::max(8, hold + 4);
     } else if (display) {
         // The display holds frames longer. matched holds one per slot (= slots), latest holds one per swapchain
@@ -595,18 +918,7 @@ int run(const Args& a) {
                     a.video.c_str(), src_w, src_h, dmabuf ? "dmabuf" : "ptr", layout_name(a.layout), a.batch, a.slots,
                     a.gpu_depth, pp_desc.c_str(), ctx.device_name());
 #ifdef YVO_HAVE_DISPLAY
-        if (display && !display->describe().empty())
-            std::printf("[display] backend=%s %s | sync=%s pace=%s@%.2f every=%d hw_frames=%d color_range=%s\n",
-                        display->backend_name(), display->describe().c_str(), yvo::display::sync_name(a.disp.sync),
-                        yvo::display::pace_name(a.disp.pace), src_fps, a.disp.every, dopt.extra_hw_frames,
-                        yvo::display::color_range_name(a.disp.color_range));
-        else if (display)
-            std::printf("[display] backend=%s %ux%u %s / %s images=%u sync=%s pace=%s@%.2f every=%d hw_frames=%d\n",
-                        display->backend_name(), display->extent().width,
-                        display->extent().height, display->uniform_scale() ? "uniform-scale(bilinear)" : "1:1",
-                        display->blit_mode() ? "blit fallback" : "compute -> storage image", display->image_count(),
-                        yvo::display::sync_name(a.disp.sync), yvo::display::pace_name(a.disp.pace), src_fps, a.disp.every,
-                        dopt.extra_hw_frames);
+        if (display) print_display_config(a, *display, src_fps, dopt.extra_hw_frames);
 #endif
         std::fflush(stdout);
     }
@@ -635,7 +947,7 @@ int run(const Args& a) {
     std::deque<std::weak_ptr<void>> live_frames;
     long held_frames_max = 0, slot_timeout_count = 0;
     std::vector<yvo::Detection> latest_dets;   // most recent detections overlaid by --display-sync latest
-    double fps_now = 0.0;
+    [[maybe_unused]] double fps_now = 0.0;   // HUD text; only the display path reads it
 
     auto on_result = [&ex](yvo::InferResult&& r) { ex.complete(std::move(r)); };
     // Every exit path, exceptions included: stage (HailoRT callbacks → &ex) and display (done callback → &ex, decoder
@@ -670,17 +982,7 @@ int run(const Args& a) {
                 t_decoded.erase(it);
             }
             total_dets += static_cast<long>(r.detections.size());
-            if (jsonl) {
-                std::fprintf(jsonl.get(), "{\"frame\":%lld,\"detections\":[", static_cast<long long>(r.pts));
-                for (std::size_t i = 0; i < r.detections.size(); ++i) {
-                    const auto& d = r.detections[i];
-                    std::fprintf(jsonl.get(), "%s{\"class\":%d,\"name\":\"%s\",\"score\":%.4f,\"box\":[%.1f,%.1f,%.1f,%.1f]}",
-                                 i ? "," : "", d.class_id, class_name(d.class_id), static_cast<double>(d.score),
-                                 static_cast<double>(d.x1), static_cast<double>(d.y1), static_cast<double>(d.x2),
-                                 static_cast<double>(d.y2));
-                }
-                std::fprintf(jsonl.get(), "]}\n");
-            }
+            if (jsonl) write_jsonl_line(jsonl.get(), r);
             if (auto it = png_src.find(r.pts); it != png_src.end()) {
                 char name[64];
                 std::snprintf(name, sizeof(name), "/frame%05lld.png", static_cast<long long>(r.pts));
@@ -711,13 +1013,7 @@ int run(const Args& a) {
         yvo::PreprocOutput out = pre.wait(slot);
         if (pre.last_gpu_ms() >= 0) gpu_ms.push_back(pre.last_gpu_ms());
         if (jsonl && out.pts % a.dump_every == 0) {
-            // draw_and_save() expects packed RGB, so NHCW output is converted back before being stored.
-            std::vector<std::uint8_t>& buf = png_src[out.pts];
-            buf.resize(out.size);
-            if (out.layout == yvo::TensorLayout::Nhcw)
-                yvo::nhcw_to_rgb_packed(out.host_ptr, out.lb.dst_w, out.lb.dst_h, buf.data());
-            else
-                std::memcpy(buf.data(), out.host_ptr, out.size);
+            copy_letterbox_rgb(out, png_src[out.pts]);
             png_lb[out.pts] = out.lb;
         }
         if (dmabuf) out.dmabuf_fd = slot_fd[static_cast<std::size_t>(slot)];
@@ -880,83 +1176,11 @@ int run(const Args& a) {
         fail = true;
     }
     const float hailo_t1 = stage->chip_temperature();
-    // Snapshot GPU post-processing stats before releasing stage.
-    Stats sp, sq, sc, sh, sgn;
-    long cand_overflow = 0, nms_fb = 0, nms_fb_cap = 0, nms_fb_guard = 0, nms_mismatch = 0;
-    if (gpu_stage) {
-        sgn = stats(gpu_stage->gpu_nms_ms());
-        nms_fb = gpu_stage->nms_fallback_frames();
-        nms_fb_cap = gpu_stage->nms_fallback_capacity();
-        nms_fb_guard = gpu_stage->nms_fallback_guard();
-        nms_mismatch = gpu_stage->nms_verify_mismatch();
-        sp = stats(gpu_stage->post_ms());
-        sq = stats(gpu_stage->nms_us());
-        sc = stats(gpu_stage->cand());
-        sh = stats(gpu_stage->hold_ms());
-        cand_overflow = gpu_stage->overflow_frames();
-    }
-    // Snapshot display stats too before releasing display.
-    Stats sdc, sdo, sdi, sdg, sdd;
-    unsigned long long presented = 0, disp_dropped = 0, recreates = 0, ov_overflow = 0;
-    const char* disp_backend = "off";
-    // Plane scanout verdict (wayland-planes / kms only. Otherwise "-")
-    std::string sc_zero_copy = "-", sc_color_ok = "-", sc_underrun = "-", sc_ov_skipped = "-", sc_cb_timeouts = "-",
-                sc_zc_feedback = "-";
-    std::vector<std::string> sc_lines, sc_transport_lines;
-    std::string sc_fatal;
-    unsigned long long sc_busy_reuse = 0, sc_feedback = 0;
-    bool sc_applicable = false;
-    // RESULT_CSV3: warmup cut (--display-warmup) and plane-path late frames. "-" = not applicable
-    std::size_t disp_warmup = 0, glass_raw_n = 0;
-    std::string sc_late = "-", sc_late_gap = "-", sc_gap_max = "-", sc_gaps = "-", sc_discarded = "-", sc_refresh = "-",
-                sc_late_rule = "-", sc_breaks = "-";
+    // Snapshot GPU post-processing and display stats before releasing stage / display.
+    const GpuPostSnapshot gpu_post = snapshot_gpu_post(gpu_stage);
+    DisplaySnapshot disp;
 #ifdef YVO_HAVE_DISPLAY
-    if (display) {
-        sdc = stats(display->convert_ms());
-        sdo = stats(display->overlay_ms());
-        // The same first-N cut for every backend: interval j ends at presentation j+1, so dropping N of each series
-        // removes every sample that touches the first N presentations.
-        disp_warmup = static_cast<std::size_t>(a.disp.warmup);
-        auto cut = [&](const std::vector<double>& v) {
-            return std::vector<double>(v.begin() + static_cast<std::ptrdiff_t>(std::min(v.size(), disp_warmup)), v.end());
-        };
-        glass_raw_n = display->glass_ms().size();
-        sdi = stats(cut(display->present_interval_ms()));
-        sdg = stats(cut(display->glass_ms()));
-        sdd = stats(cut(display->decode_to_screen_ms()));   // pairs with glass_ms (same screen time), so the same cut
-        presented = display->presented();
-        disp_dropped = display->display_dropped();
-        recreates = display->recreates();
-        ov_overflow = display->overlay_overflows();
-        disp_backend = display->backend_name();
-        const yvo::display::DisplaySink::ScanoutReport rep = display->scanout_report();
-        if (rep.applicable) {
-            sc_applicable = true;
-            sc_zero_copy = rep.zero_copy;
-            sc_color_ok = rep.color_ok;
-            sc_underrun = rep.underrun_delta >= 0 ? std::to_string(rep.underrun_delta) : std::string("unverified");
-            sc_ov_skipped = std::to_string(rep.overlay_skipped);
-            sc_cb_timeouts = std::to_string(rep.frame_cb_timeouts);
-            sc_zc_feedback = std::to_string(rep.zero_copy_feedback);
-            sc_lines = rep.lines;
-            sc_transport_lines = rep.transport_lines;
-            sc_fatal = rep.fatal;
-            sc_busy_reuse = rep.busy_reuse;
-            sc_feedback = rep.feedback_presented;
-            sc_late = rep.late_frames >= 0 ? std::to_string(rep.late_frames) : std::string("unverified");
-            sc_late_gap = rep.late_expected_gap > 0 ? std::to_string(rep.late_expected_gap) : std::string("unverified");
-            sc_gap_max = std::to_string(rep.seq_gap_max);
-            sc_gaps = std::to_string(rep.seq_gaps);
-            sc_breaks = std::to_string(rep.seq_breaks);
-            sc_discarded = std::to_string(rep.discarded);
-            char hz[96];
-            std::snprintf(hz, sizeof(hz), "%.3f", rep.refresh_hz);
-            sc_refresh = rep.refresh_hz > 0.0 ? std::string(hz) : std::string("unverified");
-            std::snprintf(hz, sizeof(hz), "gap > %d = max(1, ceil(every %d x %.3f Hz / %.3f fps - 0.01))",
-                          rep.late_expected_gap, a.disp.every, rep.refresh_hz, src_fps);
-            sc_late_rule = rep.late_expected_gap > 0 ? std::string(hz) : std::string("gap rule unverified: refresh unknown");
-        }
-    }
+    if (display) disp = snapshot_display(*display, a, src_fps);
 #endif
     // Shutdown order: drain (above) → clear import cache → decoder close → runner release (dma-buf unmap)
     //            → display release (swapchain/window / plane transport/box ring) → export fd close (FdCloser) → ctx → window
@@ -966,22 +1190,6 @@ int run(const Args& a) {
     jsonl.reset();   // fclose: same flush point as before
     const double soc_t1 = soc_temperature();
 
-    const double wall_s = std::chrono::duration<double>(t1 - t0).count();
-    const double fps = static_cast<double>(completed) / wall_s;
-    const double cpu_per_frame = completed ? (c1 - c0) / static_cast<double>(completed) : 0.0;
-    const Stats sd = stats(decode_ms), sg = stats(gpu_ms), sn = stats(npu_ms), se = stats(e2e_ms),
-                sw = stats(wait_block_ms);
-    // Empty after the --display-warmup cut (or display off) → "nan", not a 0 that looks like a measurement.
-    char num_buf[32];
-    std::snprintf(num_buf, sizeof(num_buf), "%.2f", sdg.median);
-    const std::string glass_med_s = sdg.n ? std::string(num_buf) : std::string("nan");
-    std::snprintf(num_buf, sizeof(num_buf), "%.3f", sdi.p90);
-    const std::string pres_p90_s = sdi.n ? std::string(num_buf) : std::string("nan");
-    const auto num2 = [&](double v) {   // decode-to-screen: "nan" when empty after the cut, like glass_median
-        std::snprintf(num_buf, sizeof(num_buf), "%.2f", v);
-        return sdd.n ? std::string(num_buf) : std::string("nan");
-    };
-    const std::string d2s_mean_s = num2(sdd.mean), d2s_med_s = num2(sdd.median), d2s_p90_s = num2(sdd.p90);
     if (static_cast<long>(completed) != n || static_cast<long>(completed) != submitted_npu) {
         std::fprintf(stderr, "[error] frame count mismatch: decoded=%ld npu_submitted=%ld completed=%ld\n", n, submitted_npu,
                      completed);
@@ -989,143 +1197,13 @@ int run(const Args& a) {
     }
     if (errors) fail = true;
 
-    const std::string postproc_desc =
-        a.postproc == Postproc::Gpu ? std::string("gpu/") + a.postproc_alloc : std::string("host");
-    if (interrupted)
-        std::printf("[interrupted] %s — stopped at frame %ld (the stats below are partial-run values, ok=0)\n",
-                    g_stop_by_key                ? "display window key press (Esc/q/Ctrl+C)"
-                    : stop_signal == SIGTERM ? "SIGTERM received"
-                                             : "SIGINT received",
-                    n);
-    std::printf("== yvo_pipeline (%s, %s, batch %d, slots %d, gpu_depth %d, postproc %s) ==\n",
-                dmabuf ? "dmabuf" : "ptr", layout_name(a.layout), a.batch, a.slots, a.gpu_depth,
-                postproc_desc.c_str());
-    std::printf("frames          %ld (decoded %ld, errors %ld)\n", completed, n, errors);
-    std::printf("wall            %.3f s, %.2f FPS\n", wall_s, fps);
-    std::printf("cpu             %.3f ms/frame (process user+sys %.1f ms, %.0f%% of one core)\n", cpu_per_frame,
-                c1 - c0, (c1 - c0) / (wall_s * 10.0));
-    std::printf("decode call ms  mean %.3f  median %.3f  p90 %.3f  max %.3f\n", sd.mean, sd.median, sd.p90, sd.max);
-    std::printf("gpu shader ms   mean %.3f  median %.3f  p90 %.3f  max %.3f\n", sg.mean, sg.median, sg.p90, sg.max);
-    std::printf("npu latency ms  mean %.3f  median %.3f  p90 %.3f  max %.3f\n", sn.mean, sn.median, sn.p90, sn.max);
-    std::printf("e2e latency ms  mean %.3f  median %.3f  p90 %.3f  max %.3f  (decode return → NPU completion callback)\n", se.mean,
-                se.median, se.p90, se.max);
-    std::printf("slot wait ms    mean %.3f  p90 %.3f  (time the main thread waited for a free slot)\n", sw.mean, sw.p90);
-    if (a.postproc == Postproc::Gpu) {
-        std::printf("gpu post ms     mean %.3f  median %.3f  p90 %.3f  max %.3f  (yolo_decode.comp pass 1)\n", sp.mean,
-                    sp.median, sp.p90, sp.max);
-        std::printf("cpu nms us      mean %.3f  median %.3f  p90 %.3f  max %.3f  (cpu_nms_greedy_by_class, n=%zu)\n",
-                    sq.mean, sq.median, sq.p90, sq.max, sq.n);
-        std::printf("nms backend     %s\n", nms_name(a.nms));
-        if (a.nms != yvo::pipeline::NmsBackend::Cpu) {
-            std::printf("gpu nms ms      mean %.4f  median %.4f  p90 %.4f  max %.4f  (efficient_nms.comp)\n", sgn.mean,
-                        sgn.median, sgn.p90, sgn.max);
-            std::printf("nms fallback    %ld frames (capacity %ld, iou guard %ld)\n", nms_fb, nms_fb_cap, nms_fb_guard);
-        }
-        if (a.nms == yvo::pipeline::NmsBackend::Verify)
-            std::printf("nms verify mismatch %ld frames (frames where the GPU result differs bitwise from the CPU reference, excluding fallback)\n",
-                        nms_mismatch);
-        std::printf("candidates      mean %.2f  max %.0f  overflow frames %ld\n", sc.mean, sc.max, cand_overflow);
-        std::printf("slot hold ms    mean %.3f  median %.3f  p90 %.3f  max %.3f  (NPU completion callback → slot return)\n",
-                    sh.mean, sh.median, sh.p90, sh.max);
-    }
-    if (!sc_fatal.empty()) {
-        std::fprintf(stderr, "[error] display transport: %s\n", sc_fatal.c_str());
-        fail = true;
-    }
-    if (a.display && sc_applicable) {
-        std::printf("disp convert ms -  (%s: YUV→RGB conversion is done by the HVS during scanout, V3D 0)\n", disp_backend);
-        std::printf("disp overlay ms mean %.3f  median %.3f  p90 %.3f  (overlay_boxes_buf.spv + clear, box plane)\n",
-                    sdo.mean, sdo.median, sdo.p90);
-    } else if (a.display) {
-        std::printf("disp convert ms mean %.3f  median %.3f  p90 %.3f  (display_convert.comp)\n", sdc.mean,
-                    sdc.median, sdc.p90);
-        std::printf("disp overlay ms mean %.3f  median %.3f  p90 %.3f  (overlay_boxes.comp)\n", sdo.mean, sdo.median,
-                    sdo.p90);
-    }
-    if (a.display) {
-        std::printf("present interval ms median %.3f  p90 %.3f  (n=%zu)\n", sdi.median, sdi.p90, sdi.n);
-        std::printf("glass-to-glass  mean %.2f  median %.2f  p90 %.2f  (n=%zu, slot acquired → reaches screen)\n", sdg.mean,
-                    sdg.median, sdg.p90, sdg.n);
-        std::printf("decode-to-screen mean %.2f  median %.2f  p90 %.2f  (n=%zu, decode return → reaches screen, includes slot wait)\n",
-                    sdd.mean, sdd.median, sdd.p90, sdd.n);
-        std::printf("display         presented %llu, dropped %llu, recreates %llu, overlay overflow %llu\n",
-                    presented, disp_dropped, recreates, ov_overflow);
-        std::printf("display warmup  %zu presentations excluded from glass / decode-to-screen / present interval / late frames "
-                    "(glass n %zu of %zu, glass median %s)\n", disp_warmup, sdg.n, glass_raw_n, glass_med_s.c_str());
-        if (sc_applicable) {
-            std::printf("scanout         zero_copy %s, color_ok %s, hvs_underrun delta %s (debugfs verdict)\n",
-                        sc_zero_copy.c_str(), sc_color_ok.c_str(), sc_underrun.c_str());
-            for (const auto& l : sc_lines) std::printf("  debugfs %s\n", l.c_str());
-            for (const auto& l : sc_transport_lines) std::printf("  %s\n", l.c_str());
-            std::printf("scanout         overlay skipped %s, frame-callback timeouts %s, busy reuse %llu, "
-                        "presentation ZERO_COPY %s/%llu\n",
-                        sc_ov_skipped.c_str(), sc_cb_timeouts.c_str(), sc_busy_reuse, sc_zc_feedback.c_str(),
-                        sc_feedback);
-            std::printf("scanout         late frames %s (vblank seq %s; gaps %s, max gap %s, chain breaks %s), discarded %s\n",
-                        sc_late.c_str(), sc_late_rule.c_str(), sc_gaps.c_str(), sc_gap_max.c_str(), sc_breaks.c_str(),
-                        sc_discarded.c_str());
-        }
-    }
-    std::printf("held frames max %ld (decoder limit about 13), slot timeout %ld\n", held_frames_max, slot_timeout_count);
-    std::printf("detections      %ld total, %.2f / frame\n", total_dets,
-                completed ? static_cast<double>(total_dets) / static_cast<double>(completed) : 0.0);
-    std::printf("hailo chip temp %.1f -> %.1f C\n", static_cast<double>(hailo_t0), static_cast<double>(hailo_t1));
-    std::printf("soc temp        %.1f -> %.1f C\n", soc_t0, soc_t1);
-    if (ctx.debug_messenger_active())
-        std::printf("vk validation   errors %llu, warnings %llu\n",
-                    static_cast<unsigned long long>(ctx.validation_errors()),
-                    static_cast<unsigned long long>(ctx.validation_warnings()));
-    if (!a.csv_label.empty()) {
-        // label,mode,layout,batch,slots,frames,wall_s,fps,cpu_ms_per_frame,decode_mean,gpu_mean,gpu_p90,npu_mean,
-        // npu_p90,e2e_mean,e2e_p90,detections,hailo_t0,hailo_t1,soc_t0,soc_t1,ok
-        std::printf(
-            "RESULT_CSV,%s,%s,%s,%d,%d,%ld,%.3f,%.2f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%ld,%.1f,%.1f,%.1f,%.1f,%d\n",
-            a.csv_label.c_str(), dmabuf ? "dmabuf" : "ptr", layout_name(a.layout), a.batch, a.slots, completed, wall_s,
-            fps, cpu_per_frame, sd.mean, sg.mean, sg.p90, sn.mean, sn.p90, se.mean, se.p90, total_dets,
-            static_cast<double>(hailo_t0), static_cast<double>(hailo_t1), soc_t0, soc_t1, fail ? 0 : 1);
-        // New metrics go on a **separate line**. The 22 fields of RESULT_CSV do not change order or count
-        // (06_tools/bench/pipeline_bench.sh:120 compares the header with grep -qx).
-        // label,postproc,alloc,gpu_post_mean,gpu_post_p90,cpu_nms_us_mean,cand_mean,cand_max,cand_overflow,ok
-        // + display metrics are appended **only at the end** (the first 10 fields do not change order or count):
-        //   display,sync,pace,disp_convert_mean,disp_convert_p90,disp_overlay_mean,present_interval_median,
-        //   e2e_glass_mean,e2e_glass_p90,presented,display_dropped,recreates,held_frames_max,slot_timeout_count
-        // + GPU NMS metrics are also appended **only at the end**: nms,gpu_nms_mean,gpu_nms_p90,nms_fallback,nms_verify_mismatch
-        // + plane scanout metrics are also appended **only at the end** (all "-" except for wayland-planes / kms):
-        //   scanout_zero_copy,plane_color_ok,hvs_underrun_delta,overlay_skipped,frame_cb_timeouts,zero_copy_feedback
-        //   (scanout_zero_copy/plane_color_ok = 1/0/unverified — judged from debugfs state; hvs_underrun_delta is unverified if it cannot be read)
-        const char* sync_s = "-";
-        const char* pace_s = "-";
-#ifdef YVO_HAVE_DISPLAY
-        if (a.display) {
-            sync_s = yvo::display::sync_name(a.disp.sync);
-            pace_s = yvo::display::pace_name(a.disp.pace);
-        }
-#endif
-        std::printf("RESULT_CSV2,%s,%s,%s,%.4f,%.4f,%.3f,%.2f,%.0f,%ld,%d"
-                    ",%s,%s,%s,%.4f,%.4f,%.4f,%.3f,%.2f,%.2f,%llu,%llu,%llu,%ld,%ld"
-                    ",%s,%.4f,%.4f,%ld,%ld"
-                    ",%s,%s,%s,%s,%s,%s\n",
-                    a.csv_label.c_str(), a.postproc == Postproc::Gpu ? "gpu" : "host",
-                    a.postproc == Postproc::Gpu ? a.postproc_alloc.c_str() : "-", sp.mean, sp.p90, sq.mean, sc.mean,
-                    sc.max, cand_overflow, fail ? 0 : 1,
-                    disp_backend, sync_s, pace_s, sdc.mean, sdc.p90, sdo.mean, sdi.median, sdg.mean, sdg.p90,
-                    presented, disp_dropped, recreates, held_frames_max, slot_timeout_count,
-                    a.postproc == Postproc::Gpu ? nms_name(a.nms) : "-", sgn.mean, sgn.p90, nms_fb, nms_mismatch,
-                    sc_zero_copy.c_str(), sc_color_ok.c_str(), sc_underrun.c_str(), sc_ov_skipped.c_str(),
-                    sc_cb_timeouts.c_str(), sc_zc_feedback.c_str());
-        // Third line (RESULT_CSV/RESULT_CSV2 keep their field counts: display_bench.sh 59, dec_threads_bench.sh 65 and
-        // nms_bench.sh 77 columns check them). label first, ok at field 14 (d2s_* follow it):
-        //   label,display_warmup,glass_median,glass_n,present_interval_p90,present_interval_n,late_frames,late_expected_gap,
-        //   seq_gap_max,seq_gaps,seq_breaks,discarded,refresh_hz,ok,d2s_mean,d2s_median,d2s_p90,d2s_n
-        // d2s_* (decode-to-screen) are appended **after ok** (fields 1..14 keep their positions; same cut as glass_*).
-        // glass_* / present_interval_* use the same --display-warmup cut as RESULT_CSV2's e2e_glass_* / present_interval_median
-        // (nan when nothing is left after the cut). late_frames .. refresh_hz are "-" except for wayland-planes / kms;
-        // late_frames / late_expected_gap / refresh_hz are "unverified" when there is no vblank seq, refresh or gap to judge.
-        std::printf("RESULT_CSV3,%s,%zu,%s,%zu,%s,%zu,%s,%s,%s,%s,%s,%s,%s,%d,%s,%s,%s,%zu\n", a.csv_label.c_str(), disp_warmup,
-                    glass_med_s.c_str(), sdg.n, pres_p90_s.c_str(), sdi.n, sc_late.c_str(), sc_late_gap.c_str(),
-                    sc_gap_max.c_str(), sc_gaps.c_str(), sc_breaks.c_str(), sc_discarded.c_str(), sc_refresh.c_str(),
-                    fail ? 0 : 1, d2s_mean_s.c_str(), d2s_med_s.c_str(), d2s_p90_s.c_str(), sdd.n);
-    }
+    const RunTotals tot{.n = n, .completed = completed, .errors = errors, .total_dets = total_dets,
+                        .held_frames_max = held_frames_max, .slot_timeout_count = slot_timeout_count,
+                        .wall_s = std::chrono::duration<double>(t1 - t0).count(), .cpu_ms = c1 - c0,
+                        .sd = stats(decode_ms), .sg = stats(gpu_ms), .sn = stats(npu_ms), .se = stats(e2e_ms),
+                        .sw = stats(wait_block_ms), .hailo_t0 = hailo_t0, .hailo_t1 = hailo_t1, .soc_t0 = soc_t0,
+                        .soc_t1 = soc_t1, .stop_signal = stop_signal};
+    fail = print_summary(a, tot, gpu_post, disp, ctx, fail);
     std::fflush(stdout);
     if (ctx.debug_messenger_active() && ctx.validation_errors() > 0) fail = true;
     // An interrupted run returns 128+signo per shell convention (SIGINT 130, SIGTERM 143).

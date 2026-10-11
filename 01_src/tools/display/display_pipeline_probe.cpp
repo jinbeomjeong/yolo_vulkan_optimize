@@ -21,6 +21,7 @@
 #include "display/display_pipeline.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
 #include "vulkan/vulkan_context.hpp"
+#include "toolkit/cli_parse.hpp"
 #include "toolkit/stats.hpp"
 
 using yvo::Stats;
@@ -81,11 +82,11 @@ bool parse(int argc, char** argv, Args& a) {
         auto next = [&]() -> const char* { return i + 1 < argc ? argv[++i] : nullptr; };
         const char* v = nullptr;
         if (s == "--video" && (v = next())) a.video = v;
-        else if (s == "--frames" && (v = next())) a.frames = std::atoi(v);
-        else if (s == "--slots" && (v = next())) a.slots = std::atoi(v);
-        else if (s == "--dets" && (v = next())) a.dets = std::atoi(v);
-        else if (s == "--lag" && (v = next())) a.lag = std::atoi(v);
-        else if (s == "--toggle-fullscreen-at" && (v = next())) a.toggle_at = std::atoi(v);
+        else if (s == "--frames" && (v = next())) a.frames = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--slots" && (v = next())) a.slots = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--dets" && (v = next())) a.dets = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--lag" && (v = next())) a.lag = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--toggle-fullscreen-at" && (v = next())) a.toggle_at = yvo::tool::arg_number<int>(argv[0], s, v);
         else if (s == "--display-backend" && (v = next())) {
             if (!yvo::display::parse_backend_kind(v, &a.cfg.backend)) return false;
         } else if (s == "--display-sync" && (v = next())) {
@@ -98,12 +99,12 @@ bool parse(int argc, char** argv, Args& a) {
             if (std::sscanf(v, "%dx%d", &w, &h) != 2 || w <= 0 || h <= 0) return false;
             a.cfg.width = w;
             a.cfg.height = h;
-        } else if (s == "--display-every" && (v = next())) a.cfg.every = std::atoi(v);
+        } else if (s == "--display-every" && (v = next())) a.cfg.every = yvo::tool::arg_number<int>(argv[0], s, v);
         else if (s == "--present-mode" && (v = next())) {
             if (!yvo::display::parse_present_mode(v, &a.cfg.present_mode)) return false;
         } else if (s == "--display-blit") a.cfg.force_blit = true;
-        else if (s == "--overlay-line-width" && (v = next())) a.cfg.overlay_line_width = std::atoi(v);
-        else if (s == "--overlay-text-scale" && (v = next())) a.cfg.overlay_text_scale = std::atoi(v);
+        else if (s == "--overlay-line-width" && (v = next())) a.cfg.overlay_line_width = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--overlay-text-scale" && (v = next())) a.cfg.overlay_text_scale = yvo::tool::arg_number<int>(argv[0], s, v);
         else if (s == "--no-validation") a.validation = false;
         else if (s == "--sync-validation") a.sync_validation = true;
         else if (s == "--verbose") a.verbose = true;

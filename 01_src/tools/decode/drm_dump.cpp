@@ -28,6 +28,7 @@ extern "C" {
 
 #include "ref/sand.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
+#include "toolkit/cli_parse.hpp"
 #include "toolkit/tool_util.hpp"
 
 namespace {
@@ -56,7 +57,7 @@ bool parse(int argc, char** argv, Args& a) {
         const std::string s = argv[i];
         auto val = [&](int& dst) {
             if (i + 1 >= argc) return false;
-            dst = std::atoi(argv[++i]);
+            dst = yvo::tool::arg_number<int>(argv[0], s, argv[++i]);
             return true;
         };
         if (s == "--frames") {

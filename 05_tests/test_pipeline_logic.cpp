@@ -1,17 +1,26 @@
-// Pure logic of the yvo_pipeline app (pipeline/slot_exchange.hpp) — no NPU, GPU or display needed.
+// Pure logic of the yvo_pipeline app (pipeline/slot_exchange.hpp, toolkit/result_csv.hpp, toolkit/cli_parse.hpp)
+// — no NPU, GPU or display needed.
 //
 //   SlotExchange.*        slot pool + completion queue: FIFO order, two return conditions (compute + display),
 //                         duplicate / stale / out-of-range signals ignored, complete() from another thread
 //   SlotBudget.*          validate_slot_budget(): the --display on startup gate on decoder frames held at once.
 //                         Expected messages are the exact text the check printed when it was inline in main.cpp parse().
+//                         plane_frames_held(): the plane-path count shared with yvo_pipeline's extra_hw_frames.
+//   ResultCsv.*           the 22-field RESULT_CSV line of yvo_pipeline / yvo_gst_pipeline, byte-exact
+//                         (expected lines are real lines printed by the per-tool printf it replaced).
+//   CliParse.*            strict option-value parsing: same values as atoi/atol/atof for well-formed input,
+//                         rejection of what they silently mangled, exit code 2 + message from arg_number().
 //
 // Links yvo_stages only for the header include paths (InferResult comes from hailo/hailo_runner.hpp);
 // nothing here opens /dev/hailo0 or creates a Vulkan instance.
 #include <atomic>
 #include <chrono>
 #include <climits>
+#include <cmath>
 #include <condition_variable>
 #include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <deque>
 #include <mutex>
 #include <optional>
@@ -22,6 +31,8 @@
 #include <gtest/gtest.h>
 
 #include "pipeline/slot_exchange.hpp"
+#include "toolkit/cli_parse.hpp"
+#include "toolkit/result_csv.hpp"
 
 namespace {
 
@@ -353,6 +364,154 @@ TEST(SlotBudget, HugeValuesDoNotOverflow) {
               composite_msg(INT_MAX, INT_MAX, 2LL * INT_MAX));
     EXPECT_EQ(validate_slot_budget(SlotBudgetPath::Kms, true, INT_MAX, 1, kExtra),
               planes_msg("kms", static_cast<long long>(INT_MAX) + 1 + kExtra, INT_MAX, true));
+}
+
+TEST(SlotBudget, PlaneFramesHeld) {
+    using yvo::pipeline::plane_frames_held;
+    EXPECT_EQ(plane_frames_held(false, 4, kExtra), 5);              // matched: slots + 1
+    EXPECT_EQ(plane_frames_held(true, 4, kExtra), 5 + kExtra);      // latest: + frames held by the display
+    EXPECT_EQ(plane_frames_held(true, INT_MAX, kExtra), static_cast<long long>(INT_MAX) + 1 + kExtra);
+}
+
+// ═══════════════════════════════════════════════ RESULT_CSV (toolkit/result_csv.hpp)
+
+using yvo::tool::ResultCsv;
+using yvo::tool::format_result_csv;
+
+// Values behind a real yvo_pipeline line (--frames 300 --quiet --csv-label X, 2026-10-11, printed by the old printf).
+ResultCsv pipeline_sample() {
+    return {.label = "X", .mode = "dmabuf", .layout = "nhcw", .batch = 8, .slots = 16, .frames = 300,
+            .wall_s = 5.8612, .fps = 51.186, .cpu_ms_per_frame = 0.8783, .decode_mean = 3.4351, .gpu_mean = 1.8432,
+            .gpu_p90 = 1.8851, .npu_mean = 290.056, .npu_p90 = 301.493, .e2e_mean = 320.526, .e2e_p90 = 431.254,
+            .detections = 911, .hailo_t0 = static_cast<double>(80.3f), .hailo_t1 = static_cast<double>(83.3f),
+            .soc_t0 = 73.0, .soc_t1 = 72.5, .ok = true};
+}
+
+TEST(ResultCsv, PipelineLineIsByteExact) {
+    EXPECT_EQ(format_result_csv(pipeline_sample()),
+              "RESULT_CSV,X,dmabuf,nhcw,8,16,300,5.861,51.19,0.878,3.435,1.843,1.885,290.06,301.49,320.53,431.25,911,"
+              "80.3,83.3,73.0,72.5,1\n");
+}
+
+TEST(ResultCsv, GstLineWithNanDecodeIsByteExact) {
+    // yvo_gst_pipeline --sink hailo: decode_ms_mean is nan (no blocking decode call). Real line, ok flipped to 0 here.
+    const ResultCsv r{.label = "GH", .mode = "dmabuf", .layout = "nhcw", .batch = 8, .slots = 16, .frames = 200,
+                      .wall_s = 3.9001, .fps = 51.2856, .cpu_ms_per_frame = 2.7262, .decode_mean = std::nan(""),
+                      .gpu_mean = 1.9271, .gpu_p90 = 2.0669, .npu_mean = 300.861, .npu_p90 = 307.248, .e2e_mean = 318.921,
+                      .e2e_p90 = 446.662, .detections = 606, .hailo_t0 = 79.2, .hailo_t1 = 82.2, .soc_t0 = 73.0,
+                      .soc_t1 = 72.5, .ok = false};
+    EXPECT_EQ(format_result_csv(r),
+              "RESULT_CSV,GH,dmabuf,nhcw,8,16,200,3.900,51.29,2.726,nan,1.927,2.067,300.86,307.25,318.92,446.66,606,"
+              "79.2,82.2,73.0,72.5,0\n");
+}
+
+TEST(ResultCsv, HasTwentyTwoFields) {
+    const std::string line = format_result_csv(pipeline_sample());
+    ASSERT_FALSE(line.empty());
+    EXPECT_EQ(line.back(), '\n');
+    std::size_t commas = 0;
+    for (const char c : line) commas += c == ',';
+    EXPECT_EQ(commas + 1, 23u);   // "RESULT_CSV" tag + 22 fields
+}
+
+TEST(ResultCsv, LongLabelIsNotTruncated) {
+    ResultCsv r = pipeline_sample();
+    r.label = std::string(5000, 'L');
+    const std::string line = format_result_csv(r);
+    EXPECT_EQ(line.rfind("RESULT_CSV," + r.label + ",dmabuf,", 0), 0u);
+    EXPECT_EQ(line.substr(line.size() - 3), ",1\n");
+}
+
+TEST(ResultCsv, PrintWritesTheFormattedLineToStdout) {
+    std::fflush(stdout);
+    testing::internal::CaptureStdout();
+    yvo::tool::print_result_csv(pipeline_sample());
+    std::fflush(stdout);
+    EXPECT_EQ(testing::internal::GetCapturedStdout(), format_result_csv(pipeline_sample()));
+}
+
+// ═══════════════════════════════════════════════ option values (toolkit/cli_parse.hpp)
+
+using yvo::tool::parse_number;
+
+template <class T>
+std::optional<T> parsed(const char* text) {
+    T v{};
+    if (!parse_number(text, v)) return std::nullopt;
+    return v;
+}
+
+TEST(CliParse, WellFormedIntegersMatchAtoi) {
+    for (const char* t : {"0", "42", "-1", "+10", " 4", "\t7", "007", "-2147483648", "2147483647"}) {
+        SCOPED_TRACE(t);
+        EXPECT_EQ(parsed<int>(t), std::atoi(t));
+        EXPECT_EQ(parsed<long>(t), std::atol(t));
+    }
+    EXPECT_EQ(parsed<long>("9000000000"), 9000000000L);
+}
+
+TEST(CliParse, WellFormedFloatsMatchAtof) {
+    for (const char* t : {"0", "0.2", "-1", "2e-1", "1E3", ".5", "+0.25", " 0.45", "0x1p-2", "1e-30"}) {
+        SCOPED_TRACE(t);
+        EXPECT_EQ(parsed<double>(t), std::atof(t));
+        EXPECT_EQ(parsed<float>(t), static_cast<float>(std::atof(t)));   // the old static_cast<float>(std::atof(v))
+    }
+}
+
+TEST(CliParse, RejectsWhatAtoiSilentlyMangled) {
+    for (const char* t : {"", "abc", "10x", "4.5", "1e3", "0x10", "5 ", " ", "-", "+", "--1", "1,000",
+                          "99999999999999999999", "2147483648", "-2147483649"}) {
+        SCOPED_TRACE(t);
+        EXPECT_FALSE(parsed<int>(t).has_value());
+    }
+    EXPECT_FALSE(parsed<long>("99999999999999999999").has_value());   // ERANGE
+    EXPECT_FALSE(parsed<long>(nullptr).has_value());
+}
+
+TEST(CliParse, RejectsWhatAtofSilentlyMangled) {
+    for (const char* t : {"", "abc", "0.5abc", "0.5 ", "nan", "inf", "-infinity", "1e999", "1e-400", "0.2.3"}) {
+        SCOPED_TRACE(t);
+        EXPECT_FALSE(parsed<double>(t).has_value());
+    }
+    EXPECT_FALSE(parsed<float>("1e39").has_value());   // finite double, not representable as float
+    EXPECT_TRUE(parsed<double>("1e39").has_value());
+}
+
+TEST(CliParse, UnsignedRejectsMinusInsteadOfWrapping) {
+    EXPECT_EQ(parsed<unsigned>("7"), 7u);
+    EXPECT_EQ(parsed<unsigned>(" +7"), 7u);
+    EXPECT_FALSE(parsed<unsigned>("-1").has_value());
+    EXPECT_FALSE(parsed<unsigned>(" -0").has_value());
+    EXPECT_FALSE(parsed<std::uint16_t>("65536").has_value());
+    EXPECT_EQ(parsed<std::uint16_t>("65535"), 65535u);
+}
+
+TEST(CliParse, FailureLeavesOutputUnchanged) {
+    int v = 123;
+    EXPECT_FALSE(parse_number("x", v));
+    EXPECT_EQ(v, 123);
+    double d = 0.5;
+    EXPECT_FALSE(parse_number("nan", d));
+    EXPECT_EQ(d, 0.5);
+}
+
+TEST(CliParse, ProgNameDropsDirectory) {
+    EXPECT_EQ(yvo::tool::prog_name("/home/pi/build/bin/yvo_pipeline"), "yvo_pipeline");
+    EXPECT_EQ(yvo::tool::prog_name("yvo_pipeline"), "yvo_pipeline");
+    EXPECT_EQ(yvo::tool::prog_name(nullptr), "");
+}
+
+TEST(CliParse, ArgNumberReturnsValidValue) {
+    EXPECT_EQ(yvo::tool::arg_number<long>("prog", "--frames", "900"), 900L);
+    EXPECT_EQ(yvo::tool::arg_number<float>("prog", "--score", "0.2"), static_cast<float>(std::atof("0.2")));
+}
+
+TEST(CliParseDeathTest, ArgNumberExitsWithCodeTwoAndNamesTheOption) {
+    GTEST_FLAG_SET(death_test_style, "threadsafe");   // other tests in this binary start threads
+    EXPECT_EXIT(yvo::tool::arg_number<long>("/x/bin/yvo_pipeline", "--frames", "abc"), testing::ExitedWithCode(2),
+                "^yvo_pipeline: invalid value for --frames: 'abc'\n$");
+    EXPECT_EXIT(yvo::tool::arg_number<int>("tool", "YVO_DEC_THREADS", ""), testing::ExitedWithCode(2),
+                "^tool: invalid value for YVO_DEC_THREADS: ''\n$");
 }
 
 } // namespace

@@ -59,7 +59,7 @@ yvo_add_tool(yvo_display_pipeline_probe display/display_pipeline_probe.cpp
 # Spike tool: config dump / single-frame conversion / padding check
 yvo_add_tool(yvo_isp_probe isp/isp_probe.cpp
   REQUIRES yvo_isp
-  LIBS yvo_isp yvo_decoder
+  LIBS yvo_isp yvo_decoder yvo_toolkit
   OPTIONAL yvo_opencv=YVO_HAVE_OPENCV)
 
 # Performance measurement: full decode + ISP preprocessing (+ NHCW transpose). Flag names match yvo_preproc_bench.

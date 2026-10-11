@@ -31,6 +31,7 @@
 #include "isp/isp_resizer.hpp"
 #include "isp/nhcw_repack.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
+#include "toolkit/cli_parse.hpp"
 #include "toolkit/stats.hpp"
 #include "toolkit/tool_util.hpp"
 #include "toolkit/tool_image.hpp"
@@ -79,14 +80,14 @@ bool parse(int argc, char** argv, Args& a) {
         else if (s == "--media" && (v = next())) a.media = v;
         else if (s == "--filter" && (v = next())) a.filter = v;
         else if (s == "--png-dir" && (v = next())) a.png_dir = v;
-        else if (s == "--png-frame" && (v = next())) a.png_frame = std::atoi(v);
+        else if (s == "--png-frame" && (v = next())) a.png_frame = yvo::tool::arg_number<int>(argv[0], s, v);
         else if (s == "--csv-label" && (v = next())) a.csv_label = v;
-        else if (s == "--frames" && (v = next())) a.frames = std::atoi(v);
-        else if (s == "--slots" && (v = next())) a.slots = std::atoi(v);
-        else if (s == "--buffers" && (v = next())) a.buffers = std::atoi(v);
-        else if (s == "--branch" && (v = next())) a.branch = static_cast<unsigned int>(std::atoi(v));
-        else if (s == "--repeat" && (v = next())) a.repeat = std::atoi(v);
-        else if (s == "--warmup" && (v = next())) a.warmup = std::atoi(v);
+        else if (s == "--frames" && (v = next())) a.frames = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--slots" && (v = next())) a.slots = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--buffers" && (v = next())) a.buffers = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--branch" && (v = next())) a.branch = static_cast<unsigned int>(yvo::tool::arg_number<int>(argv[0], s, v));
+        else if (s == "--repeat" && (v = next())) a.repeat = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--warmup" && (v = next())) a.warmup = yvo::tool::arg_number<int>(argv[0], s, v);
         else if (s == "--repack" && (v = next())) {
             if (!yvo::isp::parse_repack(v, a.repack)) return false;
         }

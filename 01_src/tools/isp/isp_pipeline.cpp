@@ -46,6 +46,7 @@
 #include "isp/isp_resizer.hpp"
 #include "isp/nhcw_repack.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
+#include "toolkit/cli_parse.hpp"
 #include "toolkit/stats.hpp"
 #include "toolkit/tool_util.hpp"
 
@@ -102,7 +103,7 @@ bool parse(int argc, char** argv, Args& a) {
         else if (s == "--hef" && (v = next())) a.hef = v;
         else if (s == "--media" && (v = next())) a.media = v;
         else if (s == "--filter" && (v = next())) a.filter = v;
-        else if (s == "--frames" && (v = next())) a.frames = std::atol(v);
+        else if (s == "--frames" && (v = next())) a.frames = yvo::tool::arg_number<long>(argv[0], s, v);
         else if (s == "--mode" && (v = next())) {
             const std::string m = v;
             if (m == "ptr") a.mode = Mode::Ptr;
@@ -116,12 +117,12 @@ bool parse(int argc, char** argv, Args& a) {
         } else if (s == "--repack" && (v = next())) {
             if (!yvo::isp::parse_repack(v, a.repack) || a.repack == yvo::isp::RepackMode::None) return false;
         }
-        else if (s == "--batch" && (v = next())) a.batch = std::atoi(v);
-        else if (s == "--slots" && (v = next())) a.slots = std::atoi(v);
-        else if (s == "--branch" && (v = next())) a.branch = static_cast<unsigned int>(std::atoi(v));
-        else if (s == "--score" && (v = next())) a.score = static_cast<float>(std::atof(v));
+        else if (s == "--batch" && (v = next())) a.batch = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--slots" && (v = next())) a.slots = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--branch" && (v = next())) a.branch = static_cast<unsigned int>(yvo::tool::arg_number<int>(argv[0], s, v));
+        else if (s == "--score" && (v = next())) a.score = static_cast<float>(yvo::tool::arg_number<double>(argv[0], s, v));
         else if (s == "--dump-dir" && (v = next())) a.dump_dir = v;
-        else if (s == "--dump-every" && (v = next())) a.dump_every = std::atoi(v);
+        else if (s == "--dump-every" && (v = next())) a.dump_every = yvo::tool::arg_number<int>(argv[0], s, v);
         else if (s == "--csv-label" && (v = next())) a.csv_label = v;
         else if (s == "--quiet") a.quiet = true;
         else return false;

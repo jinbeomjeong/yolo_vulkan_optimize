@@ -29,6 +29,7 @@
 #include "decode/ffmpeg_drm_decoder.hpp"
 #include "vulkan/sand_letterbox.hpp"
 #include "vulkan/vulkan_context.hpp"
+#include "toolkit/cli_parse.hpp"
 #include "toolkit/stats.hpp"
 #include "toolkit/tool_util.hpp"
 #include "toolkit/tool_image.hpp"
@@ -72,15 +73,15 @@ bool parse(int argc, char** argv, Args& a) {
         auto next = [&]() -> const char* { return i + 1 < argc ? argv[++i] : nullptr; };
         const char* v = nullptr;
         if (s == "--video" && (v = next())) a.video = v;
-        else if (s == "--frames" && (v = next())) a.frames = std::atoi(v);
-        else if (s == "--slots" && (v = next())) a.slots = std::atoi(v);
-        else if (s == "--depth" && (v = next())) a.depth = std::atoi(v);
+        else if (s == "--frames" && (v = next())) a.frames = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--slots" && (v = next())) a.slots = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--depth" && (v = next())) a.depth = yvo::tool::arg_number<int>(argv[0], s, v);
         else if (s == "--local" && i + 2 < argc) {
-            a.lx = static_cast<std::uint32_t>(std::atoi(argv[++i]));
-            a.ly = static_cast<std::uint32_t>(std::atoi(argv[++i]));
+            a.lx = static_cast<std::uint32_t>(yvo::tool::arg_number<int>(argv[0], s, argv[++i]));
+            a.ly = static_cast<std::uint32_t>(yvo::tool::arg_number<int>(argv[0], s, argv[++i]));
         } else if (s == "--png-dir" && (v = next())) a.png_dir = v;
-        else if (s == "--png-frame" && (v = next())) a.png_frame = std::atoi(v);
-        else if (s == "--repeat" && (v = next())) a.repeat = std::atoi(v);
+        else if (s == "--png-frame" && (v = next())) a.png_frame = yvo::tool::arg_number<int>(argv[0], s, v);
+        else if (s == "--repeat" && (v = next())) a.repeat = yvo::tool::arg_number<int>(argv[0], s, v);
         else if (s == "--layout" && (v = next())) {
             const std::string l = v;
             if (l == "nhwc") a.layout = yvo::TensorLayout::Nhwc;

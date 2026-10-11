@@ -88,11 +88,12 @@ if(TARGET yvo_stages AND TARGET yvo_decoder)
     LABELS "npu")
 endif()
 
-# yvo_pipeline app logic (pipeline/slot_exchange.hpp): SlotExchange slot pool + validate_slot_budget gate.
+# yvo_pipeline app logic (pipeline/slot_exchange.hpp): SlotExchange slot pool + validate_slot_budget gate,
+# and the toolkit pieces the app shares with the tools: RESULT_CSV formatter, strict option-value parsing.
 # **No NPU, GPU or display needed** — yvo_stages is linked only for headers/symbols, nothing opens a device.
 if(TARGET yvo_stages)
   add_executable(test_pipeline_logic test_pipeline_logic.cpp)
-  target_link_libraries(test_pipeline_logic PRIVATE yvo_stages yvo_assets GTest::gtest_main)
+  target_link_libraries(test_pipeline_logic PRIVATE yvo_stages yvo_toolkit yvo_assets GTest::gtest_main)
   yvo_target_defaults(test_pipeline_logic)
   gtest_discover_tests(test_pipeline_logic
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}

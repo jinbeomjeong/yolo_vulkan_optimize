@@ -124,6 +124,13 @@ enum class SlotBudgetPath {
     Kms,             // PlaneDisplay over KMS atomic: same rule as WaylandPlanes
 };
 
+// Decoder frames held at once on the plane paths (WaylandPlanes / Kms): slots + 1 (one decoded frame awaiting a slot),
+// plus extra_held_beyond_slots with latest_sync. Shared by validate_slot_budget() and yvo_pipeline's extra_hw_frames.
+// long long so absurd --slots values cannot overflow int.
+inline long long plane_frames_held(bool latest_sync, int slots, int extra_held_beyond_slots) {
+    return static_cast<long long>(slots) + 1 + (latest_sync ? extra_held_beyond_slots : 0);
+}
+
 // Startup gate, called by yvo_pipeline parse() only when --display is on. Returns "" when the budget fits,
 // otherwise the complete stderr message (same text as the check that used to be inline in parse()).
 // extra_held_beyond_slots is PlaneDisplay::kExtraHeldBeyondSlots, passed in so pipeline/ does not need display/ here.

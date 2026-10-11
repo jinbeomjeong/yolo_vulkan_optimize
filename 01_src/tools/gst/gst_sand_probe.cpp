@@ -36,6 +36,7 @@
 #include "core/frame_types.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
 #include "gstelem/gst_drm_frame.hpp"
+#include "toolkit/cli_parse.hpp"
 #include "toolkit/tool_util.hpp"
 #include "vulkan/sand_letterbox.hpp"
 #include "vulkan/vulkan_context.hpp"
@@ -98,15 +99,15 @@ int parse(int argc, char** argv, Args& a) {
         } else if (s == "--expect-frames") {
             const char* v = next();
             if (!v) return 2;
-            a.expect_frames = std::atoi(v);
+            a.expect_frames = yvo::tool::arg_number<int>(argv[0], s, v);
         } else if (s == "--pool-min") {
             const char* v = next();
             if (!v) return 2;
-            a.pool_min = std::atoi(v);
+            a.pool_min = yvo::tool::arg_number<int>(argv[0], s, v);
         } else if (s == "--pull-timeout") {
             const char* v = next();
             if (!v) return 2;
-            a.pull_timeout_s = std::max(1, std::atoi(v));
+            a.pull_timeout_s = std::max(1, yvo::tool::arg_number<int>(argv[0], s, v));
         } else if (s == "--gpu-all") {
             a.gpu_all = true;
         } else if (!s.empty() && s[0] == '-') {

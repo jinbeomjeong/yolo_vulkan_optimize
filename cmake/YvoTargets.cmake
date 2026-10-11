@@ -8,7 +8,10 @@
 # ── Warnings ─────────────────────────────────────────────────────────────────────
 # Each target uses it via target_link_libraries(... PRIVATE yvo_warnings) (yvo_target_defaults attaches it).
 add_library(yvo_warnings INTERFACE)
-target_compile_options(yvo_warnings INTERFACE -Wall -Wextra -Wpedantic)
+# -Wshadow / -Wnon-virtual-dtor added 2026-10-11 (0 occurrences at the time; -Wconversion / -Wold-style-cast deliberately not).
+# -Wnon-virtual-dtor is C++-only, so it is limited to CXX sources in case a C target ever links this.
+target_compile_options(yvo_warnings INTERFACE -Wall -Wextra -Wpedantic -Wshadow
+  $<$<COMPILE_LANGUAGE:CXX>:-Wnon-virtual-dtor>)
 
 # ── Sanitizers ───────────────────────────────────────────────────────────────────
 # -DYVO_SANITIZE=ON adds ASan + UBSan to compile **and** link of every target defined after this include (all of

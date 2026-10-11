@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -41,6 +42,8 @@
 #endif
 #include "gstelem/register.hpp"
 #include "gstelem/tensor_meta.hpp"
+#include "toolkit/cli_parse.hpp"
+#include "toolkit/result_csv.hpp"
 #include "toolkit/stats.hpp"
 #include "toolkit/tool_util.hpp"
 
@@ -104,11 +107,9 @@ int parse(int argc, char** argv, Args& a) {
         auto next = [&]() -> const char* { return i + 1 < argc ? argv[++i] : nullptr; };
         auto next_int = [&](int& out, int lo, int hi) {
             const char* v = next();
-            if (!v) return false;
-            char* end = nullptr;
-            const long x = std::strtol(v, &end, 10);
-            if (*end != '\0' || x < lo || x > hi) return false;
-            out = static_cast<int>(x);
+            int x = 0;
+            if (!v || !yvo::tool::parse_number(v, x) || x < lo || x > hi) return false;
+            out = x;
             return true;
         };
         bool ok = true;
@@ -127,12 +128,9 @@ int parse(int argc, char** argv, Args& a) {
             if (ok) a.dump_dir = v;
         } else if (s == "--score") {
             const char* v = next();
-            char* end = nullptr;
-            ok = v != nullptr;
-            if (ok) {
-                a.score = std::strtod(v, &end);
-                ok = *end == '\0' && a.score <= 1.0;
-            }
+            double x = 0.0;
+            ok = v != nullptr && yvo::tool::parse_number(v, x) && x <= 1.0;
+            if (ok) a.score = x;
         } else if (s == "--frames") ok = next_int(a.frames, 0, 1 << 30);
         else if (s == "--expect-frames") ok = next_int(a.expect_frames, 0, 1 << 30);
         else if (s == "--slots") ok = next_int(a.slots, 2, 32);
@@ -656,7 +654,7 @@ int main(int argc, char** argv) {
                     sl.mean, sl.p90, static_cast<unsigned long long>(val_errors), stalled ? 1 : 0, pass ? 1 : 0);
 #ifdef YVO_GSTELEM_HAVE_HAILO
         if (have_hs) {
-            // Same 22 columns and printf formats as yvo_pipeline (pipeline/main.cpp RESULT_CSV), parsed by
+            // Same 22 columns and printf formats as yvo_pipeline (shared: toolkit/result_csv.hpp), parsed by
             // 06_tools/bench/pipeline_bench.sh. Differences in meaning (documented in the tool header / report):
             //   mode,layout      always dmabuf,nhcw (the only yvosandletterbox output)
             //   slots            yvosandletterbox ring size (yvo_pipeline: GPU+NPU slots)
@@ -666,11 +664,14 @@ int main(int argc, char** argv) {
             const long completed = static_cast<long>(hs.completed);
             const double fps_c = wall_s > 0 ? static_cast<double>(completed) / wall_s : 0.0;
             const double cpu_c = completed ? cpu_total / static_cast<double>(completed) : 0.0;
-            std::printf(
-                "RESULT_CSV,%s,%s,%s,%d,%d,%ld,%.3f,%.2f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%ld,%.1f,%.1f,%.1f,%.1f,%d\n",
-                a.csv_label.c_str(), "dmabuf", "nhcw", a.batch, a.slots, completed, wall_s, fps_c, cpu_c, std::nan(""),
-                shg.mean, shg.p90, sn.mean, sn.p90, se.mean, se.p90, static_cast<long>(hs.detections),
-                static_cast<double>(hs.hailo_t0), static_cast<double>(hs.hailo_t1), soc_t0, soc_t1, pass ? 1 : 0);
+            yvo::tool::print_result_csv({.label = a.csv_label, .mode = "dmabuf", .layout = "nhcw", .batch = a.batch,
+                                         .slots = a.slots, .frames = completed, .wall_s = wall_s, .fps = fps_c,
+                                         .cpu_ms_per_frame = cpu_c, .decode_mean = std::nan(""), .gpu_mean = shg.mean,
+                                         .gpu_p90 = shg.p90, .npu_mean = sn.mean, .npu_p90 = sn.p90, .e2e_mean = se.mean,
+                                         .e2e_p90 = se.p90, .detections = static_cast<long>(hs.detections),
+                                         .hailo_t0 = static_cast<double>(hs.hailo_t0),
+                                         .hailo_t1 = static_cast<double>(hs.hailo_t1), .soc_t0 = soc_t0,
+                                         .soc_t1 = soc_t1, .ok = pass});
         }
 #endif
     }
