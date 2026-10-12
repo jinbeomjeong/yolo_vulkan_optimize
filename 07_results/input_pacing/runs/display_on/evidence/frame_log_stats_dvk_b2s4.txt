@@ -1,0 +1,175 @@
+=== raw/dvk_b2s4_run1/frame_log.csv
+mode: paced (arrival_ms present), display on (present_ms column)
+counts: rows(arrived) 900  processed 899  dropped 1  abandoned 0  | drop runs 1, longest 1 (queue drops only 1)
+display: presented 898  processed but not presented 1 (0.1%)
+latency:
+  ms             n     mean   median      p90      p99      max
+  e2e_arr      899    82.58    76.27   104.25   105.36   109.62
+  e2e          899    79.61    73.81   100.26   101.33   106.84
+  a2p          898   104.21    98.15   115.34   131.91   185.27
+  d2p          898   101.24    97.60   114.85   128.11   180.44
+stages:
+  ms             n     mean   median      p90      max  definition
+  arr_dec      899     2.97     3.76     4.84    13.16  decode_end - arrival (ingest lateness + decode)
+  wait         899     0.04     0.01     0.13     0.58  submit - decode_end (input queue / slot wait)
+  npu          899    76.43    71.67    96.70    99.45  npu_done - submit (GPU pre + NPU queue + NPU)
+  gpu_post     899     3.14     1.66     7.95    41.94  gpu_post_done - npu_done (GPU post, observed)
+  finalize     899     0.00     0.00     0.00     0.02  complete - gpu_post_done (or - npu_done, host)
+  display      898    21.62    21.32    27.42    91.18  present - complete (display queue + presentation)
+completion cadence (diffs of sorted complete_ms, n 898):
+  histogram: <5: 99  5-25: 179  25-45: 342  45-60: 266  60-80: 12  >=80: 0
+  quantiles: q10 2.60  q25 8.93  q50 34.51  q75 56.11  q90 57.40  q99 60.41  max 72.27
+  clusters (gap < 5 ms): 800, sizes 1x701, 2x99; inter-cluster gap median 38.12 p90 57.69 max 72.27
+present cadence (diffs of sorted present_ms, n 897, vsync 16.67 ms):
+  histogram: 0v(<8.3): 1  1v(~16.7): 453  2v(~33.3): 106  3v(~50.0): 219  4v(~66.7): 117  >=5v(>=75.0): 1
+  quantiles: q10 16.13  q25 16.43  q50 17.15  q75 50.29  q90 66.74  q99 67.42  max 137.02
+batches (inferred from npu_done): 622, sizes 1x345, 2x277
+  position 0: e2e_arr median 99.55 mean 100.46 max 106.54 | e2e median 98.08 mean 96.55 max 102.45  (n 277)
+    present: a2p median 115.10 mean 119.65 max 185.27 (n 277) | d2p median 111.52 mean 115.74 max 180.44 (n 277)
+  position 1: e2e_arr median 72.67 mean 73.20 max 82.29 | e2e median 70.76 mean 71.16 max 81.86  (n 277)
+    present: a2p median 98.05 mean 102.64 max 151.94 (n 276) | d2p median 97.55 mean 100.60 max 151.61 (n 276)
+  position single: e2e_arr median 75.80 mean 75.76 max 109.62 | e2e median 72.91 mean 72.79 max 106.84  (n 345)
+    present: a2p median 97.87 mean 93.07 max 131.50 (n 345) | d2p median 93.92 mean 90.10 max 128.72 (n 345)
+  partner wait (submit last - first): mean 31.37 median 29.98 p90 36.72 max 37.60; npu_done spread median 1.91 max 2.40
+tail: top 8 by e2e_arr (1 with src < 30, 1 in the last 30 rows)
+  file             src   seq  e2e_arr     e2e arr_dec    wait     npu gpu_post  final display   pos  where
+  raw/dvk_b2s4_r   898   897   109.62  106.84    2.78    0.01   64.89    41.94   0.00   21.88   0/1  end
+  raw/dvk_b2s4_r   241   240   106.54  102.45    4.09    0.13   96.36     5.96   0.00   24.97   0/2  
+  raw/dvk_b2s4_r   131   130   106.35  102.35    4.00    0.25   95.21     6.88   0.00   25.54   0/2  
+  raw/dvk_b2s4_r   597   596   106.29  100.57    5.72    0.04   99.25     1.28   0.00    8.52   0/2  
+  raw/dvk_b2s4_r   154   153   106.19  101.91    4.27    0.01   98.22     3.68   0.00   25.59   0/2  
+  raw/dvk_b2s4_r   164   163   106.11   92.95   13.16    0.24   91.69     1.02   0.01   25.51   0/2  
+  raw/dvk_b2s4_r   157   156   105.93  101.25    4.68    0.28   95.86     5.10   0.00   26.23   0/2  
+  raw/dvk_b2s4_r     5     4   105.70  100.81    4.88    0.15   94.79     5.87   0.00   26.07   0/2  startup
+
+=== raw/dvk_b2s4_run2/frame_log.csv
+mode: paced (arrival_ms present), display on (present_ms column)
+counts: rows(arrived) 900  processed 900  dropped 0  abandoned 0  | drop runs 0, longest 0 (queue drops only 0)
+display: presented 900  processed but not presented 0 (0.0%)
+latency:
+  ms             n     mean   median      p90      p99      max
+  e2e_arr      900    82.75    76.46   104.17   105.22   142.41
+  e2e          900    79.74    73.63   100.31   101.23   142.08
+  a2p          900   102.74   104.39   121.59   121.84   156.29
+  d2p          900    99.73   100.42   117.73   121.43   155.97
+stages:
+  ms             n     mean   median      p90      max  definition
+  arr_dec      900     3.01     3.77     5.04    24.89  decode_end - arrival (ingest lateness + decode)
+  wait         900     0.04     0.01     0.13     0.56  submit - decode_end (input queue / slot wait)
+  npu          900    76.51    71.78    96.90    99.48  npu_done - submit (GPU pre + NPU queue + NPU)
+  gpu_post     900     3.19     1.66     7.96    43.02  gpu_post_done - npu_done (GPU post, observed)
+  finalize     900     0.00     0.00     0.00     0.01  complete - gpu_post_done (or - npu_done, host)
+  display      900    19.99    17.48    31.87    44.06  present - complete (display queue + presentation)
+completion cadence (diffs of sorted complete_ms, n 899):
+  histogram: <5: 98  5-25: 182  25-45: 341  45-60: 268  60-80: 9  >=80: 1
+  quantiles: q10 2.58  q25 8.90  q50 34.30  q75 56.08  q90 57.19  q99 60.00  max 97.78
+  clusters (gap < 5 ms): 802, sizes 1x705, 2x96, 3x1; inter-cluster gap median 38.08 p90 57.44 max 97.78
+present cadence (diffs of sorted present_ms, n 899, vsync 16.67 ms):
+  histogram: 0v(<8.3): 0  1v(~16.7): 513  2v(~33.3): 76  3v(~50.0): 109  4v(~66.7): 199  >=5v(>=75.0): 2
+  quantiles: q10 16.17  q25 16.43  q50 16.71  q75 50.50  q90 67.09  q99 67.52  max 101.85
+batches (inferred from npu_done): 622, sizes 1x344, 2x278
+  position 0: e2e_arr median 99.75 mean 100.66 max 142.41 | e2e median 98.52 mean 96.79 max 142.08  (n 278)
+    present: a2p median 121.45 mean 119.31 max 156.29 (n 278) | d2p median 117.50 mean 115.44 max 155.97 (n 278)
+  position 1: e2e_arr median 72.78 mean 73.42 max 109.59 | e2e median 71.04 mean 71.26 max 106.84  (n 278)
+    present: a2p median 104.40 mean 102.24 max 137.94 (n 278) | d2p median 100.68 mean 100.08 max 135.19 (n 278)
+  position single: e2e_arr median 75.66 mean 75.82 max 82.72 | e2e median 72.95 mean 72.82 max 81.94  (n 344)
+    present: a2p median 87.78 mean 89.76 max 120.90 (n 344) | d2p median 84.07 mean 86.76 max 117.02 (n 344)
+  partner wait (submit last - first): mean 31.53 median 30.23 p90 36.83 max 37.60; npu_done spread median 1.91 max 1.94
+tail: top 8 by e2e_arr (1 with src < 30, 2 in the last 30 rows)
+  file             src   seq  e2e_arr     e2e arr_dec    wait     npu gpu_post  final display   pos  where
+  raw/dvk_b2s4_r   897   897   142.41  142.08    0.33    0.01   99.05    43.02   0.00   13.89   0/2  end
+  raw/dvk_b2s4_r   898   898   109.59  106.84    2.75    0.01   65.20    41.63   0.00   28.36   1/2  end
+  raw/dvk_b2s4_r   306   306   106.28  101.75    4.53    0.02   99.48     2.25   0.00   15.19   0/2  
+  raw/dvk_b2s4_r     2     2   105.88   99.50    6.38    0.19   94.10     5.20   0.00   15.52   0/2  startup
+  raw/dvk_b2s4_r   199   199   105.46  100.95    4.50    0.18   95.71     5.07   0.00   15.82   0/2  
+  raw/dvk_b2s4_r   170   170   105.40  101.16    4.24    0.11   96.72     4.32   0.00   16.34   0/2  
+  raw/dvk_b2s4_r   128   128   105.34  101.55    3.80    0.14   97.26     4.14   0.01   16.39   0/2  
+  raw/dvk_b2s4_r   778   778   105.30  101.23    4.07    0.01   99.18     2.04   0.00   16.38   0/2  
+
+=== raw/dvk_b2s4_run3/frame_log.csv
+mode: paced (arrival_ms present), display on (present_ms column)
+counts: rows(arrived) 900  processed 900  dropped 0  abandoned 0  | drop runs 0, longest 0 (queue drops only 0)
+display: presented 900  processed but not presented 0 (0.0%)
+latency:
+  ms             n     mean   median      p90      p99      max
+  e2e_arr      900    82.76    76.52   104.23   105.30   115.25
+  e2e          900    79.78    73.77   100.44   101.44   112.48
+  a2p          900   103.22   103.79   118.95   119.19   202.05
+  d2p          900   100.23   101.11   115.17   118.74   197.91
+stages:
+  ms             n     mean   median      p90      max  definition
+  arr_dec      900     2.99     3.78     4.81    29.58  decode_end - arrival (ingest lateness + decode)
+  wait         900     0.04     0.02     0.14     0.26  submit - decode_end (input queue / slot wait)
+  npu          900    76.64    71.86    96.92   101.07  npu_done - submit (GPU pre + NPU queue + NPU)
+  gpu_post     900     3.10     1.64     7.96    41.95  gpu_post_done - npu_done (GPU post, observed)
+  finalize     900     0.00     0.00     0.00     0.01  complete - gpu_post_done (or - npu_done, host)
+  display      900    20.46    20.71    30.66   102.46  present - complete (display queue + presentation)
+completion cadence (diffs of sorted complete_ms, n 899):
+  histogram: <5: 100  5-25: 179  25-45: 341  45-60: 264  60-80: 15  >=80: 0
+  quantiles: q10 2.61  q25 8.89  q50 34.59  q75 56.07  q90 57.42  q99 60.26  max 73.19
+  clusters (gap < 5 ms): 800, sizes 1x700, 2x100; inter-cluster gap median 38.04 p90 57.62 max 73.19
+present cadence (diffs of sorted present_ms, n 899, vsync 16.67 ms):
+  histogram: 0v(<8.3): 1  1v(~16.7): 487  2v(~33.3): 87  3v(~50.0): 162  4v(~66.7): 161  >=5v(>=75.0): 1
+  quantiles: q10 14.52  q25 16.46  q50 18.67  q75 50.42  q90 67.05  q99 67.43  max 150.36
+batches (inferred from npu_done): 622, sizes 1x344, 2x278
+  position 0: e2e_arr median 99.70 mean 100.59 max 107.88 | e2e median 98.56 mean 96.79 max 102.28  (n 278)
+    present: a2p median 118.84 mean 118.74 max 202.05 (n 278) | d2p median 114.90 mean 114.94 max 197.91 (n 278)
+  position 1: e2e_arr median 72.78 mean 73.27 max 82.25 | e2e median 70.81 mean 71.09 max 81.75  (n 278)
+    present: a2p median 102.90 mean 102.68 max 168.72 (n 278) | d2p median 100.54 mean 100.50 max 168.33 (n 278)
+  position single: e2e_arr median 75.90 mean 76.03 max 115.25 | e2e median 73.00 mean 73.04 max 112.48  (n 344)
+    present: a2p median 85.26 mean 91.12 max 151.94 (n 344) | d2p median 84.52 mean 88.14 max 149.16 (n 344)
+  partner wait (submit last - first): mean 31.62 median 30.78 p90 36.84 max 37.50; npu_done spread median 1.91 max 2.06
+tail: top 8 by e2e_arr (2 with src < 30, 2 in the last 30 rows)
+  file             src   seq  e2e_arr     e2e arr_dec    wait     npu gpu_post  final display   pos  where
+  raw/dvk_b2s4_r   898   898   115.25  112.48    2.78    0.01   70.51    41.95   0.00   36.69   0/1  end
+  raw/dvk_b2s4_r    41    41   107.88  102.01    5.87    0.05  101.07     0.89   0.00   10.86   0/2  
+  raw/dvk_b2s4_r   202   202   106.05  101.38    4.67    0.02   98.13     3.23   0.00   13.14   0/2  
+  raw/dvk_b2s4_r     5     5   105.77  100.90    4.87    0.02   98.72     2.16   0.00   12.81   0/2  startup
+  raw/dvk_b2s4_r   790   790   105.62  101.64    3.98    0.02   97.73     3.89   0.00   13.60   0/2  
+  raw/dvk_b2s4_r    34    34   105.51  101.70    3.81    0.01   98.94     2.74   0.00   13.28   0/2  
+  raw/dvk_b2s4_r   887   887   105.49  101.40    4.09    0.02   98.84     2.55   0.00   13.58   0/2  end
+  raw/dvk_b2s4_r     8     8   105.43  100.55    4.89    0.12   96.85     3.57   0.00   13.31   0/2  startup
+
+=== pooled  (3 files: raw/dvk_b2s4_run1/frame_log.csv, raw/dvk_b2s4_run2/frame_log.csv, raw/dvk_b2s4_run3/frame_log.csv)
+mode: paced (arrival_ms present), display on (present_ms column)
+counts: rows(arrived) 2700  processed 2699  dropped 1  abandoned 0  | drop runs 1, longest 1 (queue drops only 1)
+display: presented 2698  processed but not presented 1 (0.0%)
+latency:
+  ms             n     mean   median      p90      p99      max
+  e2e_arr     2699    82.70    76.43   104.23   105.30   142.41
+  e2e         2699    79.71    73.74   100.33   101.33   142.08
+  a2p         2698   103.39   103.83   121.36   131.75   202.05
+  d2p         2698   100.40   100.15   117.50   127.89   197.91
+stages:
+  ms             n     mean   median      p90      max  definition
+  arr_dec     2699     2.99     3.77     4.89    29.58  decode_end - arrival (ingest lateness + decode)
+  wait        2699     0.04     0.01     0.13     0.58  submit - decode_end (input queue / slot wait)
+  npu         2699    76.53    71.81    96.85   101.07  npu_done - submit (GPU pre + NPU queue + NPU)
+  gpu_post    2699     3.14     1.65     7.96    43.02  gpu_post_done - npu_done (GPU post, observed)
+  finalize    2699     0.00     0.00     0.00     0.02  complete - gpu_post_done (or - npu_done, host)
+  display     2698    20.69    20.43    31.22   102.46  present - complete (display queue + presentation)
+completion cadence (diffs of sorted complete_ms, n 2696):
+  histogram: <5: 297  5-25: 540  25-45: 1024  45-60: 798  60-80: 36  >=80: 1
+  quantiles: q10 2.60  q25 8.90  q50 34.50  q75 56.08  q90 57.34  q99 60.13  max 97.78
+  clusters (gap < 5 ms): 2402, sizes 1x2106, 2x295, 3x1; inter-cluster gap median 38.07 p90 57.59 max 97.78
+present cadence (diffs of sorted present_ms, n 2695, vsync 16.67 ms):
+  histogram: 0v(<8.3): 2  1v(~16.7): 1453  2v(~33.3): 269  3v(~50.0): 490  4v(~66.7): 477  >=5v(>=75.0): 4
+  quantiles: q10 16.09  q25 16.43  q50 18.33  q75 50.35  q90 67.00  q99 67.48  max 150.36
+batches (inferred from npu_done): 1866, sizes 1x1033, 2x833
+  position 0: e2e_arr median 99.70 mean 100.57 max 142.41 | e2e median 98.45 mean 96.71 max 142.08  (n 833)
+    present: a2p median 118.90 mean 119.23 max 202.05 (n 833) | d2p median 114.96 mean 115.37 max 197.91 (n 833)
+  position 1: e2e_arr median 72.74 mean 73.29 max 109.59 | e2e median 70.88 mean 71.17 max 106.84  (n 833)
+    present: a2p median 103.86 mean 102.52 max 168.72 (n 832) | d2p median 100.41 mean 100.39 max 168.33 (n 832)
+  position single: e2e_arr median 75.82 mean 75.87 max 115.25 | e2e median 72.95 mean 72.88 max 112.48  (n 1033)
+    present: a2p median 87.80 mean 91.32 max 151.94 (n 1033) | d2p median 84.84 mean 88.34 max 149.16 (n 1033)
+  partner wait (submit last - first): mean 31.51 median 30.23 p90 36.79 max 37.60; npu_done spread median 1.91 max 2.40
+tail: top 8 by e2e_arr (0 with src < 30, 4 in the last 30 rows)
+  file             src   seq  e2e_arr     e2e arr_dec    wait     npu gpu_post  final display   pos  where
+  raw/dvk_b2s4_r   897   897   142.41  142.08    0.33    0.01   99.05    43.02   0.00   13.89   0/2  end
+  raw/dvk_b2s4_r   898   898   115.25  112.48    2.78    0.01   70.51    41.95   0.00   36.69   0/1  end
+  raw/dvk_b2s4_r   898   897   109.62  106.84    2.78    0.01   64.89    41.94   0.00   21.88   0/1  end
+  raw/dvk_b2s4_r   898   898   109.59  106.84    2.75    0.01   65.20    41.63   0.00   28.36   1/2  end
+  raw/dvk_b2s4_r    41    41   107.88  102.01    5.87    0.05  101.07     0.89   0.00   10.86   0/2  
+  raw/dvk_b2s4_r   241   240   106.54  102.45    4.09    0.13   96.36     5.96   0.00   24.97   0/2  
+  raw/dvk_b2s4_r   131   130   106.35  102.35    4.00    0.25   95.21     6.88   0.00   25.54   0/2  
+  raw/dvk_b2s4_r   597   596   106.29  100.57    5.72    0.04   99.25     1.28   0.00    8.52   0/2  

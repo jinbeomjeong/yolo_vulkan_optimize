@@ -1,0 +1,50 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[hevc @ 0x55563c13a520] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[scanout] debugfs start (presented 60): active=3 video=plane[83] NV12/SAND128 zpos=0 enc='ITU-R BT.709 YCbCr' range='YCbCr limited range' | boxes=plane[107] AB24 zpos=1 | hvs_underrun=0
+[scanout] debugfs end (presented 600): active=3 video=plane[83] NV12/SAND128 zpos=0 enc='ITU-R BT.709 YCbCr' range='YCbCr limited range' | boxes=plane[107] AB24 zpos=1 | hvs_underrun=0
+== yvo_pipeline (dmabuf, nhcw, batch 1, slots 2, gpu_depth 2, postproc gpu/export) ==
+frames          600 (decoded 600, errors 0)
+wall            30.035 s, 19.98 FPS
+cpu             1.678 ms/frame (process user+sys 1006.7 ms, 3% of one core)
+decode call ms  mean 2.685  median 3.686  p90 4.209  max 10.690
+gpu shader ms   mean 1.812  median 1.803  p90 1.856  max 2.239
+npu latency ms  mean 31.131  median 31.058  p90 31.090  max 56.530
+e2e latency ms  mean 45.039  median 48.075  p90 55.427  max 63.147  (decode return → NPU completion callback)
+slot wait ms    mean 24.964  p90 36.848  (time the main thread waited for a free slot)
+input pace      source @ 30.000 fps, input queue 1 (leaky: full -> drop the oldest)
+arrived         900 (processed 600, dropped 300 = 33.33%, abandoned 0, longest drop run 1, queue depth max 1)
+e2e arrival ms  mean 47.679  median 52.610  p90 56.051  max 67.685  (source arrival → NPU completion callback)
+queue wait ms   mean 8.320  p90 18.749  max 19.150  (decode return → GPU submit)
+decode late ms  mean 2.736  p90 4.262  max 10.692  (source arrival → decode return)
+note            paced: FPS and cpu ms/frame are per processed frame (plus polling) — not comparable to asap
+gpu post ms     mean 0.464  median 0.459  p90 0.510  max 0.767  (yolo_decode.comp pass 1)
+cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+nms backend     gpu
+gpu nms ms      mean 0.0508  median 0.0497  p90 0.0594  max 0.0758  (efficient_nms.comp)
+nms fallback    0 frames (capacity 0, iou guard 0)
+candidates      mean 16.85  max 45  overflow frames 0
+slot hold ms    mean 3.276  median 3.439  p90 4.117  max 5.104  (NPU completion callback → slot return)
+disp convert ms -  (wayland-planes: YUV→RGB conversion is done by the HVS during scanout, V3D 0)
+disp overlay ms mean 0.325  median 0.319  p90 0.405  (overlay_boxes_buf.spv + clear, box plane)
+present interval ms median 50.000  p90 50.001  (n=569)
+glass-to-glass  mean 48.39  median 48.66  p90 49.68  (n=570, slot acquired → reaches screen)
+decode-to-screen mean 56.71  median 56.68  p90 67.38  (n=570, decode return → reaches screen, includes slot wait)
+arrival-to-present mean 59.35  median 59.03  p90 67.73  max 67.75  (n=570, scheduled source arrival → reaches screen)
+display         presented 600, dropped 0, recreates 0, overlay overflow 0
+display warmup  30 presentations excluded from glass / decode-to-screen / present interval / late frames (glass n 570 of 600, glass median 48.66)
+scanout         zero_copy 1, color_ok 1, hvs_underrun delta 0 (debugfs verdict)
+  debugfs start: active=3 video=plane[83] NV12/SAND128 zpos=0 enc='ITU-R BT.709 YCbCr' range='YCbCr limited range' | boxes=plane[107] AB24 zpos=1 | hvs_underrun=0
+  debugfs end: active=3 video=plane[83] NV12/SAND128 zpos=0 enc='ITU-R BT.709 YCbCr' range='YCbCr limited range' | boxes=plane[107] AB24 zpos=1 | hvs_underrun=0
+scanout         overlay skipped 0, frame-callback timeouts 0, busy reuse 0, presentation ZERO_COPY 599/600
+scanout         late frames 284 (vblank seq gap > max(1, ceil((every 1 + queue drops in the gap) x 60.000 Hz / 30.000 fps - 0.01)), 2 without drops; gaps 569, max gap 3, chain breaks 0), discarded 0
+scanout         300 source frames never reached the display (queue drops: not late)
+held frames max 4 (decoder limit about 13), slot timeout 0
+detections      2252 total, 3.75 / frame
+hailo chip temp 64.9 -> 71.2 C
+soc temp        73.6 -> 71.9 C
+vk validation   errors 0, warnings 1
+RESULT_CSV,dwlp_b1s2,dmabuf,nhcw,1,2,600,30.035,19.98,1.678,2.685,1.812,1.856,31.13,31.09,45.04,55.43,2252,64.9,71.2,73.6,71.9,1
+RESULT_CSV2,dwlp_b1s2,gpu,export,0.4642,0.5099,0.000,16.85,45,0,1,wayland-planes,matched,source,0.0000,0.0000,0.3254,50.000,48.39,49.68,600,0,0,4,0,gpu,0.0508,0.0594,0,0,1,1,0,0,0,599
+RESULT_CSV3,dwlp_b1s2,30,48.66,570,50.001,569,284,2,3,569,0,0,60.000,1,56.71,56.68,67.38,570
+RESULT_CSV4,dwlp_b1s2,1,30.000,900,600,300,0,0.3333,1,1,47.68,52.61,56.05,67.69,8.320,18.749,19.150,2.736,4.262,10.692,4,1
+RESULT_CSV5,dwlp_b1s2,59.35,59.03,67.73,67.75,570,1
