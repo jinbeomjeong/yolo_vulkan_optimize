@@ -20,6 +20,7 @@
 #   APPEND=1 FORCE=1 bash ...                                  # append to an existing results_raw.csv
 #   DRYRUN=1 bash ...                                          # print the commands only (no lock, no run, no files)
 #   CHECK_ONLY=1 bash ...                                      # path check only (lib/common.sh)
+#   FRAME_LOG=1 bash ...                                       # also write raw/<run>/frame_log.csv (--frame-log; analyse with frame_log_stats.py)
 #
 # Run order: repetition (run) is the outer loop, config the inner loop — spreads thermal bias evenly across configs.
 # --frames counts **arrived** frames with --input-pace source and submitted frames with asap (900 either way).
@@ -39,6 +40,7 @@ COOL_MAX_S="${COOL_MAX_S:-120}"
 HOT_C="${HOT_C:-75}"
 APPEND="${APPEND:-0}"
 DRYRUN="${DRYRUN:-0}"
+fl_arg=(); [[ "${FRAME_LOG:-0}" == "1" ]] && fl_arg=(--frame-log frame_log.csv)   # relative: each run cds into its run dir
 
 require_bin "$BIN" yvo_pipeline
 check_only_exit
@@ -72,7 +74,7 @@ if [[ "$DRYRUN" == "1" ]]; then
       id="${id// /}"
       echo "$id" | grep -Eq "$ONLY" || continue
       # shellcheck disable=SC2086  # args is word-split on purpose
-      echo "(cd $OUT_DIR/raw/${id}_run${r} && $BIN --video $VIDEO --hef $HEF $(echo $args) ${frames_arg[*]} --quiet --csv-label $id > stdout.log 2>&1)"
+      echo "(cd $OUT_DIR/raw/${id}_run${r} && $BIN --video $VIDEO --hef $HEF $(echo $args) ${frames_arg[*]} ${fl_arg[*]} --quiet --csv-label $id > stdout.log 2>&1)"
     done
   done
   exit 0
@@ -128,7 +130,7 @@ for ((r = 1; r <= RUNS; r++)); do
     set +e
     # shellcheck disable=SC2086  # args is word-split on purpose
     (cd "$run_dir" && "$BIN" --video "$VIDEO" --hef "$HEF" $args \
-        "${frames_arg[@]}" --quiet --csv-label "$id" > stdout.log 2>&1)
+        "${frames_arg[@]}" "${fl_arg[@]}" --quiet --csv-label "$id" > stdout.log 2>&1)
     rc=$?
     set -e
     read -r nwarn nerr <<<"$(count_hailort_warnings "$run_dir/hailort.log")"
