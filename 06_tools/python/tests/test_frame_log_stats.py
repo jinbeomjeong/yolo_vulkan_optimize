@@ -42,6 +42,19 @@ PACED_B2 = [
     row(7, None, 2, 233.333, 237.0),
 ]
 
+HEADER10 = HEADER + "," + fls.PRESENT_FIELD
+
+
+def with_present(r: str, present: float | None) -> str:
+    """Append the 10th column (present_ms, --display on) to a 9-column row."""
+    return r + "," + ("" if present is None else f"{present:.3f}")
+
+
+# PACED_B2 with --display on: src 4 processed but not presented; present diffs 16.667, 83.333, 100
+#   display (present - complete): src 0 7.0, src 1 22.167, src 3 6.5, src 5 8.0
+PACED_B2_DISP = [with_present(r, p) for r, p in
+                 zip(PACED_B2, [110.0, 126.667, None, 210.0, None, 310.0, None, None])]
+
 
 class Tmp(unittest.TestCase):
     def setUp(self) -> None:
@@ -78,6 +91,20 @@ class ParseTest(Tmp):
         with self.assertRaisesRegex(fls.FrameLogError, r"bad\.csv:2"):
             fls.read_frame_log(p)
 
+    def test_present_column(self) -> None:
+        p = self.write("d.csv", ["0,0,0,,1.0,2.0,3.0,,4.0,20.5", "1,1,0,,5.0,6.0,7.0,,8.0,", "2,,1,9.0,10.0,,,,,"],
+                       header=HEADER10)
+        frames, has_present = fls.parse_frame_log(p)
+        self.assertTrue(has_present)
+        self.assertEqual([f.present for f in frames], [20.5, None, None])
+
+    def test_nine_columns_have_no_present(self) -> None:
+        p = self.write("a.csv", ["0,0,0,,1.5,2.0,3.0,,9.0"])
+        frames, has_present = fls.parse_frame_log(p)
+        self.assertFalse(has_present)
+        self.assertIsNone(frames[0].present)
+        self.assertEqual(fls.read_frame_log(p), frames)
+
 
 class StatsTest(unittest.TestCase):
     def test_percentile_is_linear_interpolation(self) -> None:
@@ -95,6 +122,12 @@ class StatsTest(unittest.TestCase):
     def test_histogram_edges_are_left_closed(self) -> None:
         h = dict(fls.histogram([0, 4.99, 5, 24.9, 25, 59.99, 60, 80, 100], fls.DEFAULT_BINS))
         self.assertEqual(h, {"<5": 2, "5-25": 2, "25-45": 1, "45-60": 1, "60-80": 1, ">=80": 2})
+
+    def test_vsync_histogram_nearest_multiple(self) -> None:
+        v = 1000.0 / 60.0   # bin edges 8.33, 25, 41.67, 58.33, 75
+        h = dict(fls.vsync_histogram([0.5, 8.3, 8.34, 16.7, 24.99, 25.0, 33.4, 50.0, 66.7, 74.9, 75.0, 120.0], v))
+        self.assertEqual(h, {"0v": 2, "1v": 3, "2v": 2, "3v": 1, "4v": 2, ">=5v": 2})
+        self.assertEqual(list(dict(fls.vsync_histogram([], 20.0, multiples=2))), ["0v", "1v", "2v", ">=3v"])
 
     def test_clusters(self) -> None:
         sizes, gaps = fls.clusters([1.0, 40.0, 2.0, 2.0, 50.0], 5.0)
@@ -123,6 +156,18 @@ class FrameTest(unittest.TestCase):
     def test_non_monotonic(self) -> None:
         self.assertFalse(fls.non_monotonic(self.frame()))
         self.assertTrue(fls.non_monotonic(self.frame(submit=9.0)))
+
+    def test_present_metrics_only_on_request(self) -> None:
+        f = self.frame(arrival=8.0, present=60.0)
+        self.assertNotIn("a2p", fls.frame_metrics(f))   # 9-column files keep the old keys
+        m = fls.frame_metrics(f, with_present=True)
+        self.assertEqual((m["a2p"], m["d2p"], m["display"]), (52.0, 50.0, 9.0))
+        m = fls.frame_metrics(self.frame(), with_present=True)   # asap, not presented
+        self.assertEqual((m["a2p"], m["d2p"], m["display"]), (None, None, None))
+
+    def test_present_before_complete_is_non_monotonic(self) -> None:
+        self.assertFalse(fls.non_monotonic(self.frame(present=51.0)))
+        self.assertTrue(fls.non_monotonic(self.frame(present=50.5)))
 
     def test_drop_runs(self) -> None:
         fr = [self.frame(src=i, dropped=d) for i, d in enumerate([0, 1, 1, 1, 0, 2, 1, 0])]
@@ -198,6 +243,82 @@ class AnalyzeTest(Tmp):
         self.assertEqual(s["tail"]["rank_by"], "e2e")
         self.assertEqual(s["tail"]["frames"][0]["src"], 0)
 
+    def test_no_present_keys_without_column(self) -> None:
+        s = self.analyze(PACED_B2)
+        self.assertNotIn("present_cadence", s)
+        self.assertNotIn("presented", s["counts"])
+        self.assertEqual(list(s["latency"]), list(fls.LATENCIES))
+        self.assertEqual(list(s["stages"]), list(fls.STAGES))
+        self.assertEqual(list(s["batches"]["position_latency"]["0"]), list(fls.LATENCIES))
+        self.assertNotIn("present cadence", fls.format_report(s))
+
+
+class PresentTest(Tmp):
+    def analyze(self, files: dict[str, list[str]], **kw) -> dict:
+        fds = [fls.load(self.write(name, rows, header=HEADER10 if rows is PACED_B2_DISP else HEADER), name, 3.0, None)
+               for name, rows in files.items()]
+        return fls.analyze(fds, "x", **kw)
+
+    def test_counts(self) -> None:
+        c = self.analyze({"d.csv": PACED_B2_DISP})["counts"]
+        self.assertEqual((c["presented"], c["processed_not_presented"], c["present_on_unprocessed"]), (4, 1, 0))
+        self.assertEqual(c["non_monotonic_rows"], 0)
+
+    def test_latency_and_display_stage(self) -> None:
+        s = self.analyze({"d.csv": PACED_B2_DISP})
+        self.assertEqual(list(s["latency"]), ["e2e_arr", "e2e", "a2p", "d2p"])
+        a2p = [110.0, 126.667 - 33.333, 210.0 - 100.0, 310.0 - 166.667]
+        d2p = [105.0, 126.667 - 38.0, 106.0, 140.0]
+        self.assertEqual(s["latency"]["a2p"]["n"], 4)
+        self.assertAlmostEqual(s["latency"]["a2p"]["mean"], sum(a2p) / 4, places=6)
+        self.assertAlmostEqual(s["latency"]["d2p"]["max"], max(d2p), places=6)
+        self.assertEqual(s["latency"]["e2e"]["n"], 5)   # not-presented frames still count for e2e
+        self.assertEqual(s["stages"]["display"]["n"], 4)
+        self.assertAlmostEqual(s["stages"]["display"]["max"], 22.167, places=6)
+        self.assertAlmostEqual(s["stages"]["display"]["median"], 7.5, places=6)
+
+    def test_present_cadence(self) -> None:
+        pc = self.analyze({"d.csv": PACED_B2_DISP})["present_cadence"]
+        self.assertEqual(pc["n"], 3)
+        self.assertEqual(pc["histogram"], {"0v": 0, "1v": 1, "2v": 0, "3v": 0, "4v": 0, ">=5v": 2})
+        self.assertAlmostEqual(pc["quantiles"]["q50"], 83.333, places=6)
+        self.assertAlmostEqual(pc["max"], 100.0, places=6)
+        pc = self.analyze({"d.csv": PACED_B2_DISP}, vsync_ms=20.0)["present_cadence"]   # 50 Hz edges 10..90
+        self.assertEqual(pc["vsync_ms"], 20.0)
+        self.assertEqual(pc["histogram"], {"0v": 0, "1v": 1, "2v": 0, "3v": 0, "4v": 1, ">=5v": 1})
+
+    def test_position_breakdown(self) -> None:
+        pl = self.analyze({"d.csv": PACED_B2_DISP})["batches"]["position_latency"]
+        self.assertEqual(list(pl["0"]), ["e2e_arr", "e2e", "a2p", "d2p"])
+        self.assertEqual(pl["0"]["a2p"]["n"], 2)                               # src 0, 3
+        self.assertAlmostEqual(pl["0"]["a2p"]["mean"], 110.0, places=6)
+        self.assertEqual(pl["1"]["a2p"]["n"], 1)                               # src 1 (src 4 not presented)
+        self.assertAlmostEqual(pl["1"]["d2p"]["mean"], 126.667 - 38.0, places=6)
+        self.assertAlmostEqual(pl["single"]["a2p"]["mean"], 310.0 - 166.667, places=6)
+
+    def test_tail_has_display(self) -> None:
+        t = self.analyze({"d.csv": PACED_B2_DISP}, top=2)["tail"]
+        self.assertEqual(t["rank_by"], "e2e_arr")                              # ranking unchanged
+        self.assertEqual([r["src"] for r in t["frames"]], [5, 3])
+        self.assertAlmostEqual(t["frames"][0]["display"], 8.0, places=6)
+
+    def test_pooled_with_a_nine_column_file(self) -> None:
+        s = self.analyze({"d.csv": PACED_B2_DISP, "p.csv": PACED_B2})
+        c = s["counts"]
+        # not-presented counts only rows of files that have the column
+        self.assertEqual((c["processed"], c["presented"], c["processed_not_presented"]), (10, 4, 1))
+        self.assertEqual(s["latency"]["a2p"]["n"], 4)
+        self.assertEqual(s["present_cadence"]["n"], 3)
+
+    def test_present_on_dropped_row_warns(self) -> None:
+        rows = list(PACED_B2_DISP)
+        rows[2] = with_present(row(2, None, 1, 66.667, 70.0), 150.0)
+        fd = fls.load(self.write("w.csv", rows, header=HEADER10), "w.csv", 3.0, None)
+        s = fls.analyze([fd], "w.csv")
+        self.assertEqual(s["counts"]["present_on_unprocessed"], 1)
+        self.assertEqual(s["present_cadence"]["n"], 3)                         # processed frames only
+        self.assertIn("warning: dropped/abandoned rows with present_ms 1", fls.format_report(s))
+
 
 class CliTest(Tmp):
     def run_main(self, *args: str) -> tuple[int, str]:
@@ -220,6 +341,34 @@ class CliTest(Tmp):
         self.assertEqual(rows[2]["processed"], "7")
         summ = json.loads(oj.read_text(encoding="utf-8"))["summaries"]
         self.assertEqual(summ[2]["files"], ["a.csv", "b.csv"])
+
+    def test_present_csv_json_text(self) -> None:
+        d = self.write("d.csv", PACED_B2_DISP, header=HEADER10)
+        a = self.write("a.csv", PACED_B2)
+        oc, oj = self.dir / "s.csv", self.dir / "s.json"
+        rc, text = self.run_main(str(d), str(a), "--csv", str(oc), "--json", str(oj))
+        self.assertEqual(rc, 0)
+        self.assertEqual(text.count("present cadence"), 2)                     # d.csv and pooled, not a.csv
+        self.assertIn("display: presented 4  processed but not presented 1 (20.0%)", text)
+        self.assertIn("1v(~16.7): 1", text)
+        self.assertIn("    present: a2p median 110.00", text)
+        with open(oc, encoding="utf-8", newline="") as fh:
+            rows = {r["label"]: r for r in csv.DictReader(fh)}
+        self.assertEqual(rows["d.csv"]["processed_not_presented"], "1")
+        self.assertEqual(rows["d.csv"]["present_cadence_>=5v"], "2")
+        self.assertEqual(rows["d.csv"]["pos_0_a2p_median"], "110.0000")
+        self.assertEqual(rows["d.csv"]["display_median"], "7.5000")
+        self.assertEqual(rows["a.csv"]["present_cadence_n"], "")               # no column -> empty cells
+        summ = json.loads(oj.read_text(encoding="utf-8"))["summaries"]
+        self.assertIn("present_cadence", summ[0])
+        self.assertNotIn("present_cadence", summ[1])
+        self.assertIn("a2p", summ[2]["latency"])
+
+    def test_bad_vsync(self) -> None:
+        a = self.write("a.csv", PACED_B2)
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+            fls.main([str(a), "--vsync-ms", "0"])
+        self.assertEqual(cm.exception.code, 2)
 
     def test_refuses_to_overwrite_input(self) -> None:
         a = self.write("a.csv", PACED_B2)
