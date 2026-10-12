@@ -1,5 +1,5 @@
 // Pure logic of the yvo_pipeline app (pipeline/slot_exchange.hpp, pipeline/input_pacer.hpp, toolkit/result_csv.hpp,
-// toolkit/cli_parse.hpp)
+// toolkit/cli_parse.hpp, toolkit/frame_log.hpp)
 // — no NPU, GPU or display needed.
 //
 //   SlotExchange.*        slot pool + completion queue: FIFO order, two return conditions (compute + display),
@@ -15,9 +15,11 @@
 //                         RESULT_CSV4 (paced only): field count and a real line, byte-exact.
 //   CliParse.*            strict option-value parsing: same values as atoi/atol/atof for well-formed input,
 //                         rejection of what they silently mangled, exit code 2 + message from arg_number().
+//   FrameLog.*            --frame-log CSV: exact header, processed / dropped / abandoned / asap rows, empty fields.
 //
 // Links yvo_stages only for the header include paths (InferResult comes from hailo/hailo_runner.hpp);
 // nothing here opens /dev/hailo0 or creates a Vulkan instance.
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <climits>
@@ -27,6 +29,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <deque>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -39,6 +42,7 @@
 #include "pipeline/input_pacer.hpp"
 #include "pipeline/slot_exchange.hpp"
 #include "toolkit/cli_parse.hpp"
+#include "toolkit/frame_log.hpp"
 #include "toolkit/result_csv.hpp"
 
 namespace {
@@ -670,6 +674,61 @@ TEST(CliParseDeathTest, ArgNumberExitsWithCodeTwoAndNamesTheOption) {
                 "^yvo_pipeline: invalid value for --frames: 'abc'\n$");
     EXPECT_EXIT(yvo::tool::arg_number<int>("tool", "YVO_DEC_THREADS", ""), testing::ExitedWithCode(2),
                 "^tool: invalid value for YVO_DEC_THREADS: ''\n$");
+}
+
+// ── --frame-log (toolkit/frame_log.hpp) ─────────────────────────────────────────────────────────────────────────
+
+TEST(FrameLog, HeaderIsExact) {
+    EXPECT_EQ(yvo::tool::format_frame_log_header(),
+              "src,seq,dropped,arrival_ms,decode_end_ms,submit_ms,npu_done_ms,gpu_post_done_ms,complete_ms\n");
+}
+
+TEST(FrameLog, ProcessedPacedRowHasEveryField) {
+    yvo::tool::FrameLogRow r;
+    r.src = 12;
+    r.seq = 9;
+    r.arrival_ms = 400.0;
+    r.decode_end_ms = 401.25;
+    r.submit_ms = 402.0004;     // rounds down
+    r.npu_done_ms = 440.0006;   // rounds up
+    r.gpu_post_done_ms = 441.5;
+    r.complete_ms = 441.6789;
+    EXPECT_EQ(yvo::tool::format_frame_log_row(r), "12,9,0,400.000,401.250,402.000,440.001,441.500,441.679\n");
+}
+
+TEST(FrameLog, DroppedAndAbandonedRowsKeepOnlyArrivalAndDecode) {
+    yvo::tool::FrameLogRow r;
+    r.src = 3;
+    r.dropped = 1;
+    r.arrival_ms = 100.0;
+    r.decode_end_ms = 100.5;
+    EXPECT_EQ(yvo::tool::format_frame_log_row(r), "3,,1,100.000,100.500,,,,\n");
+    r.dropped = 2;
+    EXPECT_EQ(yvo::tool::format_frame_log_row(r), "3,,2,100.000,100.500,,,,\n");
+}
+
+TEST(FrameLog, AsapHostRowLeavesArrivalAndGpuPostEmpty) {
+    yvo::tool::FrameLogRow r;
+    r.src = 0;
+    r.seq = 0;
+    r.decode_end_ms = 0.107;
+    r.submit_ms = 0.2;
+    r.npu_done_ms = 60.0;
+    r.complete_ms = 62.5;
+    EXPECT_EQ(yvo::tool::format_frame_log_row(r), "0,0,0,,0.107,0.200,60.000,,62.500\n");
+}
+
+TEST(FrameLog, NonFiniteTimesAreEmptyAndFieldCountIsFixed) {
+    yvo::tool::FrameLogRow r;   // all times kNone
+    r.src = 7;
+    r.seq = 7;
+    r.complete_ms = std::numeric_limits<double>::infinity();
+    const std::string line = yvo::tool::format_frame_log_row(r);
+    EXPECT_EQ(line, "7,7,0,,,,,,\n");
+    // 9 fields like the header: 8 commas.
+    EXPECT_EQ(std::count(line.begin(), line.end(), ','), 8);
+    const std::string head = yvo::tool::format_frame_log_header();
+    EXPECT_EQ(std::count(head.begin(), head.end(), ','), 8);
 }
 
 } // namespace

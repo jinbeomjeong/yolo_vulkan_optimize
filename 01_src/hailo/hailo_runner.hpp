@@ -68,6 +68,9 @@ struct InferResult {
     hailo_status status = HAILO_SUCCESS;
     std::vector<Detection> detections;  // Source-frame pixel coordinates
     double latency_ms = 0.0;            // submit (just before run_async) ~ completion callback (includes queue wait)
+    // Per-frame time points for yvo_pipeline --frame-log. Default-constructed (epoch) = not recorded.
+    std::chrono::steady_clock::time_point t_npu_done{};    // NPU completion callback arrival
+    std::chrono::steady_clock::time_point t_post_done{};   // post-processing done (GpuPostprocStage only)
 };
 
 using InferCallback = std::function<void(InferResult&&)>;

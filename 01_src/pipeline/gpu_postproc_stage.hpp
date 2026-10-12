@@ -107,7 +107,7 @@ private:
         std::chrono::steady_clock::time_point t_done;   // callback arrival time
     };
 
-    void finish(int slot);   // turns a slot whose pp_->wait() finished into Done via the NMS result (or CPU suppression)
+    void finish(int slot, std::chrono::steady_clock::time_point t_post_done);   // pp_->wait() done (t_post_done) → Done via NMS
     void push_ready_to_gpu();   // drains ready_ and hands it to pp_
 
     // Declaration order = construction order. ~GpuPostprocStage() resets raw_ first (see "Destruction order" above).

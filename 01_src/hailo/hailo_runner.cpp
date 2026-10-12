@@ -226,7 +226,8 @@ void HailoRunner::submit(const PreprocOutput& in, InferCallback cb) {
                 r.slot = slot;
                 r.pts = pts;
                 r.status = info.status;
-                r.latency_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - sl.t_submit).count();
+                r.t_npu_done = std::chrono::steady_clock::now();
+                r.latency_ms = std::chrono::duration<double, std::milli>(r.t_npu_done - sl.t_submit).count();
                 if (info.status == HAILO_SUCCESS) {
                     r.detections = parse_nms_by_class(reinterpret_cast<const float*>(sl.out_buf.get()), output_frame_size_,
                                                       num_classes_, max_bboxes_per_class_, lb, src_w, src_h, score_threshold_);

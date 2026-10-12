@@ -90,6 +90,7 @@
 #include "pipeline/input_pacer.hpp"
 #include "pipeline/slot_exchange.hpp"
 #include "toolkit/cli_parse.hpp"
+#include "toolkit/frame_log.hpp"
 #include "toolkit/result_csv.hpp"
 #include "toolkit/stats.hpp"
 #include "toolkit/tool_util.hpp"
@@ -195,6 +196,7 @@ struct Args {
     InputPace input_pace = InputPace::Asap;
     int input_queue = 1;               // leaky queue capacity, --input-pace source only (user decision 2026-10-12: 1)
     bool input_queue_explicit = false;
+    std::string frame_log;             // --frame-log PATH: per-frame timing CSV written once at the end ("" = off)
 
     // ── Display (all defaults are "off": running without arguments takes the same path as before) ──
     bool display = false;
@@ -209,7 +211,7 @@ void usage(const char* a0) {
                  "usage: %s [--video PATH] [--hef PATH] [--frames N] [--mode ptr|dmabuf] [--layout nhwc|nhcw]\n"
                  "          [--batch N] [--slots N] [--postproc host|gpu] [--postproc-alloc export|heap]\n"
                  "          [--nms gpu|cpu|verify] [--gpu-depth N] [--score T] [--dump-dir DIR] [--dump-every K]\n"
-                 "          [--quiet] [--csv-label L] [--input-pace asap|source] [--input-queue N]\n"
+                 "          [--quiet] [--csv-label L] [--input-pace asap|source] [--input-queue N] [--frame-log PATH]\n"
                  "  --layout     preprocessing output / NPU input tensor layout (default nhcw with the default --mode dmabuf; nhwc under --mode ptr)\n"
                  "               nhcw removes HailoRT's CPU input conversion (about 14 ms/frame). --mode dmabuf only\n"
                  "  --slots      number of slots shared by GPU and NPU (default max(4, batch*2))\n"
@@ -227,6 +229,7 @@ void usage(const char* a0) {
                  "               arrived frames; dropped frames get no jsonl line / PNG (\"frame\" stays the source index)\n"
                  "  --input-queue N  leaky queue size for --input-pace source, 1..3 (default 1)\n"
                  "               paced cpu ms/frame and FPS are per processed frame: not comparable to asap\n"
+                 "  --frame-log PATH  one CSV row per frame at the end (ms since start; dropped 1 = queue drop, 2 = abandoned)\n"
 #ifdef YVO_HAVE_DISPLAY
                  "  --display {off,on}                       real-time HDMI display (default off)\n"
                  "  --display-backend {auto,wayland,offscreen,wayland-planes,kms}  default auto. wayland is strict (no silent fallback)\n"
@@ -296,6 +299,7 @@ bool parse(int argc, char** argv, Args& a) {
         else if (s == "--dump-dir" && (v = next())) a.dump_dir = v;
         else if (s == "--dump-every" && (v = next())) a.dump_every = arg_number<int>(argv[0], s, v);
         else if (s == "--csv-label" && (v = next())) a.csv_label = v;
+        else if (s == "--frame-log" && (v = next())) a.frame_log = v;
         else if (s == "--quiet") a.quiet = true;
         else if (s == "--input-pace" && (v = next())) {
             const std::string p = v;
@@ -833,6 +837,15 @@ int run(const Args& a) {
 
     // Export fds must be closed later than the runner (unmap), so they are declared first (reverse destruction).
     FdCloser export_fds;
+    // --frame-log: opened before any device so a bad path fails fast (exit 2). Rows are written once, after the drain.
+    std::unique_ptr<std::FILE, decltype([](std::FILE* fp) { std::fclose(fp); })> frame_log_fp;
+    if (!a.frame_log.empty()) {
+        frame_log_fp.reset(std::fopen(a.frame_log.c_str(), "w"));
+        if (!frame_log_fp) {
+            std::fprintf(stderr, "--frame-log: cannot open %s: %s\n", a.frame_log.c_str(), std::strerror(errno));
+            return 2;
+        }
+    }
 
     // ── Init order: WaylandWindow → VulkanContext → SandLetterbox → InferStage → DisplayPipeline → decoder ──
     // ⚠ The window comes before the context: vkGetPhysicalDeviceWaylandPresentationSupportKHR requires a
@@ -1043,6 +1056,16 @@ int run(const Args& a) {
         return seq_src.empty() ? seq : seq_src[static_cast<std::size_t>(seq)];
     };
     std::vector<double> e2e_arr_ms, queue_wait_ms, decode_late_ms;   // paced only
+    // --frame-log (toolkit/frame_log.hpp): time points per source frame, indexed by src (= seq with asap).
+    // Only collected here — the file is written after the drain. Unset time points stay at the epoch (empty field).
+    struct FrameTimes {
+        Clock::time_point arrival{}, decode_end{}, submit{}, npu_done{}, post_done{}, complete{};
+        std::int64_t seq = -1;   // < 0: never submitted (dropped by the leaky queue, or abandoned when !dropped)
+        bool dropped = false;
+    };
+    const bool frame_log_on = frame_log_fp != nullptr;
+    std::vector<FrameTimes> frame_times;
+    if (frame_log_on && a.frames > 0) frame_times.reserve(static_cast<std::size_t>(a.frames));
 
     // Decoder 13-frame constraint measurement: count the AVFrames we actually hold using weak_ptr.
     // (SandLetterbox's keepalive and DisplayPipeline's retained share the same shared_ptr, so
@@ -1087,6 +1110,12 @@ int run(const Args& a) {
             if (r.pts >= 0 && static_cast<std::size_t>(r.pts) < seq_arrival.size())
                 e2e_arr_ms.push_back(
                     std::chrono::duration<double, std::milli>(c.t_done - seq_arrival[static_cast<std::size_t>(r.pts)]).count());
+            if (frame_log_on && static_cast<std::size_t>(src_of(r.pts)) < frame_times.size()) {
+                FrameTimes& ft = frame_times[static_cast<std::size_t>(src_of(r.pts))];
+                ft.npu_done = r.t_npu_done;
+                ft.post_done = r.t_post_done;
+                ft.complete = c.t_done;
+            }
             total_dets += static_cast<long>(r.detections.size());
             if (jsonl) write_jsonl_line(jsonl.get(), src_of(r.pts), r);
             if (auto it = png_src.find(r.pts); it != png_src.end()) {
@@ -1163,7 +1192,7 @@ int run(const Args& a) {
     auto run_paced = [&](long& n, Clock::time_point t_start) {
         bool ingest_done = false;
         std::optional<Clock::time_point> slot_wait_since;   // the 5 s timeout runs while the queue waits for a slot
-        sched.start(Clock::now());                          // t0: just before the first decode
+        sched.start(t_start);                               // t0 (shared with wall and --frame-log): just before the first decode
         const auto ingest = [&]() {
             while (!ingest_done && !stop_requested()) {
                 if (a.frames > 0 && arrived >= a.frames) {  // --frames counts arrived frames
@@ -1184,7 +1213,11 @@ int run(const Args& a) {
                 decode_late_ms.push_back(ms_of(d1 - t_arr));
                 live_frames.push_back(f->keepalive);
                 sweep_held();   // the peak: new frame + full queue + GPU frames (a dropped frame is released just below)
-                if (in_q.push(QueuedFrame{std::move(*f), arrived, d1})) ++dropped;   // the oldest is released here
+                if (frame_log_on) frame_times.push_back({.arrival = t_arr, .decode_end = d1});   // index = arrived
+                if (auto old = in_q.push(QueuedFrame{std::move(*f), arrived, d1})) {   // the oldest is released here
+                    ++dropped;
+                    if (frame_log_on) frame_times[static_cast<std::size_t>(old->src)].dropped = true;
+                }
                 ++arrived;
                 queue_depth_max = std::max(queue_depth_max, static_cast<long>(in_q.size()));
             }
@@ -1230,6 +1263,11 @@ int run(const Args& a) {
             seq_src.push_back(qf.src);
             seq_arrival.push_back(sched.arrival(qf.src));
             queue_wait_ms.push_back(ms_of(w1 - qf.t_dec));
+            if (frame_log_on) {
+                FrameTimes& ft = frame_times[static_cast<std::size_t>(qf.src)];
+                ft.seq = n;
+                ft.submit = Clock::now();
+            }
             pre.submit(qf.f, *slot);
             gpu_q.push_back(*slot);
             qf.f.keepalive.reset();   // SandLetterbox holds its own reference (live_frames already tracks the frame)
@@ -1331,6 +1369,7 @@ int run(const Args& a) {
             // ⚠ Captured **before** f.reset(). Glass-to-glass starts here; decode-to-screen at d1 (includes the slot wait).
             if (display) display->retain(*slot, *f, d1);
 #endif
+            if (frame_log_on) frame_times.push_back({.decode_end = d1, .submit = Clock::now(), .seq = n});
             pre.submit(*f, *slot);
             gpu_q.push_back(*slot);
             live_frames.push_back(f->keepalive);
@@ -1419,6 +1458,34 @@ int run(const Args& a) {
         std::fprintf(stderr, "[error] paced frame count mismatch: arrived=%ld processed=%ld dropped=%ld abandoned=%ld\n",
                      arrived, n, dropped, abandoned);
         fail = true;
+    }
+
+    // --frame-log: the one write of the run, after the drain. Rows in source-frame order.
+    if (frame_log_fp) {
+        const auto rel = [t0](Clock::time_point tp) {
+            return tp == Clock::time_point{} ? yvo::tool::FrameLogRow::kNone
+                                             : std::chrono::duration<double, std::milli>(tp - t0).count();
+        };
+        std::FILE* fp = frame_log_fp.release();
+        std::fputs(yvo::tool::format_frame_log_header().c_str(), fp);
+        for (std::size_t i = 0; i < frame_times.size(); ++i) {
+            const FrameTimes& ft = frame_times[i];
+            std::fputs(yvo::tool::format_frame_log_row(
+                           {.src = static_cast<std::int64_t>(i), .seq = ft.seq,
+                            .dropped = ft.seq >= 0 ? 0 : ft.dropped ? 1 : 2, .arrival_ms = rel(ft.arrival),
+                            .decode_end_ms = rel(ft.decode_end), .submit_ms = rel(ft.submit),
+                            .npu_done_ms = rel(ft.npu_done), .gpu_post_done_ms = rel(ft.post_done),
+                            .complete_ms = rel(ft.complete)})
+                           .c_str(),
+                       fp);
+        }
+        const bool write_err = std::ferror(fp) != 0;
+        if (std::fclose(fp) != 0 || write_err) {
+            std::fprintf(stderr, "[error] --frame-log: writing %s failed\n", a.frame_log.c_str());
+            fail = true;
+        } else if (!a.quiet) {
+            std::fprintf(stderr, "[frame-log] %zu rows -> %s\n", frame_times.size(), a.frame_log.c_str());
+        }
     }
 
     const RunTotals tot{.n = n, .completed = completed, .errors = errors, .total_dets = total_dets,

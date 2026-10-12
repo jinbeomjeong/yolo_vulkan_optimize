@@ -178,7 +178,7 @@ void GpuPostprocStage::push_ready_to_gpu() {
             r.slot = d.slot;
             r.pts = pts_[s];
             r.status = d.status;
-            r.latency_ms = d.latency_ms;
+            r.latency_ms = d.latency_ms;  r.t_npu_done = d.t_done;
             if (done_) done_(std::move(r));
             continue;
         }
@@ -187,7 +187,7 @@ void GpuPostprocStage::push_ready_to_gpu() {
     }
 }
 
-void GpuPostprocStage::finish(int slot) {
+void GpuPostprocStage::finish(int slot, Clock::time_point t_post_done) {
     const auto s = static_cast<std::size_t>(slot);
     last_post_ms_ = pp_->last_pass1_ms();
     post_ms_.push_back(last_post_ms_);
@@ -235,6 +235,8 @@ void GpuPostprocStage::finish(int slot) {
     r.pts = pts_[s];
     r.status = status_[s];
     r.latency_ms = latency_[s];
+    r.t_npu_done = t_done_[s];
+    r.t_post_done = t_post_done;
     r.detections.reserve(cand.size());
     for (const auto& d : cand) r.detections.push_back(static_cast<const yvo::Detection&>(d));
     if (done_) done_(std::move(r));
@@ -246,7 +248,7 @@ void GpuPostprocStage::pump() {
         const int slot = pp_q_.front();
         pp_q_.pop_front();
         pp_->wait(slot);   // fence is already signaled
-        finish(slot);
+        finish(slot, Clock::now());
     }
 }
 
@@ -256,7 +258,7 @@ bool GpuPostprocStage::drain_one() {
     const int slot = pp_q_.front();
     pp_q_.pop_front();
     pp_->wait(slot);   // blocking
-    finish(slot);
+    finish(slot, Clock::now());
     return true;
 }
 
@@ -276,7 +278,7 @@ void GpuPostprocStage::drain() {
         const int slot = pp_q_.front();
         pp_q_.pop_front();
         pp_->wait(slot);
-        finish(slot);
+        finish(slot, Clock::now());
     }
 }
 
