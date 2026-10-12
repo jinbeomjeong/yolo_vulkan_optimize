@@ -126,6 +126,10 @@ build/bin/yvo_pipeline \
 > 이 표의 지연은 디코더 자동 5스레드·V3D 960 MHz 조건 값이다([`op_point/`](07_results/op_point/summary.md) §8).
 > 지금 기본값(1스레드)에서는 b8/s16 e2e 318.6 ms, b1/s1(gpu-depth 1) 79.1 ms, 표시 off b2/s4 GPU 후처리 34.99 FPS 로
 > 조금씩 짧고 FPS 는 같다([`dec_threads/`](07_results/dec_threads/summary.md)).
+>
+> **입력을 소스 속도로 넣으면**(`--input-pace source`, 표시 off) 지연을 도착 시각부터 잰다. 30 fps 를 따라가는 b2/s3·b2/s4 는
+> 평균 **81.5 ms**·p90 104 ms·버림 0, b1/s1 은 평균 58.3 ms 대신 프레임 18.6% 를 버린다(`--input-queue 1`). 위 표의 지연은 디코드 끝부터 잰 값이라
+> 시작점이 달라 직접 비교하지 않는다([`input_pacing/`](07_results/input_pacing/summary.md)).
 
 **지연은 slots 가, 처리량의 천장은 batch 가 정한다.** 지연 ≈ `slots × 프레임 주기` 이고,
 FPS = min(배치 천장 `B / T(B)`, 슬롯 제약)이며 천장은 **slots = 2 × batch** 에서 닿는다
@@ -213,6 +217,8 @@ loginctl activate <데스크톱 세션 id>    # (또는 sudo chvt 7) 데스크�
 | `--nms gpu\|cpu\|verify` | `gpu` | `--postproc gpu` 의 억제 위치. `gpu` 는 `efficient_nms.comp`(CPU 기준과 비트 일치, 보장 못 하는 프레임만 자동 CPU 처리), `cpu` 는 `cpu_nms_greedy_by_class`, `verify` 는 매 프레임 둘을 비트 비교 |
 | `--batch N` / `--slots N` | 8 / `max(4,batch*2)` | 운용점. §3.3 참조 |
 | `--gpu-depth N` | 3 | GPU 동시 프레임 상한. **지연에 영향 없음**(실측 1 vs 3 동일) |
+| `--input-pace asap\|source` | `asap` | 입력 도착 방식(**표시 off 전용**). `asap` = 슬롯이 비는 대로 디코드(지금까지의 방식). `source` = 프레임이 `t0 + k/fps` 에 도착한다(카메라 흉내). 요약에 도착 시각부터 잰 `e2e_arr`·버림·`RESULT_CSV4` 가 붙는다 |
+| `--input-queue N` | 1 | `--input-pace source` 전용 leaky 입력 큐 크기 1~3. 넘치면 가장 오래된 프레임을 버린다(GStreamer `queue leaky=downstream`). **1 이 맞다** — 2~3 은 효과 없거나 지연만 는다([`input_pacing/`](07_results/input_pacing/summary.md)). 보유 예산 `gpu_depth + N + 1 ≤ 10` |
 | `--display off\|on` | `off` | HDMI 실시간 표시 |
 | `--display-backend auto\|wayland\|offscreen\|wayland-planes\|kms` | `auto` | `auto` = Wayland 창이 열리면 `wayland`, 아니면 `offscreen`. `wayland` = Vulkan 합성 + 스왑체인(strict — 실패하면 종료), `offscreen` = 화면 없이 변환만. `wayland-planes`/`kms` = HVS 평면 스캔아웃(§3.5, strict) |
 | `--display-color-range auto\|full\|limited` | `auto` | 평면 백엔드가 요청할 COLOR_RANGE. `auto` = wayland-planes 는 full(labwc 뒤집힘 우회), kms 는 limited |
@@ -261,7 +267,7 @@ median 을 써라(V3D 가 커맨드 버퍼를 합치면서 한쪽 구간이 0에
 ## 6. 검증
 
 ```bash
-ctest --test-dir build        # 147/147 통과해야 한다
+ctest --test-dir build        # 160/160 통과해야 한다
 ```
 
 | 테스트 | NPU | 무엇을 보는가 |
@@ -273,7 +279,7 @@ ctest --test-dir build        # 147/147 통과해야 한다
 | `test_preproc` | 불필요 | GPU 전처리가 CPU 기준과 **비트 일치**(max 오차 0). `SandRefVsFfmpeg.*`(GPU 불필요): 기준 de-SAND(`ref/sand.hpp`)가 rpi-ffmpeg `av_hwframe_transfer_data`(NV12)와 **바이트 일치**(프레임 0/100/500/900/1815, 보이는 1920×1080) |
 | `test_overlay` | 불필요 | 오버레이 셰이더 vs CPU 기준 비트 일치. 박스 평면 dma-buf(`OverlayPlane.*`, 잔상 0), debugfs 파서(`DrmState.*`), KMS 탐색·AddFB2(`KmsScanout.*` — card1 사용, master 는 가져가지 않는다) |
 | `test_display_convert` | 불필요 | 표시 변환 셰이더(1:1) vs CPU 기준 **비트 일치**. 표시 경로 BT.709(`02_shaders/bt709.glsl` 공유 include)의 게이트 |
-| `test_pipeline_logic` | 불필요 | (하드웨어 없음) `SlotExchange` 슬롯 반납·중복 신호·다중 스레드, `validate_slot_budget` 보유 상한, RESULT_CSV 서식 바이트 일치, 엄격한 숫자 옵션 파싱 |
+| `test_pipeline_logic` | 불필요 | (하드웨어 없음) `SlotExchange` 슬롯 반납·중복 신호·다중 스레드, `validate_slot_budget` 보유 상한, RESULT_CSV·RESULT_CSV4 서식 바이트 일치, 엄격한 숫자 옵션 파싱, 입력 페이싱 순수 로직(`LeakyQueue`·`ArrivalSchedule`) |
 | `test_display_options` | 불필요 | (하드웨어 없음) 표시 옵션 문자열 → enum 파서 |
 | `test_isp_preproc` | 불필요(ISP 필요) | ISP 전처리 vs CPU 기준. **비트 일치가 아니다**(리샘플 커널이 다르다) — 패딩만 오차 0, 내용은 MAE ≤ 3.0 |
 | `test_gst_adapter` | 불필요 | (선택, GStreamer 연구 경로) 어댑터 `DrmFrame`·`yvosandletterbox` 출력이 FFmpeg 경로 NHCW와 **바이트 일치**(프레임 0/100/1815), 텐서 메타·슬롯 fd 고정, sink caps 는 SAND DMA_DRM 만, 슬롯 메모리를 다른 버퍼로 옮겨도 덮어쓰지 않고 메모리 교체로 슬롯이 새지 않음(`GstElementSlots.*`) |
@@ -298,9 +304,10 @@ bash 06_tools/bench/pipeline_bench.sh    # 기존 9설정 회귀 기준선
 bash 06_tools/bench/decode_bench.sh      # 디코드 경로 비교
 bash 06_tools/bench/dec_threads_bench.sh # 디코더 프레임 스레드 수 스윕 + 자동 대 1스레드 회귀 A/B
 bash 06_tools/bench/gst_pipeline_bench.sh # 앱 대 GStreamer 연구 경로(yvo_gst_pipeline)
+bash 06_tools/bench/input_pace_bench.sh  # 입력 페이싱 + leaky 큐 N=1·2·3 (b1s1·b2s3·b2s4 × asap 대조, 도착 900프레임)
 ```
 
-벤치 스크립트는 모두 11개다. 나머지(`backpressure`·`isp`·`isp_pipeline`·`display_planes`·`nms`)까지 포함한 목록은
+벤치 스크립트는 모두 12개다. 나머지(`backpressure`·`isp`·`isp_pipeline`·`display_planes`·`nms`·`input_pace`)까지 포함한 목록은
 [`08_learn/09_code_map.md`](08_learn/09_code_map.md) §9.7.
 
 공통 환경변수: `RUNS`(기본 3), `FRAMES`, `ONLY`(설정 id grep), `APPEND=1`, `BIN`, `OUT_DIR`,
@@ -365,7 +372,7 @@ grim -o HDMI-A-1 shot.png
 
 - **[`08_learn/`](08_learn/00_README.md)** — 배경지식이 없다면 **여기부터**. NPU·Vulkan·dma-buf·YOLO 텐서를
   맨 밑바닥부터 설명하고, 각 개념이 이 프로젝트의 어느 결정으로 이어졌는지 연결한 자습 교재 13장
-- **[`07_results/README.md`](07_results/README.md)** — 22개 실험의 색인과 결론. **수치를 인용하기 전에 여기부터**
+- **[`07_results/README.md`](07_results/README.md)** — 24개 실험의 색인과 결론. **수치를 인용하기 전에 여기부터**
 - [`07_results/op_point/summary.md`](07_results/op_point/summary.md) §8 — 운용점 확정 근거와 최종 결론
 - [`07_results/display_e2e/summary.md`](07_results/display_e2e/summary.md) — 표시 통합 측정
 - [`07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md`](07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md) §4.3 — 왜 이 설계인가(메모리 제약)

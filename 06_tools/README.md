@@ -7,7 +7,7 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 나뉘어 있었는데, 파이썬 파일 2개가 서로 다른 폴더에 흩어져 경계가 무너진 상태였다.
 실제 구분선은 "언어"가 아니라 **"빌드에 들어가는가"** 다.
 
-## `bench/` — 측정 자동화 셸 11개
+## `bench/` — 측정 자동화 셸 12개
 
 | 스크립트 | 무엇을 재나 | 출력 |
 |---|---|---|
@@ -20,6 +20,7 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 | `nms_bench.sh` | GPU NMS 정식 A/B(실험 A, 표시 off) — `MODE=perf`: `b2s4`·`b8s16` × `--nms cpu|gpu` 900f×3 인터리브, `results_raw.csv` 77열(스크립트 10 + RESULT_CSV 22 + RESULT_CSV2 33 + stdout·V3D 12: gpu nms median/max, fallback 원인, cpu NMS µs, slot hold, e2e median, V3D CSD 잡·ms/frame). `MODE=verify`: b2s4 전체 영상 `--nms verify`·cpu·gpu 덤프 대조(`[A2] PASS/FAIL`). ⚠ verify 는 CPU·GPU 억제끼리만 비교해(같은 `yolo_decode.comp` 후보를 받는다) **디코딩 쪽 회귀를 못 잡는다** — `BASELINE=<보관된 verify 폴더>` 로 세 `detections.jsonl` 을 기준선과 바이트 대조한다(영상·HEF·실효 프레임이 다르면 NPU 를 쓰기 전에 FAIL). `VERDICT_ONLY=1 OUT_DIR=<기존 verify 폴더>` 는 NPU 없이 판정만 다시 한다. IoU 매칭(`compare_detections.py`)은 점수만 바뀐 것을 못 보므로 판정은 바이트 비교다. 모든 플래그 명시, `DRYRUN=1`·`CHECK_ONLY=1` | `07_results/gpu_nms_e2e/` |
 | `decode_bench.sh` | 디코드 경로 비교 | `07_results/decode_benchmark/` |
 | `backpressure_bench.sh` | 백프레셔 결함 전후 비교 | `07_results/raw_runner_backpressure/` |
+| `input_pace_bench.sh` | 입력 페이싱 + leaky 입력 큐 — b1s1·b2s3·b2s4 × {asap, `--input-pace source --input-queue` 1·2·3}, 도착 900프레임 × 3, 표시 off. `results_raw.csv` 47열(RESULT_CSV 22 + RESULT_CSV4 21 + 스크립트 4, asap 행의 CSV4 는 nan). 페이싱 행의 FPS·`cpu_ms_per_frame` 은 asap 과 비교 금지. `DRYRUN=1`·`CHECK_ONLY=1` | `07_results/input_pacing/` |
 | `isp_bench.sh` | ISP 전처리 단독 | `07_results/isp_resize/` |
 | `isp_pipeline_bench.sh` | ISP 포함 전체 파이프라인 | `07_results/isp_resize/runs/pipeline/` |
 
@@ -35,7 +36,7 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 
 ### 벤치 락
 
-11개 스크립트 모두 시작할 때 `build/.bench_running` 에 자기 PID를 쓰고 `trap` 으로 지운다.
+12개 스크립트 모두 시작할 때 `build/.bench_running` 에 자기 PID를 쓰고 `trap` 으로 지운다.
 [`.claude/hooks/npu_guard.sh`](../.claude/hooks/npu_guard.sh) 가 이 파일을 보고 **측정 중에는
 빌드·테스트 명령을 막는다.** 측정 중에 다른 작업이 돌면 CPU 시간 측정이 **에러 없이 조용히
 오염되기** 때문이다. 훅이 PID 생존 여부를 보므로 비정상 종료로 남은 락은 자동 무효가 된다.
