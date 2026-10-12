@@ -28,6 +28,7 @@
 #include "ref/cpu_letterbox.hpp"
 #include "core/frame_types.hpp"
 #include "hailo/hailo_runner.hpp"
+#include "toolkit/cli_parse.hpp"
 #include "toolkit/stats.hpp"
 #include "toolkit/tool_util.hpp"
 
@@ -115,13 +116,13 @@ int main(int argc, char** argv) {
         if (a == "--video") o.video = next();
         else if (a == "--hef") o.hef = next();
         else if (a == "--out-dir") o.out_dir = next();
-        else if (a == "--frames") o.frames = std::stoi(next());
-        else if (a == "--bench-frames") o.bench_frames = std::stoi(next());
-        else if (a == "--warmup") o.warmup = std::stoi(next());
-        else if (a == "--seq-frames") o.seq_frames = std::stoi(next());
-        else if (a == "--batch") o.batch = std::stoi(next());
-        else if (a == "--slots") o.slots = std::stoi(next());
-        else if (a == "--score") o.score = std::stof(next());
+        else if (a == "--frames") o.frames = yvo::tool::arg_number<int>(argv[0], a, next().c_str());
+        else if (a == "--bench-frames") o.bench_frames = yvo::tool::arg_number<int>(argv[0], a, next().c_str());
+        else if (a == "--warmup") o.warmup = yvo::tool::arg_number<int>(argv[0], a, next().c_str());
+        else if (a == "--seq-frames") o.seq_frames = yvo::tool::arg_number<int>(argv[0], a, next().c_str());
+        else if (a == "--batch") o.batch = yvo::tool::arg_number<int>(argv[0], a, next().c_str());
+        else if (a == "--slots") o.slots = yvo::tool::arg_number<int>(argv[0], a, next().c_str());
+        else if (a == "--score") o.score = yvo::tool::arg_stof(argv[0], a, next().c_str());
         else if (a == "--layout") {
             const std::string v = next();
             if (v == "nhwc") o.layout = yvo::TensorLayout::Nhwc;

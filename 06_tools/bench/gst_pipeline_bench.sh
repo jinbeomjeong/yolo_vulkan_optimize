@@ -54,6 +54,7 @@ ONLY="${ONLY:-.}"
 COOL_C="${COOL_C:-65}"
 COOL_MAX_S="${COOL_MAX_S:-120}"
 HOT_C="${HOT_C:-75}"
+COOL_EVERY=0                           # fixed: this bench only cools on warnings or > HOT_C (lib/common.sh cool_before_run)
 SAMPLES="${SAMPLES:-0}"                # if 1, DETS=1 and the app DETS run also writes a box PNG every 300 frames
 DETS="${DETS:-0}"                      # if 1, one extra --dump-dir run per config into samples/ + compare_detections.py
 DETS_PNG_EVERY="${DETS_PNG_EVERY:-100000}"   # app --dump-every for the DETS run (>= frames -> only frame00000.png)
@@ -153,8 +154,6 @@ mkdir -p "$OUT_DIR/raw"
 
 # Environment snapshot (before / after). Package and git lines are what distinguishes the two paths' builds.
 env_snapshot() {
-  local dirty=""
-  [[ -n "$(git -C "$PROJ" status --porcelain --untracked-files=no 2>/dev/null)" ]] && dirty=" (tracked changes)"
   echo "# gst_pipeline_bench $1 $(date -Is)"
   echo "kernel: $(uname -r)"
   echo "soc temp: $(soc_temp) C, hailo temp: $(hailo_temp) C"
@@ -163,10 +162,8 @@ env_snapshot() {
   vcgencmd get_config v3d_freq 2>/dev/null || true
   echo "bootloader: $(vcgencmd bootloader_version 2>/dev/null | head -1)"
   pcie_link
-  echo "gstreamer1.0-plugins-bad: $(dpkg-query -W -f='${Version}' gstreamer1.0-plugins-bad 2>/dev/null || echo '?')"
-  echo "libgstreamer1.0-0: $(dpkg-query -W -f='${Version}' libgstreamer1.0-0 2>/dev/null || echo '?')"
-  echo "hailort: $(dpkg-query -W -f='${Version}' hailort 2>/dev/null || echo '?')"
-  echo "git HEAD: $(git -C "$PROJ" rev-parse HEAD 2>/dev/null || echo '?')${dirty}"
+  pkg_versions gstreamer1.0-plugins-bad libgstreamer1.0-0 hailort
+  env_git_head
 }
 
 {
@@ -197,18 +194,7 @@ done
 
 prev_warn=0
 
-# cool_before_run: pipeline_bench.sh's rule. Sets t_pre (chip temp right before the run) and COOL_WAITED.
-cool_before_run() {
-  local t_now
-  COOL_WAITED=0
-  t_now=$(hailo_temp)
-  t_pre=$t_now
-  if (( prev_warn > 0 )); then
-    cool_down "hailort.log warnings: ${prev_warn}"; t_pre=$(hailo_temp)
-  elif awk -v t="$t_now" -v h="$HOT_C" 'BEGIN{exit !(t!="nan" && t>h)}'; then
-    cool_down "chip temp ${t_now} C > ${HOT_C} C"; t_pre=$(hailo_temp)
-  fi
-}
+# cool_before_run (lib/common.sh): pipeline_bench.sh's rule (COOL_EVERY=0). Sets t_pre and COOL_WAITED.
 
 for ((r = 1; r <= RUNS; r++)); do
   for c in "${selected[@]}"; do

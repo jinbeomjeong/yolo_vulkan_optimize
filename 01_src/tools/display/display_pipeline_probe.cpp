@@ -96,7 +96,7 @@ bool parse(int argc, char** argv, Args& a) {
         } else if (s == "--display-fullscreen") a.cfg.fullscreen = true;
         else if (s == "--display-size" && (v = next())) {
             int w = 0, h = 0;
-            if (std::sscanf(v, "%dx%d", &w, &h) != 2 || w <= 0 || h <= 0) return false;
+            if (!yvo::tool::parse_size(v, w, h)) return false;
             a.cfg.width = w;
             a.cfg.height = h;
         } else if (s == "--display-every" && (v = next())) a.cfg.every = yvo::tool::arg_number<int>(argv[0], s, v);

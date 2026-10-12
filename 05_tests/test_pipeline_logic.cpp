@@ -28,11 +28,13 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <deque>
 #include <limits>
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -674,6 +676,72 @@ TEST(CliParseDeathTest, ArgNumberExitsWithCodeTwoAndNamesTheOption) {
                 "^yvo_pipeline: invalid value for --frames: 'abc'\n$");
     EXPECT_EXIT(yvo::tool::arg_number<int>("tool", "YVO_DEC_THREADS", ""), testing::ExitedWithCode(2),
                 "^tool: invalid value for YVO_DEC_THREADS: ''\n$");
+}
+
+// parse_stof: the replacement for std::stof in the probes (same bits for every value std::stof accepted).
+TEST(CliParse, StofMatchesStdStofForWellFormedInput) {
+    for (const char* t : {"0", "0.2", "0.05", "0.003", "-1", "2e-1", "1E3", ".5", "+0.25", " 0.45", "0x1p-2",
+                          "3.4e38", "1.2e-38", "16777217.000000001"}) {
+        SCOPED_TRACE(t);
+        float v = -7.0f;
+        ASSERT_TRUE(yvo::tool::parse_stof(t, v));
+        const float ref = std::stof(t);
+        EXPECT_EQ(std::memcmp(&v, &ref, sizeof v), 0);
+    }
+    // Why parse_number<float> is not used for these sites: strtod-then-cast rounds twice and can differ by one ulp.
+    float v = 0.0f;
+    ASSERT_TRUE(yvo::tool::parse_stof("16777217.000000001", v));
+    EXPECT_NE(v, static_cast<float>(std::atof("16777217.000000001")));
+}
+
+TEST(CliParse, StofRejectsTrailingJunkNonFiniteAndWhatStdStofThrowsOn) {
+    for (const char* t : {"", "abc", "0.5x", "0.5 ", "0.2.3", "nan", "inf", "-infinity"}) {
+        SCOPED_TRACE(t);
+        float v = 1.5f;
+        EXPECT_FALSE(yvo::tool::parse_stof(t, v));
+        EXPECT_EQ(v, 1.5f);
+    }
+    for (const char* t : {"1e39", "-1e39", "1e-50"}) {   // ERANGE: std::stof throws std::out_of_range
+        SCOPED_TRACE(t);
+        float v = 1.5f;
+        EXPECT_FALSE(yvo::tool::parse_stof(t, v));
+        EXPECT_THROW((void)std::stof(t), std::out_of_range);
+    }
+    float v = 0.0f;
+    EXPECT_FALSE(yvo::tool::parse_stof(nullptr, v));
+}
+
+TEST(CliParseDeathTest, ArgStofExitsWithCodeTwo) {
+    GTEST_FLAG_SET(death_test_style, "threadsafe");
+    EXPECT_EQ(yvo::tool::arg_stof("prog", "--score", "0.2"), std::stof("0.2"));
+    EXPECT_EXIT(yvo::tool::arg_stof("/x/yvo_postproc_probe", "--score", "0.2x"), testing::ExitedWithCode(2),
+                "^yvo_postproc_probe: invalid value for --score: '0.2x'\n$");
+}
+
+// parse_size: the replacement for sscanf("%dx%d") of --display-size / --size.
+TEST(CliParse, SizeMatchesSscanfForWellFormedInput) {
+    for (const char* t : {"1920x1080", "1x1", "3840x2160", "+1280x720", " 640x 480", "007x9", "2147483647x1"}) {
+        SCOPED_TRACE(t);
+        int w = 0, h = 0, sw = 0, sh = 0;
+        ASSERT_TRUE(yvo::tool::parse_size(t, w, h));
+        ASSERT_EQ(std::sscanf(t, "%dx%d", &sw, &sh), 2);
+        EXPECT_EQ(w, sw);
+        EXPECT_EQ(h, sh);
+    }
+}
+
+TEST(CliParse, SizeRejectsJunkNonPositiveAndOverflow) {
+    for (const char* t : {"", "1920", "1920x", "x1080", "1920x1080x5", "1920x1080 ", "1920x1080abc", "1920X1080",
+                          "1920 x1080", "1920,1080", "0x1080", "1920x0", "-1x5", "5x-1", "2147483648x1",
+                          "1x99999999999999999999", "axb", "1.5x2"}) {
+        SCOPED_TRACE(t);
+        int w = 11, h = 22;
+        EXPECT_FALSE(yvo::tool::parse_size(t, w, h));
+        EXPECT_EQ(w, 11);
+        EXPECT_EQ(h, 22);
+    }
+    int w = 0, h = 0;
+    EXPECT_FALSE(yvo::tool::parse_size(nullptr, w, h));
 }
 
 // ── --frame-log (toolkit/frame_log.hpp) ─────────────────────────────────────────────────────────────────────────

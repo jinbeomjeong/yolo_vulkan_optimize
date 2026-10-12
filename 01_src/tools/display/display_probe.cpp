@@ -139,7 +139,7 @@ bool parse(int argc, char** argv, Args& a) {
         const char* v = nullptr;
         if (s == "--probe" && (v = next())) a.probe = v;
         else if ((s == "--size" || s == "--display-size") && (v = next())) {
-            if (std::sscanf(v, "%dx%d", &a.width, &a.height) != 2 || a.width < 1 || a.height < 1) return false;
+            if (!yvo::tool::parse_size(v, a.width, a.height)) return false;
         }
         else if (s == "--fullscreen" || s == "--display-fullscreen") a.fullscreen = true;
         else if (s == "--present-mode" && (v = next())) {

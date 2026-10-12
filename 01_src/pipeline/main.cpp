@@ -330,7 +330,7 @@ bool parse(int argc, char** argv, Args& a) {
         } else if (s == "--display-fullscreen") a.disp.fullscreen = true;
         else if (s == "--display-size" && (v = next())) {
             int w = 0, h = 0;
-            if (std::sscanf(v, "%dx%d", &w, &h) != 2 || w <= 0 || h <= 0) return false;
+            if (!yvo::tool::parse_size(v, w, h)) return false;
             a.disp.width = w;
             a.disp.height = h;
         } else if (s == "--display-every" && (v = next())) a.disp.every = arg_number<int>(argv[0], s, v);

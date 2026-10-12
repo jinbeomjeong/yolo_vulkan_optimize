@@ -63,6 +63,7 @@
 #include "hailo/hailo_raw_runner.hpp"
 #include "hailo/hailo_runner.hpp"
 #include "tools/hailo/p2_out_buffers.hpp"
+#include "toolkit/cli_parse.hpp"
 #include "toolkit/stats.hpp"
 #include "toolkit/tool_util.hpp"
 #include "core/hailo_align.hpp"
@@ -1875,24 +1876,24 @@ int main(int argc, char** argv) {
         else if (a == "--out-dir") o.out_dir = next();
         else if (a == "--fixture-dir") o.fixture_dir = next();
         else if (a == "--api") o.api = next();
-        else if (a == "--compare-frames") o.compare_frames = std::stoi(next());
-        else if (a == "--api-check-frames") o.api_check_frames = std::stoi(next());
-        else if (a == "--dump-frames") o.dump_frames = std::stoi(next());
-        else if (a == "--bench-frames") o.bench_frames = std::stoi(next());
-        else if (a == "--bench-repeat") o.bench_repeat = std::stoi(next());
-        else if (a == "--warmup") o.warmup = std::stoi(next());
-        else if (a == "--batch") o.batch = std::stoi(next());
-        else if (a == "--slots") o.slots = std::stoi(next());
+        else if (a == "--compare-frames") o.compare_frames = yvo::tool::arg_number<int>(argv[0], a, next().c_str());
+        else if (a == "--api-check-frames") o.api_check_frames = yvo::tool::arg_number<int>(argv[0], a, next().c_str());
+        else if (a == "--dump-frames") o.dump_frames = yvo::tool::arg_number<int>(argv[0], a, next().c_str());
+        else if (a == "--bench-frames") o.bench_frames = yvo::tool::arg_number<int>(argv[0], a, next().c_str());
+        else if (a == "--bench-repeat") o.bench_repeat = yvo::tool::arg_number<int>(argv[0], a, next().c_str());
+        else if (a == "--warmup") o.warmup = yvo::tool::arg_number<int>(argv[0], a, next().c_str());
+        else if (a == "--batch") o.batch = yvo::tool::arg_number<int>(argv[0], a, next().c_str());
+        else if (a == "--slots") o.slots = yvo::tool::arg_number<int>(argv[0], a, next().c_str());
         else if (a == "--skip-bench") o.skip_bench = true;
         else if (a == "--skip-infer-model") o.skip_infer_model = true;
         else if (a == "--probe") o.probe = next();
         else if (a == "--alloc") o.alloc = next();
-        else if (a == "--matrix-frames") o.matrix_frames = std::stoi(next());
-        else if (a == "--matrix-slots") o.matrix_slots = std::stoi(next());
-        else if (a == "--cpu-read-reps") o.cpu_read_reps = std::stoi(next());
+        else if (a == "--matrix-frames") o.matrix_frames = yvo::tool::arg_number<int>(argv[0], a, next().c_str());
+        else if (a == "--matrix-slots") o.matrix_slots = yvo::tool::arg_number<int>(argv[0], a, next().c_str());
+        else if (a == "--cpu-read-reps") o.cpu_read_reps = yvo::tool::arg_number<int>(argv[0], a, next().c_str());
         else if (a == "--no-cool") o.cool_above = 1000.0f;
         else if (a == "--in-dmabuf") o.in_dmabuf = true;
-        else if (a == "--f0-frames") o.f0_frames = std::stoi(next());
+        else if (a == "--f0-frames") o.f0_frames = yvo::tool::arg_number<int>(argv[0], a, next().c_str());
         else {
             usage();
             return 2;

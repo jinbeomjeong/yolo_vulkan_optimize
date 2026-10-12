@@ -187,8 +187,6 @@ wlr_outputs() {
 
 # Environment snapshot (before / after).
 env_snapshot() {
-  local dirty=""
-  [[ -n "$(git -C "$PROJ" status --porcelain --untracked-files=no 2>/dev/null)" ]] && dirty=" (tracked changes)"
   echo "# dec_threads_bench $1 $(date -Is)"
   echo "kernel: $(uname -r)"
   echo "soc temp: $(soc_temp) C, hailo temp: $(hailo_temp) C"
@@ -198,8 +196,8 @@ env_snapshot() {
   echo "bootloader: $(vcgencmd bootloader_version 2>/dev/null | head -1)"
   pcie_link
   pkg_versions "${PKGS_DISPLAY_BENCH[@]}"
-  echo "git HEAD: $(git -C "$PROJ" rev-parse HEAD 2>/dev/null || echo '?')${dirty}"
-  echo "bin: $BIN md5 $(md5sum "$BIN" | cut -d' ' -f1) mtime $(stat -c %y "$BIN")"
+  env_git_head
+  env_bin "$BIN"
   if (( HAVE_WAYLAND )); then echo "wayland: $XDG_RUNTIME_DIR/$WAYLAND_DISPLAY, wlr-randr outputs: $(wlr_outputs || true)"
   else echo "wayland: none — display configs skipped"; fi
 }
@@ -239,38 +237,16 @@ else
   echo "$CSV_HEADER" > "$RAW"
 fi
 
-nan_list() { local n="$1" i out=""; for ((i = 0; i < n; i++)); do out+="${out:+,}nan"; done; printf '%s' "$out"; }
-arg_val() {   # arg_val <args> <flag> <default>
-  local a=() i
-  read -ra a <<<"$1"
-  for ((i = 0; i + 1 < ${#a[@]}; i++)); do [[ "${a[i]}" == "$2" ]] && { printf '%s' "${a[i+1]}"; return; }; done
-  printf '%s' "$3"
-}
+# nan_list, arg_val, result_csv12 and cool_before_run live in lib/common.sh.
 
 # make_row <id> <threads> <run> <rc> <cool> <nwarn> <nerr> <t_pre> <run_dir> <args> -> one results_raw.csv line
 #   A missing or malformed RESULT_CSV / RESULT_CSV2 line becomes nan fields and forces ok=0.
 make_row() {
   local id="$1" threads="$2" r="$3" rc="$4" cool="$5" nwarn="$6" nerr="$7" t_pre="$8" dir="$9" args="${10}"
-  local log="$dir/stdout.log" l1="" l2="" notes=() unreliable=0
+  local l1="" l2="" notes=() unreliable=0
   (( nwarn > 0 )) && unreliable=1
-  if [[ -f "$log" ]]; then
-    l1=$(grep '^RESULT_CSV,' "$log" | tail -1 | sed 's/^RESULT_CSV,//' || true)
-    l2=$(grep '^RESULT_CSV2,' "$log" | tail -1 | sed 's/^RESULT_CSV2,//' || true)
-  fi
   [[ "$rc" == "137" ]] && notes+=(timeout_kill)
-  if [[ -z "$l1" || "$(awk -F, '{print NF}' <<<"$l1")" != "$N_CSV1" ]]; then
-    notes+=(no_result_csv)
-    l1="$id,$(arg_val "$args" --mode dmabuf),$(arg_val "$args" --layout nhwc),$(arg_val "$args" --batch nan),$(arg_val "$args" --slots nan),$(nan_list 16),0"
-  fi
-  if [[ -z "$l2" || "$(awk -F, '{print NF}' <<<"$l2")" != "$N_CSV2" ]]; then
-    notes+=(no_result_csv2)
-    l2="$(nan_list $((N_CSV2 - 2)))"
-    l1="${l1%,*},0"   # CSV2 missing -> ok=0
-  else
-    # drop label (field 1) and the duplicate ok (field 10)
-    l2=$(awk -F, 'BEGIN{OFS=","}{ out=""; for(i=2;i<=NF;i++){ if(i==10) continue;
-                                   out = (out=="" ? $i : out OFS $i) } print out }' <<<"$l2")
-  fi
+  result_csv12 "$dir/stdout.log" "$id" "$args" dmabuf nhwc
   (( rc != 0 )) && [[ "$rc" != "137" ]] && notes+=("rc_$rc")
   local note="-"; (( ${#notes[@]} )) && note=$(IFS=';'; echo "${notes[*]}")
   echo "$id,$threads,$r,$rc,$cool,$nwarn,$nerr,$unreliable,$t_pre,$note,$l1,$l2"
@@ -278,21 +254,6 @@ make_row() {
 
 prev_warn=0
 skipped_runs=()
-
-# cool_before_run: sets t_pre (chip temp right before the run) and COOL_WAITED.
-cool_before_run() {
-  local t_now
-  COOL_WAITED=0
-  t_now=$(hailo_temp)
-  t_pre=$t_now
-  if (( prev_warn > 0 )); then
-    cool_down "hailort.log warnings: ${prev_warn}"; t_pre=$(hailo_temp)
-  elif [[ "$COOL_EVERY" == "1" ]] && awk -v t="$t_now" -v c="$COOL_C" 'BEGIN{exit !(t=="nan" || t>c)}'; then
-    cool_down "every run, chip ${t_now} C"; t_pre=$(hailo_temp)
-  elif awk -v t="$t_now" -v h="$HOT_C" 'BEGIN{exit !(t!="nan" && t>h)}'; then
-    cool_down "chip temp ${t_now} C > ${HOT_C} C"; t_pre=$(hailo_temp)
-  fi
-}
 
 for ((r = 1; r <= RUNS; r++)); do
   for c in "${selected[@]}"; do

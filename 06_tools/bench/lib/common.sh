@@ -153,3 +153,76 @@ bench_lock_acquire() {
   trap 'rm -f "$BENCH_LOCK"' EXIT
   trap 'rm -f "$BENCH_LOCK"; exit 130' INT; trap 'rm -f "$BENCH_LOCK"; exit 143' TERM   # stop, don't continue
 }
+
+# ── Per-run cool-down gate (2026-10-12) ─────────────────────────────────────────────────────────
+# cool_before_run: the per-run cool-down gate of the NPU benches. Sets t_pre (chip temp right before the run) and
+# COOL_WAITED. Cools when the previous run's hailort.log had temperature/clock warnings (prev_warn > 0), when
+# COOL_EVERY=1 and the chip is above COOL_C (or unreadable), or when the chip is above HOT_C (measure skill rule).
+# Needs: prev_warn, COOL_EVERY, COOL_C, HOT_C. Was copied verbatim into dec_threads/nms/display_planes_bench.sh;
+# gst_pipeline_bench.sh had the same gate without the COOL_EVERY branch and pins COOL_EVERY=0.
+cool_before_run() {
+  local t_now
+  COOL_WAITED=0
+  t_now=$(hailo_temp)
+  t_pre=$t_now
+  if (( prev_warn > 0 )); then
+    cool_down "hailort.log warnings: ${prev_warn}"; t_pre=$(hailo_temp)
+  elif [[ "$COOL_EVERY" == "1" ]] && awk -v t="$t_now" -v c="$COOL_C" 'BEGIN{exit !(t=="nan" || t>c)}'; then
+    cool_down "every run, chip ${t_now} C"; t_pre=$(hailo_temp)
+  elif awk -v t="$t_now" -v h="$HOT_C" 'BEGIN{exit !(t!="nan" && t>h)}'; then
+    cool_down "chip temp ${t_now} C > ${HOT_C} C"; t_pre=$(hailo_temp)
+  fi
+}
+
+# ── env_bench.txt lines shared by several benches (2026-10-12) ───────────────────────────────
+# env_git_head: "git HEAD: <sha>" plus " (tracked changes)" when tracked files are modified.
+env_git_head() {
+  local dirty=""
+  [[ -n "$(git -C "$PROJ" status --porcelain --untracked-files=no 2>/dev/null)" ]] && dirty=" (tracked changes)"
+  echo "git HEAD: $(git -C "$PROJ" rev-parse HEAD 2>/dev/null || echo '?')${dirty}"
+}
+
+# env_bin <path>: "bin: <path> md5 <md5> mtime <mtime>".
+env_bin() { echo "bin: $1 md5 $(md5sum "$1" | cut -d' ' -f1) mtime $(stat -c %y "$1")"; }
+
+# gpu_stats_snap <out>: copy of the V3D gpu_stats file ($GPU_STATS, set by the caller); empty file when unreadable.
+gpu_stats_snap() { cat "$GPU_STATS" 2>/dev/null > "$1" || : > "$1"; }
+
+# ── results_raw.csv row helpers (dec_threads/nms/display_planes_bench.sh, 2026-10-12) ──────────────
+# nan_list <n>: n comma-separated "nan" fields (no newline).
+nan_list() { local n="$1" i out=""; for ((i = 0; i < n; i++)); do out+="${out:+,}nan"; done; printf '%s' "$out"; }
+
+arg_val() {   # arg_val <args> <flag> <default>
+  local a=() i
+  read -ra a <<<"$1"
+  for ((i = 0; i + 1 < ${#a[@]}; i++)); do [[ "${a[i]}" == "$2" ]] && { printf '%s' "${a[i+1]}"; return; }; done
+  printf '%s' "$3"
+}
+
+# result_csv12 <stdout.log> <id> <args> <mode default> <layout default>
+#   The RESULT_CSV / RESULT_CSV2 part of make_row(), which differs per bench only in the columns around it.
+#   Sets the CALLER's l1 (RESULT_CSV after its prefix, N_CSV1 fields) and l2 (RESULT_CSV2 without label and its
+#   duplicate ok, N_CSV2 - 2 fields) and appends no_result_csv / no_result_csv2 to the caller's notes array — the
+#   caller declares `local l1 l2 notes=()` (bash dynamic scoping). A missing or wrong-width line becomes a nan row;
+#   a missing RESULT_CSV2 also forces ok=0 (last field of l1).
+result_csv12() {
+  local log="$1" id="$2" args="$3"
+  l1=""; l2=""
+  if [[ -f "$log" ]]; then
+    l1=$(grep '^RESULT_CSV,' "$log" | tail -1 | sed 's/^RESULT_CSV,//' || true)
+    l2=$(grep '^RESULT_CSV2,' "$log" | tail -1 | sed 's/^RESULT_CSV2,//' || true)
+  fi
+  if [[ -z "$l1" || "$(awk -F, '{print NF}' <<<"$l1")" != "$N_CSV1" ]]; then
+    notes+=(no_result_csv)
+    l1="$id,$(arg_val "$args" --mode "$4"),$(arg_val "$args" --layout "$5"),$(arg_val "$args" --batch nan),$(arg_val "$args" --slots nan),$(nan_list 16),0"
+  fi
+  if [[ -z "$l2" || "$(awk -F, '{print NF}' <<<"$l2")" != "$N_CSV2" ]]; then
+    notes+=(no_result_csv2)
+    l2="$(nan_list $((N_CSV2 - 2)))"
+    l1="${l1%,*},0"   # CSV2 missing -> ok=0
+  else
+    # drop label (field 1) and the duplicate ok (field 10)
+    l2=$(awk -F, 'BEGIN{OFS=","}{ out=""; for(i=2;i<=NF;i++){ if(i==10) continue;
+                                   out = (out=="" ? $i : out OFS $i) } print out }' <<<"$l2")
+  fi
+}

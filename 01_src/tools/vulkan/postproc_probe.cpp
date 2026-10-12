@@ -68,6 +68,7 @@
 #include "vulkan/yolo_postproc.hpp"
 
 #include "heap_sum_spv.h"
+#include "toolkit/cli_parse.hpp"
 #include "toolkit/tool_util.hpp"
 #include "testkit/nms_harness.hpp"
 #include "testkit/postproc_fixture.hpp"
@@ -2253,8 +2254,12 @@ std::vector<int> parse_int_list(const std::string& s) {
     std::vector<int> out;
     std::stringstream ss(s);
     std::string tok;
-    while (std::getline(ss, tok, ','))
-        if (!tok.empty()) out.push_back(std::stoi(tok));
+    while (std::getline(ss, tok, ',')) {
+        int v = 0;
+        if (tok.empty()) continue;
+        if (!yvo::tool::parse_number(tok.c_str(), v)) throw std::invalid_argument("invalid integer in list: '" + tok + "'");
+        out.push_back(v);
+    }
     return out;
 }
 
@@ -2904,8 +2909,12 @@ std::vector<float> parse_float_list(const std::string& s) {
     std::vector<float> out;
     std::stringstream ss(s);
     std::string tok;
-    while (std::getline(ss, tok, ','))
-        if (!tok.empty()) out.push_back(std::stof(tok));
+    while (std::getline(ss, tok, ',')) {
+        float v = 0.0f;
+        if (tok.empty()) continue;
+        if (!yvo::tool::parse_stof(tok.c_str(), v)) throw std::invalid_argument("invalid number in list: '" + tok + "'");
+        out.push_back(v);
+    }
     return out;
 }
 
@@ -3350,26 +3359,26 @@ int main(int argc, char** argv) {
             else if (a == "--out-file") o.out_file = next("--out-file");
             else if (a == "--hef") o.hef = next("--hef");
             else if (a == "--video") o.video = next("--video");
-            else if (a == "--perf-frames") o.perf_frames = std::stoi(next("--perf-frames"));
-            else if (a == "--warmup") o.warmup = std::stoi(next("--warmup"));
-            else if (a == "--repeats") o.repeats = std::stoi(next("--repeats"));
-            else if (a == "--live-frames") o.live_frames = std::stoi(next("--live-frames"));
-            else if (a == "--slots") o.slots = std::stoi(next("--slots"));
-            else if (a == "--max-dets") o.max_dets = std::stoi(next("--max-dets"));
+            else if (a == "--perf-frames") o.perf_frames = yvo::tool::arg_number<int>(argv[0], a, next("--perf-frames").c_str());
+            else if (a == "--warmup") o.warmup = yvo::tool::arg_number<int>(argv[0], a, next("--warmup").c_str());
+            else if (a == "--repeats") o.repeats = yvo::tool::arg_number<int>(argv[0], a, next("--repeats").c_str());
+            else if (a == "--live-frames") o.live_frames = yvo::tool::arg_number<int>(argv[0], a, next("--live-frames").c_str());
+            else if (a == "--slots") o.slots = yvo::tool::arg_number<int>(argv[0], a, next("--slots").c_str());
+            else if (a == "--max-dets") o.max_dets = yvo::tool::arg_number<int>(argv[0], a, next("--max-dets").c_str());
             else if (a == "--api") o.api = next("--api");
-            else if (a == "--batch") o.batch = static_cast<std::uint16_t>(std::stoi(next("--batch")));
-            else if (a == "--timeout-ms") o.timeout_ms = std::stoi(next("--timeout-ms"));
+            else if (a == "--batch") o.batch = yvo::tool::arg_number<std::uint16_t>(argv[0], a, next("--batch").c_str());
+            else if (a == "--timeout-ms") o.timeout_ms = yvo::tool::arg_number<int>(argv[0], a, next("--timeout-ms").c_str());
             else if (a == "--stale-barrier") o.stale_barrier = next("--stale-barrier");
             else if (a == "--heap") o.heap = next("--heap");
             else if (a == "--alloc") o.alloc = next("--alloc");
             else if (a == "--heap-sync") o.heap_sync = next("--heap-sync");
-            else if (a == "--rounds") o.rounds = std::stoi(next("--rounds"));
+            else if (a == "--rounds") o.rounds = yvo::tool::arg_number<int>(argv[0], a, next("--rounds").c_str());
             else if (a == "--variants") o.variants = next("--variants");
-            else if (a == "--v3-window") o.v3_window = std::stoi(next("--v3-window"));
-            else if (a == "--nms-cand") o.nms_cands = next("--nms-cand");
-            else if (a == "--nms-score" || a == "--score") o.nms_score = std::stof(next(a.c_str()));
-            else if (a == "--scores") to.scores = next("--scores");
-            else if (a == "--ks") to.ks = next("--ks");
+            else if (a == "--v3-window") o.v3_window = yvo::tool::arg_number<int>(argv[0], a, next("--v3-window").c_str());
+            else if (a == "--nms-cand") { o.nms_cands = next("--nms-cand"); (void)parse_int_list(o.nms_cands); }
+            else if (a == "--nms-score" || a == "--score") o.nms_score = yvo::tool::arg_stof(argv[0], a, next(a.c_str()).c_str());
+            else if (a == "--scores") { to.scores = next("--scores"); (void)parse_float_list(to.scores); }
+            else if (a == "--ks") { to.ks = next("--ks"); (void)parse_int_list(to.ks); }
             else if (a == "--no-headroom") o.no_headroom = true;
             else if (a == "--heapimport") o.probe = "heapimport";
             else if (a == "--validation") o.validation = true;
@@ -3379,8 +3388,8 @@ int main(int argc, char** argv) {
                 const std::string v = next("--local");
                 const auto comma = v.find(',');
                 if (comma == std::string::npos) throw std::runtime_error("--local must be in X,Y form");
-                o.lx = static_cast<std::uint32_t>(std::stoul(v.substr(0, comma)));
-                o.ly = static_cast<std::uint32_t>(std::stoul(v.substr(comma + 1)));
+                o.lx = yvo::tool::arg_number<std::uint32_t>(argv[0], a, v.substr(0, comma).c_str());
+                o.ly = yvo::tool::arg_number<std::uint32_t>(argv[0], a, v.substr(comma + 1).c_str());
             } else if (a == "-h" || a == "--help") {
                 usage();
                 usage_topk();

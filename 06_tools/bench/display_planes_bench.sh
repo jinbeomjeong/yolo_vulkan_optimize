@@ -279,8 +279,6 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 env_snapshot() {
-  local dirty=""
-  [[ -n "$(git -C "$PROJ" status --porcelain --untracked-files=no 2>/dev/null)" ]] && dirty=" (tracked changes)"
   echo "# display_planes_bench $1 $(date -Is)"
   echo "kernel: $(uname -r)"
   echo "soc temp: $(soc_temp) C, hailo temp: $(hailo_temp) C"
@@ -291,8 +289,8 @@ env_snapshot() {
   echo "bootloader: $(vcgencmd bootloader_version 2>/dev/null | head -1)"
   pcie_link
   pkg_versions "${PKGS_DISPLAY_BENCH[@]}"   # labwc / libwlroots: the wayland-planes COLOR_RANGE inversion is compositor behavior
-  echo "git HEAD: $(git -C "$PROJ" rev-parse HEAD 2>/dev/null || echo '?')${dirty}"
-  echo "bin: $BIN md5 $(md5sum "$BIN" | cut -d' ' -f1) mtime $(stat -c %y "$BIN")"
+  env_git_head
+  env_bin "$BIN"
   echo "wlr-randr $CONNECTOR: $(output_enabled && echo Enabled || echo NOT-enabled); DRM masters: $(masters)"
   wlr-randr 2>/dev/null | awk -v c="$CONNECTOR" '/^[^ \t]/ { inb = ($1 == c) } inb && /current/ { print "mode: " $0; exit }'
 }
@@ -314,7 +312,6 @@ if env | grep -qE '^(VK_LOADER_LAYERS_ENABLE|VK_INSTANCE_LAYERS)='; then
 fi
 
 # ── Side files ─────────────────────────────────────────────────────────────────
-gpu_stats_snap() { cat "$GPU_STATS" 2>/dev/null > "$1" || : > "$1"; }
 # drm_fdinfo <pid> <out>: every /dev/dri fdinfo block of that process (drm-engine-* are cumulative ns per client).
 drm_fdinfo() {
   local pid="$1" out="$2" fd tgt buf=""
@@ -381,13 +378,7 @@ N_CSV3=18   # fields after "RESULT_CSV3," (label + 12 + ok + d2s_mean,d2s_median
 #   ⚠ If main.cpp appends fields to a RESULT_CSV* line, N_CSV* and the *_COLS names must change together.
 CSV_HEADER="$SCRIPT_COLS,$CSV1_COLS,$CSV2_COLS,$CSV3_COLS,$EXTRA_COLS"
 
-nan_list() { local n="$1" i out=""; for ((i = 0; i < n; i++)); do out+="${out:+,}nan"; done; printf '%s' "$out"; }
-arg_val() {   # arg_val <args> <flag> <default>
-  local a=() i
-  read -ra a <<<"$1"
-  for ((i = 0; i + 1 < ${#a[@]}; i++)); do [[ "${a[i]}" == "$2" ]] && { printf '%s' "${a[i+1]}"; return; }; done
-  printf '%s' "$3"
-}
+# nan_list, arg_val, result_csv12, gpu_stats_snap and cool_before_run live in lib/common.sh.
 
 # make_row <id> <run> <rc> <cool> <nwarn> <nerr> <t_pre> <run_dir> <args> -> one results_raw.csv line
 make_row() {
@@ -395,19 +386,9 @@ make_row() {
   local log="$dir/stdout.log" l1="" l2="" l3="" notes=() unreliable=0 backend pace frames extra
   backend=$(arg_val "$args" --display-backend nan); pace=$(arg_val "$args" --display-pace nan)
   (( nwarn > 0 )) && unreliable=1
+  result_csv12 "$log" "$id" "$args" nan nan
   if [[ -f "$log" ]]; then
-    l1=$(grep '^RESULT_CSV,' "$log" | tail -1 | sed 's/^RESULT_CSV,//' || true)
-    l2=$(grep '^RESULT_CSV2,' "$log" | tail -1 | sed 's/^RESULT_CSV2,//' || true)
     l3=$(grep '^RESULT_CSV3,' "$log" | tail -1 | sed 's/^RESULT_CSV3,//' || true)
-  fi
-  if [[ -z "$l1" || "$(awk -F, '{print NF}' <<<"$l1")" != "$N_CSV1" ]]; then
-    notes+=(no_result_csv)
-    l1="$id,$(arg_val "$args" --mode nan),$(arg_val "$args" --layout nan),$(arg_val "$args" --batch nan),$(arg_val "$args" --slots nan),$(nan_list 16),0"
-  fi
-  if [[ -z "$l2" || "$(awk -F, '{print NF}' <<<"$l2")" != "$N_CSV2" ]]; then
-    notes+=(no_result_csv2); l2="$(nan_list $((N_CSV2 - 2)))"; l1="${l1%,*},0"
-  else
-    l2=$(awk -F, 'BEGIN{OFS=","}{ out=""; for(i=2;i<=NF;i++){ if(i==10) continue; out = (out=="" ? $i : out OFS $i) } print out }' <<<"$l2")
   fi
   if [[ -z "$l3" || "$(awk -F, '{print NF}' <<<"$l3")" != "$N_CSV3" ]]; then
     notes+=(no_result_csv3); l3="$(nan_list $((N_CSV3 - 2)))"; l1="${l1%,*},0"
@@ -469,19 +450,6 @@ PYEOF
 }
 
 prev_warn=0
-cool_before_run() {   # sets t_pre and COOL_WAITED (same gate as nms_bench.sh)
-  local t_now
-  COOL_WAITED=0
-  t_now=$(hailo_temp)
-  t_pre=$t_now
-  if (( prev_warn > 0 )); then
-    cool_down "hailort.log warnings: ${prev_warn}"; t_pre=$(hailo_temp)
-  elif [[ "$COOL_EVERY" == "1" ]] && awk -v t="$t_now" -v c="$COOL_C" 'BEGIN{exit !(t=="nan" || t>c)}'; then
-    cool_down "every run, chip ${t_now} C"; t_pre=$(hailo_temp)
-  elif awk -v t="$t_now" -v h="$HOT_C" 'BEGIN{exit !(t!="nan" && t>h)}'; then
-    cool_down "chip temp ${t_now} C > ${HOT_C} C"; t_pre=$(hailo_temp)
-  fi
-}
 
 # run_one <id> <args> <run> -> sets rc, nwarn, nerr, run_dir
 run_one() {
