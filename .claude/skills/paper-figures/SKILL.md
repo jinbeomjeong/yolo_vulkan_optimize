@@ -14,7 +14,7 @@ description: >
 
 ## 0. 출처 규칙
 
-- 수치는 `07_results/**`의 **CSV·JSON만** 읽는다. 스크립트에 `summary.md`의 숫자를 박아 넣지 않는다.
+- 수치는 `07_results/**`의 **CSV·JSON만** 읽는다(분석 스크립트가 만든 고정 형식 텍스트 — 예: `thermal_soak/evidence/soak_*_events.txt` 머리줄 — 는 정규식으로 읽고 교차 확인하면 허용). 스크립트에 `summary.md`의 숫자를 박아 넣지 않는다.
   원본 CSV가 없어 어쩔 수 없을 때만 상수 옆에 `# source: <path>:<line>`을 적고, 등록부 행에 "수기"라고 표시한다.
 - 그리기 전에 원본 실험의 `summary.md`에서 **"주의·남은 일"**을 먼저 읽는다. "신뢰 불가"로 적힌 행은 뺀다.
 - **인용 금지**(`07_results/README.md` "⛔ 인용 금지 구간")는 그림에도 쓰지 않는다.
@@ -46,7 +46,8 @@ description: >
 - 크기: 단일 열 8.5 cm, 두 열 17.5 cm. 글자는 8–9 pt.
 - 색: 처리 장치 색은 [`09_diagrams/README.md`](../../../09_diagrams/README.md)의 색 규약(GPU `#99CC00`, NPU `#FFCC00`, CPU `#E8EEF7`, 디코더 `#B39DDB`, 표시 `#4DB6E2`)을 따른다. 그 밖의 계열은 색맹에 안전한 팔레트로 칠한다.
 - 축 이름에는 단위를 적는다(`지연 (ms)`). 반복 측정은 **중앙값과 min–max 범위**로 그린다(measure 스킬의 집계와 같다).
-- 재현성을 위해 `svg.hashsalt`를 고정하고 메타데이터 날짜를 비운다. 같은 입력이면 SVG가 바이트 단위로 같아야 한다.
+- 그림 안 숫자 라벨은 `paper_style.fmt_half_up`(사사오입)으로 찍는다 — summary.md 의 반올림과 맞춘다(float `.1f` 는 102.25 → 102.2).
+- 재현성을 위해 `svg.hashsalt`를 고정하고 메타데이터 날짜를 비운다(`save()`가 clip-path id 도 정규화한다). 같은 입력이면 SVG가 바이트 단위로 같아야 한다.
 
 ## 4. 절차
 
@@ -56,7 +57,7 @@ description: >
 4. 메인 에이전트가 PNG를 Read 도구로 **직접 보고** 글자 겹침, 단위, 범례, 조건 표기를 확인한다.
 5. `integrity-auditor`가 그림의 핵심 수치를 `summary.md`와 본문에 대조한다.
 6. 사용자 확인을 받은 뒤 메인 에이전트가 본문에 `![그림 N. 제목](figures/figNN_<slug>.svg)`과 캡션을 넣는다.
-7. `check_structure.py`와 `check_links.py`가 모두 0건인지 확인하고 커밋한다.
+7. `check_structure.py`와 `check_links.py`가 모두 0건인지 확인하고 커밋한다. 검사기 **D3**가 그림 파일 ↔ 등록부 행, 행의 생성 스크립트·원본 경로 존재를 대조한다.
 
 ## 5. 표
 
