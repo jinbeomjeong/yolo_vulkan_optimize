@@ -424,5 +424,112 @@ class CheckerOnFixtureRepoTest(RuleFixture):
         self.assertIn("'extra' in the table is not in TOML top_level", whys)
 
 
+class FigureRegistryHelpersTest(RuleFixture):
+    REGISTRY = textwrap.dedent("""\
+        # 그림 등록부
+
+        | 번호 | 파일 | 생성 스크립트 | 원본 | 측정 조건 | 논문 절 |
+        |---|---|---|---|---|---|
+        | 2 | `fig02_a.svg` `fig02_a.png` | `06_tools/python/paper/fig02_a.py` | `07_results/x/results.csv`, `07_results/x/raw/*/f.csv` | 신 | §4 |
+
+        | other | table |
+        |---|---|
+        | `not_read` | x |
+        """)
+
+    def test_figure_registry_rows(self) -> None:
+        rows = cs._figure_registry(self.REGISTRY)
+        self.assertEqual([no for no, _ in rows], [5])
+        self.assertEqual(rows[0][1]["file"], "`fig02_a.svg` `fig02_a.png`")
+        self.assertEqual(rows[0][1]["script"], "`06_tools/python/paper/fig02_a.py`")
+        self.assertIsNone(cs._figure_registry("| a | b |\n|---|---|\n| 1 | 2 |\n"))
+        self.assertEqual(cs._figure_registry("| 번호 | 파일 | 생성 스크립트 | 원본 |\n|---|---|---|---|\n"), [])
+
+    def test_cell_items(self) -> None:
+        self.assertEqual(cs._cell_items("`a/b.csv`, `c/*/d.csv`"), ["a/b.csv", "c/*/d.csv"])
+        self.assertEqual(cs._cell_items("07_results/x/a.csv · 07_results/y/b.json (수기)"),
+                         ["07_results/x/a.csv", "07_results/y/b.json"])
+        self.assertEqual(cs._cell_items("yEd 내보내기"), [])
+
+    def test_figure_names(self) -> None:
+        self.assertEqual(cs._figure_names("fig04_c.{svg,png}"), ["fig04_c.svg", "fig04_c.png"])
+        self.assertEqual(cs._figure_names("fig05_d"), ["fig05_d.svg", "fig05_d.png"])
+        self.assertEqual(cs._figure_names("10_paper/figures/fig06_e.svg"), ["fig06_e.svg"])
+
+    def test_path_exists_files_dirs_globs(self) -> None:
+        self.write("07_results/x/raw/a_run1/f.csv")
+        self.assertTrue(cs._path_exists("07_results/x/raw/a_run1/f.csv"))
+        self.assertTrue(cs._path_exists("./07_results/x/raw"))
+        self.assertTrue(cs._path_exists("07_results/x/raw/*/f.csv"))
+        self.assertTrue(cs._path_exists("07_results/**/f.csv"))
+        self.assertFalse(cs._path_exists("07_results/x/raw/*/g.csv"))
+        self.assertFalse(cs._path_exists("07_results/x/raw/*"))   # matches only a folder, no file
+        self.assertFalse(cs._path_exists("../outside.csv"))
+        self.assertFalse(cs._path_exists("/etc/hostname"))
+
+
+class FigureRegistryCheckTest(RuleFixture):
+    """D3 on a throwaway git repo with a 10_paper/figures folder and registry."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        subprocess.run(["git", "init", "-q", str(self.root)], check=True)
+
+    def run_pass(self) -> list[tuple[str, str, str]]:
+        checker = cs.Checker(cs.load_rules())
+        checker.check_figures()
+        return sorted((v.rule, v.path, v.level) for v in checker.out)
+
+    def test_no_figures_and_no_registry_is_clean(self) -> None:
+        self.assertEqual(self.run_pass(), [])
+        self.write("10_paper/figures/README.md", "| 번호 | 파일 | 생성 스크립트 | 원본 |\n|---|---|---|---|\n")
+        self.assertEqual(self.run_pass(), [])   # empty registry, no figures
+
+    def test_figures_without_registry(self) -> None:
+        self.write("10_paper/figures/fig02_a.svg")
+        self.write("10_paper/figures/fig02_a.png")
+        self.write("10_paper/figures/notes.txt")   # not a figure name: not judged by D3
+        self.assertEqual(self.run_pass(), [("D3", "10_paper/figures/fig02_a.png", cs.ERROR),
+                                           ("D3", "10_paper/figures/fig02_a.svg", cs.ERROR)])
+
+    def test_rows_files_scripts_sources(self) -> None:
+        for f in ("07_results/x/results.csv", "07_results/x/raw/a_run1/frame_log.csv", "08_learn/x.md",
+                  "06_tools/python/paper/fig02_a.py", "10_paper/figures/fig02_a.svg", "10_paper/figures/fig02_a.png",
+                  "10_paper/figures/fig03_b.svg", "10_paper/figures/fig05_d.svg", "10_paper/figures/fig05_d.png"):
+            self.write(f)
+        self.write("10_paper/figures/README.md", textwrap.dedent("""\
+            # reg
+
+            | 번호 | 파일 | 생성 스크립트 | 원본 | 측정 조건 | 논문 절 |
+            |---|---|---|---|---|---|
+            | 2 | `fig02_a.svg` `fig02_a.png` | `06_tools/python/paper/fig02_a.py` | `07_results/x/results.csv`, `07_results/x/raw/*/frame_log.csv` | 신 | §4 |
+            | 4 | `fig04_c.{svg,png}` | `06_tools/python/paper/missing.py` | `07_results/x/raw/*/nothing.csv` | 신 | §5 |
+            | 5 | `fig05_d` | 06_tools/python/paper/fig02_a.py (재사용) | `08_learn/x.md` | — | §6 |
+            | 6 | — | — | — | — | — |
+            """))
+        reg = "10_paper/figures/README.md"
+        self.assertEqual(self.run_pass(), sorted([
+            ("D3", "10_paper/figures/fig03_b.svg", cs.ERROR),   # figure without a row
+            ("D3", f"{reg}:6", cs.ERROR),                       # fig04_c.svg does not exist
+            ("D3", f"{reg}:6", cs.ERROR),                       # fig04_c.png does not exist
+            ("D3", f"{reg}:6", cs.ERROR),                       # script does not exist
+            ("D3", f"{reg}:6", cs.ERROR),                       # source glob matches nothing
+            ("D3", f"{reg}:7", cs.WARN),                        # source outside 07_results/ and 09_diagrams/
+            ("D3", f"{reg}:8", cs.ERROR),                       # no figure file
+            ("D3", f"{reg}:8", cs.ERROR),                       # no script path
+            ("D3", f"{reg}:8", cs.ERROR),                       # no source path
+        ]))
+        checker = cs.Checker(cs.load_rules())
+        checker.check_figures()
+        whys = sorted(v.why for v in checker.out)
+        self.assertIn("'원본' 07_results/x/raw/*/nothing.csv: glob matches no file", whys)
+        self.assertIn("'생성 스크립트' 06_tools/python/paper/missing.py: path does not exist", whys)
+        self.assertIn("registry row names fig04_c.png, which does not exist in 10_paper/figures/", whys)
+
+    def test_d3_is_ordered_in_the_report(self) -> None:
+        self.assertLess(cs.ORDER.index("D2"), cs.ORDER.index("D3"))
+        self.assertLess(cs.ORDER.index("D3"), cs.ORDER.index("E1"))
+
+
 if __name__ == "__main__":
     unittest.main()

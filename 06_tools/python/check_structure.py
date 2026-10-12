@@ -23,6 +23,7 @@ Check IDs
   C7 path literals in source, asset macros  C8 forbidden CMake tokens  C9 bench shell paths
   C10 npu_guard BENCH_SCRIPTS      D1 STRUCTURE.md ↔ TOML           E1 unused exceptions
   D2 STRUCTURE.md §4 owner table ↔ CLAUDE.md owner table
+  D3 10_paper/figures/fig*.{svg,png} ↔ figure registry rows (10_paper/figures/README.md), script/source paths exist
 
 Public API (imported by the Write hook)
   load_rules() -> dict
@@ -813,6 +814,53 @@ class Checker:
                 self.add(Violation("D2", f"{sm}:{ln}", f"'{path}' owner '{owner}' differs from '{cowner}' in {OWNER_CANON_MD}:{cln}",
                                    f"make the owners match ({OWNER_CANON_MD} wins)"))
 
+    def check_figures(self) -> None:
+        """D3: every 10_paper/figures/fig*.{svg,png} has a registry row naming it; every row's files, generating
+        script and source paths exist (sources may be globs, which must match at least one file)."""
+        fig_dir = ROOT / FIG_DIR
+        figs = sorted(p.name for p in fig_dir.iterdir()
+                      if p.is_file() and FIG_FILE_RE.fullmatch(p.name)) if fig_dir.is_dir() else []
+        text = _read(FIG_REGISTRY)
+        rows = _figure_registry(text) if text else None
+        if rows is None:
+            if text and figs:
+                self.add(Violation("D3", FIG_REGISTRY, "figure registry table not found",
+                                   "table with columns " + " | ".join(FIG_COLS.values())))
+            for f in figs:
+                self.add(Violation("D3", f"{FIG_DIR}/{f}", "figure has no registry row (registry missing)",
+                                   f"write {FIG_REGISTRY} with a row naming {f}"))
+            return
+        named: set[str] = set()
+        for no, cells in rows:
+            where = f"{FIG_REGISTRY}:{no}"
+            files = [f for item in _cell_items(cells["file"]) for f in _figure_names(item)]
+            if not files:
+                self.add(Violation("D3", where, f"no figure file in the '{FIG_COLS['file']}' cell",
+                                   "`figNN_<slug>.svg` `figNN_<slug>.png`"))
+            for f in files:
+                named.add(f)
+                if not (fig_dir / f).is_file():
+                    self.add(Violation("D3", where, f"registry row names {f}, which does not exist in {FIG_DIR}/",
+                                       "render it (build_figures.py) or fix/remove the row"))
+            for col in ("script", "source"):
+                items = _cell_items(cells[col])
+                if not items:
+                    self.add(Violation("D3", where, f"no path in the '{FIG_COLS[col]}' cell", "repo-root relative path"))
+                for item in items:
+                    for path in _expand_braces(item):
+                        if not _path_exists(path):
+                            what = "glob matches no file" if any(c in path for c in "*?[") else "path does not exist"
+                            self.add(Violation("D3", where, f"'{FIG_COLS[col]}' {path}: {what}",
+                                               "repo-root relative path (or glob) that exists"))
+                        elif col == "source" and not path.startswith(FIG_SOURCE_ROOTS):
+                            self.add(Violation("D3", where, f"'{FIG_COLS[col]}' {path} is outside "
+                                               + " / ".join(FIG_SOURCE_ROOTS), "numbers come only from 07_results",
+                                               level=WARN))
+        for f in figs:
+            if f not in named:
+                self.add(Violation("D3", f"{FIG_DIR}/{f}", "figure has no registry row naming it",
+                                   f"add a row to {FIG_REGISTRY}"))
+
     # E ────────────────────────────────────────────────────────────────────────
     def check_exceptions(self) -> None:
         for idx, ex in enumerate(self.exc.items):
@@ -828,6 +876,7 @@ class Checker:
         self.check_code()
         self.check_docs()
         self.check_owner_tables()
+        self.check_figures()
         self.check_exceptions()
         return self.out
 
@@ -935,9 +984,74 @@ def _owner_table(text: str, heading_word: str) -> dict[str, tuple[int, str | Non
     return out
 
 
+# D3: paper figures (STRUCTURE.md §2.7) and their registry
+FIG_DIR = "10_paper/figures"
+FIG_REGISTRY = "10_paper/figures/README.md"
+FIG_FILE_RE = re.compile(r"fig[^/]*\.(?:svg|png)")
+FIG_SOURCE_ROOTS = ("07_results/", "09_diagrams/")   # numbers from 07_results; diagrams from 09_diagrams
+# Registry column headers (Korean, matched in 10_paper/figures/README.md): key -> header text
+FIG_COLS = {"file": "파일", "script": "생성 스크립트", "source": "원본"}
+
+
+def _figure_registry(text: str) -> list[tuple[int, dict[str, str]]] | None:
+    """(1-based line number, {file, script, source} cells) of the body rows of the first table whose header has the
+    FIG_COLS columns. None if there is no such table."""
+    lines = text.splitlines()
+    for i in range(len(lines) - 1):
+        head, sep = lines[i].strip(), lines[i + 1].strip()
+        if not (head.startswith("|") and sep.startswith("|")):
+            continue
+        sep_cells = [c.strip() for c in sep.strip("|").split("|")]
+        if not all(re.fullmatch(r":?-{2,}:?", c) for c in sep_cells if c):
+            continue
+        header = [c.strip() for c in head.strip("|").split("|")]
+        if not all(h in header for h in FIG_COLS.values()):
+            continue
+        idx = {k: header.index(h) for k, h in FIG_COLS.items()}
+        rows: list[tuple[int, dict[str, str]]] = []
+        for no in range(i + 3, len(lines) + 1):
+            s = lines[no - 1].strip()
+            if not s.startswith("|"):
+                break
+            cells = [c.strip() for c in s.strip("|").split("|")]
+            rows.append((no, {k: cells[j] if j < len(cells) else "" for k, j in idx.items()}))
+        return rows
+    return None
+
+
+_PATHLIKE = re.compile(r"[\w.*?\[\]{},-]*/[\w./*?\[\]{},-]*|[\w*?\[\]{},-]+\.\w+")
+
+
+def _cell_items(cell: str) -> list[str]:
+    """Path items of a registry cell: the backticked items, or, without backticks, the path-like words."""
+    items = re.findall(r"`([^`]+)`", cell)
+    if not items:
+        items = _PATHLIKE.findall(re.sub(r"\([^()]*\)", " ", cell))
+    return [t.strip().rstrip(",;") for t in items if t.strip().rstrip(",;")]
+
+
+def _figure_names(item: str) -> list[str]:
+    """Figure file names a '파일' item names: braces expanded, folders dropped, a bare stem means .svg and .png."""
+    out = []
+    for p in _expand_braces(item):
+        name = p.rstrip("/").rsplit("/", 1)[-1]
+        out += [name] if os.path.splitext(name)[1] else [f"{name}.svg", f"{name}.png"]
+    return out
+
+
+def _path_exists(path: str) -> bool:
+    """Repo-root relative file/folder exists, or a glob (*, ?, [...], **) matches at least one file."""
+    p = path[2:] if path.startswith("./") else path
+    if not p or p.startswith("/") or ".." in p.split("/"):
+        return False
+    if any(c in p for c in "*?["):
+        return any(m.is_file() for m in ROOT.glob(p))
+    return (ROOT / p).exists()
+
+
 # ─── CLI ──────────────────────────────────────────────────────────────────────
 ORDER = ["T1", "T2", "T3", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10",
-         "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "D1", "D2", "E1"]
+         "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "D1", "D2", "D3", "E1"]
 
 
 def _print(vs: list[Violation]) -> tuple[int, int]:
