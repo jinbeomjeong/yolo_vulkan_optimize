@@ -22,8 +22,8 @@
 | | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 — 본 파이프라인 5개 + `diag/` 진단 전용 2개 (`.comp`). `overlay_boxes.comp` 는 버퍼 변형까지 SPIR-V 2개로 빌드 |
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
 | | `04_data/` | 입력 영상(기본 `video_h265.mp4`, 혼잡 장면용 `mot20_{02,05}_h265.mp4`)과 테스트용 원시 텐서 픽스처 (git에 없음) |
-| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 10개(`test_postproc_live` 를 따로 세면 11), ctest 항목 160개 |
-| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 12개), `python/`(7개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
+| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 10개(`test_postproc_live` 를 따로 세면 11), ctest 항목 170개 |
+| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 12개), `python/`(9개 + 단위 테스트 `tests/` 94개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
 | | [`07_results/`](../07_results/) | 실험별 측정 원시 출력과 `summary.md` |
 | **문서** | [`08_learn/`](00_README.md) | 지금 읽고 있는 이 자습 교재 13장 |
 | | [`09_diagrams/`](../09_diagrams/) | yEd로 여는 파이프라인 다이어그램 2장 |
@@ -47,7 +47,7 @@
 01_src/
 ├── core/       헤더만. 공용 계약 타입·OS 글루 — 다른 모든 폴더가 여기에 의존 (include 루트는 여기서만 지정)
 ├── ref/        헤더만. CPU 기준 구현 — 수식의 단일 진실 원천 (셰이더는 이것의 번역본)
-├── toolkit/    헤더만. 도구·앱 전용 헬퍼(CLI·엄격한 숫자 파싱 `cli_parse.hpp`·RESULT_CSV 서식 `result_csv.hpp`·이미지 저장·통계·perf 구간 제어 `perf_window`) — 라이브러리는 include 하지 않는다
+├── toolkit/    헤더만. 도구·앱 전용 헬퍼(CLI·엄격한 숫자·크기 파싱 `cli_parse.hpp`·RESULT_CSV 서식 `result_csv.hpp`·`--frame-log` CSV 서식 `frame_log.hpp`·이미지 저장·통계·perf 구간 제어 `perf_window`) — 라이브러리는 include 하지 않는다
 ├── testkit/    헤더만. 테스트·프로브가 공유하는 검증 하네스(픽스처 파서, 오프스크린 타깃, 비트 일치 판정)
 ├── decode/     HW HEVC 디코더 (FFmpeg DRM_PRIME → DrmFrame)
 ├── hailo/      NPU (HailoRT)                    ┐ 이 둘은 서로
@@ -108,7 +108,7 @@ GPU 전처리를 테스트하는 `test_preproc`을 빌드할 때 Wayland 라이�
 
 > ⚠ **여기 적힌 함정이 실제 함정이다.** 예를 들어 "디코더는 약 13프레임 이상 붙잡으면
 > 에러 없이 조용히 멈춘다"는 문장 때문에 `slots + gpu_depth <= 10` 검사가
-> [`slot_exchange.cpp:30-53`](../01_src/pipeline/slot_exchange.cpp) 의 `validate_slot_budget()` 에 들어 있다(`slots + gpu_depth` 합 검사는 :47-52, HVS 평면 백엔드용 보유 검사는 :33-46, 호출은 `main.cpp:391-402`).
+> [`slot_exchange.cpp:30-53`](../01_src/pipeline/slot_exchange.cpp) 의 `validate_slot_budget()` 에 들어 있다(`slots + gpu_depth` 합 검사는 :47-52, HVS 평면 백엔드용 보유 검사는 :33-46, 호출은 `main.cpp:395-406`).
 
 ### 3단계 — 수식의 원문을 본다 (2시간)
 
@@ -231,7 +231,7 @@ cmake -S . -B build -G Ninja && cmake --build build
 
 | 변수 | 누가 읽나 | 뜻 |
 |---|---|---|
-| `YVO_DEC_THREADS` | `yvo_pipeline` ([`main.cpp:343`](../01_src/pipeline/main.cpp)) | FFmpeg 디코더 프레임 스레드 수. 없으면 **1**(2026-09-29부터 기본), `0`이면 FFmpeg 자동(코어 수) |
+| `YVO_DEC_THREADS` | `yvo_pipeline` ([`main.cpp:347`](../01_src/pipeline/main.cpp)) | FFmpeg 디코더 프레임 스레드 수. 없으면 **1**(2026-09-29부터 기본), `0`이면 FFmpeg 자동(코어 수) |
 | `YVO_PERF_CTL` / `YVO_PERF_ACK` | `yvo_pipeline`, `yvo_gst_pipeline` ([`tool_util.hpp`](../01_src/toolkit/tool_util.hpp) `perf_window`) | perf 제어 FIFO. 도구가 보고하는 CPU 구간에서만 perf를 켠다([08장](08_method.md) §8.9) |
 | `YVO_VK_VALIDATION` | 모든 Vulkan 사용자 ([`vulkan_context.cpp`](../01_src/vulkan/vulkan_context.cpp)) | `0`이 아닌 값이면 검증 레이어를 켠다 |
 | `YVO_VK_DEVICE` | 같음 | 물리 장치 이름 힌트(CPU 장치는 늘 제외) |
@@ -255,7 +255,7 @@ ctest --test-dir build
 | `test_detections` | 필요 | 네 경로(CPU/GPU-ptr/GPU-dmabuf/NHCW) 검출 일치 |
 | `test_overlay` | 불필요 | 오버레이 GPU vs CPU 기준 **오차 0**. `OverlayPlane.*`·`Clear/OverlayPlaneMode.*`(박스 평면 dma-buf 비트 일치·잔상 0), `DrmState.*`(debugfs 파서), `KmsScanout.*`(card1 탐색·AddFB2 — DRM master 를 가져가지 않고, 아무도 master 가 아니면 skip) |
 | `test_display_convert` | 불필요 | 표시 변환(1:1)이 CPU 기준과 **오차 0**. 표시 경로의 BT.709(`bt709.glsl` 공유 include)를 지킨다 |
-| `test_pipeline_logic` | 불필요 | (하드웨어 없음) `SlotExchange` 반납 조건·중복 신호·다중 스레드, `validate_slot_budget`(합성/평면 보유 상한), RESULT_CSV·RESULT_CSV4 서식 바이트 일치, 엄격한 숫자 옵션 파싱, 입력 페이싱 순수 로직(`LeakyQueue`·`ArrivalSchedule`·`max_gap`) |
+| `test_pipeline_logic` | 불필요 | (하드웨어 없음) `SlotExchange` 반납 조건·중복 신호·다중 스레드, `validate_slot_budget`(합성/평면 보유 상한), RESULT_CSV·RESULT_CSV4 서식 바이트 일치, 엄격한 숫자·크기 옵션 파싱(`parse_stof`·`parse_size`), 입력 페이싱 순수 로직(`LeakyQueue`·`ArrivalSchedule`·`max_gap`), `--frame-log` CSV 서식(`FrameLog.*`) |
 | `test_display_options` | 불필요 | (하드웨어 없음) `--display-backend/-color-range/-sync/-pace`, `--present-mode` 문자열 → enum 파서 |
 | `test_isp_preproc` | 불필요(ISP 필요) | 패딩은 오차 0, 내용은 MAE ≤ 3.0 |
 | `test_gst_adapter` | 불필요 | (선택, GStreamer) 어댑터·`yvosandletterbox` 출력이 FFmpeg 경로 NHCW와 **바이트 일치**, 텐서 메타·슬롯 fd 고정, SAND 외 caps 거부, 슬롯 수명 오용 회귀(`GstElementSlots.*`) |
@@ -291,7 +291,7 @@ C++ 테스트의 판정 규칙([`01_src/ref/detection_match.hpp`](../01_src/ref/
 | `backpressure_bench.sh` | 백프레셔 결함 전후 비교 |
 | `nms_bench.sh` | **GPU NMS** 회귀 — `--nms cpu` 대 `gpu` 성능과 `MODE=verify` 검출 대조 |
 | `display_planes_bench.sh` | **HVS 평면 스캔아웃** 비교 — Vulkan 합성 대 wayland-planes 대 kms, 디코드→화면 지연과 V3D 엔진별 비용 |
-| `input_pace_bench.sh` | **입력 페이싱** — `--input-pace source` × `--input-queue` 1~3 과 asap 대조, 도착 시각부터 잰 e2e·버림 |
+| `input_pace_bench.sh` | **입력 페이싱** — `--input-pace source` × `--input-queue` 1~3 과 asap 대조, 도착 시각부터 잰 e2e·버림. `FRAME_LOG=1` 이면 프레임별 시각 CSV 도 남긴다 |
 | `isp_bench.sh` / `isp_pipeline_bench.sh` | ISP 경로 |
 
 공통 규약(설정당 3회 중앙값, 냉각 게이트, 환경 스냅샷)은 [08_method.md](08_method.md)에서 다룬다.
@@ -309,7 +309,7 @@ Ctrl+C(INT)나 TERM을 받으면 락을 지우고 바로 끝난다(종료 코드
 
 | 폴더 | 내용 |
 |---|---|
-| [`06_tools/python/`](../06_tools/python/) | `compare_detections.py`(검출 비교), `gen_glyph_font_8x16.py`(폰트 헤더 생성 — 빌드에 관여하지 않는 재현 기록), `check_links.py`(문서 링크·`file:line`·`--stale` 옛 경로), `check_structure.py`(폴더 배치 규칙), `relocate.py`(매핑표 기반 이동) |
+| [`06_tools/python/`](../06_tools/python/) | `compare_detections.py`(검출 비교), `gen_glyph_font_8x16.py`(폰트 헤더 생성 — 빌드에 관여하지 않는 재현 기록), `check_links.py`(문서 링크·`file:line`·`--stale` 옛 경로), `check_structure.py`(폴더 배치 규칙), `relocate.py`(매핑표 기반 이동), `hef_bytes.py`·`hef_byte_model.py`(HEF 바이트 회계), `frame_log_stats.py`(`--frame-log` 분석), `fw_actions_breakdown.py`(NPU 컨텍스트별 시간 분해), `tests/`(stdlib 단위 테스트) |
 | [`06_tools/probes/`](../06_tools/probes/) | 일회성 프로브 소스. 빌드 대상이 아니며, 어떤 실험에서 쓴 것인지는 해당 `summary.md`에 적혀 있다. `hvs_probe/` 는 외부 저장소 헤더 기준이라 이 저장소에서 그대로는 빌드되지 않는다 |
 
 ---
@@ -324,7 +324,7 @@ build/bin/yvo_pipeline --video ... --hef ...
 인자 없이 돌리면 `--mode dmabuf --layout nhcw --postproc gpu --display off` 로 간다. 2026-10-08 전에는 가장 느린 `--mode ptr --layout nhwc --postproc host` 였다.
 과거 측정과 비교할 때는 옛 플래그를 명시한다(벤치 스크립트는 명시한다). `--mode ptr` 만 주면 나머지는 호환 값(nhwc·host)으로 내려간다(`parse()` 의 `note:`).
 
-> **예외 하나:** FFmpeg 디코더 프레임 스레드 수는 2026-09-29에 자동(5) → **1**로 바꿨다(`main.cpp:194`, 환경변수 읽기 `:343`).
+> **예외 하나:** FFmpeg 디코더 프레임 스레드 수는 2026-09-29에 자동(5) → **1**로 바꿨다(`main.cpp:195`, 환경변수 읽기 `:347`).
 > 모든 모드에서 FPS·검출이 같고 CPU·지연이 줄었기 때문이다([`dec_threads`](../07_results/dec_threads/summary.md)).
 > 그 이전 측정과 CPU·e2e를 맞대 비교하려면 `YVO_DEC_THREADS=0`으로 돌린다.
 

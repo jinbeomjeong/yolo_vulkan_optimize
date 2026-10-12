@@ -222,6 +222,7 @@ loginctl activate <데스크톱 세션 id>    # (또는 sudo chvt 7) 데스크�
 | `--gpu-depth N` | 3 | GPU 동시 프레임 상한. **지연에 영향 없음**(실측 1 vs 3 동일) |
 | `--input-pace asap\|source` | `asap` | 입력 도착 방식(**표시 off 전용**). `asap` = 슬롯이 비는 대로 디코드(지금까지의 방식). `source` = 프레임이 `t0 + k/fps` 에 도착한다(카메라 흉내). 요약에 도착 시각부터 잰 `e2e_arr`·버림·`RESULT_CSV4` 가 붙는다 |
 | `--input-queue N` | 1 | `--input-pace source` 전용 leaky 입력 큐 크기 1~3. 넘치면 가장 오래된 프레임을 버린다(GStreamer `queue leaky=downstream`). **1 이 맞다** — 2~3 은 효과 없거나 지연만 는다([`input_pacing/`](07_results/input_pacing/summary.md)). 보유 예산 `gpu_depth + N + 1 ≤ 10` |
+| `--frame-log PATH` | 끔 | 프레임마다 도착·디코드 끝·제출·NPU 완료·후처리 완료·완료 시각(실행 시작 기준 ms)을 CSV 로 남긴다. 실행 끝에 한 번만 쓰고(루프 안 파일 I/O 없음), 경로가 잘못되면 장치를 열기 전에 종료 코드 2. `dropped` 1 = 입력 큐에서 버림, 2 = 중단 시 큐에 남음. 분석은 `06_tools/python/frame_log_stats.py` |
 | `--display off\|on` | `off` | HDMI 실시간 표시 |
 | `--display-backend auto\|wayland\|offscreen\|wayland-planes\|kms` | `auto` | `auto` = Wayland 창이 열리면 `wayland`, 아니면 `offscreen`. `wayland` = Vulkan 합성 + 스왑체인(strict — 실패하면 종료), `offscreen` = 화면 없이 변환만. `wayland-planes`/`kms` = HVS 평면 스캔아웃(§3.5, strict) |
 | `--display-color-range auto\|full\|limited` | `auto` | 평면 백엔드가 요청할 COLOR_RANGE. `auto` = wayland-planes 는 full(labwc 뒤집힘 우회), kms 는 limited |
@@ -270,7 +271,7 @@ median 을 써라(V3D 가 커맨드 버퍼를 합치면서 한쪽 구간이 0에
 ## 6. 검증
 
 ```bash
-ctest --test-dir build        # 160/160 통과해야 한다
+ctest --test-dir build        # 170/170 통과해야 한다
 ```
 
 | 테스트 | NPU | 무엇을 보는가 |
@@ -282,7 +283,7 @@ ctest --test-dir build        # 160/160 통과해야 한다
 | `test_preproc` | 불필요 | GPU 전처리가 CPU 기준과 **비트 일치**(max 오차 0). `SandRefVsFfmpeg.*`(GPU 불필요): 기준 de-SAND(`ref/sand.hpp`)가 rpi-ffmpeg `av_hwframe_transfer_data`(NV12)와 **바이트 일치**(프레임 0/100/500/900/1815, 보이는 1920×1080) |
 | `test_overlay` | 불필요 | 오버레이 셰이더 vs CPU 기준 비트 일치. 박스 평면 dma-buf(`OverlayPlane.*`, 잔상 0), debugfs 파서(`DrmState.*`), KMS 탐색·AddFB2(`KmsScanout.*` — card1 사용, master 는 가져가지 않는다) |
 | `test_display_convert` | 불필요 | 표시 변환 셰이더(1:1) vs CPU 기준 **비트 일치**. 표시 경로 BT.709(`02_shaders/bt709.glsl` 공유 include)의 게이트 |
-| `test_pipeline_logic` | 불필요 | (하드웨어 없음) `SlotExchange` 슬롯 반납·중복 신호·다중 스레드, `validate_slot_budget` 보유 상한, RESULT_CSV·RESULT_CSV4 서식 바이트 일치, 엄격한 숫자 옵션 파싱, 입력 페이싱 순수 로직(`LeakyQueue`·`ArrivalSchedule`) |
+| `test_pipeline_logic` | 불필요 | (하드웨어 없음) `SlotExchange` 슬롯 반납·중복 신호·다중 스레드, `validate_slot_budget` 보유 상한, RESULT_CSV·RESULT_CSV4·`--frame-log` 서식 바이트 일치, 엄격한 숫자·크기 옵션 파싱, 입력 페이싱 순수 로직(`LeakyQueue`·`ArrivalSchedule`) |
 | `test_display_options` | 불필요 | (하드웨어 없음) 표시 옵션 문자열 → enum 파서 |
 | `test_isp_preproc` | 불필요(ISP 필요) | ISP 전처리 vs CPU 기준. **비트 일치가 아니다**(리샘플 커널이 다르다) — 패딩만 오차 0, 내용은 MAE ≤ 3.0 |
 | `test_gst_adapter` | 불필요 | (선택, GStreamer 연구 경로) 어댑터 `DrmFrame`·`yvosandletterbox` 출력이 FFmpeg 경로 NHCW와 **바이트 일치**(프레임 0/100/1815), 텐서 메타·슬롯 fd 고정, sink caps 는 SAND DMA_DRM 만, 슬롯 메모리를 다른 버퍼로 옮겨도 덮어쓰지 않고 메모리 교체로 슬롯이 새지 않음(`GstElementSlots.*`) |
@@ -375,7 +376,7 @@ grim -o HDMI-A-1 shot.png
 
 - **[`08_learn/`](08_learn/00_README.md)** — 배경지식이 없다면 **여기부터**. NPU·Vulkan·dma-buf·YOLO 텐서를
   맨 밑바닥부터 설명하고, 각 개념이 이 프로젝트의 어느 결정으로 이어졌는지 연결한 자습 교재 13장
-- **[`07_results/README.md`](07_results/README.md)** — 24개 실험의 색인과 결론. **수치를 인용하기 전에 여기부터**
+- **[`07_results/README.md`](07_results/README.md)** — 25개 실험의 색인과 결론. **수치를 인용하기 전에 여기부터**
 - [`07_results/op_point/summary.md`](07_results/op_point/summary.md) §8 — 운용점 확정 근거와 최종 결론
 - [`07_results/display_e2e/summary.md`](07_results/display_e2e/summary.md) — 표시 통합 측정
 - [`07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md`](07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md) §4.3 — 왜 이 설계인가(메모리 제약)

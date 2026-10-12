@@ -20,13 +20,14 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 | `nms_bench.sh` | GPU NMS 정식 A/B(실험 A, 표시 off) — `MODE=perf`: `b2s4`·`b8s16` × `--nms cpu|gpu` 900f×3 인터리브, `results_raw.csv` 77열(스크립트 10 + RESULT_CSV 22 + RESULT_CSV2 33 + stdout·V3D 12: gpu nms median/max, fallback 원인, cpu NMS µs, slot hold, e2e median, V3D CSD 잡·ms/frame). `MODE=verify`: b2s4 전체 영상 `--nms verify`·cpu·gpu 덤프 대조(`[A2] PASS/FAIL`). ⚠ verify 는 CPU·GPU 억제끼리만 비교해(같은 `yolo_decode.comp` 후보를 받는다) **디코딩 쪽 회귀를 못 잡는다** — `BASELINE=<보관된 verify 폴더>` 로 세 `detections.jsonl` 을 기준선과 바이트 대조한다(영상·HEF·실효 프레임이 다르면 NPU 를 쓰기 전에 FAIL). `VERDICT_ONLY=1 OUT_DIR=<기존 verify 폴더>` 는 NPU 없이 판정만 다시 한다. IoU 매칭(`compare_detections.py`)은 점수만 바뀐 것을 못 보므로 판정은 바이트 비교다. 모든 플래그 명시, `DRYRUN=1`·`CHECK_ONLY=1` | `07_results/gpu_nms_e2e/` |
 | `decode_bench.sh` | 디코드 경로 비교 | `07_results/decode_benchmark/` |
 | `backpressure_bench.sh` | 백프레셔 결함 전후 비교 | `07_results/raw_runner_backpressure/` |
-| `input_pace_bench.sh` | 입력 페이싱 + leaky 입력 큐 — b1s1·b2s3·b2s4 × {asap, `--input-pace source --input-queue` 1·2·3}, 도착 900프레임 × 3, 표시 off. `results_raw.csv` 47열(RESULT_CSV 22 + RESULT_CSV4 21 + 스크립트 4, asap 행의 CSV4 는 nan). 페이싱 행의 FPS·`cpu_ms_per_frame` 은 asap 과 비교 금지. `DRYRUN=1`·`CHECK_ONLY=1` | `07_results/input_pacing/` |
+| `input_pace_bench.sh` | 입력 페이싱 + leaky 입력 큐 — b1s1·b2s3·b2s4 × {asap, `--input-pace source --input-queue` 1·2·3}, 도착 900프레임 × 3, 표시 off. `results_raw.csv` 47열(RESULT_CSV 22 + RESULT_CSV4 21 + 스크립트 4, asap 행의 CSV4 는 nan). 페이싱 행의 FPS·`cpu_ms_per_frame` 은 asap 과 비교 금지. `DRYRUN=1`·`CHECK_ONLY=1`. `FRAME_LOG=1` 이면 실행마다 `raw/<설정>_run<N>/frame_log.csv`(`--frame-log`, 분석은 `frame_log_stats.py`) | `07_results/input_pacing/` |
 | `isp_bench.sh` | ISP 전처리 단독 | `07_results/isp_resize/` |
 | `isp_pipeline_bench.sh` | ISP 포함 전체 파이프라인 | `07_results/isp_resize/runs/pipeline/` |
 
 공통 환경변수: `RUNS`(기본 3), `FRAMES`, `ONLY`(설정 id grep), `APPEND=1`, `BIN`, `OUT_DIR`,
 `COOL_C`/`HOT_C`/`COOL_MAX_S`, `BUILD_DIR`(기본 `build`)·`BIN_DIR`(기본 `$BUILD_DIR/bin`)·`PY_HAILO`
-(셋 다 [`lib/common.sh`](bench/lib/common.sh) 한 곳에서 정의), `CHECK_ONLY=1`(바이너리 존재만 확인하고 락·냉각 전에 종료). 측정 규약은 [`.claude/skills/measure`](../.claude/skills/measure/SKILL.md).
+(셋 다 [`lib/common.sh`](bench/lib/common.sh) 한 곳에서 정의), `CHECK_ONLY=1`(바이너리 존재만 확인하고 락·냉각 전에 종료).
+`lib/common.sh` 에는 벤치들이 각자 복사해 쓰던 헬퍼도 모여 있다(2026-10-12) — 냉각 `cool_before_run`, 환경 `env_git_head`·`env_bin`·`gpu_stats_snap`, CSV 행 `nan_list`·`arg_val`·`result_csv12`(옮길 때 CSV 바이트 불변을 보관 raw 로 대조했다). 측정 규약은 [`.claude/skills/measure`](../.claude/skills/measure/SKILL.md).
 
 `OUT_DIR` 이 이미 있고 비어 있지 않으면 **`FORCE=1` 없이는 에러로 멈춘다**(`guard_out_dir`, 보관 결과 보호 — 기본 `OUT_DIR` 은 모두 보관본이 있으니 새 측정은 새 `OUT_DIR` 을 주거나 `APPEND=1` 이라도 `FORCE=1` 을 함께 준다).
 출력 레이아웃은 [`STRUCTURE.md`](../STRUCTURE.md) §3: 실행 1회 = `raw/<설정>_run<N>/`(`stdout.log` 전문 | `run.log` 발췌 | `hailort.log`), 온도 프로브의 세션 `hailort.log` 는 `raw/_session/`, 1회 덤프는 `samples/`, 회차는 `runs/<회차>/`.
@@ -45,13 +46,16 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 
 | 파일 | 하는 일 | 실행 환경 |
 |---|---|---|
-| `check_links.py` | 저장소 모든 `.md` 의 마크다운 링크와 `파일:행` 범위가 실재하는지 검사. 깨진 링크가 있으면 종료 코드 1. `--stale STRUCTURE.md` 는 옮겨진 옛 경로가 남았는지 본다 — 종료 코드는 **실제로 남은 옛 경로만** 반영하고, `guessed`·`manual check` 줄은 사람이 읽고 판단하는 경고다(오탐이 흔하다). `--lines` 는 살아 있는 문서(`07_results` 제외 — 결과 문서의 인용은 측정 당시 코드를 가리키는 역사 기록이다)의 `파일:행` 인용이 같은 줄의 백틱 식별자를 ±5줄 안에서 가리키는지 본다. **경고 전용**(종료 코드 늘 0). 같은 줄에 식별자가 있는 인용만 내용까지 검증되고, 1~4줄의 작은 밀림은 ±5 창 안이라 놓친다 | 시스템 python3 |
+| `check_links.py` | 저장소 모든 `.md` 의 마크다운 링크와 `파일:행` 범위가 실재하는지 검사. 깨진 링크가 있으면 종료 코드 1. `--stale STRUCTURE.md` 는 옮겨진 옛 경로가 남았는지 본다 — 종료 코드는 **실제로 남은 옛 경로만** 반영하고, `guessed`·`manual check` 줄은 사람이 읽고 판단하는 경고다(오탐이 흔하다). `--lines` 는 살아 있는 문서(`07_results` 제외 — 결과 문서의 인용은 측정 당시 코드를 가리키는 역사 기록이다)의 `파일:행` 인용이 같은 줄의 백틱 식별자를 ±5줄 안에서 가리키는지 본다. **경고 전용**(종료 코드 늘 0). 같은 줄에 식별자가 있는 인용만 내용까지 검증되고, 1~4줄의 작은 밀림은 ±5 창 안이라 놓친다. `.graphml`(`09_diagrams/`)의 설명문·노드·엣지 라벨 인용도 문장 단위로 보고 별도 요약 줄 `--- graphml: …` 로 낸다(위치는 `<파일>:<XML 줄>`) | 시스템 python3 |
 | `check_structure.py` | 폴더 배치 규칙 검사(최상위·코드 계층·include DAG·07_results 레이아웃). 규칙표는 [`structure_rules.toml`](structure_rules.toml), 정본 문서는 [`STRUCTURE.md`](../STRUCTURE.md). 위반이 있으면 종료 코드 1. Write 훅 `placement_guard` 가 이 파일의 `classify_new_path()` 를 쓴다 | 시스템 python3 |
 | `relocate.py` | `STRUCTURE.md` §6 매핑표로 `git mv`(`--apply-moves`)와 참조 재작성(`--apply-refs`)을 한다. 먼저 `--dry-run` | 시스템 python3 |
 | `compare_detections.py` | 두 `detections.jsonl` 비교(IoU 매칭·좌표 오차). 판정 규칙이 [`01_src/ref/detection_match.hpp`](../01_src/ref/detection_match.hpp) 와 **의도적으로 동일**하다 | conda `hailo-yolo` |
 | `gen_glyph_font_8x16.py` | `01_src/ref/glyph_font_8x16.hpp` 생성. **빌드에 관여하지 않는다** — 산출물은 커밋된 헤더이고 이 파일은 그 상수를 어떻게 얻었는지의 재현 기록이다 | 시스템 python3 |
 | `hef_bytes.py` | HEF protobuf(hef.proto v4.24.0)를 직접 디코드해 컨텍스트별 config(CCW) 바이트와 edge layer 프레임당 전송 크기를 나열한다. 출력은 표준 출력. [`candidate_reduction_survey`](../07_results/candidate_reduction_survey/summary.md) 의 `evidence/hef_proto_bytes.txt` 생성기 | 시스템 python3 |
 | `hef_byte_model.py` | HEF 바이트 회계(`hef_bytes` 사용) + fw-actions 컨텍스트 시간·T(B)에 PCIe 전송 모델 적합. 입력 `<evidence 폴더(fwactions_probe_b{1,8}.json)> <hef>`, 출력은 표준 출력 또는 `--out` — **입력 폴더 안은 거부한다**(보관된 결과를 덮어쓰지 않게). `evidence/pcie_byte_model_fit.txt` §1~9 생성기. §5 T(B)·§8 Gen2 측정값과 제목의 HEF 이름이 하드코딩돼 있어 **다른 HEF에 쓰면 그 절은 맞지 않는다** | 시스템 python3 |
+| `frame_log_stats.py` | `yvo_pipeline --frame-log` CSV(프레임별 도착·디코드 끝·제출·NPU 완료·후처리 완료·완료 시각) 분석 — 지연(도착 기준·디코드 기준), 구간 분해, 완료 간격 분포·군집, NPU 완료 시각으로 추정한 배치 구성과 짝 위치별 지연, 상위 지연 프레임(시작·끝 표시). 여러 회차를 파일별·합산으로, `--top`·`--startup`·`--csv`·`--json`. 사용례 [`input_pacing/runs/frame_log`](../07_results/input_pacing/runs/frame_log/summary.md) | 시스템 python3 |
+| `fw_actions_breakdown.py` | `hailortcli run2 … measure-fw-actions` JSON 을 컨텍스트별 구간·액션 종류별 시간·전환 간격으로 나누고 배치 크기에 대해 T(B) = a + b·B 를 적합(기준 24.8 + 16.2·B). 액션 이름 해석은 추정. JSON 의 `fps` 는 중간 표본이라 주기는 stdout fps 로. 사용례 [`hef_context_profile`](../07_results/hef_context_profile/summary.md) | 시스템 python3 |
+| `tests/` | 위 도구와 `check_links`·`check_structure`·`compare_detections` 의 stdlib 단위 테스트 94개 — `python3 -m unittest discover -s 06_tools/python/tests`(1초 미만, 하드웨어 불필요) | 시스템 python3 |
 
 ## `probes/` — 일회성 프로브 소스
 

@@ -151,7 +151,7 @@ python3 06_tools/python/check_links.py
 - **"지금 뭘 쓰면 되나"** → [`op_point/summary.md`](op_point/summary.md) §8
 - **"왜 이 설계인가"** → `pipeline_ffmpeg_vulkan_hailo/REPORT.md` §4.3 (메모리 제약) → `nms_host_cost/` (후처리 비용)
 - **"표시가 어떻게 동작하나"** → `display_vulkan_hdmi/` (프로브) → `display_e2e/` (통합) → `display_vulkan_hdmi/notes/` (HVS 평면 스캔아웃, 비정식) → `display_planes_e2e/` (평면 표시 정식 측정)
-- **"정확도를 어떻게 보장하나"** → `ctest` 160개. 특히 `test_postproc`(`PostprocFixture` 6 — heap 입력 경로 포함 + `EfficientNms` 7 + live 1), `test_display_convert`,
+- **"정확도를 어떻게 보장하나"** → `ctest` 170개. 특히 `test_postproc`(`PostprocFixture` 6 — heap 입력 경로 포함 + `EfficientNms` 7 + live 1), `test_display_convert`,
   `test_detections`, `test_preproc`, `test_overlay`. 판정 규칙은 `01_src/ref/detection_match.hpp` 하나로 공용화돼 있고
   `06_tools/python/compare_detections.py` 가 같은 규칙을 구현한다
 
