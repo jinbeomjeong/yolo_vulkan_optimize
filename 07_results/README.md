@@ -46,13 +46,14 @@ build/bin/yvo_pipeline \
 드롭 0, 검출 3369 다([`dec_threads/`](dec_threads/summary.md)). 위 101.20 은 **중앙값**이다 — 섞지 않는다. `asap` 은 다시 재지 않았다.
 
 운용점은 용도에 따라 고른다 — 최대 처리량은 `b8/s16`(51.5 FPS, 지연 325 ms — 자동 5스레드 조건, 1스레드 기본값에서는 318.6 ms,
-[`dec_threads/`](dec_threads/summary.md)), **최소 지연(O2)은 `--batch 1 --slots 1 --input-pace source --input-queue 1`(표시 off 전용)** 이다.
+[`dec_threads/`](dec_threads/summary.md)), **최소 지연(O2)은 `--batch 1 --slots 1 --input-pace source --input-queue 1`** 이다(표시 off 기준값, 화면까지는 Vulkan 합성 표시로 도착 → 화면 평균 73.1 ms).
 프레임이 30 fps 시각에 도착하게 하고 넘치는 프레임은 가장 오래된 것부터 버린다. **도착 기준 평균 58.3 · p90 72.7 · max 75.3 ms**,
 처리 24.41 FPS 라 **입력의 18.6% 를 버린다**(검출은 처리한 프레임만 — 900 도착에 2750) ([`input_pacing/`](input_pacing/summary.md), 현재 기본값 조건).
 - 결정: 최소 지연 운용점(O2) = `b1/s1 + --input-pace source --input-queue 1` (사용자 결정, 2026-10-12).
   옛 O2 `b1/s1`(페이싱 없음, 디코드 끝 기준 81.6 ms — 자동 5스레드·960 MHz, 지금 기본값 79.19 ms)는 그중 약 42 ms 가 파일을 앞서 읽어 생긴 슬롯 대기였다
   ([`latency_b1s1_20261012`](op_point/runs/latency_b1s1_20261012/summary.md)). `op_point/summary.md` §5.5·§8 의 O2 표기는 그 시점 기록이다.
-- 지연의 기점이 셋이다 — **도착**(`e2e_arr`, 페이싱), **디코드 끝**(e2e, 페이싱 없음), **슬롯 획득**(glass-to-glass, 표시). 섞어 인용하지 않는다.
+- 결정: 표시 on 의 최소 지연 운용점 = O2 + Vulkan 합성 표시(`--display on --display-fullscreen --display-sync matched`) — 도착 → 화면 평균 73.1 · p90 82.6 ms, 버림 22.2% (사용자 결정, 2026-10-12, [`display_on`](input_pacing/runs/display_on/summary.md)).
+- 지연의 기점을 섞지 않는다 — **도착**(`e2e_arr`, 페이싱), **도착 → 화면**(`a2p`, 페이싱 + 표시), **디코드 끝**(e2e, 페이싱 없음), **슬롯 획득**(glass-to-glass, 표시). 섞어 인용하지 않는다.
 
 ---
 
@@ -151,7 +152,7 @@ python3 06_tools/python/check_links.py
 - **"지금 뭘 쓰면 되나"** → [`op_point/summary.md`](op_point/summary.md) §8
 - **"왜 이 설계인가"** → `pipeline_ffmpeg_vulkan_hailo/REPORT.md` §4.3 (메모리 제약) → `nms_host_cost/` (후처리 비용)
 - **"표시가 어떻게 동작하나"** → `display_vulkan_hdmi/` (프로브) → `display_e2e/` (통합) → `display_vulkan_hdmi/notes/` (HVS 평면 스캔아웃, 비정식) → `display_planes_e2e/` (평면 표시 정식 측정)
-- **"정확도를 어떻게 보장하나"** → `ctest` 170개. 특히 `test_postproc`(`PostprocFixture` 6 — heap 입력 경로 포함 + `EfficientNms` 7 + live 1), `test_display_convert`,
+- **"정확도를 어떻게 보장하나"** → `ctest` 177개. 특히 `test_postproc`(`PostprocFixture` 6 — heap 입력 경로 포함 + `EfficientNms` 7 + live 1), `test_display_convert`,
   `test_detections`, `test_preproc`, `test_overlay`. 판정 규칙은 `01_src/ref/detection_match.hpp` 하나로 공용화돼 있고
   `06_tools/python/compare_detections.py` 가 같은 규칙을 구현한다
 
@@ -200,6 +201,6 @@ python3 06_tools/python/check_links.py
 | 표시 on 앱 내부 e2e p90 +1.9 ms | 디코더 1스레드에서 source pace 의 p90 만 3회 모두 높다(glass 평균은 같음). 원인 미확인([`dec_threads/`](dec_threads/summary.md) 결론 3) |
 | 1스레드 디코드 처리량 상한 | 약 266 FPS 는 코드 주석(`ffmpeg_drm_decoder.cpp:180`) 기준이고 직접 재지 않았다. 다중 스트림·NPU 병목이 없는 용도에서는 자동이 나을 수 있다 |
 | HEF 컨텍스트 조사 2단계 | 처리량을 실제로 움직일 지렛대는 config 20.5 MB 재적재와 컨텍스트 사이 텐서의 호스트 왕복(13.8 MB/프레임)이다([`candidate_reduction_survey/`](candidate_reduction_survey/summary.md) §5-3). 둘 다 "컨텍스트 수와 분할" 문제라 **컨텍스트가 적은 다른 분할의 HEF** 가 효과가 크지만 모델이 바뀐다 — **모델·HEF 교체는 사용자 결정**(재컴파일 DFC 는 x86 전용). 분석 도구는 저장소에 있다(`06_tools/python/hef_bytes.py`·`hef_byte_model.py`, 2026-10-11 회수) |
-| 최소 지연 운용점(O2)의 표시 경로 | O2(`b1/s1 + --input-pace source --input-queue 1`)는 **표시 off 전용**이다 — `--display on` 과 `--input-pace source` 를 함께 쓰면 종료 코드 2(표시 쪽 `pace_deadline` 이 이중으로 페이싱하고 평면 백엔드의 늦은 프레임 통계가 버림을 오판한다). 그래서 O2 의 glass-to-glass 는 **미측정**이다. 실제 카메라(CSI)의 촬영 시각·ISP 지연도 포함되지 않았다(페이싱은 파일 입력의 모사) — [`input_pacing/`](input_pacing/summary.md) §4 |
-| 페이싱 b2 의 `e2e_arr` 꼬리 | b2/s3·b2/s4 페이싱의 도착 기준 max 136~142 ms 가 p90 104 ms 보다 훨씬 크다. 시작 직후 프레임인지 드문 꼬리인지 프레임별 분포를 보지 않았다(프레임별 시각을 남기는 출력이 없다) — [`input_pacing/`](input_pacing/summary.md) §4 |
+| 최소 지연 운용점(O2)의 표시 경로 | **일부 닫힘(2026-10-12)** — 페이싱 + 표시 on 을 구현·측정했다([`display_on`](input_pacing/runs/display_on/summary.md)): O2 Vulkan 합성 도착 → 화면 73.1 ms. **남은 것**: HVS 평면 b1/s1 교착(기존), 평면 b1/s2 의 vblank 3개 잠김, kms·표시 on 큐 ≥ 2 미측정, 실제 카메라. 아래는 측정 전 기록 — O2(`b1/s1 + --input-pace source --input-queue 1`)는 **표시 off 전용**이었다 — `--display on` 과 `--input-pace source` 를 함께 쓰면 종료 코드 2(표시 쪽 `pace_deadline` 이 이중으로 페이싱하고 평면 백엔드의 늦은 프레임 통계가 버림을 오판한다). 그래서 O2 의 glass-to-glass 는 **미측정**이다. 실제 카메라(CSI)의 촬영 시각·ISP 지연도 포함되지 않았다(페이싱은 파일 입력의 모사) — [`input_pacing/`](input_pacing/summary.md) §4 |
+| 페이싱 b2 의 `e2e_arr` 꼬리 | **닫혔다(2026-10-12)** — 프레임별 로그([`frame_log`](input_pacing/runs/frame_log/summary.md))로 보니 최댓값은 실행 끝에 남은 프레임을 비우는 과정의 관찰 지연이었고, 정상 상태 최대는 약 107 ms(짝의 첫째가 33 ms 기다림). 아래는 측정 전 기록 — b2/s3·b2/s4 페이싱의 도착 기준 max 136~142 ms 가 p90 104 ms 보다 훨씬 크다. 시작 직후 프레임인지 드문 꼬리인지 프레임별 분포를 보지 않았다(프레임별 시각을 남기는 출력이 없다) — [`input_pacing/`](input_pacing/summary.md) §4 |
 | 최소 지연 운용점의 열 조건 | O2 측정은 냉각 게이트 사이 30 s 실행이다. b1 은 처리량이 NPU 클럭에 비례하므로 칩이 데워져 클럭이 내려가면(약 104 °C 부터, [`thermal_soak/`](thermal_soak/summary.md)) 버림률이 18.6% 보다 늘 수 있다. 연속 운용은 재지 않았다 |

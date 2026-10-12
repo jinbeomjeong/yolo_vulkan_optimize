@@ -120,7 +120,7 @@ build/bin/yvo_pipeline \
 |---|---|---|
 | **실시간 표시** (권장) | `--batch 2 --slots 4` | 표시 off 34.95 FPS / 표시 on `pace source` **29.91 FPS, glass 101 ms**. 입력 페이싱(표시 off)이면 도착 기준 평균 81.3 · p90 104 ms, 버림 0. 40분 연속 운용에서도 칩이 데워진 평형 상태로 34.25~34.75 FPS 를 유지한다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
 | 최대 처리량 (**단시간만**) | `--batch 8 --slots 16` | 51.5 FPS, e2e 325 ms. ⚠ **추가 냉각 없이는 약 5분 만에 Hailo 칩이 red zone(약 120 °C)에 닿아 칩이 추론을 멈춘다** — 51.5 FPS 는 칩이 식어 있는 처음 약 2분의 값이다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
-| **최소 지연** (O2, 2026-10-12 확정) | `--batch 1 --slots 1 --input-pace source --input-queue 1` (**표시 off 전용**) | **도착 기준 평균 58.3 · p90 72.7 · max 75.3 ms**. 처리 24.4 FPS 라 30 fps 입력의 **18.6% 를 버린다**(가장 오래된 프레임부터, 연속 버림 최대 1). 페이싱 없는 `--batch 1 --slots 1` 은 디코드 끝 기준 79.2 ms 지만 그중 약 42 ms 가 파일을 앞서 읽어 생긴 슬롯 대기다([`input_pacing/`](07_results/input_pacing/summary.md)) |
+| **최소 지연** (O2, 2026-10-12 확정) | `--batch 1 --slots 1 --input-pace source --input-queue 1` | **도착 기준 평균 58.3 · p90 72.7 · max 75.3 ms**(표시 off). 화면까지는 `--display on --display-fullscreen`(Vulkan 합성)으로 **도착 → 화면 평균 73.1 · p90 82.6 ms**, 버림 22.2%([`display_on`](07_results/input_pacing/runs/display_on/summary.md) — HVS 평면 백엔드는 slots 1 에서 교착하므로 쓰지 않는다). 처리 24.4 FPS 라 30 fps 입력의 **18.6% 를 버린다**(가장 오래된 프레임부터, 연속 버림 최대 1). 페이싱 없는 `--batch 1 --slots 1` 은 디코드 끝 기준 79.2 ms 지만 그중 약 42 ms 가 파일을 앞서 읽어 생긴 슬롯 대기다([`input_pacing/`](07_results/input_pacing/summary.md)) |
 | 영상만 저지연 표시 | 위에 `--display-sync latest` 추가 | 화면 glass 28 ms, 박스만 뒤처진다 |
 
 > 최소 지연 행과 페이싱 값은 **현재 기본값**(V3D 1150 MHz·디코더 1스레드·GPU 후처리·GPU 억제, 2026-10-12)이고, 나머지 지연은
@@ -128,8 +128,9 @@ build/bin/yvo_pipeline \
 > 표시 off b2/s4 GPU 후처리 34.99 FPS 로 조금씩 짧고 FPS 는 같다([`dec_threads/`](07_results/dec_threads/summary.md)).
 > 페이싱 없는 b1/s1 은 79.19 ms 이고 gpu-depth 1 과 3 이 같다([`latency_b1s1_20261012`](07_results/op_point/runs/latency_b1s1_20261012/summary.md)).
 >
-> **지연의 기점이 셋이다 — 섞지 않는다.** 입력 페이싱(`--input-pace source`)의 `e2e_arr` 는 프레임이 **도착한 시각**(카메라라면 찍힌 시각)부터,
-> 페이싱 없는 e2e 는 **디코드가 끝난 시각**부터, 표시의 glass-to-glass 는 **슬롯을 얻은 시각**부터 잰다.
+> **지연의 기점을 섞지 않는다.** 입력 페이싱(`--input-pace source`)의 `e2e_arr` 는 프레임이 **도착한 시각**(카메라라면 찍힌 시각)부터 결과까지,
+> 페이싱 + 표시 on 의 `arrival-to-present`(a2p)는 **도착한 시각부터 화면에 닿을 때까지**, 페이싱 없는 e2e 는 **디코드가 끝난 시각**부터,
+> 표시의 glass-to-glass 는 **슬롯을 얻은 시각**부터 잰다.
 > 페이싱하면 30 fps 를 따라가는 b2/s4 는 평균 81.3 ms(b2/s3 81.6 ms, 둘이 같다)·p90 104 ms·버림 0 이다.
 > 입력 큐 크기는 1 이 맞다 — 2·3 은 b2 에서 효과가 없고(큐 최대 깊이 늘 1) b1 에서 한 단계마다 +33 ms 다([`input_pacing/`](07_results/input_pacing/summary.md)).
 
@@ -220,9 +221,9 @@ loginctl activate <데스크톱 세션 id>    # (또는 sudo chvt 7) 데스크�
 | `--nms gpu\|cpu\|verify` | `gpu` | `--postproc gpu` 의 억제 위치. `gpu` 는 `efficient_nms.comp`(CPU 기준과 비트 일치, 보장 못 하는 프레임만 자동 CPU 처리), `cpu` 는 `cpu_nms_greedy_by_class`, `verify` 는 매 프레임 둘을 비트 비교 |
 | `--batch N` / `--slots N` | 8 / `max(4,batch*2)` | 운용점. §3.3 참조 |
 | `--gpu-depth N` | 3 | GPU 동시 프레임 상한. **지연에 영향 없음**(실측 1 vs 3 동일) |
-| `--input-pace asap\|source` | `asap` | 입력 도착 방식(**표시 off 전용**). `asap` = 슬롯이 비는 대로 디코드(지금까지의 방식). `source` = 프레임이 `t0 + k/fps` 에 도착한다(카메라 흉내). 요약에 도착 시각부터 잰 `e2e_arr`·버림·`RESULT_CSV4` 가 붙는다 |
-| `--input-queue N` | 1 | `--input-pace source` 전용 leaky 입력 큐 크기 1~3. 넘치면 가장 오래된 프레임을 버린다(GStreamer `queue leaky=downstream`). **1 이 맞다** — 2~3 은 효과 없거나 지연만 는다([`input_pacing/`](07_results/input_pacing/summary.md)). 보유 예산 `gpu_depth + N + 1 ≤ 10` |
-| `--frame-log PATH` | 끔 | 프레임마다 도착·디코드 끝·제출·NPU 완료·후처리 완료·완료 시각(실행 시작 기준 ms)을 CSV 로 남긴다. 실행 끝에 한 번만 쓰고(루프 안 파일 I/O 없음), 경로가 잘못되면 장치를 열기 전에 종료 코드 2. `dropped` 1 = 입력 큐에서 버림, 2 = 중단 시 큐에 남음. 분석은 `06_tools/python/frame_log_stats.py` |
+| `--input-pace asap\|source` | `asap` | 입력 도착 방식. `asap` = 슬롯이 비는 대로 디코드(지금까지의 방식). `source` = 프레임이 `t0 + k/fps` 에 도착한다(카메라 흉내). 요약에 도착 시각부터 잰 `e2e_arr`·버림·`RESULT_CSV4` 가, 표시 on 이면 도착 → 화면 `arrival-to-present`·`RESULT_CSV5` 가 붙는다(표시 쪽 프레임 게이트 `--display-pace` 는 입력이 이미 페이싱되므로 쓰지 않는다) |
+| `--input-queue N` | 1 | `--input-pace source` 전용 leaky 입력 큐 크기 1~3. 넘치면 가장 오래된 프레임을 버린다(GStreamer `queue leaky=downstream`). **1 이 맞다** — 2~3 은 효과 없거나 지연만 는다([`input_pacing/`](07_results/input_pacing/summary.md)). 보유 예산 `gpu_depth + N + 1 ≤ 10`(표시 on 이면 표시 쪽 보유 상한에 N 을 더한다) |
+| `--frame-log PATH` | 끔 | 프레임마다 도착·디코드 끝·제출·NPU 완료·후처리 완료·완료 시각(실행 시작 기준 ms)을 CSV 로 남긴다. 실행 끝에 한 번만 쓰고(루프 안 파일 I/O 없음), 경로가 잘못되면 장치를 열기 전에 종료 코드 2. `dropped` 1 = 입력 큐에서 버림, 2 = 중단 시 큐에 남음. 표시 on 이면 10번째 열 `present_ms`(화면에 닿은 시각)가 붙는다. 분석은 `06_tools/python/frame_log_stats.py` |
 | `--display off\|on` | `off` | HDMI 실시간 표시 |
 | `--display-backend auto\|wayland\|offscreen\|wayland-planes\|kms` | `auto` | `auto` = Wayland 창이 열리면 `wayland`, 아니면 `offscreen`. `wayland` = Vulkan 합성 + 스왑체인(strict — 실패하면 종료), `offscreen` = 화면 없이 변환만. `wayland-planes`/`kms` = HVS 평면 스캔아웃(§3.5, strict) |
 | `--display-color-range auto\|full\|limited` | `auto` | 평면 백엔드가 요청할 COLOR_RANGE. `auto` = wayland-planes 는 full(labwc 뒤집힘 우회), kms 는 limited |
@@ -271,7 +272,7 @@ median 을 써라(V3D 가 커맨드 버퍼를 합치면서 한쪽 구간이 0에
 ## 6. 검증
 
 ```bash
-ctest --test-dir build        # 170/170 통과해야 한다
+ctest --test-dir build        # 177/177 통과해야 한다
 ```
 
 | 테스트 | NPU | 무엇을 보는가 |
@@ -283,8 +284,8 @@ ctest --test-dir build        # 170/170 통과해야 한다
 | `test_preproc` | 불필요 | GPU 전처리가 CPU 기준과 **비트 일치**(max 오차 0). `SandRefVsFfmpeg.*`(GPU 불필요): 기준 de-SAND(`ref/sand.hpp`)가 rpi-ffmpeg `av_hwframe_transfer_data`(NV12)와 **바이트 일치**(프레임 0/100/500/900/1815, 보이는 1920×1080) |
 | `test_overlay` | 불필요 | 오버레이 셰이더 vs CPU 기준 비트 일치. 박스 평면 dma-buf(`OverlayPlane.*`, 잔상 0), debugfs 파서(`DrmState.*`), KMS 탐색·AddFB2(`KmsScanout.*` — card1 사용, master 는 가져가지 않는다) |
 | `test_display_convert` | 불필요 | 표시 변환 셰이더(1:1) vs CPU 기준 **비트 일치**. 표시 경로 BT.709(`02_shaders/bt709.glsl` 공유 include)의 게이트 |
-| `test_pipeline_logic` | 불필요 | (하드웨어 없음) `SlotExchange` 슬롯 반납·중복 신호·다중 스레드, `validate_slot_budget` 보유 상한, RESULT_CSV·RESULT_CSV4·`--frame-log` 서식 바이트 일치, 엄격한 숫자·크기 옵션 파싱, 입력 페이싱 순수 로직(`LeakyQueue`·`ArrivalSchedule`) |
-| `test_display_options` | 불필요 | (하드웨어 없음) 표시 옵션 문자열 → enum 파서 |
+| `test_pipeline_logic` | 불필요 | (하드웨어 없음) `SlotExchange` 슬롯 반납·중복 신호·다중 스레드, `validate_slot_budget` 보유 상한, RESULT_CSV·RESULT_CSV4·`--frame-log` 서식 바이트 일치, 엄격한 숫자·크기 옵션 파싱, 입력 페이싱 순수 로직(`LeakyQueue`·`ArrivalSchedule`), 입력 큐를 더한 보유 예산, RESULT_CSV5 |
+| `test_display_options` | 불필요 | (하드웨어 없음) 표시 옵션 문자열 → enum 파서, 평면 백엔드 늦은 프레임 허용 간격(`LateGapThreshold.*` — 입력 큐에서 버린 원본 프레임을 늦음으로 세지 않는다) |
 | `test_isp_preproc` | 불필요(ISP 필요) | ISP 전처리 vs CPU 기준. **비트 일치가 아니다**(리샘플 커널이 다르다) — 패딩만 오차 0, 내용은 MAE ≤ 3.0 |
 | `test_gst_adapter` | 불필요 | (선택, GStreamer 연구 경로) 어댑터 `DrmFrame`·`yvosandletterbox` 출력이 FFmpeg 경로 NHCW와 **바이트 일치**(프레임 0/100/1815), 텐서 메타·슬롯 fd 고정, sink caps 는 SAND DMA_DRM 만, 슬롯 메모리를 다른 버퍼로 옮겨도 덮어쓰지 않고 메모리 교체로 슬롯이 새지 않음(`GstElementSlots.*`) |
 | `test_gst_detections` | 필요 | (선택, GStreamer 연구 경로) `yvohailosink` 검출이 `yvo_pipeline --mode dmabuf --layout nhcw --postproc host` 추론 경로와 **프레임마다 동일**(앞 120프레임, 배치 4, `YVO_GST_DET_FRAMES`·`YVO_GST_DET_BATCH`) |
@@ -308,7 +309,7 @@ bash 06_tools/bench/pipeline_bench.sh    # 기존 9설정 회귀 기준선
 bash 06_tools/bench/decode_bench.sh      # 디코드 경로 비교
 bash 06_tools/bench/dec_threads_bench.sh # 디코더 프레임 스레드 수 스윕 + 자동 대 1스레드 회귀 A/B
 bash 06_tools/bench/gst_pipeline_bench.sh # 앱 대 GStreamer 연구 경로(yvo_gst_pipeline)
-bash 06_tools/bench/input_pace_bench.sh  # 입력 페이싱 + leaky 큐 N=1·2·3 (b1s1·b2s3·b2s4 × asap 대조, 도착 900프레임)
+bash 06_tools/bench/input_pace_bench.sh  # 입력 페이싱 + leaky 큐 N=1·2·3 (b1s1·b2s3·b2s4 × asap 대조, 도착 900프레임). DISPLAY_RUN=1 = 표시 on(HDMI 필요)
 ```
 
 벤치 스크립트는 모두 12개다. 나머지(`backpressure`·`isp`·`isp_pipeline`·`display_planes`·`nms`·`input_pace`)까지 포함한 목록은
@@ -394,6 +395,6 @@ grim -o HDMI-A-1 shot.png
 - **카메라(CSI) 입력** — 디코더가 HEVC 파일만 받는다(`01_src/decode/ffmpeg_drm_decoder.cpp:166`).
   프레임이 소스 시각에 도착하는 상황은 입력 페이싱으로 모사해 쟀다([`input_pacing/`](07_results/input_pacing/summary.md)) —
   실제 센서의 촬영 시각·ISP 지연은 미측정이다. 카메라로 가면 ISP 전처리 경로 재검토 조건도 함께 열린다
-- **최소 지연 운용점은 표시 off 전용이다** — `--input-pace source` 와 `--display on` 은 함께 쓸 수 없다(종료 코드 2). O2 의 glass-to-glass 는 미측정
+- **최소 지연 운용점의 표시는 Vulkan 합성으로만** — HVS 평면 백엔드는 slots 1 에서 교착하고(기존 제약), slots 2 는 처리가 vblank 3개(50 ms)에 잠긴다. kms 와 표시 on 입력 큐 2 이상은 미측정([`display_on`](07_results/input_pacing/runs/display_on/summary.md))
 - **다중 스트림은 불가능하다** — 1080p30 두 개 = 60 FPS 인데 NPU 상한이 51.7 이다.
   확보한 CPU 여유는 이 한계를 풀지 못한다

@@ -247,6 +247,7 @@ NPU에 한 번에 여러 장을 묶어 보내는 것이 **batch**, 동시에 몇
 지연만 최소로 하는 운용점(O2)은 **`--batch 1 --slots 1 --input-pace source --input-queue 1`**(표시 off)이다 —
 입력이 소스 시각에 도착하고 NPU 가 못 따라가는 약 19%는 버린다. 도착 기준 평균 58.3 ms([`input_pacing`](../07_results/input_pacing/summary.md), 사용자 결정 2026-10-12).
 페이싱 없는 b1/s1 의 79 ms 중 약 42 ms 는 파일을 앞서 읽어 생긴 슬롯 대기였다.
+화면까지는 Vulkan 합성 표시로 도착 → 화면 평균 73.1 ms 다(사용자 결정 2026-10-12, [`display_on`](../07_results/input_pacing/runs/display_on/summary.md)). HVS 평면 백엔드는 slots 1 에서 교착해 쓰지 않는다.
 
 부수적으로 알아낸 것: `--gpu-depth`는 **지연 레버가 아니다**(1 vs 3에서 142.06 vs 142.17 ms).
 

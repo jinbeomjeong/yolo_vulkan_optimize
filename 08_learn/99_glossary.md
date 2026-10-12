@@ -18,7 +18,8 @@
 | **파이프라이닝** | 여러 장을 동시에 서로 다른 단계에서 처리하는 것. 처리량은 늘고 지연은 는다 → [01](01_big_picture.md) |
 | **in-flight** | 지금 파이프라인 안에 들어가 있는 프레임 수. `≈ FPS × 지연`(Little's law) → [04](04_npu_hailort.md) |
 | **운용점 (operating point)** | batch·slots 등을 어떻게 정할지의 선택. 처리량과 지연을 맞바꾼다. 실시간 표시 `b2/s4`, 최대 처리량 `b8/s16`(단시간), 최소 지연 `b1/s1` + 입력 페이싱 큐 1 → [01](01_big_picture.md), [10](10_why_this_design.md) |
-| **입력 페이싱 (input pacing)** | 파일 입력을 카메라처럼 소스 시각(30 fps 면 33.3 ms 간격)에 맞춰 넣는 것. `--input-pace source`, 표시 off 전용 → [04](04_npu_hailort.md), [08](08_method.md) |
+| **입력 페이싱 (input pacing)** | 파일 입력을 카메라처럼 소스 시각(30 fps 면 33.3 ms 간격)에 맞춰 넣는 것. `--input-pace source`(표시 on 과도 쓸 수 있다) → [04](04_npu_hailort.md), [08](08_method.md) |
+| **`a2p` (arrival-to-present)** | 프레임이 도착한 시각부터 화면에 닿을 때까지의 지연. 페이싱 + 표시 on 에서만 잰다 → [08](08_method.md) |
 | **`e2e_arr`** | 프레임이 **도착한 시각**부터 결과까지의 지연. 입력 페이싱에서만 잰다. 디코드 끝부터 재는 e2e 와 섞지 않는다 → [08](08_method.md) |
 | **leaky 큐** | 넘치면 가장 오래된 항목을 버리는 크기 제한 큐(GStreamer `queue leaky=downstream`). `--input-queue N`, 이 프로젝트는 1이 맞다 → [04](04_npu_hailort.md) |
 | **중앙값 (median)** | 값을 정렬했을 때 가운데 값. 이 프로젝트는 평균 대신 이걸 쓴다 → [08](08_method.md) |

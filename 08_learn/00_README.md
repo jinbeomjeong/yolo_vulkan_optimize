@@ -107,7 +107,7 @@ GPU 메모리를 CPU로 읽는 설계를 무심코 넣거나, 오염된 조건�
 > 그 뒤 두 가지가 바뀌었다. 수치는 그대로 두고 조건만 적어 둔다.
 > - 부트로더 2026-09-25로 V3D가 1150 MHz가 됐다. GPU 전처리 b8이 약 2.6 → 2.0 ms로 줄었고, FPS와 CPU는 같다([`bootloader_20260925`](../07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)).
 > - 앱 디코더가 1 프레임 스레드가 됐다. b8 기준 CPU −14%, e2e −8.8 ms다([`dec_threads`](../07_results/dec_threads/summary.md)). 같은 회차의 GPU 후처리 b2/s4는 CPU 1.137 → 1.046 ms였다(GPU NMS).
-> - 2026-10-12: 입력 페이싱(`--input-pace source`)이 생겨 지연을 **도착 시각부터** 잴 수 있게 됐다. 최소 지연 운용점이 b1/s1 + 페이싱(큐 1)으로 바뀌었다 — 도착 기준 평균 58.3 ms, 프레임 약 19% 버림([`input_pacing`](../07_results/input_pacing/summary.md)).
+> - 2026-10-12: 입력 페이싱(`--input-pace source`)이 생겨 지연을 **도착 시각부터** 잴 수 있게 됐다. 최소 지연 운용점이 b1/s1 + 페이싱(큐 1)으로 바뀌었다 — 도착 기준 평균 58.3 ms, 프레임 약 19% 버림([`input_pacing`](../07_results/input_pacing/summary.md)). 같은 날 표시 on 과도 결합해 도착 → 화면 73.1 ms 를 쟀다([`display_on`](../07_results/input_pacing/runs/display_on/summary.md)).
 
 ### 2. "조용히 틀리는 것"이 반복 주제다
 
