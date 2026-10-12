@@ -144,24 +144,33 @@ real-time object detection, edge AI
 
 엣지 가속기를 활용한 객체 검출 연구는 주로 모델 경량화와 양자화에 집중되어 왔다. 그러나 실제 배포
 환경에서는 모델 외적 요소, 즉 입출력 처리와 메모리 이동이 성능을 좌우하는 경우가 많다.
+스마트폰 SoC에서는 추론 바깥의 전·후처리와 데이터 이동이 종단간 성능을 좌우함이 보고되었고 [R7],
+서버 환경의 컴퓨터 비전 추론에서도 전처리와 데이터 이동이 지연의 큰 몫을 차지한다 [R8].
+본 연구와 같은 Raspberry Pi 5 + Hailo 계열 구성으로 실시간 YOLO 추론을 탑재한 사례 [R9]와,
+저비용 엣지 AI 가속기들의 추론 성능과 비용 효율을 비교한 국내 연구 [R10]도 있다.
 본 연구는 모델을 고정한 상태에서 파이프라인 구조만으로 호스트 부하를 줄이는 방향을 취한다.
 
 ## 2.2 dma-buf 기반 제로 카피
 
 Linux 커널의 dma-buf 프레임워크는 서로 다른 디바이스 드라이버가 동일한 물리 버퍼를 파일 디스크립터로
 공유하도록 한다 [R3]. 멀티미디어 파이프라인에서 디코더와 디스플레이 사이의 제로 카피는 널리 쓰이는
-기법이나, 본 연구처럼 **디코더·GPU·NPU·디스플레이 네 주체가 하나의 체인**을 이루는 사례는 드물다.
-특히 추론 가속기의 입력과 출력을 **동시에** dma-buf로 운용하는 구성은 벤더 문서에도 명시된 사례가
-없어, 본 연구에서 별도의 검증 과정을 거쳤다(§6.5).
+기법이고¹, 모바일 GPU 추론에서도 텍스처를 입출력으로 직접 써서 복사를 없애는 엔진이 있다 [R13].
+그러나 저자가 확인한 범위에서는 본 연구처럼 **디코더·GPU·NPU·디스플레이 네 주체가 하나의 체인**을 이루는 사례를 찾지 못했다.
+특히 추론 가속기의 입력과 출력을 **동시에** dma-buf로 운용하는 구성은 벤더 문서에서도 명시된 사례를
+확인하지 못해, 본 연구에서 별도의 검증 과정을 거쳤다(§6.5).
+
+¹ M. Tretter and P. Zabel, "Zero-Copy Video Streaming on Embedded Systems the Easy Way," Embedded Linux Conference Europe, 2017-10-25, 발표자료.
+https://static.sched.com/hosted_files/osseu17/e2/zero-copy_video_streaming.pdf (접근일: 2026-10-13)
 
 ## 2.3 GPU 컴퓨트 오프로딩
 
-Vulkan 컴퓨트 셰이더를 이용한 영상 전처리는 모바일·임베디드에서 흔한 기법이다 [R2].
+모바일·임베디드 GPU를 범용 연산에 쓰는 연구는 Vulkan 컴퓨트 벤치마크 [R12], 모바일 GPU 신경망 추론 엔진 [R11],
+셰이더 기반 경량 추론 엔진 [R13] 등으로 이어져 왔다. 본 연구의 셰이더는 Vulkan 1.3 core 기능만 사용한다 [R2].
 본 연구의 차별점은 오프로딩 대상을 전처리에 한정하지 않고 **후처리와 가시화까지 확장**하였다는 점,
 그리고 오프로딩의 이득을 결정하는 것이 연산량이 아니라 **메모리 접근 특성**임을 실측으로 보인 점이다.
 
-> **참고문헌 정책**: 본 절의 인용 `[R*]`은 §참고문헌에 대응한다. 서지사항이 확정되지 않은 항목은
-> `[확인 필요]`로 표시하였으며, 투고 전 보완이 필요하다.
+> **참고문헌 정책**: 본 절의 인용 `[R*]`은 §참고문헌에 대응한다. 서지사항은 2026-10-13에 DOI·Crossref·발행처 페이지로
+> 확인하였고, 확인하지 못한 필드는 `[확인 필요]`로 표시하였다. 비학술 자료는 각주로 단다.
 
 ---
 
@@ -171,10 +180,10 @@ Vulkan 컴퓨트 셰이더를 이용한 영상 전처리는 모바일·임베디
 
 | 구성요소 | 사양 |
 |---|---|
-| SoC | Broadcom BCM2712 (Cortex-A76 ×4 @ 2.4 GHz) |
-| GPU | VideoCore VII (V3D 7.1), Mesa V3DV 26.2.2, Vulkan 1.3 |
+| SoC | Broadcom BCM2712 (Cortex-A76 ×4 @ 2.4 GHz) [R5] |
+| GPU | VideoCore VII (V3D 7.1), Mesa V3DV 26.2.2 [R6], Vulkan 1.3 |
 | GPU 클럭 | **960 MHz** (부트로더 2025-12-08의 펌웨어 기본값. §6 측정 이후 부트로더 2026-09-25에서 1150 MHz로 바뀌었다, §6.1) |
-| NPU | Hailo-8, PCIe Gen3 ×1 (8.0 GT/s), HailoRT 4.24.0 |
+| NPU | Hailo-8, PCIe Gen3 ×1 (8.0 GT/s), HailoRT 4.24.0 [R4] |
 | 비디오 디코더 | BCM2712 내장 HEVC 하드웨어 디코더 |
 | 디스플레이 | HDMI-A-1, 1920×1080@60 (Wayland 컴포지터) |
 | 커널 | Linux 6.18.50 |
@@ -184,7 +193,7 @@ PCIe 링크 속도는 문서값이 아니라 sysfs의 `current_link_speed`로 �
 
 ## 3.2 모델과 텐서 사양
 
-모델은 YOLOv11m을 Hailo 컴파일러로 변환한 것을 사용하였다.
+모델은 YOLOv11m [R1]을 Hailo 컴파일러로 변환한 것을 사용하였다.
 
 | 항목 | 값 |
 |---|---|
@@ -1254,25 +1263,31 @@ HVS 평면 표시 경로의 슬롯 1 교착 해소, 컨텍스트 수가 적은 H
 > **주의**: 아래 항목 중 `[확인 필요]`로 표시된 서지사항은 투고 전 확인·보완이 필요하다.
 > 본 초고에서는 저자가 직접 확인하지 못한 연도·권·호·페이지·DOI를 임의로 기재하지 않았다.
 
-[R1] Ultralytics, "YOLO11," Ultralytics Documentation. `[확인 필요: 접근일, URL]`
+[R1] G. Jocher and J. Qiu, "Ultralytics YOLO11," software, version 11.0.0, AGPL-3.0, 2024. [Online]. Available: https://github.com/ultralytics/ultralytics (문서: https://docs.ultralytics.com/models/yolo11/) (접근일: 2026-10-13)
 
-[R2] The Khronos Group, "Vulkan 1.3 Specification." `[확인 필요: 개정판 번호, 접근일]`
+[R2] The Khronos Vulkan Working Group, "Vulkan® 1.4.365 – A Specification (with all registered extensions)," Version 1.4.365, 2026-10-02. [Online]. Available: https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html (접근일: 2026-10-13). 본 연구는 Vulkan 1.3 core 기능만 사용한다.
 
-[R3] The Linux Kernel Documentation, "Buffer Sharing and Synchronization (dma-buf)."
-`[확인 필요: 커널 버전, 접근일]`
+[R3] The Linux Kernel Documentation, "Buffer Sharing and Synchronization (dma-buf)," Linux 6.18. [Online]. Available: https://www.kernel.org/doc/html/v6.18/driver-api/dma-buf.html (접근일: 2026-10-13)
 
-[R4] Hailo, "HailoRT User Guide," version 4.24.0. `[확인 필요: 발행일, URL]`
+[R4] Hailo Technologies, "HailoRT v4.24.0 User Guide." [Online]. Available: https://hailo.ai/developer-zone/documentation/hailort-v4-24-0/ (접근일: 2026-10-13) `[확인 필요: 문서 발행일 — 페이지에 표기 없음]`
 
-[R5] Raspberry Pi Ltd., "Raspberry Pi 5 / Compute Module 5 Product Brief." `[확인 필요: 판본, 접근일]`
+[R5] Raspberry Pi Ltd., "Raspberry Pi 5 Product Brief," RP-008348-DS. [Online]. Available: https://pip.raspberrypi.com/documents/RP-008348-DS-raspberry-pi-5-product-brief.pdf (접근일: 2026-10-13) `[확인 필요: 판본·발행일 — 파일명상 개정 8, PDF 본문 미확인]`
 
-[R6] Mesa 3D, "V3DV — Vulkan driver for Broadcom VideoCore." `[확인 필요: 버전, 접근일]`
+[R6] The Mesa 3D Graphics Library, "V3D," Mesa documentation. [Online]. Available: https://docs.mesa3d.org/drivers/v3d.html (접근일: 2026-10-13) (사용 버전: Mesa 26.2.2)
 
-`[추가 필요]` 엣지 NPU 추론 파이프라인 최적화 관련 선행 연구 2~4편
-(§2.1 서술을 뒷받침할 문헌. 국내 학회 논문 포함 권장)
+[R7] M. Buch, Z. Azad, A. Joshi, and V. J. Reddi, "AI Tax in Mobile SoCs: End-to-end Performance Analysis of Machine Learning in Smartphones," in Proc. IEEE Int. Symp. Performance Analysis of Systems and Software (ISPASS), 2021, pp. 96–106, doi: 10.1109/ISPASS51385.2021.00027.
 
-`[추가 필요]` dma-buf 기반 멀티미디어 제로 카피 관련 선행 연구 1~2편 (§2.2)
+[R8] A. F. AbouElhamayed, S. Balle, D. Singh, and M. S. Abdelfattah, "Beyond Inference: Performance Analysis of DNN Server Overheads for Computer Vision," in Proc. 61st ACM/IEEE Design Automation Conf. (DAC), 2024, pp. 1–6, doi: 10.1145/3649329.3655960.
 
-`[추가 필요]` GPU 컴퓨트 셰이더 기반 영상 전처리 오프로딩 관련 선행 연구 1~2편 (§2.3)
+[R9] B. Vergara, C. Fernández-Campusano, and H. Kaschel, "A Hailo-Accelerated System for Precision Agriculture: Real-Time on-Board YOLO Inference on a Drone Platform," in Proc. IEEE CHILEAN Conf. Electrical, Electronics Engineering, Information and Communication Technologies (CHILECON), 2025, pp. 1–6, doi: 10.1109/CHILECON66915.2025.11476216.
+
+[R10] 정필성, "실시간 객체탐지를 위한 저비용 엣지 AI 가속기: 추론 성능 및 비용 효율성 비교 분석," 한국컴퓨터정보학회논문지, 제31권, 제4호, pp. 1–9, 2026년 4월, doi: 10.9708/jksci.2026.31.04.001.
+
+[R11] J. Lee, N. Chirkov, E. Ignasheva, Y. Pisarchyk, M. Shieh, F. Riccardi, R. Sarokin, A. Kulik, and M. Grundmann, "On-Device Neural Net Inference with Mobile GPUs," in CVPR Workshop on Efficient Deep Learning for Computer Vision (EDLCV), 2019, arXiv:1907.01989.
+
+[R12] N. Mammeri and B. Juurlink, "VComputeBench: A Vulkan Benchmark Suite for GPGPU on Mobile and Embedded GPUs," in Proc. IEEE Int. Symp. Workload Characterization (IISWC), 2018, pp. 25–35, doi: 10.1109/IISWC.2018.8573477.
+
+[R13] J. Xie, Y. Yan, A. Saxena, Q. Qiu, J. Chen, H. Sun, R. Chen, and S. S. Bhattacharyya, "ShaderNN: A Lightweight and Efficient Inference Engine for Real-time Applications on Mobile GPUs," Neurocomputing, vol. 611, Art. no. 128628, Jan. 2025, doi: 10.1016/j.neucom.2024.128628.
 
 ---
 
