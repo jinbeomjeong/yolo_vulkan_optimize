@@ -118,23 +118,26 @@ build/bin/yvo_pipeline \
 
 | 목적 | 인자 | 결과 |
 |---|---|---|
-| **실시간 표시** (권장) | `--batch 2 --slots 4` | 표시 off 34.95 FPS / 표시 on `pace source` **29.91 FPS, glass 101 ms**. 40분 연속 운용에서도 칩이 데워진 평형 상태로 34.25~34.75 FPS 를 유지한다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
+| **실시간 표시** (권장) | `--batch 2 --slots 4` | 표시 off 34.95 FPS / 표시 on `pace source` **29.91 FPS, glass 101 ms**. 입력 페이싱(표시 off)이면 도착 기준 평균 81.3 · p90 104 ms, 버림 0. 40분 연속 운용에서도 칩이 데워진 평형 상태로 34.25~34.75 FPS 를 유지한다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
 | 최대 처리량 (**단시간만**) | `--batch 8 --slots 16` | 51.5 FPS, e2e 325 ms. ⚠ **추가 냉각 없이는 약 5분 만에 Hailo 칩이 red zone(약 120 °C)에 닿아 칩이 추론을 멈춘다** — 51.5 FPS 는 칩이 식어 있는 처음 약 2분의 값이다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
-| 최소 지연 | `--batch 1 --slots 1` | e2e 81.6 ms, 단 **24.4 FPS 로 30 fps 를 못 따라간다** |
+| **최소 지연** (O2, 2026-10-12 확정) | `--batch 1 --slots 1 --input-pace source --input-queue 1` (**표시 off 전용**) | **도착 기준 평균 58.3 · p90 72.7 · max 75.3 ms**. 처리 24.4 FPS 라 30 fps 입력의 **18.6% 를 버린다**(가장 오래된 프레임부터, 연속 버림 최대 1). 페이싱 없는 `--batch 1 --slots 1` 은 디코드 끝 기준 79.2 ms 지만 그중 약 42 ms 가 파일을 앞서 읽어 생긴 슬롯 대기다([`input_pacing/`](07_results/input_pacing/summary.md)) |
 | 영상만 저지연 표시 | 위에 `--display-sync latest` 추가 | 화면 glass 28 ms, 박스만 뒤처진다 |
 
-> 이 표의 지연은 디코더 자동 5스레드·V3D 960 MHz 조건 값이다([`op_point/`](07_results/op_point/summary.md) §8).
-> 지금 기본값(1스레드)에서는 b8/s16 e2e 318.6 ms, b1/s1(gpu-depth 1) 79.1 ms, 표시 off b2/s4 GPU 후처리 34.99 FPS 로
-> 조금씩 짧고 FPS 는 같다([`dec_threads/`](07_results/dec_threads/summary.md)).
+> 최소 지연 행과 페이싱 값은 **현재 기본값**(V3D 1150 MHz·디코더 1스레드·GPU 후처리·GPU 억제, 2026-10-12)이고, 나머지 지연은
+> 디코더 자동 5스레드·V3D 960 MHz 조건 값이다([`op_point/`](07_results/op_point/summary.md) §8). 지금 기본값에서는 b8/s16 e2e 318.6 ms,
+> 표시 off b2/s4 GPU 후처리 34.99 FPS 로 조금씩 짧고 FPS 는 같다([`dec_threads/`](07_results/dec_threads/summary.md)).
+> 페이싱 없는 b1/s1 은 79.19 ms 이고 gpu-depth 1 과 3 이 같다([`latency_b1s1_20261012`](07_results/op_point/runs/latency_b1s1_20261012/summary.md)).
 >
-> **입력을 소스 속도로 넣으면**(`--input-pace source`, 표시 off) 지연을 도착 시각부터 잰다. 30 fps 를 따라가는 b2/s3·b2/s4 는
-> 평균 **81.5 ms**·p90 104 ms·버림 0, b1/s1 은 평균 58.3 ms 대신 프레임 18.6% 를 버린다(`--input-queue 1`). 위 표의 지연은 디코드 끝부터 잰 값이라
-> 시작점이 달라 직접 비교하지 않는다([`input_pacing/`](07_results/input_pacing/summary.md)).
+> **지연의 기점이 셋이다 — 섞지 않는다.** 입력 페이싱(`--input-pace source`)의 `e2e_arr` 는 프레임이 **도착한 시각**(카메라라면 찍힌 시각)부터,
+> 페이싱 없는 e2e 는 **디코드가 끝난 시각**부터, 표시의 glass-to-glass 는 **슬롯을 얻은 시각**부터 잰다.
+> 페이싱하면 30 fps 를 따라가는 b2/s4 는 평균 81.3 ms(b2/s3 81.6 ms, 둘이 같다)·p90 104 ms·버림 0 이다.
+> 입력 큐 크기는 1 이 맞다 — 2·3 은 b2 에서 효과가 없고(큐 최대 깊이 늘 1) b1 에서 한 단계마다 +33 ms 다([`input_pacing/`](07_results/input_pacing/summary.md)).
 
 **지연은 slots 가, 처리량의 천장은 batch 가 정한다.** 지연 ≈ `slots × 프레임 주기` 이고,
 FPS = min(배치 천장 `B / T(B)`, 슬롯 제약)이며 천장은 **slots = 2 × batch** 에서 닿는다
 ([`grid_gpu_postproc`](07_results/op_point/runs/grid_gpu_postproc/summary.md)). 그보다 큰 slots 는 지연만 늘린다.
-**batch 1 은 천장이 24.4 FPS** 라(배치당 고정비 24.8 ms) 30 fps 소스를 따라가려면 batch ≥ 2 가 필요하다.
+**batch 1 은 천장이 24.4 FPS** 라(배치당 고정비 24.8 ms) 30 fps 소스를 다 처리하려면 batch ≥ 2 가 필요하다.
+입력 페이싱 + 큐 1 이면 batch 1 도 실시간을 유지한다 — 처리하지 못한 약 19% 를 버리고 가장 최근 프레임을 넣는다(최소 지연 운용점).
 
 ### 3.4 실행 중단
 
@@ -382,12 +385,14 @@ grim -o HDMI-A-1 shot.png
 
 ### 아직 열려 있는 것
 
-목록의 정본은 **[`07_results/README.md`](07_results/README.md#아직-열려-있는-것)** 다(19항목).
-여기서는 운용에 바로 영향을 주는 셋만 적는다.
+목록의 정본은 **[`07_results/README.md`](07_results/README.md#아직-열려-있는-것)** 다(22항목).
+여기서는 운용에 바로 영향을 주는 넷만 적는다.
 
 - **연속 운용 발열** (일부 닫힘) — `b2/s4` 는 40분 지속 가능(평형 34.25~34.75 FPS), `b8/s16` 은 추가 냉각 없이
   약 5분에 칩 보호 정지. 중간 운용점·냉각 장치·40분 초과는 미검증
 - **카메라(CSI) 입력** — 디코더가 HEVC 파일만 받는다(`01_src/decode/ffmpeg_drm_decoder.cpp:166`).
-  카메라로 가면 ISP 전처리 경로 재검토 조건도 함께 열린다
+  프레임이 소스 시각에 도착하는 상황은 입력 페이싱으로 모사해 쟀다([`input_pacing/`](07_results/input_pacing/summary.md)) —
+  실제 센서의 촬영 시각·ISP 지연은 미측정이다. 카메라로 가면 ISP 전처리 경로 재검토 조건도 함께 열린다
+- **최소 지연 운용점은 표시 off 전용이다** — `--input-pace source` 와 `--display on` 은 함께 쓸 수 없다(종료 코드 2). O2 의 glass-to-glass 는 미측정
 - **다중 스트림은 불가능하다** — 1080p30 두 개 = 60 FPS 인데 NPU 상한이 51.7 이다.
   확보한 CPU 여유는 이 한계를 풀지 못한다

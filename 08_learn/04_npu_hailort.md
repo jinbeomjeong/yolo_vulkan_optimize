@@ -536,6 +536,8 @@ slots = B이면 한 배치가 돌아오기 전에 다음 배치를 채울 수 �
 > - 천장에 닿으려면 **slots = 2B**가 필요하다. 그보다 큰 slots는 **순수하게 지연만 사는 손해 레버**다.
 > - 30 fps 소스에는 batch 2의 천장(35 FPS)이면 충분하므로 배포 운용점이 `b2/s4`다.
 > - batch 1의 천장은 24.4 FPS라 slots를 아무리 늘려도 30 fps에 못 미친다.
+>   대신 입력을 소스 속도로 넣고 큐를 1로 두면(`--input-pace source --input-queue 1`) 넘치는 약 19%를 버리며 실시간을 유지한다 —
+>   이것이 **최소 지연 운용점**(도착 기준 평균 58.3 ms, 표시 off, [`input_pacing`](../07_results/input_pacing/summary.md))이다. 입력 큐(`--input-queue`)를 키우면 지연만 한 단계에 33 ms씩 는다.
 > - slots 상한은 HEF 스트림 큐 깊이에서 온다(batch 1·2·4는 8, batch 8은 16).
 
 ### (8) 백프레셔 이중 계수 — in-flight 검산이 잡아낸 버그

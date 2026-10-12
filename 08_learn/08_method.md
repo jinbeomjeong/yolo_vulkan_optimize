@@ -21,7 +21,7 @@
 |---|---|
 | PCIe 링크 세대 (Gen2 vs Gen3) | **거의 2배** ([`npu_benchmark/summary.md`](../07_results/npu_benchmark/summary.md)) |
 | 칩 온도 (냉각 vs 과열) | 지연 4~7% ([`op_point/runs/latency_gen3_cooled/summary.md`](../07_results/op_point/runs/latency_gen3_cooled/summary.md)) |
-| batch / slots 설정 | FPS 24 ~ 51, 지연 82 ~ 325 ms ([`op_point/summary.md`](../07_results/op_point/summary.md)) |
+| batch / slots 설정 | FPS 24 ~ 51, 지연 82 ~ 325 ms(디코드 끝 기준, [`op_point/summary.md`](../07_results/op_point/summary.md)). 입력 페이싱이면 도착 기준 58 ms 부터([`input_pacing`](../07_results/input_pacing/summary.md)) |
 | 전체화면 vs 창 모드 | 표시 변환이 **2.6배** ([`display_vulkan_hdmi/summary.md`](../07_results/display_vulkan_hdmi/summary.md)) |
 | 측정 중에 다른 작업이 돌았는지 | CPU 측정이 조용히 오염됨 |
 | 펌웨어(부트로더 EEPROM)가 정한 V3D 클럭 (960 vs 1150 MHz) | GPU 전처리 b8 평균 2.6 → 2.0 ms, p90 5.5 → 2.15 ms. FPS·CPU는 그대로 ([`bootloader_20260925`](../07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)) |
@@ -49,6 +49,16 @@
 > 이건 흔한 실수다. "34.87 FPS이고 지연은 101 ms입니다"라고 쓰면
 > 두 개의 다른 실행에서 좋은 숫자만 골라 붙인 것이 된다.
 > 실제로는 34.87 FPS일 때 지연은 131 ms이고, 지연이 101 ms일 때 FPS는 29.91이다.
+
+**지연은 어디서부터 재느냐도 따로 적는다.** 이 프로젝트에는 기점이 셋 있다(2026-10-12).
+
+| 지연 | 시작점 | 언제 |
+|---|---|---|
+| e2e | 디코드가 끝난 시각 | 기본(`--input-pace asap`) — 파일을 앞서 읽으므로 슬롯을 기다린 시간이 일부 가려진다 |
+| `e2e_arr` | 프레임이 **도착한** 시각(`t0 + k/fps`) | `--input-pace source`(표시 off) — 카메라라면 찍힌 시각. 버린 프레임 수도 함께 본다 |
+| glass-to-glass | 슬롯을 얻은 시각 → 화면에 나간 시각 | 표시 on |
+
+같은 b1/s1 이 e2e 79.2 ms, `e2e_arr` 58.3 ms 로 나온다([`input_pacing`](../07_results/input_pacing/summary.md)) — 시작점이 다른 값이라 비교하지 않는다.
 
 ---
 
@@ -99,7 +109,8 @@ C가 느리게 나오면 그게 C가 느린 건지 칩이 뜨거운 건지 구�
 
 ## 8.5 냉각 게이트
 
-Hailo 칩은 연속 부하에서 90 °C대까지 오르고, 그러면 클럭이 400 → 250 MHz로 떨어진다.
+Hailo 칩은 연속 부하에서 데워지면 클럭이 400 → 350 → 300 MHz… 로 단계적으로 떨어지고(약 104 °C 부터), 약 120 °C 에서는 추론을 멈춘다
+([`thermal_soak`](../07_results/thermal_soak/summary.md), 2026-10-11 — 예전 측정에서는 클럭이 250 MHz 까지 내려간 상태의 값이 기록된 적도 있다).
 측정값이 조용히 나빠지는데 **에러는 안 난다.**
 
 [`.claude/skills/measure/SKILL.md`](../.claude/skills/measure/SKILL.md) 의 규칙:
@@ -312,14 +323,15 @@ FFmpeg 프레임 스레드가 늘린 메모리 지연을 원인으로 **추정**
 | 옛 펌웨어(960 MHz)에서 b4·b8 GPU 시간에 느린 꼬리(p90 5.5 ms)가 있던 이유 | **가르지 못함** (클럭 복귀나 제출 겹침 추정) |
 | 1150 MHz에서 GPU 작업 시간이 +2.6~6.3% 계단으로 바뀌는 현상 | **원인 미확인** (늘어난 몫은 전부 메모리 읽기 대기) |
 | 디코더 1스레드에서 표시 on 앱 내부 e2e p90이 +1.9 ms인 이유 | **추정** (source pace에서 가끔 한 프레임 준비가 늦음) |
+| 입력 페이싱 b2 의 `e2e_arr` max(136~142 ms)가 p90(104 ms)보다 훨씬 큰 이유 | **가르지 못함** (프레임별 시각 출력이 없다) |
 
 각 `summary.md` 끝에는 **"주의·남은 일"** 절이 있고,
 [`07_results/README.md`](../07_results/README.md) 와
 [`README.md`](../README.md) 에는 **"아직 열려 있는 것"** 절이 있다.
 
-> 가장 큰 구멍은 **연속 운용 발열**이다.
-> 모든 측정이 900프레임 ≈ 26초짜리라, 몇 시간 도는 운용에서 성능이 유지되는지 **아무도 모른다.**
-> 이걸 숨기지 않고 문서 맨 앞에 적어 두는 것이 이 프로젝트의 방식이다.
+> 오랫동안 가장 큰 구멍은 **연속 운용 발열**이었다. 모든 측정이 900프레임 ≈ 26초짜리였기 때문이다.
+> 2026-10-11 의 40분 측정([`thermal_soak`](../07_results/thermal_soak/summary.md))이 일부를 닫았다 — `b2/s4` 는 지속 가능, `b8/s16` 은 약 5분에 칩 보호 정지.
+> 중간 운용점·냉각 장치·최소 지연 운용점의 연속 운용은 아직 모른다. 이걸 숨기지 않고 적어 두는 것이 이 프로젝트의 방식이다.
 
 ---
 
@@ -327,7 +339,7 @@ FFmpeg 프레임 스레드가 늘린 메모리 지연을 원인으로 **추정**
 
 **Q1. 같은 코드를 두 번 재서 FPS가 다르게 나왔다. 무엇부터 확인해야 하는가?**
 
-칩 온도다. 90 °C대에서 클럭이 400 → 250 MHz로 떨어진다.
+칩 온도다. Hailo 칩은 약 104 °C(orange zone)부터 클럭이 400 → 350 → 300 MHz… 로 단계적으로 떨어지고, 약 120 °C(red zone)에서 추론을 멈춘다([`thermal_soak`](../07_results/thermal_soak/summary.md)).
 그 다음은 PCIe 링크 세대(sysfs에서 읽는다), 그 다음은 측정 중에 다른 작업이 돌았는지다.
 이 프로젝트는 실행마다 `env_bench.txt` 에 이 셋을 다 남긴다.
 
