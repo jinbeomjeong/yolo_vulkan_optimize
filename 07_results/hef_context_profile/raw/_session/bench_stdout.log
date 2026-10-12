@@ -1,0 +1,19 @@
+[17:29:13] b1_run1  chip 62.8 C (cooled 0s)
+    rc 0  fps(stdout) 24.31  fps(json) 23.97269620177021  chip after 64.2 C  hailort.log warn 0 err 0
+[17:29:17] b2_run1  chip 64.1 C (cooled 0s)
+    rc 0  fps(stdout) 34.63  fps(json) 34.95977812850725  chip after 65.8 C  hailort.log warn 0 err 0
+[17:29:21] b8_run1  chip 65.7 C (cooled 0s)
+    rc 0  fps(stdout) 50.64  fps(json) 47.9655022514707  chip after 67.5 C  hailort.log warn 0 err 0
+[17:29:25] b1_run2  chip 67.4 C (cooled 0s)
+    rc 0  fps(stdout) 24.31  fps(json) 23.97202420427117  chip after 67.7 C  hailort.log warn 0 err 0
+[17:29:28] b2_run2  chip 67.5 C (cooled 0s)
+    rc 0  fps(stdout) 34.63  fps(json) 34.900245135383095  chip after 68.4 C  hailort.log warn 0 err 0
+[17:29:32] b8_run2  chip 68.2 C (cooled 0s)
+    rc 0  fps(stdout) 50.61  fps(json) 50.621375485786444  chip after 69.7 C  hailort.log warn 0 err 0
+[17:29:36] b1_run3  chip 69.4 C (cooled 0s)
+    rc 0  fps(stdout) 24.31  fps(json) 23.9725252925287  chip after 69.5 C  hailort.log warn 0 err 0
+[17:29:40] b2_run3  chip 69.4 C (cooled 0s)
+    rc 0  fps(stdout) 34.63  fps(json) 34.95918097858537  chip after 70.0 C  hailort.log warn 0 err 0
+[17:29:44] b8_run3  chip 69.9 C (cooled 0s)
+    rc 0  fps(stdout) 50.61  fps(json) 47.94467809825511  chip after 71.0 C  hailort.log warn 0 err 0
+done: /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/evidence/run_log.csv

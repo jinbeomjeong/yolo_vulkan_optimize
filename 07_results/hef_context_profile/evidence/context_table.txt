@@ -1,0 +1,62 @@
+# per-B median (min~max) over runs; files: 9; B = [1, 2, 8]; all values ms
+series                                           B=1                     B=2                     B=8
+dynamic_0 span                   10.11 (10.11~10.11)     15.82 (15.82~15.83)     50.10 (50.10~50.11)
+dynamic_1 span                   10.85 (10.85~10.85)     14.27 (14.26~15.19)     35.67 (35.65~35.69)
+dynamic_2 span                      8.78 (8.78~8.79)     14.63 (14.63~14.64)     49.63 (49.63~49.64)
+dynamic_3 span                   11.17 (11.17~11.17)     12.32 (12.32~12.32)     19.19 (19.19~19.19)
+dynamic_0 config-type               1.21 (1.21~1.21)        1.21 (1.21~1.21)        1.21 (1.21~1.21)
+dynamic_0 lcu-type                  8.64 (8.64~8.64)     14.35 (14.34~14.35)     48.63 (48.62~48.63)
+dynamic_1 config-type               1.71 (1.70~1.71)        0.82 (0.82~0.82)        0.82 (0.81~0.82)
+dynamic_1 lcu-type                  8.90 (8.89~8.90)     13.19 (13.12~13.20)     34.61 (34.59~34.62)
+dynamic_2 config-type               0.47 (0.47~0.47)        0.47 (0.47~0.47)        0.47 (0.47~0.47)
+dynamic_2 lcu-type                  8.11 (8.11~8.13)     13.97 (13.97~13.98)     48.97 (48.97~48.98)
+dynamic_3 config-type               8.32 (8.32~8.32)        7.32 (7.32~7.32)        2.64 (2.64~2.64)
+dynamic_3 lcu-type                  2.64 (2.64~2.64)        4.78 (4.78~4.78)     16.34 (16.34~16.34)
+switch gaps (sum)                   0.01 (0.01~0.01)        0.01 (0.01~0.01)        0.01 (0.01~0.01)
+batch span                       40.92 (40.92~40.93)     57.06 (57.05~57.98)  154.62 (154.59~154.63)
+out_ms (dyn0 -> last output)     32.57 (32.57~32.58)     49.70 (49.69~50.62)  151.95 (151.92~151.96)
+tail_ms (after last output)         8.35 (8.35~8.35)        7.36 (7.36~7.36)        2.67 (2.67~2.67)
+period from stdout fps           41.14 (41.14~41.14)     57.75 (57.75~57.75)  158.07 (157.98~158.07)
+period from JSON fps             41.71 (41.71~41.72)     57.21 (57.21~57.31)  166.79 (158.04~166.86)
+period_stdout - batch span          0.21 (0.20~0.21)       0.70 (-0.23~0.71)        3.44 (3.39~3.45)
+preliminary (once)               11.06 (11.06~11.07)     11.06 (11.06~11.06)     11.07 (11.07~11.07)
+fps                              24.31 (24.31~24.31)     34.63 (34.63~34.63)     50.61 (50.61~50.64)   (stdout, last line)
+fps_json                         23.97 (23.97~23.97)     34.96 (34.90~34.96)     47.97 (47.94~50.62)
+
+# fits y = a + b*B over all runs (a = fixed per batch, b = per frame)
+  dynamic_0 span               a    4.39  b   5.71  rms  0.00
+  dynamic_1 span               a    7.40  b   3.54  rms  0.26
+  dynamic_2 span               a    2.96  b   5.84  rms  0.01
+  dynamic_3 span               a   10.03  b   1.15  rms  0.00
+  dynamic_0 config-type        a    1.21  b   0.00  rms  0.00
+  dynamic_1 config-type        a    1.42  b  -0.08  rms  0.33
+  dynamic_2 config-type        a    0.47  b   0.00  rms  0.00
+  dynamic_3 config-type        a    9.03  b  -0.80  rms  0.08
+  dynamic_0 lcu-type           a    2.92  b   5.71  rms  0.00
+  dynamic_1 lcu-type           a    5.55  b   3.64  rms  0.26
+  dynamic_2 lcu-type           a    2.29  b   5.84  rms  0.01
+  dynamic_3 lcu-type           a    0.78  b   1.95  rms  0.08
+  batch span                   a   24.79  b  16.23  rms  0.27
+  out_ms                       a   15.73  b  17.03  rms  0.30
+  tail_ms                      a    9.06  b  -0.80  rms  0.08
+  dynamic_3 pre-output         a    0.96  b   1.95  rms  0.08
+  period_stdout                a   24.39  b  16.71  rms  0.04
+  period_json                  a   23.21  b  17.57  rms  2.53
+
+# fixed-cost share of each context's a (sum 24.78):
+  dynamic_0: a   4.39 =  17.7% of batch-span a 24.79
+  dynamic_1: a   7.40 =  29.9% of batch-span a 24.79
+  dynamic_2: a   2.96 =  11.9% of batch-span a 24.79
+  dynamic_3: a  10.03 =  40.4% of batch-span a 24.79
+
+# out_ms split via context fits: fixed 15.71 + per-frame 17.03*B (direct out_ms fit 15.73 + 17.03*B)
+  B=1: out_ms median 32.57 -> fixed 15.71 (48.2%), per-frame 16.86
+  vs 34.6 ms: fixed 15.71 = 45.4%
+  vs 32.513 ms: fixed 15.71 = 48.3%
+
+# next-context check: enable_lcu_default at the end of a context vs lcu_interrupt count of the next
+  dynamic_0: enable_lcu_default 91  ->  dynamic_1: lcu_interrupt 91  match
+  dynamic_1: enable_lcu_default 105  ->  dynamic_2: lcu_interrupt 105  match
+  dynamic_2: enable_lcu_default 38  ->  dynamic_3: lcu_interrupt 38  match
+  dynamic_3: enable_lcu_default 72  ->  dynamic_0: lcu_interrupt 72  match
+  identical in all 9 runs: True
