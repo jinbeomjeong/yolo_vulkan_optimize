@@ -1,4 +1,5 @@
-// Pure logic of the yvo_pipeline app (pipeline/slot_exchange.hpp, toolkit/result_csv.hpp, toolkit/cli_parse.hpp)
+// Pure logic of the yvo_pipeline app (pipeline/slot_exchange.hpp, pipeline/input_pacer.hpp, toolkit/result_csv.hpp,
+// toolkit/cli_parse.hpp)
 // — no NPU, GPU or display needed.
 //
 //   SlotExchange.*        slot pool + completion queue: FIFO order, two return conditions (compute + display),
@@ -6,8 +7,12 @@
 //   SlotBudget.*          validate_slot_budget(): the --display on startup gate on decoder frames held at once.
 //                         Expected messages are the exact text the check printed when it was inline in main.cpp parse().
 //                         plane_frames_held(): the plane-path count shared with yvo_pipeline's extra_hw_frames.
+//   LeakyQueue.*          --input-pace source queue: FIFO, a full queue drops (and hands back) the oldest
+//   ArrivalSchedule.*     t_arr(k) = t0 + k/fps on an absolute base, the boundary counts as due
+//   InputPacer.*          max_gap() (longest dropped run) and the validate_input_queue() startup gate
 //   ResultCsv.*           the 22-field RESULT_CSV line of yvo_pipeline / yvo_gst_pipeline, byte-exact
 //                         (expected lines are real lines printed by the per-tool printf it replaced).
+//                         RESULT_CSV4 (paced only): field count and a real line, byte-exact.
 //   CliParse.*            strict option-value parsing: same values as atoi/atol/atof for well-formed input,
 //                         rejection of what they silently mangled, exit code 2 + message from arg_number().
 //
@@ -22,6 +27,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <deque>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -30,6 +36,7 @@
 
 #include <gtest/gtest.h>
 
+#include "pipeline/input_pacer.hpp"
 #include "pipeline/slot_exchange.hpp"
 #include "toolkit/cli_parse.hpp"
 #include "toolkit/result_csv.hpp"
@@ -428,6 +435,157 @@ TEST(ResultCsv, PrintWritesTheFormattedLineToStdout) {
     yvo::tool::print_result_csv(pipeline_sample());
     std::fflush(stdout);
     EXPECT_EQ(testing::internal::GetCapturedStdout(), format_result_csv(pipeline_sample()));
+}
+
+// RESULT_CSV4: --input-pace source only. Values behind a real line (b1s1, --input-queue 1, --frames 300, 2026-10-12).
+yvo::tool::ResultCsv4 paced_sample() {
+    return {.label = "b1s1_q1", .input_queue = 1, .src_fps = 30.0, .arrived = 300, .processed = 243, .dropped = 57,
+            .abandoned = 0, .drop_rate = 57.0 / 300.0, .max_drop_run = 1, .queue_depth_max = 1, .e2e_arr_mean = 58.679,
+            .e2e_arr_median = 58.254, .e2e_arr_p90 = 72.729, .e2e_arr_max = 92.393, .queue_wait_mean = 14.887,
+            .queue_wait_p90 = 28.840, .queue_wait_max = 48.071, .decode_late_mean = 2.927, .decode_late_p90 = 4.495,
+            .decode_late_max = 24.317, .held_frames_max = 2, .ok = true};
+}
+
+TEST(ResultCsv, Csv4LineIsByteExact) {
+    EXPECT_EQ(yvo::tool::format_result_csv4(paced_sample()),
+              "RESULT_CSV4,b1s1_q1,1,30.000,300,243,57,0,0.1900,1,1,58.68,58.25,72.73,92.39,14.887,28.840,48.071,"
+              "2.927,4.495,24.317,2,1\n");
+}
+
+TEST(ResultCsv, Csv4HasTwentyTwoFields) {
+    const std::string line = yvo::tool::format_result_csv4(paced_sample());
+    ASSERT_FALSE(line.empty());
+    EXPECT_EQ(line.back(), '\n');
+    std::size_t commas = 0;
+    for (const char c : line) commas += c == ',';
+    EXPECT_EQ(commas + 1, 23u);   // "RESULT_CSV4" tag + 22 fields
+    EXPECT_EQ(line.rfind("RESULT_CSV4,b1s1_q1,", 0), 0u);
+    EXPECT_EQ(line.substr(line.size() - 3), ",1\n");
+}
+
+// ═══════════════════════════════════════════════ input pacing (pipeline/input_pacer.hpp)
+
+using yvo::pipeline::ArrivalSchedule;
+using yvo::pipeline::LeakyQueue;
+
+TEST(LeakyQueue, PopsOldestFirst) {
+    LeakyQueue<int> q(3);
+    EXPECT_FALSE(q.push(1).has_value());
+    EXPECT_FALSE(q.push(2).has_value());
+    EXPECT_FALSE(q.push(3).has_value());
+    EXPECT_EQ(q.size(), 3u);
+    EXPECT_EQ(q.pop_oldest(), std::optional<int>(1));
+    EXPECT_EQ(q.pop_oldest(), std::optional<int>(2));
+    EXPECT_EQ(q.pop_oldest(), std::optional<int>(3));
+    EXPECT_TRUE(q.empty());
+}
+
+TEST(LeakyQueue, OverflowDropsAndReturnsTheOldest) {
+    LeakyQueue<int> q(2);
+    q.push(10);
+    q.push(11);
+    EXPECT_EQ(q.push(12), std::optional<int>(10));
+    EXPECT_EQ(q.push(13), std::optional<int>(11));
+    EXPECT_EQ(q.size(), 2u);
+    EXPECT_EQ(q.pop_oldest(), std::optional<int>(12));   // order is kept after drops
+    EXPECT_EQ(q.pop_oldest(), std::optional<int>(13));
+}
+
+TEST(LeakyQueue, CapacityOneKeepsOnlyTheNewest) {
+    LeakyQueue<int> q(1);
+    for (int i = 0; i < 5; ++i) {
+        const auto dropped = q.push(i);
+        EXPECT_EQ(dropped.has_value(), i > 0);
+        if (dropped) {
+            EXPECT_EQ(*dropped, i - 1);
+        }
+    }
+    EXPECT_EQ(q.size(), 1u);
+    EXPECT_EQ(q.pop_oldest(), std::optional<int>(4));
+}
+
+TEST(LeakyQueue, DroppedFrameReferenceIsReleased) {
+    // The queue holds decoder frames through a shared_ptr keepalive; a drop must give the frame back at once.
+    const auto first = std::make_shared<int>(1);
+    const auto second = std::make_shared<int>(2);
+    LeakyQueue<std::shared_ptr<int>> q(1);
+    q.push(first);
+    EXPECT_EQ(first.use_count(), 2);
+    {
+        auto dropped = q.push(second);
+        ASSERT_TRUE(dropped.has_value());
+        EXPECT_EQ(dropped->get(), first.get());
+    }
+    EXPECT_EQ(first.use_count(), 1);    // the caller let the dropped one go: only the test holds it now
+    EXPECT_EQ(second.use_count(), 2);
+    q.clear();
+    EXPECT_EQ(second.use_count(), 1);
+}
+
+TEST(LeakyQueue, EmptyPopAndZeroCapacity) {
+    LeakyQueue<int> q(0);   // clamped to 1
+    EXPECT_EQ(q.capacity(), 1u);
+    EXPECT_FALSE(q.pop_oldest().has_value());
+    q.push(1);
+    EXPECT_EQ(q.push(2), std::optional<int>(1));
+    q.clear();
+    EXPECT_TRUE(q.empty());
+    EXPECT_FALSE(q.pop_oldest().has_value());
+}
+
+TEST(ArrivalSchedule, FrameZeroArrivesAtT0) {
+    ArrivalSchedule s(30.0);
+    const auto t0 = std::chrono::steady_clock::now();
+    s.start(t0);
+    EXPECT_EQ(s.arrival(0), t0);
+    EXPECT_EQ(s.arrival(1) - t0, std::chrono::nanoseconds(33333333));
+}
+
+TEST(ArrivalSchedule, Frame900At30FpsIsExactlyThirtySeconds) {
+    ArrivalSchedule s(30.0);
+    const std::chrono::steady_clock::time_point t0{std::chrono::seconds(1000)};
+    s.start(t0);
+    EXPECT_EQ(s.arrival(900) - t0, std::chrono::seconds(30));
+    EXPECT_EQ(s.arrival(1816) - t0, std::chrono::nanoseconds(60533333333));
+}
+
+TEST(ArrivalSchedule, NoDriftAtNtscRate) {
+    // 30000/1001 fps: frame 30000 arrives exactly 1001 s later (absolute base, no accumulated rounding).
+    ArrivalSchedule s(30000.0 / 1001.0);
+    const std::chrono::steady_clock::time_point t0{};
+    s.start(t0);
+    EXPECT_EQ(s.arrival(30000) - t0, std::chrono::seconds(1001));
+}
+
+TEST(ArrivalSchedule, BoundaryCountsAsDue) {
+    ArrivalSchedule s(25.0);
+    const std::chrono::steady_clock::time_point t0{std::chrono::seconds(5)};
+    s.start(t0);
+    EXPECT_TRUE(s.due(0, t0));
+    EXPECT_TRUE(s.due(2, t0 + std::chrono::milliseconds(80)));
+    EXPECT_FALSE(s.due(2, t0 + std::chrono::milliseconds(80) - std::chrono::nanoseconds(1)));
+}
+
+TEST(InputPacer, MaxGapIsTheLongestDroppedRun) {
+    using yvo::pipeline::max_gap;
+    EXPECT_EQ(max_gap({}), 0);
+    EXPECT_EQ(max_gap({0, 1, 2, 3}), 0);
+    EXPECT_EQ(max_gap({0, 2, 4, 5}), 1);
+    EXPECT_EQ(max_gap({0, 1, 5, 6, 8}), 3);
+    EXPECT_EQ(max_gap({2, 3}), 2);   // a leading run counts from frame 0
+}
+
+TEST(InputPacer, ValidateInputQueue) {
+    using yvo::pipeline::validate_input_queue;
+    EXPECT_EQ(validate_input_queue(1, 3), "");
+    EXPECT_EQ(validate_input_queue(3, 3), "");
+    EXPECT_EQ(validate_input_queue(3, 6), "");   // 6 + 3 + 1 = 10
+    EXPECT_EQ(validate_input_queue(0, 3), "--input-queue must be 1..3 (now 0).\n");
+    EXPECT_EQ(validate_input_queue(4, 1), "--input-queue must be 1..3 (now 4).\n");
+    EXPECT_EQ(validate_input_queue(3, 7),
+              "--input-pace source requires gpu_depth + input_queue + 1 <= 10 (now 7 + 3 + 1 = 11).\n"
+              "The decoder stalls without an error when more than about 13 frames are held at once. "
+              "Reduce --gpu-depth or --input-queue.\n");
 }
 
 // ═══════════════════════════════════════════════ option values (toolkit/cli_parse.hpp)

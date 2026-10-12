@@ -18,7 +18,7 @@ description: >
 
 새로 짜기 전에 확인한다. 대개 `configs` 배열에 행 하나를 더하는 것으로 끝난다.
 
-`06_tools/bench/` 에 **11개**가 있다. 목록·환경변수는 [`06_tools/README.md`](../../../06_tools/README.md).
+`06_tools/bench/` 에 **12개**가 있다. 목록·환경변수는 [`06_tools/README.md`](../../../06_tools/README.md).
 
 | 스크립트 | 대상 | 출력 |
 |---|---|---|

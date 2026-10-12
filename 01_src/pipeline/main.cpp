@@ -34,6 +34,10 @@
 //          --nms cpu: CPU greedy suppression (cpu_nms_greedy_by_class). --nms verify: runs both and compares bit-exactly.
 //          Pushing NPU completions to the GPU is also done by the **main thread** (InferStage::pump/drain_one) —
 //          because there is only one VkQueue, vkQueueSubmit must not be called from another thread.
+// Input pacing (--input-pace, display off only)
+//   asap   : (default) decode as fast as slots free up — the loop below, unchanged.
+//   source : frames arrive at the source frame rate (t0 + k/fps, like a camera) into a leaky queue of --input-queue N
+//            (full → drop the oldest, take the oldest: GStreamer queue leaky=downstream). Single-threaded paced loop.
 // Shutdown order: InferStage::drain → flush_results → display drain → SandLetterbox::clear_import_cache
 //            (display drain = DisplayPipeline::drain or PlaneDisplay::drain: remaining pending commits → scanout shutdown
 //             (taken off screen; for kms, KMS state restore/planes-off) → force remaining releases → clear video buffer cache)
@@ -83,6 +87,7 @@
 #include "decode/ffmpeg_drm_decoder.hpp"
 #include "pipeline/gpu_postproc_stage.hpp"
 #include "pipeline/infer_stage.hpp"
+#include "pipeline/input_pacer.hpp"
 #include "pipeline/slot_exchange.hpp"
 #include "toolkit/cli_parse.hpp"
 #include "toolkit/result_csv.hpp"
@@ -159,6 +164,10 @@ enum class Mode { Ptr, Dmabuf };
 //   Gpu : 6 raw output streams → GPU pass 1 (yolo_decode.comp) + CPU greedy suppression
 enum class Postproc { Host, Gpu };
 
+// How decoded frames enter the pipeline. Asap = decode whenever a slot is free (the original loop).
+// Source = frames arrive at the source frame rate into a leaky queue (input_pacer.hpp).
+enum class InputPace { Asap, Source };
+
 struct Args {
     std::string video = YVO_DEFAULT_VIDEO;
     std::string hef = YVO_DEFAULT_HEF;
@@ -183,6 +192,9 @@ struct Args {
     std::string csv_label;  // if set, print one CSV line (RESULT_CSV,...) at the end
     // Decoder frame threads: 1 (07_results/dec_threads). Research knob YVO_DEC_THREADS (environment); 0 -> FFmpeg auto.
     int dec_threads = 1;
+    InputPace input_pace = InputPace::Asap;
+    int input_queue = 1;               // leaky queue capacity, --input-pace source only (user decision 2026-10-12: 1)
+    bool input_queue_explicit = false;
 
     // ── Display (all defaults are "off": running without arguments takes the same path as before) ──
     bool display = false;
@@ -197,7 +209,7 @@ void usage(const char* a0) {
                  "usage: %s [--video PATH] [--hef PATH] [--frames N] [--mode ptr|dmabuf] [--layout nhwc|nhcw]\n"
                  "          [--batch N] [--slots N] [--postproc host|gpu] [--postproc-alloc export|heap]\n"
                  "          [--nms gpu|cpu|verify] [--gpu-depth N] [--score T] [--dump-dir DIR] [--dump-every K]\n"
-                 "          [--quiet] [--csv-label L]\n"
+                 "          [--quiet] [--csv-label L] [--input-pace asap|source] [--input-queue N]\n"
                  "  --layout     preprocessing output / NPU input tensor layout (default nhcw with the default --mode dmabuf; nhwc under --mode ptr)\n"
                  "               nhcw removes HailoRT's CPU input conversion (about 14 ms/frame). --mode dmabuf only\n"
                  "  --slots      number of slots shared by GPU and NPU (default max(4, batch*2))\n"
@@ -210,6 +222,11 @@ void usage(const char* a0) {
                  "               cpu = cpu_nms_greedy_by_class, verify = run both and compare bit-exactly (output is the CPU side)\n"
                  "               --postproc gpu only\n"
                  "  --dump-dir   detections.jsonl (one line per frame) + box PNG every K frames (on the letterbox input)\n"
+                 "  --input-pace asap = decode as fast as slots free up (default). source = frames arrive at the stream\n"
+                 "               frame rate into a leaky queue (full: drop the oldest). --display off only. --frames counts\n"
+                 "               arrived frames; dropped frames get no jsonl line / PNG (\"frame\" stays the source index)\n"
+                 "  --input-queue N  leaky queue size for --input-pace source, 1..3 (default 1)\n"
+                 "               paced cpu ms/frame and FPS are per processed frame: not comparable to asap\n"
 #ifdef YVO_HAVE_DISPLAY
                  "  --display {off,on}                       real-time HDMI display (default off)\n"
                  "  --display-backend {auto,wayland,offscreen,wayland-planes,kms}  default auto. wayland is strict (no silent fallback)\n"
@@ -280,6 +297,15 @@ bool parse(int argc, char** argv, Args& a) {
         else if (s == "--dump-every" && (v = next())) a.dump_every = arg_number<int>(argv[0], s, v);
         else if (s == "--csv-label" && (v = next())) a.csv_label = v;
         else if (s == "--quiet") a.quiet = true;
+        else if (s == "--input-pace" && (v = next())) {
+            const std::string p = v;
+            if (p == "asap") a.input_pace = InputPace::Asap;
+            else if (p == "source") a.input_pace = InputPace::Source;
+            else return false;
+        } else if (s == "--input-queue" && (v = next())) {
+            a.input_queue = arg_number<int>(argv[0], s, v);
+            a.input_queue_explicit = true;
+        }
 #ifdef YVO_HAVE_DISPLAY
         else if (s == "--display" && (v = next())) {
             const std::string d = v;
@@ -322,6 +348,23 @@ bool parse(int argc, char** argv, Args& a) {
     if (a.slots <= 0) a.slots = std::max(4, a.batch * 2);
     if (a.batch < 1 || a.batch > 64 || a.gpu_depth < 1 || a.dump_every < 1) return false;
     a.gpu_depth = std::min(a.gpu_depth, a.slots);
+    if (a.input_pace == InputPace::Asap && a.input_queue_explicit) {
+        std::fprintf(stderr, "--input-queue is only for --input-pace source.\n");
+        return false;
+    }
+    if (a.input_pace == InputPace::Source) {
+        // v1 is display-off only: the display has its own pacing (pace_deadline) and its late-frame stats would count
+        // queue drops as late frames.
+        if (a.display) {
+            std::fprintf(stderr, "--input-pace source is only for --display off.\n");
+            return false;
+        }
+        const std::string err = yvo::pipeline::validate_input_queue(a.input_queue, a.gpu_depth);
+        if (!err.empty()) {
+            std::fputs(err.c_str(), stderr);
+            return false;
+        }
+    }
 #ifdef YVO_HAVE_DISPLAY
     if (a.disp.every < 1 || a.disp.warmup < 0 || a.disp.overlay_line_width < 1 || a.disp.overlay_text_scale < 1) return false;
     // Pacing default: source when display is on (follows the 30 fps source), none when off.
@@ -406,8 +449,9 @@ const char* nms_name(yvo::pipeline::NmsBackend b) {
 }
 
 // detections.jsonl: one line per frame (yvo_gst_pipeline's yvohailosink writes the same line format).
-void write_jsonl_line(std::FILE* fp, const yvo::InferResult& r) {
-    std::fprintf(fp, "{\"frame\":%lld,\"detections\":[", static_cast<long long>(r.pts));
+// frame = source frame index (= r.pts with --input-pace asap; with source, dropped frames leave gaps).
+void write_jsonl_line(std::FILE* fp, std::int64_t frame, const yvo::InferResult& r) {
+    std::fprintf(fp, "{\"frame\":%lld,\"detections\":[", static_cast<long long>(frame));
     for (std::size_t i = 0; i < r.detections.size(); ++i) {
         const auto& d = r.detections[i];
         std::fprintf(fp, "%s{\"class\":%d,\"name\":\"%s\",\"score\":%.4f,\"box\":[%.1f,%.1f,%.1f,%.1f]}",
@@ -563,6 +607,13 @@ void print_display_config(const Args& a, const yvo::display::DisplaySink& displa
 }
 #endif
 
+// --input-pace source totals (absent with asap).
+struct PacedTotals {
+    double src_fps = 0.0;
+    long arrived = 0, dropped = 0, abandoned = 0, max_drop_run = 0, queue_depth_max = 0;
+    Stats sa, sq, sl;            // e2e from arrival, queue wait (decode return → submit), decode late (arrival → decode return)
+};
+
 // Main-loop totals for the end-of-run summary.
 struct RunTotals {
     long n = 0;                  // decoded (= submitted to the GPU)
@@ -573,6 +624,7 @@ struct RunTotals {
     float hailo_t0 = 0.0f, hailo_t1 = 0.0f;
     double soc_t0 = 0.0, soc_t1 = 0.0;
     int stop_signal = 0;         // 0 = ran to the end; otherwise the stop signal (exit code 128 + signo)
+    std::optional<PacedTotals> paced;
 };
 
 // End-of-run summary on stdout (+ RESULT_CSV/RESULT_CSV2/RESULT_CSV3 with --csv-label). A display transport failure
@@ -621,6 +673,23 @@ bool print_summary(const Args& a, const RunTotals& t, const GpuPostSnapshot& g, 
     std::printf("e2e latency ms  mean %.3f  median %.3f  p90 %.3f  max %.3f  (decode return → NPU completion callback)\n", se.mean,
                 se.median, se.p90, se.max);
     std::printf("slot wait ms    mean %.3f  p90 %.3f  (time the main thread waited for a free slot)\n", sw.mean, sw.p90);
+    if (t.paced) {
+        const PacedTotals& p = *t.paced;
+        std::printf("input pace      source @ %.3f fps, input queue %d (leaky: full -> drop the oldest)\n", p.src_fps,
+                    a.input_queue);
+        std::printf("arrived         %ld (processed %ld, dropped %ld = %.2f%%, abandoned %ld, longest drop run %ld, "
+                    "queue depth max %ld)\n",
+                    p.arrived, n, p.dropped,
+                    p.arrived ? 100.0 * static_cast<double>(p.dropped) / static_cast<double>(p.arrived) : 0.0,
+                    p.abandoned, p.max_drop_run, p.queue_depth_max);
+        std::printf("e2e arrival ms  mean %.3f  median %.3f  p90 %.3f  max %.3f  (source arrival → NPU completion callback)\n",
+                    p.sa.mean, p.sa.median, p.sa.p90, p.sa.max);
+        std::printf("queue wait ms   mean %.3f  p90 %.3f  max %.3f  (decode return → GPU submit)\n", p.sq.mean, p.sq.p90,
+                    p.sq.max);
+        std::printf("decode late ms  mean %.3f  p90 %.3f  max %.3f  (source arrival → decode return)\n", p.sl.mean,
+                    p.sl.p90, p.sl.max);
+        std::printf("note            paced: FPS and cpu ms/frame are per processed frame (plus polling) — not comparable to asap\n");
+    }
     if (a.postproc == Postproc::Gpu) {
         std::printf("gpu post ms     mean %.3f  median %.3f  p90 %.3f  max %.3f  (yolo_decode.comp pass 1)\n", sp.mean,
                     sp.median, sp.p90, sp.max);
@@ -738,6 +807,21 @@ bool print_summary(const Args& a, const RunTotals& t, const GpuPostSnapshot& g, 
                     glass_med_s.c_str(), sdg.n, pres_p90_s.c_str(), sdi.n, d.sc_late.c_str(), d.sc_late_gap.c_str(),
                     d.sc_gap_max.c_str(), d.sc_gaps.c_str(), d.sc_breaks.c_str(), d.sc_discarded.c_str(), d.sc_refresh.c_str(),
                     fail ? 0 : 1, d2s_mean_s.c_str(), d2s_med_s.c_str(), d2s_p90_s.c_str(), sdd.n);
+        // Fourth line, --input-pace source only (field list: toolkit/result_csv.hpp).
+        if (t.paced) {
+            const PacedTotals& p = *t.paced;
+            std::fputs(yvo::tool::format_result_csv4(
+                           {.label = a.csv_label, .input_queue = a.input_queue, .src_fps = p.src_fps,
+                            .arrived = p.arrived, .processed = n, .dropped = p.dropped, .abandoned = p.abandoned,
+                            .drop_rate = p.arrived ? static_cast<double>(p.dropped) / static_cast<double>(p.arrived) : 0.0,
+                            .max_drop_run = p.max_drop_run, .queue_depth_max = p.queue_depth_max,
+                            .e2e_arr_mean = p.sa.mean, .e2e_arr_median = p.sa.median, .e2e_arr_p90 = p.sa.p90,
+                            .e2e_arr_max = p.sa.max, .queue_wait_mean = p.sq.mean, .queue_wait_p90 = p.sq.p90,
+                            .queue_wait_max = p.sq.max, .decode_late_mean = p.sl.mean, .decode_late_p90 = p.sl.p90,
+                            .decode_late_max = p.sl.max, .held_frames_max = t.held_frames_max, .ok = !fail})
+                           .c_str(),
+                       stdout);
+        }
     }
     return fail;
 }
@@ -872,6 +956,9 @@ int run(const Args& a) {
     yvo::FfmpegDrmDecoder::Options dopt;
     dopt.threads = a.dec_threads;  // 1 frame thread (07_results/dec_threads); YVO_DEC_THREADS=0 -> FFmpeg auto
     dopt.extra_hw_frames = std::max(2 * yvo::kNumSlots, a.gpu_depth + 4);
+    const bool paced = a.input_pace == InputPace::Source;
+    // Paced: the leaky queue holds up to input_queue more frames (+1 decoded while it is full). parse() checked the sum.
+    if (paced) dopt.extra_hw_frames = std::max(8, a.gpu_depth + a.input_queue + 4);
 #ifdef YVO_HAVE_DISPLAY
     if (display && planes) {
         // wayland-planes / kms: margin of 4 on top of parse()'s holding count (matched slots+1, latest slots+1+5).
@@ -894,8 +981,13 @@ int run(const Args& a) {
     }
     const int src_w = dec.width(), src_h = dec.height();
     stage->set_source_size(src_w, src_h);
+    const double dec_fps = dec.frame_rate();
+    if (paced && !(dec_fps >= 1.0 && dec_fps <= 240.0)) {   // NaN fails the range test too
+        std::fprintf(stderr, "--input-pace source: stream frame rate %.3f is not in [1, 240]\n", dec_fps);
+        return 2;
+    }
 #ifdef YVO_HAVE_DISPLAY
-    const double dec_fps = dec.frame_rate(), src_fps = dec_fps >= 1.0 && dec_fps <= 240.0 ? dec_fps : a.disp.source_fps;  // NaN fails the range test
+    const double src_fps = dec_fps >= 1.0 && dec_fps <= 240.0 ? dec_fps : a.disp.source_fps;  // NaN fails the range test
     if (display && src_fps != dec_fps) std::fprintf(stderr, "warning: stream frame rate %.3f not in [1, 240], display pace keeps %.2f fps\n", dec_fps, src_fps);
     if (display) { display->set_source_size(src_w, src_h); display->set_source_fps(src_fps); }
 #endif
@@ -917,6 +1009,9 @@ int run(const Args& a) {
         std::printf("[cfg] video=%s %dx%d mode=%s layout=%s batch=%d slots=%d gpu_depth=%d postproc=%s device=%s\n",
                     a.video.c_str(), src_w, src_h, dmabuf ? "dmabuf" : "ptr", layout_name(a.layout), a.batch, a.slots,
                     a.gpu_depth, pp_desc.c_str(), ctx.device_name());
+        if (paced)
+            std::printf("[pace] input-pace source @ %.3f fps, input-queue %d (leaky: drop the oldest), hw_frames=%d\n",
+                        dec_fps, a.input_queue, dopt.extra_hw_frames);
 #ifdef YVO_HAVE_DISPLAY
         if (display) print_display_config(a, *display, src_fps, dopt.extra_hw_frames);
 #endif
@@ -940,6 +1035,14 @@ int run(const Args& a) {
     std::unordered_map<std::int64_t, yvo::LetterboxParams> png_lb;
     std::int64_t next_pts = 0;
     long submitted_npu = 0, completed = 0, total_dets = 0, errors = 0;
+    // Internal pts stays the submit sequence (flush_results needs it contiguous). seq_src maps it to the source frame
+    // index for the jsonl "frame", PNG names and --dump-every. Empty with asap → identity (output unchanged).
+    std::vector<std::int64_t> seq_src;
+    std::vector<Clock::time_point> seq_arrival;                // paced: source arrival time per submit sequence
+    const auto src_of = [&seq_src](std::int64_t seq) {
+        return seq_src.empty() ? seq : seq_src[static_cast<std::size_t>(seq)];
+    };
+    std::vector<double> e2e_arr_ms, queue_wait_ms, decode_late_ms;   // paced only
 
     // Decoder 13-frame constraint measurement: count the AVFrames we actually hold using weak_ptr.
     // (SandLetterbox's keepalive and DisplayPipeline's retained share the same shared_ptr, so
@@ -981,11 +1084,14 @@ int run(const Args& a) {
                 e2e_ms.push_back(std::chrono::duration<double, std::milli>(c.t_done - it->second).count());
                 t_decoded.erase(it);
             }
+            if (r.pts >= 0 && static_cast<std::size_t>(r.pts) < seq_arrival.size())
+                e2e_arr_ms.push_back(
+                    std::chrono::duration<double, std::milli>(c.t_done - seq_arrival[static_cast<std::size_t>(r.pts)]).count());
             total_dets += static_cast<long>(r.detections.size());
-            if (jsonl) write_jsonl_line(jsonl.get(), r);
+            if (jsonl) write_jsonl_line(jsonl.get(), src_of(r.pts), r);
             if (auto it = png_src.find(r.pts); it != png_src.end()) {
                 char name[64];
-                std::snprintf(name, sizeof(name), "/frame%05lld.png", static_cast<long long>(r.pts));
+                std::snprintf(name, sizeof(name), "/frame%05lld.png", static_cast<long long>(src_of(r.pts)));
                 draw_and_save(a.dump_dir + name, it->second, png_lb[r.pts], r.detections);
                 png_src.erase(it);
                 png_lb.erase(r.pts);
@@ -1012,7 +1118,7 @@ int run(const Args& a) {
         gpu_q.pop_front();
         yvo::PreprocOutput out = pre.wait(slot);
         if (pre.last_gpu_ms() >= 0) gpu_ms.push_back(pre.last_gpu_ms());
-        if (jsonl && out.pts % a.dump_every == 0) {
+        if (jsonl && src_of(out.pts) % a.dump_every == 0) {
             copy_letterbox_rgb(out, png_src[out.pts]);
             png_lb[out.pts] = out.lb;
         }
@@ -1034,12 +1140,122 @@ int run(const Args& a) {
         stage->pump();
     };
 
+    // ── --input-pace source (pipeline/input_pacer.hpp). None of this runs with asap. ──
+    struct QueuedFrame {
+        yvo::DrmFrame f;
+        std::int64_t src = 0;          // source frame index (= arrival order)
+        Clock::time_point t_dec{};     // decode return
+    };
+    yvo::pipeline::LeakyQueue<QueuedFrame> in_q(static_cast<std::size_t>(a.input_queue));
+    yvo::pipeline::ArrivalSchedule sched(dec_fps);
+    long arrived = 0, dropped = 0, queue_depth_max = 0;
+    const auto ms_of = [](Clock::duration d) { return std::chrono::duration<double, std::milli>(d).count(); };
+    const auto sweep_held = [&]() {
+        for (auto it = live_frames.begin(); it != live_frames.end();)
+            it = it->expired() ? live_frames.erase(it) : it + 1;
+        held_frames_max = std::max(held_frames_max, static_cast<long>(live_frames.size()));
+    };
+
+    // Paced main loop: single-threaded like the asap loop, and every wait is a short poll that keeps pumping NPU
+    // completions, GPU post-processing and result recording. Each iteration first ingests every frame whose arrival
+    // time has come (decode → leaky queue; a full queue drops its oldest frame right away), then submits the oldest
+    // queued frame when a slot is free with the same block as the asap loop. n counts submitted frames.
+    auto run_paced = [&](long& n, Clock::time_point t_start) {
+        bool ingest_done = false;
+        std::optional<Clock::time_point> slot_wait_since;   // the 5 s timeout runs while the queue waits for a slot
+        sched.start(Clock::now());                          // t0: just before the first decode
+        const auto ingest = [&]() {
+            while (!ingest_done && !stop_requested()) {
+                if (a.frames > 0 && arrived >= a.frames) {  // --frames counts arrived frames
+                    ingest_done = true;
+                    break;
+                }
+                const auto t_arr = sched.arrival(arrived);
+                if (Clock::now() < t_arr) break;
+                const auto d0 = Clock::now();
+                auto f = dec.next();
+                const auto d1 = Clock::now();
+                stage->pump();
+                if (!f) {
+                    ingest_done = true;
+                    break;
+                }
+                decode_ms.push_back(ms_of(d1 - d0));
+                decode_late_ms.push_back(ms_of(d1 - t_arr));
+                live_frames.push_back(f->keepalive);
+                sweep_held();   // the peak: new frame + full queue + GPU frames (a dropped frame is released just below)
+                if (in_q.push(QueuedFrame{std::move(*f), arrived, d1})) ++dropped;   // the oldest is released here
+                ++arrived;
+                queue_depth_max = std::max(queue_depth_max, static_cast<long>(in_q.size()));
+            }
+        };
+        while (true) {
+            ingest();
+            if (stop_requested()) break;
+            if (in_q.empty()) {
+                if (ingest_done) break;
+                // Nothing to submit: sleep until the next arrival in short steps, moving the downstream stages meanwhile.
+                stage->pump();
+                while (!gpu_q.empty() && pre.ready(gpu_q.front())) finish_gpu();
+                flush_results();
+                const auto left = sched.arrival(arrived) - Clock::now();
+                if (left > Clock::duration::zero())
+                    std::this_thread::sleep_for(std::min<Clock::duration>(left, std::chrono::microseconds(500)));
+                continue;
+            }
+            // Same no-blocking rule as the asap slot loop (pump + finish_gpu + flush_results, then a short poll).
+            std::optional<int> slot = ex.try_acquire();
+            if (!slot) {
+                if (!slot_wait_since) slot_wait_since = Clock::now();
+                stage->pump();
+                if (!gpu_q.empty()) finish_gpu();
+                flush_results();
+                Clock::duration slice = std::chrono::milliseconds(2);
+                if (!ingest_done) slice = std::min(slice, sched.arrival(arrived) - Clock::now());
+                slot = ex.acquire_poll(std::max(slice, Clock::duration::zero()));
+                if (!slot) {
+                    if (Clock::now() - *slot_wait_since > std::chrono::seconds(5)) {
+                        ++slot_timeout_count;
+                        throw std::runtime_error("slot wait timeout (5 s): compute completion did not arrive");
+                    }
+                    continue;   // back to ingest: frames keep arriving (and dropping) while the queue waits
+                }
+            }
+            const auto w1 = Clock::now();
+            wait_block_ms.push_back(slot_wait_since ? ms_of(w1 - *slot_wait_since) : 0.0);
+            slot_wait_since.reset();
+            QueuedFrame qf = std::move(*in_q.pop_oldest());   // FIFO: the oldest queued frame
+            qf.f.pts = n;                                      // internal pts = submit sequence
+            t_decoded[n] = qf.t_dec;
+            seq_src.push_back(qf.src);
+            seq_arrival.push_back(sched.arrival(qf.src));
+            queue_wait_ms.push_back(ms_of(w1 - qf.t_dec));
+            pre.submit(qf.f, *slot);
+            gpu_q.push_back(*slot);
+            qf.f.keepalive.reset();   // SandLetterbox holds its own reference (live_frames already tracks the frame)
+
+            while (static_cast<int>(gpu_q.size()) > a.gpu_depth) finish_gpu();
+            while (!gpu_q.empty() && pre.ready(gpu_q.front())) finish_gpu();
+            stage->pump();
+            flush_results();
+            ++n;
+            sweep_held();
+            if (!a.quiet && n % 300 == 0) {
+                const double el = std::chrono::duration<double>(Clock::now() - t_start).count();
+                std::printf("[progress] %ld frames (arrived %ld, dropped %ld), %.1f FPS, hailo %.1f C\n", n, arrived,
+                            dropped, static_cast<double>(n) / el, static_cast<double>(stage->chip_temperature()));
+                std::fflush(stdout);
+            }
+        }
+    };
+
     const double c0 = cpu_ms(); yvo::tool::perf_window(true);  // perf -D -1 --control window opens here
     const auto t0 = Clock::now();
     long n = 0;
     bool fail = false;
     try {
-        while (!stop_requested() && (a.frames <= 0 || n < a.frames)) {
+        if (paced) run_paced(n, t0);
+        while (!paced && !stop_requested() && (a.frames <= 0 || n < a.frames)) {
 #ifdef YVO_HAVE_DISPLAY
             if (display) {
                 if (!display->poll_window()) {
@@ -1154,6 +1370,9 @@ int run(const Args& a) {
             gpu_q.pop_front();
         }
     }
+    // Paced: frames still queued at a stop (or a failure) are released unsubmitted — counted as abandoned.
+    const long abandoned = static_cast<long>(in_q.size());
+    in_q.clear();
     stage->drain();
     flush_results();   // the last shows of matched go out here
 #ifdef YVO_HAVE_DISPLAY
@@ -1196,13 +1415,24 @@ int run(const Args& a) {
         fail = true;
     }
     if (errors) fail = true;
+    if (paced && arrived != n + dropped + abandoned) {
+        std::fprintf(stderr, "[error] paced frame count mismatch: arrived=%ld processed=%ld dropped=%ld abandoned=%ld\n",
+                     arrived, n, dropped, abandoned);
+        fail = true;
+    }
 
     const RunTotals tot{.n = n, .completed = completed, .errors = errors, .total_dets = total_dets,
                         .held_frames_max = held_frames_max, .slot_timeout_count = slot_timeout_count,
                         .wall_s = std::chrono::duration<double>(t1 - t0).count(), .cpu_ms = c1 - c0,
                         .sd = stats(decode_ms), .sg = stats(gpu_ms), .sn = stats(npu_ms), .se = stats(e2e_ms),
                         .sw = stats(wait_block_ms), .hailo_t0 = hailo_t0, .hailo_t1 = hailo_t1, .soc_t0 = soc_t0,
-                        .soc_t1 = soc_t1, .stop_signal = stop_signal};
+                        .soc_t1 = soc_t1, .stop_signal = stop_signal,
+                        .paced = paced ? std::optional<PacedTotals>(PacedTotals{
+                                             .src_fps = dec_fps, .arrived = arrived, .dropped = dropped,
+                                             .abandoned = abandoned, .max_drop_run = yvo::pipeline::max_gap(seq_src),
+                                             .queue_depth_max = queue_depth_max, .sa = stats(e2e_arr_ms),
+                                             .sq = stats(queue_wait_ms), .sl = stats(decode_late_ms)})
+                                       : std::nullopt};
     fail = print_summary(a, tot, gpu_post, disp, ctx, fail);
     std::fflush(stdout);
     if (ctx.debug_messenger_active() && ctx.validation_errors() > 0) fail = true;

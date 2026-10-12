@@ -69,8 +69,8 @@ public:
         std::lock_guard<std::mutex> lk(m_);
         return pop_locked();
     }
-    // Waits only for slice (no blocking — the one who sets display_done is the caller itself).
-    std::optional<int> acquire_poll(std::chrono::milliseconds slice) {
+    // Waits only for slice (no blocking — the one who sets display_done is the caller itself). slice <= 0: no wait.
+    std::optional<int> acquire_poll(Clock::duration slice) {
         std::unique_lock<std::mutex> lk(m_);
         if (free_.empty()) cv_.wait_for(lk, slice, [&] { return !free_.empty(); });
         return pop_locked();

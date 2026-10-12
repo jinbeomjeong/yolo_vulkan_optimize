@@ -34,7 +34,7 @@ _PROBE_MODE_RE = re.compile(r"--probe(?:\s+|=)(\S+)|--(live|stale|fixture|sweep|
 # The bench list is found by globbing 06_tools/bench/*_bench.sh. If root resolution fails, fall back to the list below.
 _BENCH_FALLBACK = ("pipeline_bench.sh", "decode_bench.sh", "op_point_bench.sh",
                    "display_bench.sh", "display_planes_bench.sh", "backpressure_bench.sh",
-                   "isp_bench.sh", "isp_pipeline_bench.sh", "gst_pipeline_bench.sh", "dec_threads_bench.sh", "nms_bench.sh")
+                   "isp_bench.sh", "isp_pipeline_bench.sh", "gst_pipeline_bench.sh", "dec_threads_bench.sh", "nms_bench.sh", "input_pace_bench.sh")
 
 
 def _bench_scripts():
