@@ -26,7 +26,7 @@
 | `07_results` | 추적 | 측정 결과. **수치의 정본** |
 | `08_learn` | 추적 | 자습 교재 |
 | `09_diagrams` | 추적 | yEd `.graphml` |
-| `10_paper` | 추적 | 논문 초고 |
+| `10_paper` | 추적 | 논문 초고. 그림은 `figures/`(§2.7) |
 | `11_logs` | 무시 | 07_results에 기록하지 않는 실행의 런타임 로그 |
 | `cmake` | 추적 | CMake 모듈 |
 | `.claude` | 추적 | 에이전트·스킬·훅 설정 |
@@ -116,10 +116,29 @@
 | 폴더 | 담는 것 |
 |---|---|
 | `bench/` | 측정 셸 `*_bench.sh`와 공통부 `lib/common.sh`. 바이너리는 `$BIN_DIR`, 파이썬은 `$PY_HAILO`(둘 다 `lib/common.sh`에서만 정의) |
-| `python/` | 빌드와 무관한 파이썬 도구(`check_links.py`, `check_structure.py`, `relocate.py` 등) |
+| `python/` | 빌드와 무관한 파이썬 도구(`check_links.py`, `check_structure.py`, `relocate.py` 등). `paper/`는 논문 그림 생성 스크립트(§2.7) |
 | `probes/` | 빌드하지 않는 일회성 C/C++ 프로브 |
 
 벤치 스크립트를 추가·삭제하면 `.claude/hooks/npu_guard.py`가 그 목록을 glob으로 찾는지, 그리고 하드코딩된 폴백 `_BENCH_FALLBACK`(있을 때)이 `bench/` 최상위 `.sh`와 같은지 검사기(C10)로 확인한다. C10은 그 파일 안의 **리터럴 목록만** 본다 — 동적으로 계산되는 이름은 자동으로 맞는 것으로 넘긴다.
+
+### 2.7 `10_paper/`
+
+```
+10_paper/
+  paper_ko.md            논문 초고
+  figures/
+    README.md            그림 등록부: 번호 · 파일 · 생성 스크립트 · 원본 경로 · 측정 조건 · 논문 절
+    figNN_<slug>.svg     본문용(벡터)
+    figNN_<slug>.png     투고·미리보기용 300 dpi
+06_tools/python/paper/
+  paper_style.py         공용 스타일(글꼴·크기·색)
+  figNN_<slug>.py        그림 하나당 스크립트 하나 — 07_results 만 읽고 10_paper/figures 에 쓴다
+  build_figures.py       전체 재생성
+```
+
+- 그림 파일은 **스크립트 실행으로만** 만든다(손으로 고치지 않는다). 다이어그램은 예외로, `09_diagrams/*.graphml`을 yEd GUI로 내보낸 것이다.
+- 담당: 스크립트는 python-expert, 실행·논문 삽입·커밋은 메인 에이전트(`10_paper`는 사용자 확인 대상). 절차는 `.claude/skills/paper-figures/`.
+- 수치의 출처는 `07_results` 정본뿐이다. 등록부의 행마다 생성 스크립트와 원본 경로를 적는다.
 
 ## 3. `07_results/` 레이아웃
 

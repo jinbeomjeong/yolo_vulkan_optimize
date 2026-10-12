@@ -27,7 +27,7 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론 파이프�
 | 코드 | `01_src/` — 라이브러리 `{core,ref,toolkit,testkit,decode,hailo,vulkan,display,isp,pipeline,gstelem}/`, 빌드되는 도구 `tools/<도메인>/`. `02_shaders/` (진단용은 `diag/`) |
 | 자산 | `03_models/` (HEF), `04_data/{videos,raw_tensors}/` |
 | 검증·측정 | `05_tests/` (GoogleTest 실행 파일 10개 + live 1, ctest 177 — NPU 없이는 `ctest -LE npu`), `06_tools/{bench,python,probes}/`, `07_results/<실험>/` |
-| 문서 | `08_learn/` (자습 교재), `09_diagrams/` (yEd `.graphml`), `10_paper/` (논문 초고) |
+| 문서 | `08_learn/` (자습 교재), `09_diagrams/` (yEd `.graphml`), `10_paper/` (논문 초고, 그림 `figures/`) |
 | 로그 | `11_logs/` 07_results에 기록하지 않는 실행의 런타임 로그(git 밖) |
 
 - `01_src/ref/`는 **CPU 기준 구현**(셰이더 수식의 원문·판정 규칙), `toolkit/`은 도구 전용 헬퍼(라이브러리 include 금지),
@@ -178,7 +178,7 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론 파이프�
 | `07_results/` | 쓰기는 `measure`(측정)·`verify`(`verification/`) 스킬, 이동은 `relocate.py`, 정합 점검은 `integrity-auditor` | 결과 파일 내용은 고치지 않는다. 삭제·`FORCE=1` 덮어쓰기는 §사용자 확인(바이트 동일 사본은 `STRUCTURE.md` §3.4 절차로 예외) |
 | `08_learn/`, `README.md` | 메인 에이전트 | 기계적 수정(경로·줄번호·개수)은 `integrity-auditor` |
 | `09_diagrams/` | `graphml-expert`(포맷) | 수치 변경은 도메인 전문가 |
-| `10_paper/`, `.claude/`, `~/.claude/agents/*`, `~/.claude/settings.json`, `CLAUDE.md`, `STRUCTURE.md`, `06_tools/structure_rules.toml` | 메인 에이전트(사용자 확인) | **§사용자 확인**이 정본이다. 승인된 계획이어도 위임하지 않는다. `.claude/agents`·훅 변경은 **다음 세션부터** 반영된다. `~/.claude/**`는 저장소 밖이라 검사기·`placement_guard` 훅이 보지 않는다 |
+| `10_paper/`, `.claude/`, `~/.claude/agents/*`, `~/.claude/settings.json`, `CLAUDE.md`, `STRUCTURE.md`, `06_tools/structure_rules.toml` | 메인 에이전트(사용자 확인) | **§사용자 확인**이 정본이다. 승인된 계획이어도 위임하지 않는다. `.claude/agents`·훅 변경은 **다음 세션부터** 반영된다. `~/.claude/**`는 저장소 밖이라 검사기·`placement_guard` 훅이 보지 않는다. `10_paper/figures/`는 `06_tools/python/paper/` 스크립트(작성은 `python-expert`)의 실행 산출물이고 실행은 메인 에이전트가 한다(`paper-figures` 스킬) |
 | `11_logs/` | 누구나 | git 밖. 최근 실행 흔적 조회는 `status-reporter` |
 | `build*/` | 쓰지 않는다 | 산출물. 락·`bin`/`out` 상태 **읽기**는 `status-reporter` |
 
