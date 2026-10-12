@@ -5,7 +5,7 @@
     ... build_figures.py --only fig04 fig08           # a subset (stem prefix or full stem)
 
 Each figure module is imported and its main(out_dir) is called; the figure's key numbers go to stdout.
-No hardware is used. Figures drawn elsewhere (fig01 yEd diagram, ...) are not listed here.
+No hardware is used. Figures drawn elsewhere (fig03 yEd pipeline diagram, fig06 O2 latency breakdown — pending) are not listed here.
 """
 from __future__ import annotations
 
@@ -18,12 +18,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import paper_style as ps  # noqa: E402
 
 FIGURES = (
-    "fig02_npu_batch_fit",
-    "fig03_npu_context_cost",
+    "fig01_npu_batch_fit",
+    "fig02_npu_context_cost",
     "fig04_op_point_grid",
     "fig05_input_queue",
-    "fig07_display_paths",
-    "fig08_arrival_to_present",
+    "fig07_arrival_to_present",
+    "fig08_display_paths",
     "fig09_thermal_soak",
 )
 

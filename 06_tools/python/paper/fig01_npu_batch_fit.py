@@ -16,7 +16,7 @@ from pathlib import Path
 
 import paper_style as ps
 
-STEM = "fig02_npu_batch_fit"
+STEM = "fig01_npu_batch_fit"
 SRC_COOLED = ps.RESULTS / "op_point" / "runs" / "latency_gen3_cooled" / "benchmark_raw.csv"
 NPU_RUNS = ps.RESULTS / "npu_benchmark" / "runs"
 GEN_BATCHES = (1, 2, 4, 8, 16)

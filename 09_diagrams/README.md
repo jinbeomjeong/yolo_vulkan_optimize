@@ -7,7 +7,7 @@
 |---|---|---:|
 | [`pipeline_overview.graphml`](pipeline_overview.graphml) | 개요 1장. 소스 → 디코드 → GPU 전처리 → NPU → GPU 후처리 → GPU NMS → 오버레이 → present → HDMI 와 **표시 분기·재합류**, 구간별 실측 지연, **대안 표시 경로(HVS 평면 스캔아웃)** | 29 / 19 |
 | [`pipeline_detail.graphml`](pipeline_detail.graphml) | 상세 1장. **스레드 경계**(메인 / HailoRT 콜백), **dma-buf 소유권 3그룹**(+ 평면 백엔드의 ④ AB24 박스 dma-buf), 슬롯 수명, 제약·전제·함정·종료 순서, 대안 표시 경로(`PlaneDisplay`), 미연결 경로 | 39 / 22 |
-| [`pipeline_paper.graphml`](pipeline_paper.graphml) | **논문판** 1장(폭 17.5 cm 그림용 단순화판, `10_paper/paper_ko.md` §4.1 의 ASCII 그림을 대체). HEVC 파일 → HW 디코더 → GPU 전처리 → NPU → GPU 후처리(디코드 + NMS) → Vulkan 합성 → present → HDMI, **대안 표시 경로(HVS 평면, 청색 점선)**, dma-buf 전달을 간선 라벨로, CPU 의 몫(제어만, 복사 0)을 띠 노드로. 번호 ①~⑦ 은 §4.1 그대로. **구간 시간 수치는 넣지 않았다**(조건에 따라 달라짐 — 수치는 위 두 장과 07_results). 내보내기: yEd File ▸ Export → `10_paper/figures/fig01_pipeline.svg` / `.png` | 20 / 12 |
+| [`pipeline_paper.graphml`](pipeline_paper.graphml) | **논문판** 1장(폭 17.5 cm 그림용 단순화판, `10_paper/paper_ko.md` §4.1 의 ASCII 그림을 대체). HEVC 파일 → HW 디코더 → GPU 전처리 → NPU → GPU 후처리(디코드 + NMS) → Vulkan 합성 → present → HDMI, **대안 표시 경로(HVS 평면, 청색 점선)**, dma-buf 전달을 간선 라벨로, CPU 의 몫(제어만, 복사 0)을 띠 노드로. 번호 ①~⑦ 은 §4.1 그대로. **구간 시간 수치는 넣지 않았다**(조건에 따라 달라짐 — 수치는 위 두 장과 07_results). 내보내기: yEd File ▸ Export → `10_paper/figures/fig03_pipeline.svg` / `.png` | 20 / 12 |
 
 세 장 모두 **좌표를 직접 지정**해 두었으므로 yEd 에서 레이아웃을 다시 돌릴 필요가 없다.
 모든 노드의 `description`(`d5`)에 **소스 파일 절대경로·심볼·수치 출처**가 들어 있다 —

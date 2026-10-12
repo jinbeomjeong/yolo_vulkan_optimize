@@ -14,7 +14,7 @@ from pathlib import Path
 
 import paper_style as ps
 
-STEM = "fig03_npu_context_cost"
+STEM = "fig02_npu_context_cost"
 SRC = ps.RESULTS / "hef_context_profile" / "evidence" / "breakdown.json"
 CONTEXTS = ("dynamic_0", "dynamic_1", "dynamic_2", "dynamic_3")
 

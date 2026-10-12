@@ -30,7 +30,7 @@ import paper_style as ps
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import frame_log_stats as fls  # noqa: E402
 
-STEM = "fig08_arrival_to_present"
+STEM = "fig07_arrival_to_present"
 RUN_DIR = ps.RESULTS / "input_pacing" / "runs" / "display_on"
 RAW_CSV = RUN_DIR / "results_raw.csv"
 CONFIGS = (("dvk_b1s1", "b1/s1 (O2), Vulkan 합성", ps.PALETTE[0]),

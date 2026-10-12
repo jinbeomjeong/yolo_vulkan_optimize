@@ -21,7 +21,7 @@ from matplotlib.patches import Patch
 
 import paper_style as ps
 
-STEM = "fig07_display_paths"
+STEM = "fig08_display_paths"
 SRC = ps.RESULTS / "display_planes_e2e" / "runs" / "slots6" / "results.csv"
 PATHS = (("vk_source", "Vulkan\n합성", ps.DEVICE_COLORS["gpu"], None),
          ("wlp_source", "HVS 평면\n(Wayland)", ps.DEVICE_COLORS["display"], None),
