@@ -5,16 +5,20 @@
 //   --display-sync         parse_display_sync (+ sync_name)
 //   --display-pace         parse_display_pace (+ pace_name)
 //   --present-mode         parse_present_mode (+ present_mode_name)
+//   late frames (planes)   late_gap_threshold (display/plane_display.hpp): vblank gap allowance per presentation pair,
+//                          widened by source frames the leaky input queue dropped (--input-pace source)
 //
 // Needs no GPU or display: the functions are only linked from yvo_display, nothing creates a Vulkan instance or
 // connects to Wayland. Built only when yvo_display exists (wayland-client/protocols present).
 // Contract checked here: exact lowercase spelling only, and **on failure the output is left untouched**
 // (main.cpp parse() relies on that: a rejected value must not overwrite the default).
+#include <cmath>
 #include <string>
 
 #include <gtest/gtest.h>
 
 #include "display/display_pipeline.hpp"
+#include "display/plane_display.hpp"
 #include "display/vk_swapchain.hpp"
 
 namespace {
@@ -177,6 +181,33 @@ TEST(DisplayOptions, PresentModeInvalidLeavesOutputUntouched) {
         EXPECT_FALSE(parse_present_mode(s, &out)) << '"' << s << '"';
         EXPECT_EQ(out, VK_PRESENT_MODE_FIFO_RELAXED_KHR);
     }
+}
+
+// ── late_gap_threshold (plane late frames) ──────────────────────────────────────────────────────────────────
+
+TEST(LateGapThreshold, NoUpstreamDropsKeepsTheEveryRule) {
+    // max(1, ceil(every × refresh / fps − 0.01)) — the rule ScanoutReport::late_expected_gap always used.
+    EXPECT_EQ(late_gap_threshold(1, 0, 60.0, 30.0), 2);
+    EXPECT_EQ(late_gap_threshold(1, 0, 59.94, 29.97), 2);
+    EXPECT_EQ(late_gap_threshold(1, 0, 60.0, 29.97), 2);   // 2.002 stays 2
+    EXPECT_EQ(late_gap_threshold(1, 0, 60.0, 25.0), 3);    // 2.4 → round up
+    EXPECT_EQ(late_gap_threshold(2, 0, 60.0, 30.0), 4);    // --display-every 2
+    EXPECT_EQ(late_gap_threshold(1, 0, 60.0, 120.0), 1);   // at least one vblank
+    EXPECT_EQ(late_gap_threshold(0, 0, 60.0, 30.0), 2);    // every < 1 counts as 1
+}
+
+TEST(LateGapThreshold, UpstreamDropsWidenTheAllowance) {
+    // One queue-dropped source frame between two presented ones: the first stays up for two source intervals.
+    EXPECT_EQ(late_gap_threshold(1, 1, 60.0, 30.0), 4);
+    EXPECT_EQ(late_gap_threshold(1, 3, 60.0, 30.0), 8);
+    EXPECT_EQ(late_gap_threshold(2, 1, 60.0, 30.0), 6);    // every 2 + 1 dropped = 3 source intervals
+    EXPECT_EQ(late_gap_threshold(1, 1, 60.0, 25.0), 5);    // 2 × 2.4 = 4.8 → 5
+}
+
+TEST(LateGapThreshold, UnknownRefreshOrFpsIsZero) {
+    EXPECT_EQ(late_gap_threshold(1, 0, 0.0, 30.0), 0);
+    EXPECT_EQ(late_gap_threshold(1, 0, 60.0, 0.0), 0);
+    EXPECT_EQ(late_gap_threshold(1, 2, std::nan(""), 30.0), 0);
 }
 
 } // namespace

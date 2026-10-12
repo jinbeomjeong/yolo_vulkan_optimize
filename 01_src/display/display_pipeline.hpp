@@ -143,6 +143,7 @@ public:
     // Right after decode: **additionally** holds the keepalive of the frame this slot will use (before main's f.reset()).
     // At the same time it records this moment as the glass-to-glass start point (t_decoded: decode-to-screen start point).
     void retain(int slot, const DrmFrame& f, Clock::time_point t_decoded) override;
+    void set_source_index(int slot, std::int64_t src_index) override;
 
     // Puts one frame on screen. false = display drop — the caller must raise display_done(slot) **immediately**.
     bool show(int slot, const std::vector<Detection>& dets, std::string_view hud = {}) override;
@@ -185,6 +186,7 @@ public:
     const std::vector<double>& present_interval_ms() const override { return interval_ms_; }
     const std::vector<double>& glass_ms() const override { return glass_ms_; }
     const std::vector<double>& decode_to_screen_ms() const override { return d2s_ms_; }
+    const std::vector<PresentRecord>& present_log() const override { return present_log_; }
 
 private:
     struct Pending {              // display slot → pipeline slot + latency measurement info
@@ -216,6 +218,7 @@ private:
     struct Retained {
         DrmFrame frame;
         Clock::time_point t{}, t_decoded{};
+        std::int64_t src = -1;    // set_source_index()
         bool valid = false;
     };
     std::vector<Retained> retained_;
@@ -224,6 +227,7 @@ private:
     struct PresentWait {
         std::uint64_t id = 0;
         Clock::time_point t_retain{}, t_decoded{};
+        std::int64_t src = -1;
         bool have_retain = false;
     };
     std::deque<PresentWait> present_ids_;
@@ -240,6 +244,7 @@ private:
     bool pace_started_ = false;
 
     std::vector<double> convert_ms_, convert_total_ms_, overlay_ms_, interval_ms_, glass_ms_, d2s_ms_;
+    std::vector<PresentRecord> present_log_;   // pairs with glass_ms_
 };
 
 const char* sync_name(DisplaySync s);

@@ -7,15 +7,18 @@
 //   SlotBudget.*          validate_slot_budget(): the --display on startup gate on decoder frames held at once.
 //                         Expected messages are the exact text the check printed when it was inline in main.cpp parse().
 //                         plane_frames_held(): the plane-path count shared with yvo_pipeline's extra_hw_frames.
+//                         With --input-pace source the queued frames (--input-queue N) are added on every path.
 //   LeakyQueue.*          --input-pace source queue: FIFO, a full queue drops (and hands back) the oldest
 //   ArrivalSchedule.*     t_arr(k) = t0 + k/fps on an absolute base, the boundary counts as due
 //   InputPacer.*          max_gap() (longest dropped run) and the validate_input_queue() startup gate
 //   ResultCsv.*           the 22-field RESULT_CSV line of yvo_pipeline / yvo_gst_pipeline, byte-exact
 //                         (expected lines are real lines printed by the per-tool printf it replaced).
 //                         RESULT_CSV4 (paced only): field count and a real line, byte-exact.
+//                         RESULT_CSV5 (paced + display only): arrival → present, field count, nan when empty.
 //   CliParse.*            strict option-value parsing: same values as atoi/atol/atof for well-formed input,
 //                         rejection of what they silently mangled, exit code 2 + message from arg_number().
-//   FrameLog.*            --frame-log CSV: exact header, processed / dropped / abandoned / asap rows, empty fields.
+//   FrameLog.*            --frame-log CSV: exact header, processed / dropped / abandoned / asap rows, empty fields,
+//                         the optional 10th present_ms column (--display on only; 9 columns otherwise).
 //
 // Links yvo_stages only for the header include paths (InferResult comes from hailo/hailo_runner.hpp);
 // nothing here opens /dev/hailo0 or creates a Vulkan instance.
@@ -384,6 +387,34 @@ TEST(SlotBudget, PlaneFramesHeld) {
     EXPECT_EQ(plane_frames_held(false, 4, kExtra), 5);              // matched: slots + 1
     EXPECT_EQ(plane_frames_held(true, 4, kExtra), 5 + kExtra);      // latest: + frames held by the display
     EXPECT_EQ(plane_frames_held(true, INT_MAX, kExtra), static_cast<long long>(INT_MAX) + 1 + kExtra);
+    EXPECT_EQ(plane_frames_held(false, 6, kExtra, 0), 7);           // asap: no queue
+    EXPECT_EQ(plane_frames_held(false, 6, kExtra, 2), 9);           // paced: + queued frames
+    EXPECT_EQ(plane_frames_held(true, 2, kExtra, 1), 3 + kExtra + 1);
+}
+
+// --input-pace source + --display on: the leaky queue's N decoded frames are held on top of the asap count.
+TEST(SlotBudget, PacedInputQueueAddsQueuedFrames) {
+    // Zero keeps the asap result and message byte for byte.
+    EXPECT_EQ(validate_slot_budget(SlotBudgetPath::Composite, false, 8, 3, kExtra, 0), composite_msg(8, 3, 11));
+    EXPECT_EQ(validate_slot_budget(SlotBudgetPath::WaylandPlanes, false, 10, 1, kExtra, 0),
+              planes_msg("wayland-planes", 11, 10, false));
+    // Composite: slots + gpu_depth + N.
+    EXPECT_EQ(validate_slot_budget(SlotBudgetPath::Composite, false, 1, 1, kExtra, 1), "");   // O2: b1/s1, queue 1
+    EXPECT_EQ(validate_slot_budget(SlotBudgetPath::Composite, false, 4, 3, kExtra, 3), "");   // 4 + 3 + 3 = 10
+    EXPECT_EQ(validate_slot_budget(SlotBudgetPath::Composite, false, 7, 3, kExtra, 1),
+              std::string("--display on --input-pace source requires slots + gpu_depth + input_queue <= 10 "
+                          "(now 7 + 3 + 1 = 11).\n") +
+                  kStall + "Reduce --slots, --gpu-depth or --input-queue.\n");
+    // Planes: slots + 1 + N (+ display-held frames with latest).
+    EXPECT_EQ(validate_slot_budget(SlotBudgetPath::WaylandPlanes, false, 6, 3, kExtra, 3), "");   // 6 + 1 + 3 = 10
+    EXPECT_EQ(validate_slot_budget(SlotBudgetPath::WaylandPlanes, false, 7, 3, kExtra, 3),
+              std::string("--display-backend wayland-planes: decoder frames held would be 11, exceeding 10 "
+                          "(slots 7 + 1 awaiting decode + 3 in the input queue).\n") +
+                  kStall + "Reduce --slots or --input-queue.\n");
+    EXPECT_EQ(validate_slot_budget(SlotBudgetPath::Kms, true, 3, 3, kExtra, 2),
+              std::string("--display-backend kms: decoder frames held would be 11, exceeding 10 "
+                          "(slots 3 + 1 awaiting decode + 5 held by display + 2 in the input queue).\n") +
+                  kStall + "Reduce --slots or --input-queue.\n");
 }
 
 // ═══════════════════════════════════════════════ RESULT_CSV (toolkit/result_csv.hpp)
@@ -467,6 +498,20 @@ TEST(ResultCsv, Csv4HasTwentyTwoFields) {
     EXPECT_EQ(commas + 1, 23u);   // "RESULT_CSV4" tag + 22 fields
     EXPECT_EQ(line.rfind("RESULT_CSV4,b1s1_q1,", 0), 0u);
     EXPECT_EQ(line.substr(line.size() - 3), ",1\n");
+}
+
+// RESULT_CSV5: --input-pace source with --display on only.
+TEST(ResultCsv, Csv5LineAndFieldCount) {
+    const yvo::tool::ResultCsv5 r{.label = "o2_vk", .a2p_mean = 101.234, .a2p_median = 99.995, .a2p_p90 = 120.5,
+                                  .a2p_max = 150.0, .a2p_n = 240, .ok = true};
+    const std::string line = yvo::tool::format_result_csv5(r);
+    EXPECT_EQ(line, "RESULT_CSV5,o2_vk,101.23,100.00,120.50,150.00,240,1\n");
+    EXPECT_EQ(std::count(line.begin(), line.end(), ','), 7);   // "RESULT_CSV5" tag + 7 fields
+}
+
+TEST(ResultCsv, Csv5EmptySeriesIsNanNotZero) {
+    const yvo::tool::ResultCsv5 r{.label = "x", .a2p_n = 0, .ok = false};
+    EXPECT_EQ(yvo::tool::format_result_csv5(r), "RESULT_CSV5,x,nan,nan,nan,nan,0,0\n");
 }
 
 // ═══════════════════════════════════════════════ input pacing (pipeline/input_pacer.hpp)
@@ -797,6 +842,33 @@ TEST(FrameLog, NonFiniteTimesAreEmptyAndFieldCountIsFixed) {
     EXPECT_EQ(std::count(line.begin(), line.end(), ','), 8);
     const std::string head = yvo::tool::format_frame_log_header();
     EXPECT_EQ(std::count(head.begin(), head.end(), ','), 8);
+}
+
+TEST(FrameLog, PresentColumnOnlyWithDisplay) {
+    EXPECT_EQ(yvo::tool::format_frame_log_header(true),
+              "src,seq,dropped,arrival_ms,decode_end_ms,submit_ms,npu_done_ms,gpu_post_done_ms,complete_ms,present_ms\n");
+    yvo::tool::FrameLogRow r;
+    r.src = 4;
+    r.seq = 3;
+    r.arrival_ms = 133.333;
+    r.decode_end_ms = 135.0;
+    r.submit_ms = 136.0;
+    r.npu_done_ms = 170.0;
+    r.gpu_post_done_ms = 171.0;
+    r.complete_ms = 171.25;
+    r.present_ms = 230.5;
+    EXPECT_EQ(yvo::tool::format_frame_log_row(r, true), "4,3,0,133.333,135.000,136.000,170.000,171.000,171.250,230.500\n");
+    // Without display the row keeps 9 fields even if present_ms was set.
+    EXPECT_EQ(yvo::tool::format_frame_log_row(r), "4,3,0,133.333,135.000,136.000,170.000,171.000,171.250\n");
+    // A frame that never reached the screen (queue drop, display drop): empty 10th field.
+    yvo::tool::FrameLogRow d;
+    d.src = 5;
+    d.dropped = 1;
+    d.arrival_ms = 166.667;
+    d.decode_end_ms = 168.0;
+    const std::string line = yvo::tool::format_frame_log_row(d, true);
+    EXPECT_EQ(line, "5,,1,166.667,168.000,,,,,\n");
+    EXPECT_EQ(std::count(line.begin(), line.end(), ','), 9);
 }
 
 } // namespace

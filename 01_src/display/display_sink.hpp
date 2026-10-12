@@ -52,6 +52,12 @@ public:
     // point; t_decoded = decode return (decode-to-screen start point, includes the slot wait). No decode time → pass now.
     virtual void retain(int slot, const DrmFrame& f, Clock::time_point t_decoded) = 0;
 
+    // Optional, right after retain(): the source frame index of the frame retained in this slot. It tags the
+    // presentation in present_log(), and on the plane paths it tells source frames that never reached show() (dropped
+    // upstream by --input-pace source's leaky queue) apart from late frames. Not called = -1 (unknown: no tag, and the
+    // late-frame rule treats the frames as consecutive — the rule before this existed).
+    virtual void set_source_index(int slot, std::int64_t src_index) = 0;
+
     // Presents one frame. false = display drop (caller calls display_done immediately).
     virtual bool show(int slot, const std::vector<Detection>& dets, std::string_view hud = {}) = 0;
 
@@ -71,6 +77,7 @@ public:
     virtual int frames_held() const = 0;
 
     // Processing deadline for this frame according to pace. Empty optional if there is no pacing.
+    // yvo_pipeline consults it only with --input-pace asap: paced input already arrives at the source rate.
     virtual std::optional<Clock::time_point> pace_deadline(std::int64_t frame_index) = 0;
 
     // ── Statistics (common) ──
@@ -83,6 +90,13 @@ public:
     virtual const std::vector<double>& present_interval_ms() const = 0;
     virtual const std::vector<double>& glass_ms() const = 0;              // retain() → reaches screen
     virtual const std::vector<double>& decode_to_screen_ms() const = 0;   // t_decoded → same screen time (pairs with glass_ms)
+    // One record per glass_ms() sample, same order and same screen time (so the --display-warmup cut applies alike):
+    // the set_source_index() value of that frame (-1 = not given) and when it reached the screen.
+    struct PresentRecord {
+        std::int64_t src = -1;
+        Clock::time_point t{};
+    };
+    virtual const std::vector<PresentRecord>& present_log() const = 0;
 
     // ── Statistics (Vulkan composition path only — default 0/empty) ──
     virtual std::uint64_t recreates() const { return 0; }
@@ -112,7 +126,10 @@ public:
         // Late frames from the vblank counter (kms page-flip seq / wp_presentation seq). Gaps touching the first
         // DisplayPipelineConfig::warmup presentations are skipped (same rule as the glass / present-interval series).
         std::uint64_t discarded = 0;       // wp_presentation.discarded count (replaced before reaching the screen; kms 0)
-        long long late_frames = -1;        // seq gaps > late_expected_gap (-1 = no seq / refresh / gap left: unverified)
+        // seq gaps > the gap's threshold = late_gap_threshold(every, source frames dropped upstream inside that gap, …)
+        // (-1 = no seq / refresh / gap left: unverified). Without upstream drops every threshold is late_expected_gap.
+        long long late_frames = -1;
+        std::uint64_t upstream_missing = 0;   // source frames that never reached show() (set_source_index gaps)
         std::uint64_t seq_gaps = 0, seq_gap_max = 0, seq_breaks = 0;   // evaluated gaps / largest (vblanks) / chain breaks
         int late_expected_gap = 0;         // largest normal gap = max(1, ceil(every*refresh_hz/source_fps - 0.01)); 0 = unknown
         double refresh_hz = 0.0;           // output refresh reported by the transport (0 = unknown)

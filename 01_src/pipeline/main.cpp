@@ -34,10 +34,11 @@
 //          --nms cpu: CPU greedy suppression (cpu_nms_greedy_by_class). --nms verify: runs both and compares bit-exactly.
 //          Pushing NPU completions to the GPU is also done by the **main thread** (InferStage::pump/drain_one) —
 //          because there is only one VkQueue, vkQueueSubmit must not be called from another thread.
-// Input pacing (--input-pace, display off only)
+// Input pacing (--input-pace)
 //   asap   : (default) decode as fast as slots free up — the loop below, unchanged.
 //   source : frames arrive at the source frame rate (t0 + k/fps, like a camera) into a leaky queue of --input-queue N
 //            (full → drop the oldest, take the oldest: GStreamer queue leaky=downstream). Single-threaded paced loop.
+//            --display on: same display calls as asap minus the display pace gate (pace_deadline) — input is already paced.
 // Shutdown order: InferStage::drain → flush_results → display drain → SandLetterbox::clear_import_cache
 //            (display drain = DisplayPipeline::drain or PlaneDisplay::drain: remaining pending commits → scanout shutdown
 //             (taken off screen; for kms, KMS state restore/planes-off) → force remaining releases → clear video buffer cache)
@@ -225,7 +226,7 @@ void usage(const char* a0) {
                  "               --postproc gpu only\n"
                  "  --dump-dir   detections.jsonl (one line per frame) + box PNG every K frames (on the letterbox input)\n"
                  "  --input-pace asap = decode as fast as slots free up (default). source = frames arrive at the stream\n"
-                 "               frame rate into a leaky queue (full: drop the oldest). --display off only. --frames counts\n"
+                 "               frame rate into a leaky queue (full: drop the oldest). --frames counts\n"
                  "               arrived frames; dropped frames get no jsonl line / PNG (\"frame\" stays the source index)\n"
                  "  --input-queue N  leaky queue size for --input-pace source, 1..3 (default 1)\n"
                  "               paced cpu ms/frame and FPS are per processed frame: not comparable to asap\n"
@@ -357,12 +358,7 @@ bool parse(int argc, char** argv, Args& a) {
         return false;
     }
     if (a.input_pace == InputPace::Source) {
-        // v1 is display-off only: the display has its own pacing (pace_deadline) and its late-frame stats would count
-        // queue drops as late frames.
-        if (a.display) {
-            std::fprintf(stderr, "--input-pace source is only for --display off.\n");
-            return false;
-        }
+        // With --display on the display pace gate is skipped (run_paced) and plane late frames allow for queue drops.
         const std::string err = yvo::pipeline::validate_input_queue(a.input_queue, a.gpu_depth);
         if (!err.empty()) {
             std::fputs(err.c_str(), stderr);
@@ -398,7 +394,7 @@ bool parse(int argc, char** argv, Args& a) {
             : a.disp.backend == yvo::display::DisplayBackendKind::Kms ? yvo::pipeline::SlotBudgetPath::Kms
                                                                        : yvo::pipeline::SlotBudgetPath::WaylandPlanes,
             a.disp.sync == yvo::display::DisplaySync::Latest, a.slots, a.gpu_depth,
-            yvo::display::PlaneDisplay::kExtraHeldBeyondSlots);
+            yvo::display::PlaneDisplay::kExtraHeldBeyondSlots, a.input_pace == InputPace::Source ? a.input_queue : 0);
         if (!err.empty()) {
             std::fputs(err.c_str(), stderr);
             return false;
@@ -540,6 +536,8 @@ struct DisplaySnapshot {
     std::size_t disp_warmup = 0, glass_raw_n = 0;
     std::string sc_late = "-", sc_late_gap = "-", sc_gap_max = "-", sc_gaps = "-", sc_discarded = "-", sc_refresh = "-",
                 sc_late_rule = "-", sc_breaks = "-";
+    unsigned long long sc_upstream = 0;   // source frames that never reached show() (paced queue drops)
+    Stats sda;                            // --input-pace source: scheduled arrival → reaches screen (same warmup cut)
 };
 
 #ifdef YVO_HAVE_DISPLAY
@@ -582,11 +580,16 @@ DisplaySnapshot snapshot_display(const yvo::display::DisplaySink& display, const
         d.sc_gaps = std::to_string(rep.seq_gaps);
         d.sc_breaks = std::to_string(rep.seq_breaks);
         d.sc_discarded = std::to_string(rep.discarded);
-        char hz[96];
+        d.sc_upstream = rep.upstream_missing;
+        char hz[160];
         std::snprintf(hz, sizeof(hz), "%.3f", rep.refresh_hz);
         d.sc_refresh = rep.refresh_hz > 0.0 ? std::string(hz) : std::string("unverified");
-        std::snprintf(hz, sizeof(hz), "gap > %d = max(1, ceil(every %d x %.3f Hz / %.3f fps - 0.01))",
-                      rep.late_expected_gap, a.disp.every, rep.refresh_hz, src_fps);
+        if (a.input_pace == InputPace::Source)   // per gap: queue-dropped source frames lengthen the normal cadence
+            std::snprintf(hz, sizeof(hz), "gap > max(1, ceil((every %d + queue drops in the gap) x %.3f Hz / %.3f fps - 0.01)), "
+                          "%d without drops", a.disp.every, rep.refresh_hz, src_fps, rep.late_expected_gap);
+        else
+            std::snprintf(hz, sizeof(hz), "gap > %d = max(1, ceil(every %d x %.3f Hz / %.3f fps - 0.01))",
+                          rep.late_expected_gap, a.disp.every, rep.refresh_hz, src_fps);
         d.sc_late_rule = rep.late_expected_gap > 0 ? std::string(hz) : std::string("gap rule unverified: refresh unknown");
     }
     return d;
@@ -732,6 +735,9 @@ bool print_summary(const Args& a, const RunTotals& t, const GpuPostSnapshot& g, 
                     sdg.median, sdg.p90, sdg.n);
         std::printf("decode-to-screen mean %.2f  median %.2f  p90 %.2f  (n=%zu, decode return → reaches screen, includes slot wait)\n",
                     sdd.mean, sdd.median, sdd.p90, sdd.n);
+        if (t.paced)
+            std::printf("arrival-to-present mean %.2f  median %.2f  p90 %.2f  max %.2f  (n=%zu, scheduled source arrival → reaches screen)\n",
+                        d.sda.mean, d.sda.median, d.sda.p90, d.sda.max, d.sda.n);
         std::printf("display         presented %llu, dropped %llu, recreates %llu, overlay overflow %llu\n",
                     d.presented, d.disp_dropped, d.recreates, d.ov_overflow);
         std::printf("display warmup  %zu presentations excluded from glass / decode-to-screen / present interval / late frames "
@@ -748,6 +754,9 @@ bool print_summary(const Args& a, const RunTotals& t, const GpuPostSnapshot& g, 
             std::printf("scanout         late frames %s (vblank seq %s; gaps %s, max gap %s, chain breaks %s), discarded %s\n",
                         d.sc_late.c_str(), d.sc_late_rule.c_str(), d.sc_gaps.c_str(), d.sc_gap_max.c_str(),
                         d.sc_breaks.c_str(), d.sc_discarded.c_str());
+            if (t.paced)
+                std::printf("scanout         %llu source frames never reached the display (queue drops: not late)\n",
+                            d.sc_upstream);
         }
     }
     std::printf("held frames max %ld (decoder limit about 13), slot timeout %ld\n", t.held_frames_max, t.slot_timeout_count);
@@ -825,6 +834,13 @@ bool print_summary(const Args& a, const RunTotals& t, const GpuPostSnapshot& g, 
                             .decode_late_max = p.sl.max, .held_frames_max = t.held_frames_max, .ok = !fail})
                            .c_str(),
                        stdout);
+            // Fifth line, --input-pace source with --display on only (field list: toolkit/result_csv.hpp).
+            if (a.display)
+                std::fputs(yvo::tool::format_result_csv5({.label = a.csv_label, .a2p_mean = d.sda.mean,
+                                                          .a2p_median = d.sda.median, .a2p_p90 = d.sda.p90,
+                                                          .a2p_max = d.sda.max, .a2p_n = d.sda.n, .ok = !fail})
+                               .c_str(),
+                           stdout);
         }
     }
     return fail;
@@ -977,14 +993,15 @@ int run(const Args& a) {
         // wayland-planes / kms: margin of 4 on top of parse()'s holding count (matched slots+1, latest slots+1+5).
         // parse() already capped it at kMaxDecoderFramesHeld, so the int conversion cannot overflow.
         const int hold = static_cast<int>(yvo::pipeline::plane_frames_held(
-            a.disp.sync == yvo::display::DisplaySync::Latest, a.slots, yvo::display::PlaneDisplay::kExtraHeldBeyondSlots));
+            a.disp.sync == yvo::display::DisplaySync::Latest, a.slots, yvo::display::PlaneDisplay::kExtraHeldBeyondSlots,
+            paced ? a.input_queue : 0));
         dopt.extra_hw_frames = std::max(8, hold + 4);
     } else if (display) {
         // The display holds frames longer. matched holds one per slot (= slots), latest holds one per swapchain
         // image (= image_count) until the GPU has read it all. Plus gpu_depth and a margin of 4.
-        const int need = a.disp.sync == yvo::display::DisplaySync::Matched
-                             ? a.slots + a.gpu_depth + 4
-                             : a.gpu_depth + static_cast<int>(display->image_count()) + 4;
+        const int need = (a.disp.sync == yvo::display::DisplaySync::Matched
+                              ? a.slots + a.gpu_depth + 4
+                              : a.gpu_depth + static_cast<int>(display->image_count()) + 4) + (paced ? a.input_queue : 0);
         dopt.extra_hw_frames = std::max(8, need);
     }
 #endif
@@ -1023,8 +1040,9 @@ int run(const Args& a) {
                     a.video.c_str(), src_w, src_h, dmabuf ? "dmabuf" : "ptr", layout_name(a.layout), a.batch, a.slots,
                     a.gpu_depth, pp_desc.c_str(), ctx.device_name());
         if (paced)
-            std::printf("[pace] input-pace source @ %.3f fps, input-queue %d (leaky: drop the oldest), hw_frames=%d\n",
-                        dec_fps, a.input_queue, dopt.extra_hw_frames);
+            std::printf("[pace] input-pace source @ %.3f fps, input-queue %d (leaky: drop the oldest), hw_frames=%d%s\n",
+                        dec_fps, a.input_queue, dopt.extra_hw_frames,
+                        a.display ? ", display frame gate off (input is paced)" : "");
 #ifdef YVO_HAVE_DISPLAY
         if (display) print_display_config(a, *display, src_fps, dopt.extra_hw_frames);
 #endif
@@ -1059,7 +1077,7 @@ int run(const Args& a) {
     // --frame-log (toolkit/frame_log.hpp): time points per source frame, indexed by src (= seq with asap).
     // Only collected here — the file is written after the drain. Unset time points stay at the epoch (empty field).
     struct FrameTimes {
-        Clock::time_point arrival{}, decode_end{}, submit{}, npu_done{}, post_done{}, complete{};
+        Clock::time_point arrival{}, decode_end{}, submit{}, npu_done{}, post_done{}, complete{}, present{};
         std::int64_t seq = -1;   // < 0: never submitted (dropped by the leaky queue, or abandoned when !dropped)
         bool dropped = false;
     };
@@ -1184,13 +1202,48 @@ int run(const Args& a) {
             it = it->expired() ? live_frames.erase(it) : it + 1;
         held_frames_max = std::max(held_frames_max, static_cast<long>(live_frames.size()));
     };
+    // Display steps shared by both loops (no-ops with --display off). window_open() = window events; false ends the loop:
+    // an exit key takes the same stop path as SIGINT ([interrupted], ok=0, exit code 130), while closing the window
+    // (xdg_toplevel.close) remains a normal exit, not a stop, as before.
+    const auto window_open = [&]() -> bool {
+#ifdef YVO_HAVE_DISPLAY
+        if (display && !display->poll_window()) {
+            if (display->quit_requested() && !stop_requested()) {
+                g_stop_by_key = true;
+                g_stop_signal.store(SIGINT, std::memory_order_relaxed);
+                g_stop.store(true, std::memory_order_relaxed);
+            }
+            return false;
+        }
+#endif
+        return true;
+    };
+    const auto pump_display = [&]() {
+#ifdef YVO_HAVE_DISPLAY
+        if (display) display->pump();
+#endif
+    };
+    // ⚠ Before the frame's keepalive is dropped. Glass-to-glass starts here (slot acquired); decode-to-screen at
+    // t_dec = decode return (includes the slot wait); src tags the presentation (present_log, plane late frames).
+    const auto retain_display = [&]([[maybe_unused]] int slot, [[maybe_unused]] const yvo::DrmFrame& f,
+                                    [[maybe_unused]] Clock::time_point t_dec, [[maybe_unused]] std::int64_t src) {
+#ifdef YVO_HAVE_DISPLAY
+        if (display) {
+            display->retain(slot, f, t_dec);
+            display->set_source_index(slot, src);
+        }
+#endif
+    };
 
     // Paced main loop: single-threaded like the asap loop, and every wait is a short poll that keeps pumping NPU
     // completions, GPU post-processing and result recording. Each iteration first ingests every frame whose arrival
     // time has come (decode → leaky queue; a full queue drops its oldest frame right away), then submits the oldest
     // queued frame when a slot is free with the same block as the asap loop. n counts submitted frames.
+    // --display on: the asap loop's display calls minus its pace gate (window events once per arrived frame, display
+    // pump wherever the downstream stages are pumped, retain at slot acquisition) — the input is already paced.
     auto run_paced = [&](long& n, Clock::time_point t_start) {
         bool ingest_done = false;
+        long polled_at = -1;                                 // arrived count at the last window poll
         std::optional<Clock::time_point> slot_wait_since;   // the 5 s timeout runs while the queue waits for a slot
         sched.start(t_start);                               // t0 (shared with wall and --frame-log): just before the first decode
         const auto ingest = [&]() {
@@ -1225,12 +1278,17 @@ int run(const Args& a) {
         while (true) {
             ingest();
             if (stop_requested()) break;
+            if (arrived != polled_at) {
+                polled_at = arrived;
+                if (!window_open()) break;
+            }
             if (in_q.empty()) {
                 if (ingest_done) break;
                 // Nothing to submit: sleep until the next arrival in short steps, moving the downstream stages meanwhile.
                 stage->pump();
                 while (!gpu_q.empty() && pre.ready(gpu_q.front())) finish_gpu();
                 flush_results();
+                pump_display();
                 const auto left = sched.arrival(arrived) - Clock::now();
                 if (left > Clock::duration::zero())
                     std::this_thread::sleep_for(std::min<Clock::duration>(left, std::chrono::microseconds(500)));
@@ -1243,13 +1301,15 @@ int run(const Args& a) {
                 stage->pump();
                 if (!gpu_q.empty()) finish_gpu();
                 flush_results();
+                pump_display();
                 Clock::duration slice = std::chrono::milliseconds(2);
                 if (!ingest_done) slice = std::min(slice, sched.arrival(arrived) - Clock::now());
                 slot = ex.acquire_poll(std::max(slice, Clock::duration::zero()));
                 if (!slot) {
                     if (Clock::now() - *slot_wait_since > std::chrono::seconds(5)) {
                         ++slot_timeout_count;
-                        throw std::runtime_error("slot wait timeout (5 s): compute completion did not arrive");
+                        throw std::runtime_error(need_display_ack ? "slot wait timeout (5 s): compute/display completion did not arrive"
+                                                                  : "slot wait timeout (5 s): compute completion did not arrive");
                     }
                     continue;   // back to ingest: frames keep arriving (and dropping) while the queue waits
                 }
@@ -1268,6 +1328,7 @@ int run(const Args& a) {
                 ft.seq = n;
                 ft.submit = Clock::now();
             }
+            retain_display(*slot, qf.f, qf.t_dec, qf.src);
             pre.submit(qf.f, *slot);
             gpu_q.push_back(*slot);
             qf.f.keepalive.reset();   // SandLetterbox holds its own reference (live_frames already tracks the frame)
@@ -1276,8 +1337,10 @@ int run(const Args& a) {
             while (!gpu_q.empty() && pre.ready(gpu_q.front())) finish_gpu();
             stage->pump();
             flush_results();
+            pump_display();
             ++n;
             sweep_held();
+            fps_now = static_cast<double>(n) / std::max(std::chrono::duration<double>(Clock::now() - t_start).count(), 1e-9);
             if (!a.quiet && n % 300 == 0) {
                 const double el = std::chrono::duration<double>(Clock::now() - t_start).count();
                 std::printf("[progress] %ld frames (arrived %ld, dropped %ld), %.1f FPS, hailo %.1f C\n", n, arrived,
@@ -1296,16 +1359,7 @@ int run(const Args& a) {
         while (!paced && !stop_requested() && (a.frames <= 0 || n < a.frames)) {
 #ifdef YVO_HAVE_DISPLAY
             if (display) {
-                if (!display->poll_window()) {
-                    // An exit key takes the same stop path as SIGINT ([interrupted], ok=0, exit code 130).
-                    // Closing the window (xdg_toplevel.close) remains a normal exit, not a stop, as before.
-                    if (display->quit_requested() && !stop_requested()) {
-                        g_stop_by_key = true;
-                        g_stop_signal.store(SIGINT, std::memory_order_relaxed);
-                        g_stop.store(true, std::memory_order_relaxed);
-                    }
-                    break;
-                }
+                if (!window_open()) break;   // exit key = SIGINT stop path, window close = normal end
                 // --display-pace source: follow the source frame rate. **Does not use a blocking sleep** —
                 // NPU completions, GPU post-processing and display completions must keep being collected meanwhile, or latency gets distorted.
                 if (auto dl = display->pace_deadline(n)) {
@@ -1365,10 +1419,7 @@ int run(const Args& a) {
             if (!slot) break;
             wait_block_ms.push_back(std::chrono::duration<double, std::milli>(Clock::now() - w0).count());
 
-#ifdef YVO_HAVE_DISPLAY
-            // ⚠ Captured **before** f.reset(). Glass-to-glass starts here; decode-to-screen at d1 (includes the slot wait).
-            if (display) display->retain(*slot, *f, d1);
-#endif
+            retain_display(*slot, *f, d1, n);   // ⚠ before f.reset() (asap: source index = n)
             if (frame_log_on) frame_times.push_back({.decode_end = d1, .submit = Clock::now(), .seq = n});
             pre.submit(*f, *slot);
             gpu_q.push_back(*slot);
@@ -1438,7 +1489,20 @@ int run(const Args& a) {
     const GpuPostSnapshot gpu_post = snapshot_gpu_post(gpu_stage);
     DisplaySnapshot disp;
 #ifdef YVO_HAVE_DISPLAY
-    if (display) disp = snapshot_display(*display, a, src_fps);
+    if (display) {
+        disp = snapshot_display(*display, a, src_fps);
+        // present_log pairs with glass_ms: the same --display-warmup cut for arrival → present; --frame-log takes all.
+        std::vector<double> a2p_ms;
+        const auto& plog = display->present_log();
+        for (std::size_t i = 0; i < plog.size(); ++i) {
+            const auto src = plog[i].src;
+            if (src < 0) continue;
+            if (paced && i >= disp.disp_warmup) a2p_ms.push_back(ms_of(plog[i].t - sched.arrival(src)));
+            if (frame_log_on && static_cast<std::size_t>(src) < frame_times.size())
+                frame_times[static_cast<std::size_t>(src)].present = plog[i].t;
+        }
+        disp.sda = stats(a2p_ms);
+    }
 #endif
     // Shutdown order: drain (above) → clear import cache → decoder close → runner release (dma-buf unmap)
     //            → display release (swapchain/window / plane transport/box ring) → export fd close (FdCloser) → ctx → window
@@ -1467,7 +1531,7 @@ int run(const Args& a) {
                                              : std::chrono::duration<double, std::milli>(tp - t0).count();
         };
         std::FILE* fp = frame_log_fp.release();
-        std::fputs(yvo::tool::format_frame_log_header().c_str(), fp);
+        std::fputs(yvo::tool::format_frame_log_header(a.display).c_str(), fp);   // + present_ms with --display on
         for (std::size_t i = 0; i < frame_times.size(); ++i) {
             const FrameTimes& ft = frame_times[i];
             std::fputs(yvo::tool::format_frame_log_row(
@@ -1475,7 +1539,8 @@ int run(const Args& a) {
                             .dropped = ft.seq >= 0 ? 0 : ft.dropped ? 1 : 2, .arrival_ms = rel(ft.arrival),
                             .decode_end_ms = rel(ft.decode_end), .submit_ms = rel(ft.submit),
                             .npu_done_ms = rel(ft.npu_done), .gpu_post_done_ms = rel(ft.post_done),
-                            .complete_ms = rel(ft.complete)})
+                            .complete_ms = rel(ft.complete), .present_ms = rel(ft.present)},
+                                                      a.display)
                            .c_str(),
                        fp);
         }

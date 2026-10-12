@@ -216,7 +216,12 @@ void DisplayPipeline::retain(int slot, const DrmFrame& f, Clock::time_point t_de
     r.frame = f;   // extra reference to the keepalive shared_ptr — the frame survives even after main's f.reset()
     r.t = Clock::now();
     r.t_decoded = t_decoded;
+    r.src = -1;
     r.valid = true;
+}
+
+void DisplayPipeline::set_source_index(int slot, std::int64_t src_index) {
+    retained_.at(static_cast<std::size_t>(slot)).src = src_index;
 }
 
 std::optional<Clock::time_point> DisplayPipeline::pace_deadline(std::int64_t frame_index) {
@@ -261,6 +266,7 @@ bool DisplayPipeline::show(int slot, const std::vector<Detection>& dets, std::st
     // Whichever path exits, the retained reference is released here (if displayed, DisplayConvert holds its own).
     const DrmFrame frame = std::move(r.frame);
     const Clock::time_point t_retain = r.t, t_decoded = r.t_decoded;
+    const std::int64_t src = r.src;
     r = Retained{};
 
     recreate_if_needed();
@@ -319,7 +325,7 @@ bool DisplayPipeline::show(int slot, const std::vector<Detection>& dets, std::st
     p.t_retain = t_retain;
     p.have_retain = true;
     inflight_.push_back(p);
-    if (fr.present_id != 0) present_ids_.push_back(PresentWait{fr.present_id, t_retain, t_decoded, true});
+    if (fr.present_id != 0) present_ids_.push_back(PresentWait{fr.present_id, t_retain, t_decoded, src, true});
     return true;
 }
 
@@ -363,6 +369,7 @@ void DisplayPipeline::drain_present_waits(bool blocking) {
         if (w.have_retain) {   // same screen time t for both series → equal length and order (main.cpp cuts both alike)
             glass_ms_.push_back(ms_between(w.t_retain, t));
             d2s_ms_.push_back(ms_between(w.t_decoded, t));
+            present_log_.push_back(PresentRecord{w.src, t});
         }
     }
 }

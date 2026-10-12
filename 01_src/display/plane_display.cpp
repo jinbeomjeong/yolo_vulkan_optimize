@@ -81,7 +81,12 @@ void PlaneDisplay::retain(int slot, const DrmFrame& f, Clock::time_point t_decod
     r.frame = f;   // extra keepalive reference
     r.t = Clock::now();
     r.t_decoded = t_decoded;
+    r.src = -1;
     r.valid = true;
+}
+
+void PlaneDisplay::set_source_index(int slot, std::int64_t src_index) {
+    retained_.at(static_cast<std::size_t>(slot)).src = src_index;
 }
 
 std::optional<Clock::time_point> PlaneDisplay::pace_deadline(std::int64_t frame_index) {
@@ -102,7 +107,17 @@ bool PlaneDisplay::show(int slot, const std::vector<Detection>& dets, std::strin
     it.frame = std::move(r.frame);
     it.t_retain = r.t;
     it.t_decoded = r.t_decoded;
+    it.src = r.src;
     r = Retained{};
+
+    // Source frames between this show() and the previous one never reached the display (leaky input queue drops).
+    // Counted before the --display-every skip: a skipped frame did reach show(), so it is not missing.
+    if (it.src >= 0) {
+        if (last_show_src_ >= 0 && it.src > last_show_src_ + 1)
+            upstream_missing_ += static_cast<std::uint64_t>(it.src - last_show_src_ - 1);
+        last_show_src_ = it.src;
+    }
+    it.missing = upstream_missing_;
 
     const bool skip = cfg_.every > 1 && (shown_counter_ % cfg_.every) != 0;
     ++shown_counter_;
@@ -202,7 +217,7 @@ void PlaneDisplay::try_commit(bool force) {
     if (!scanout_->reports_presentation()) ++presented_;
     frame_cb_pending_ = true;
     last_commit_ = now;
-    await_present_[p.token] = {p.t_retain, p.t_decoded};
+    await_present_[p.token] = AwaitPresent{p.t_retain, p.t_decoded, p.src, p.missing};
     const std::uint64_t tok = p.token;
     committed_.emplace(tok, std::move(p));
     pending_.pop_front();
@@ -236,25 +251,33 @@ void PlaneDisplay::on_presented(std::uint64_t token, std::int64_t t_ns, bool clo
     stall_tokens_.erase(std::remove_if(stall_tokens_.begin(), stall_tokens_.end(),
                                        [&](std::uint64_t t) { return t <= token; }),
                         stall_tokens_.end());
+    auto it = await_present_.find(token);
+    // Upstream drops inside this gap: difference of the cumulative counters (0 when the token is unknown).
+    const std::uint64_t missing = it != await_present_.end() ? it->second.missing : last_chain_missing_;
     if (seq != 0) seq_seen_ = true;
     if (last_seq_ != 0 && feedback_presented_ > static_cast<std::uint64_t>(std::max(cfg_.warmup, 0))) {
-        if (seq > last_seq_ && token == expect)
+        if (seq > last_seq_ && token == expect) {
             seq_gaps_.push_back(static_cast<std::uint32_t>(std::min<std::uint64_t>(seq - last_seq_, UINT32_MAX)));
-        else
+            seq_gap_missing_.push_back(missing >= last_chain_missing_ ? missing - last_chain_missing_ : 0);
+        } else {
             ++seq_breaks_;
+        }
     }
     last_seq_ = seq;   // seq 0 also ends the chain: the next presentation starts a new one
     last_chain_token_ = token;
+    last_chain_missing_ = missing;
     ++presented_;
     ++feedback_presented_;
     if (zero_copy) ++zero_copy_fb_;
-    auto it = await_present_.find(token);
     if (clock_monotonic) {
         if (last_present_ns_ != 0) interval_ms_.push_back(static_cast<double>(t_ns - last_present_ns_) / 1e6);
         last_present_ns_ = t_ns;
-        if (it != await_present_.end()) {   // same t_ns for both series → equal length and order
-            glass_ms_.push_back(static_cast<double>(t_ns - steady_ns(it->second.first)) / 1e6);
-            d2s_ms_.push_back(static_cast<double>(t_ns - steady_ns(it->second.second)) / 1e6);
+        if (it != await_present_.end()) {   // same t_ns for all three series → equal length and order
+            glass_ms_.push_back(static_cast<double>(t_ns - steady_ns(it->second.t_retain)) / 1e6);
+            d2s_ms_.push_back(static_cast<double>(t_ns - steady_ns(it->second.t_decoded)) / 1e6);
+            present_log_.push_back(
+                PresentRecord{it->second.src, Clock::time_point(std::chrono::duration_cast<Clock::duration>(
+                                                  std::chrono::nanoseconds(t_ns)))});
         }
     }
     if (it != await_present_.end()) await_present_.erase(it);
@@ -355,18 +378,21 @@ DisplaySink::ScanoutReport PlaneDisplay::scanout_report() const {
     r.busy_reuse = scanout_ ? scanout_->busy_reuse() : 0;
     r.discarded = discarded_;
     r.refresh_hz = refresh_ns_ > 0 ? 1e9 / static_cast<double>(refresh_ns_) : 0.0;
-    // Expected gap = the largest gap of the normal cadence. show() puts up 1 of every K frames (--display-every), so a
-    // shown frame lasts K × refresh / fps vblanks; a non-integer ratio alternates floor/ceil (60 Hz / 25 fps = 2.4 →
-    // 2,2,3,…), so round **up**. The −0.01 keeps 60/30, 59.94/29.97 and 60/29.97 (2.002) at 2.
-    if (r.refresh_hz > 0.0 && cfg_.source_fps > 0.0)
-        r.late_expected_gap = std::max(1, static_cast<int>(std::ceil(std::max(cfg_.every, 1) * r.refresh_hz /
-                                                                      cfg_.source_fps - 0.01)));
+    // Expected gap = the largest gap of the normal cadence (late_gap_threshold, plane_display.hpp). show() puts up 1 of
+    // every K frames (--display-every), so a shown frame lasts K × refresh / fps vblanks — plus one source interval per
+    // frame dropped upstream inside that gap (per-gap threshold below; late_expected_gap is the no-drop value).
+    r.late_expected_gap = late_gap_threshold(cfg_.every, 0, r.refresh_hz, cfg_.source_fps);
+    r.upstream_missing = upstream_missing_;
     r.seq_gaps = seq_gaps_.size();
     r.seq_breaks = seq_breaks_;
     for (std::uint32_t g : seq_gaps_) r.seq_gap_max = std::max<std::uint64_t>(r.seq_gap_max, g);
     if (seq_seen_ && r.late_expected_gap > 0 && !seq_gaps_.empty()) {   // no gap left (warmup >= presented) = unverified
-        const auto exp_gap = static_cast<std::uint32_t>(r.late_expected_gap);
-        r.late_frames = std::count_if(seq_gaps_.begin(), seq_gaps_.end(), [&](std::uint32_t g) { return g > exp_gap; });
+        long long late = 0;
+        for (std::size_t i = 0; i < seq_gaps_.size(); ++i) {
+            const int thr = late_gap_threshold(cfg_.every, seq_gap_missing_[i], r.refresh_hz, cfg_.source_fps);
+            if (seq_gaps_[i] > static_cast<std::uint32_t>(thr)) ++late;
+        }
+        r.late_frames = late;
     }
     if (scanout_) {
         r.transport_lines = scanout_->report_lines();

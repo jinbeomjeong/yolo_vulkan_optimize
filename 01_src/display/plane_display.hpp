@@ -42,7 +42,9 @@
 // Threads: all on the main thread.
 #pragma once
 
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <deque>
 #include <functional>
@@ -67,6 +69,19 @@ class VulkanContext;
 }
 
 namespace yvo::display {
+
+// Late-frame threshold of one vblank seq gap (ScanoutReport::late_frames): the largest gap of the normal cadence between
+// two consecutive presentations. The frame shown first lasts (every + upstream_missing) source intervals, where
+// upstream_missing = source frames between the two that never reached show() (dropped by --input-pace source's leaky
+// queue — not the display's fault, so they widen the allowance instead of counting as late). Non-integer ratios
+// alternate floor/ceil (60 Hz / 25 fps = 2.4 → 2,2,3,…), so round **up**; −0.01 keeps 60/30, 59.94/29.97 and
+// 60/29.97 (2.002) at 2. upstream_missing = 0 gives the rule used before upstream drops existed.
+// Returns 0 when refresh_hz or source_fps is unknown (<= 0).
+inline int late_gap_threshold(int every, std::uint64_t upstream_missing, double refresh_hz, double source_fps) {
+    if (!(refresh_hz > 0.0) || !(source_fps > 0.0)) return 0;
+    const double frames = static_cast<double>(std::max(every, 1)) + static_cast<double>(upstream_missing);
+    return std::max(1, static_cast<int>(std::ceil(frames * refresh_hz / source_fps - 0.01)));
+}
 
 // Transport → PlaneDisplay events. All arrive inside PlaneScanout::dispatch() (main thread).
 class PlaneScanoutListener {
@@ -137,6 +152,7 @@ public:
     void set_source_size(int w, int h) override;
     void set_source_fps(double fps) override;
     void retain(int slot, const DrmFrame& f, Clock::time_point t_decoded) override;
+    void set_source_index(int slot, std::int64_t src_index) override;
     bool show(int slot, const std::vector<Detection>& dets, std::string_view hud = {}) override;
     void pump() override;
     void drain() override;
@@ -154,6 +170,7 @@ public:
     const std::vector<double>& present_interval_ms() const override { return interval_ms_; }
     const std::vector<double>& glass_ms() const override { return glass_ms_; }
     const std::vector<double>& decode_to_screen_ms() const override { return d2s_ms_; }
+    const std::vector<PresentRecord>& present_log() const override { return present_log_; }
 
     std::string describe() const override;
     ScanoutReport scanout_report() const override;
@@ -162,6 +179,7 @@ private:
     struct Retained {
         DrmFrame frame;
         Clock::time_point t{}, t_decoded{};
+        std::int64_t src = -1;    // set_source_index()
         bool valid = false;
     };
     struct Item {                 // a pending or committed frame
@@ -170,7 +188,14 @@ private:
         int overlay = -1;         // box ring entry to put up with this frame (-1 = keep previous boxes)
         bool overlay_stat = false;
         Clock::time_point t_retain{}, t_decoded{};
+        std::int64_t src = -1;
+        std::uint64_t missing = 0;   // upstream_missing_ when this frame reached show() (cumulative)
         std::uint64_t token = 0;
+    };
+    struct AwaitPresent {        // committed, waiting for its presentation feedback
+        Clock::time_point t_retain{}, t_decoded{};
+        std::int64_t src = -1;
+        std::uint64_t missing = 0;
     };
 
     // PlaneScanoutListener
@@ -197,7 +222,7 @@ private:
     // Frames not yet committed (display order, at most kMaxPending). On overflow the oldest is discarded.
     std::deque<Item> pending_;
     std::unordered_map<std::uint64_t, Item> committed_;   // token → committed frame (waiting for release)
-    std::unordered_map<std::uint64_t, std::pair<Clock::time_point, Clock::time_point>> await_present_;   // token → (t_retain, t_decoded)
+    std::unordered_map<std::uint64_t, AwaitPresent> await_present_;   // token → retain/decode time, source index
     std::uint64_t next_token_ = 1;
 
     bool frame_cb_pending_ = false;
@@ -208,12 +233,16 @@ private:
     Clock::time_point pace_t0_{};
     bool pace_started_ = false;
     std::int64_t shown_counter_ = 0;
+    std::int64_t last_show_src_ = -1;      // source index of the previous show() (-1 = none / unknown)
+    std::uint64_t upstream_missing_ = 0;   // source frames skipped between show() calls (never reached the display)
 
     std::uint64_t presented_ = 0, commits_ = 0;
     std::uint64_t skipped_ = 0, replaced_ = 0, rejected_ = 0, shutdown_dropped_ = 0;
     std::uint64_t overlay_skipped_ = 0, frame_cb_timeouts_ = 0, zero_copy_fb_ = 0, feedback_presented_ = 0;
     std::uint64_t discarded_ = 0;
     std::vector<std::uint32_t> seq_gaps_;   // vblank seq gaps after warmup (late frames are judged in scanout_report)
+    std::vector<std::uint64_t> seq_gap_missing_;   // pairs with seq_gaps_: upstream-dropped source frames inside the gap
+    std::uint64_t last_chain_missing_ = 0;         // Item::missing of the previous presentation
     std::uint64_t last_seq_ = 0;  std::uint32_t refresh_ns_ = 0;  bool seq_seen_ = false;
     std::uint64_t last_chain_token_ = 0, seq_breaks_ = 0;   // token of the previous presentation / broken seq chains
     std::vector<std::uint64_t> stall_tokens_;   // discarded / rejected tokens: real screen stalls, kept inside a gap
@@ -221,6 +250,7 @@ private:
 
     std::int64_t last_present_ns_ = 0;
     std::vector<double> overlay_ms_, interval_ms_, glass_ms_, d2s_ms_;
+    std::vector<PresentRecord> present_log_;   // pairs with glass_ms_
 
     bool snap_start_taken_ = false;
     DrmStateSnapshot snap_start_, snap_end_;

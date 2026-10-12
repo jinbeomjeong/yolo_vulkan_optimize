@@ -7,6 +7,8 @@
 //   npu_p90,e2e_mean,e2e_p90,detections,hailo_t0,hailo_t1,soc_t0,soc_t1,ok
 //
 // Library code does not include this header — it is for tools only.
+#include <cmath>
+#include <cstddef>
 #include <cstdio>
 #include <string>
 
@@ -87,6 +89,35 @@ inline std::string format_result_csv4(const ResultCsv4& r) {
             r.max_drop_run, r.queue_depth_max, r.e2e_arr_mean, r.e2e_arr_median, r.e2e_arr_p90, r.e2e_arr_max,
             r.queue_wait_mean, r.queue_wait_p90, r.queue_wait_max, r.decode_late_mean, r.decode_late_p90,
             r.decode_late_max, r.held_frames_max, r.ok ? 1 : 0);
+    };
+    const int n = print(nullptr, 0);
+    if (n <= 0) return {};
+    std::string out(static_cast<std::size_t>(n) + 1, '\0');
+    print(out.data(), out.size());
+    out.resize(static_cast<std::size_t>(n));
+    return out;
+}
+
+// RESULT_CSV5: yvo_pipeline --input-pace source with --display on only (with --csv-label). 7 fields:
+//
+//   label,a2p_mean,a2p_median,a2p_p90,a2p_max,a2p_n,ok
+//
+//   a2p   arrival → present (ms): the frame's scheduled source arrival → the time the display backend reports it on
+//         screen (the same screen time as glass-to-glass, after the same --display-warmup cut). "nan" when no sample.
+struct ResultCsv5 {
+    std::string label;
+    double a2p_mean = 0.0, a2p_median = 0.0, a2p_p90 = 0.0, a2p_max = 0.0;
+    std::size_t a2p_n = 0;
+    bool ok = false;
+};
+
+// The complete line including the trailing '\n'.
+inline std::string format_result_csv5(const ResultCsv5& r) {
+    const double nan = std::nan("");
+    const auto print = [&](char* buf, std::size_t size) {
+        return std::snprintf(buf, size, "RESULT_CSV5,%s,%.2f,%.2f,%.2f,%.2f,%zu,%d\n", r.label.c_str(),
+                             r.a2p_n ? r.a2p_mean : nan, r.a2p_n ? r.a2p_median : nan, r.a2p_n ? r.a2p_p90 : nan,
+                             r.a2p_n ? r.a2p_max : nan, r.a2p_n, r.ok ? 1 : 0);
     };
     const int n = print(nullptr, 0);
     if (n <= 0) return {};
