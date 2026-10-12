@@ -37,7 +37,7 @@ ctest --test-dir build --output-on-failure
   합격 기준은 **max 오차 0**(근사가 아니라 비트 단위 일치)이다.
 - `test_detections` — CPU / GPU ptr / GPU dmabuf / GPU dmabuf NHCW 경로의 검출을 비교한다.
   NPU를 독점하므로 `RUN_SERIAL`이고 느리다(약 19초). 합격 기준은 **매칭 비율 1.0000**이다.
-- 전체 개수는 **147**이다(2026-10-11 — 하드웨어 없는 `test_pipeline_logic`(SlotExchange·SlotBudget·ResultCsv·CliParse)·`test_display_options` 추가로 95 → 147. NPU가 필요한 3개(`test_detections`·`test_postproc_live`·`test_gst_detections`)는 `npu` 라벨이 있어 `ctest -LE npu` 로 뺄 수 있다. 같은 날 앞서 `PostprocFixture.ImportHeapMatchesPlainBitExact` 추가: heap 입력 경로가 Plain과 비트 일치, NPU 불필요, dma-heap 노드가 없으면 skip. 이전 2026-09-29, `test_preproc` 의 `SandRefVsFfmpeg` 5개 — ref de-SAND 대 rpi-ffmpeg 바이트 일치; `test_gst_adapter` 10개 — HW HEVC 디코더와 GPU 필요, 없으면 skip; `test_gst_detections` 1개 — NPU 필요, RUN_SERIAL). `test_overlay`의 `KmsScanout.*`는 `/dev/dri/card1`을 열지만 **DRM master를
+- 전체 개수는 **160**이다(2026-10-12 — 입력 페이싱 순수 로직·RESULT_CSV4 테스트 13개 추가로 147 → 160. 2026-10-11 — 하드웨어 없는 `test_pipeline_logic`(SlotExchange·SlotBudget·ResultCsv·CliParse)·`test_display_options` 추가로 95 → 147. NPU가 필요한 3개(`test_detections`·`test_postproc_live`·`test_gst_detections`)는 `npu` 라벨이 있어 `ctest -LE npu` 로 뺄 수 있다. 같은 날 앞서 `PostprocFixture.ImportHeapMatchesPlainBitExact` 추가: heap 입력 경로가 Plain과 비트 일치, NPU 불필요, dma-heap 노드가 없으면 skip. 이전 2026-09-29, `test_preproc` 의 `SandRefVsFfmpeg` 5개 — ref de-SAND 대 rpi-ffmpeg 바이트 일치; `test_gst_adapter` 10개 — HW HEVC 디코더와 GPU 필요, 없으면 skip; `test_gst_detections` 1개 — NPU 필요, RUN_SERIAL). `test_overlay`의 `KmsScanout.*`는 `/dev/dri/card1`을 열지만 **DRM master를
   가져가지 않는다** — 다른 프로세스(labwc)가 master일 때만 돌고, 아무도 master가 아니면 skip한다.
 
 ## 3. Vulkan 검증 레이어 — errors 0
