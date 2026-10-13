@@ -178,7 +178,7 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론 파이프�
 | `07_results/` | 쓰기는 `measure`(측정)·`verify`(`verification/`) 스킬, 이동은 `relocate.py`, 정합 점검은 `integrity-auditor` | 결과 파일 내용은 고치지 않는다. 삭제·`FORCE=1` 덮어쓰기는 §사용자 확인(바이트 동일 사본은 `STRUCTURE.md` §3.4 절차로 예외) |
 | `08_learn/`, `README.md` | 메인 에이전트 | 기계적 수정(경로·줄번호·개수)은 `integrity-auditor` |
 | `09_diagrams/` | `graphml-expert`(포맷) | 수치 변경은 도메인 전문가 |
-| `10_paper/`, `.claude/`, `~/.claude/agents/*`, `~/.claude/settings.json`, `CLAUDE.md`, `STRUCTURE.md`, `06_tools/structure_rules.toml` | 메인 에이전트(사용자 확인) | **§사용자 확인**이 정본이다. 승인된 계획이어도 위임하지 않는다. `.claude/agents`·훅 변경은 **다음 세션부터** 반영된다. `~/.claude/**`는 저장소 밖이라 검사기·`placement_guard` 훅이 보지 않는다. `10_paper/figures/`는 `06_tools/python/paper/` 스크립트(작성은 `python-expert`)의 실행 산출물이고 실행은 메인 에이전트가 한다(`paper-figures` 스킬) |
+| `10_paper/`, `.claude/`, `~/.claude/agents/*`, `~/.claude/settings.json`, `CLAUDE.md`, `STRUCTURE.md`, `06_tools/structure_rules.toml` | 메인 에이전트(사용자 확인) | **§사용자 확인**이 정본이다. 승인된 계획이어도 위임하지 않는다. `.claude/agents`·훅 변경은 **다음 세션부터** 반영된다. `~/.claude/**`는 저장소 밖이라 검사기·`placement_guard` 훅이 보지 않는다. `10_paper/figures/`는 `06_tools/python/paper/` 스크립트(작성은 `python-expert`)의 실행 산출물이고 실행은 메인 에이전트가 한다(`paper-figures` 스킬). 논문 논증 검토는 `paper-reviewer`(읽기 전용) |
 | `11_logs/` | 누구나 | git 밖. 최근 실행 흔적 조회는 `status-reporter` |
 | `build*/` | 쓰지 않는다 | 산출물. 락·`bin`/`out` 상태 **읽기**는 `status-reporter` |
 
@@ -216,6 +216,17 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론 파이프�
   - 검사기 **수치는 전하되 위반의 조사·판정·수정은 `integrity-auditor`**, 빌드·테스트는 `verify` 스킬,
     성능 측정과 Hailo 칩 온도는 `measure` 스킬이 맡는다. 둘의 경계는 "저장소가 일관적인가"(정적·추적)
     대 "지금 보드에서 무엇이 돌고 있나"(휘발성·git 밖)다.
+- 논문 검토(`10_paper/paper_ko.md`를 외부 심사위원 관점으로 — 기여 ↔ 근거, 주장 강도·일반화, 측정 조건 혼합·반복·인용 금지 수치,
+  재현성, 관련 연구 대비 새로움·참고문헌 서지와 인용 내용, 용어·초록 ↔ 본문 헤드라인, 한계 서술, 국문 문체)
+  → `paper-reviewer`(프로젝트, Opus 5.5 · effort high, 읽기 전용 + 웹 조회).
+  - 부르는 때: 주장이 바뀌는 절 단위 수정 뒤(재측정 결과 반영, 절 신설, 초록·기여·결론 변경)와 사용자가 요청할 때.
+    오탈자·캡션·줄번호만 고친 뒤에는 부르지 않는다. 결정: 자동 호출은 절 단위 큰 수정 뒤로 한정 (사용자 결정, 2026-10-13)
+  - 위임 프롬프트에는 범위(전체 / `§N` / `diff <rev>`)와 투고처(현재 미정, 일반 기준)만 적는다. **저자 쪽 의도·해명은 적지 않는다** —
+    독립 검토가 목적이다.
+  - 지적은 사용자에게 올리고, 반영은 사용자 확인 뒤 메인 에이전트가 한다(§사용자 확인). 숫자 불일치는 `integrity-auditor`,
+    그림은 `paper-figures` 스킬, 새 측정이 필요한 지적은 `measure` 스킬로 넘긴다.
+  - 경계: `integrity-auditor`는 "값이 정본과 같은가", `paper-reviewer`는 "그 값이 주장을 뒷받침하는가"다.
+    **"코드 리뷰"는 이 에이전트로 보내지 않는다**(해당 도메인 전문 에이전트).
 - 위임 프롬프트에 대상 파일, 목표, 제약, 검증 방법(셰이더 컴파일·검증 레이어·측정 조건)을 포함한다.
   **새 파일을 만드는 작업이면 둘 위치를 `STRUCTURE.md` 기준으로 프롬프트에 적고**, 끝에 `check_structure.py` 결과를 보고하게 한다.
   전역 에이전트(`cpp`·`python`·`gstreamer`·`graphml-expert`)는 다른 프로젝트도 쓰므로 정의 파일에 이 프로젝트 규칙을 적지 않는다 —

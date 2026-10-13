@@ -55,7 +55,7 @@ description: >
 2. `python-expert`에 스크립트를 맡긴다. 전역 에이전트라 이 스킬을 읽지 않으므로, §0~§3을 위임 프롬프트에 적어 준다.
 3. 렌더는 `/home/pi/miniconda3/envs/hailo-yolo/bin/python 06_tools/python/paper/build_figures.py`로 한다. 하드웨어는 쓰지 않는다. 실행은 메인 에이전트가 한다(`10_paper` 담당).
 4. 메인 에이전트가 PNG를 Read 도구로 **직접 보고** 글자 겹침, 단위, 범례, 조건 표기를 확인한다.
-5. `integrity-auditor`가 그림의 핵심 수치를 `summary.md`와 본문에 대조한다.
+5. `integrity-auditor`가 그림의 핵심 수치를 `summary.md`와 본문에 대조한다. 그림과 함께 본문 주장이 바뀌면 `paper-reviewer`에 diff 범위로 검토를 맡긴다.
 6. 사용자 확인을 받은 뒤 메인 에이전트가 본문에 `![그림 N. 제목](figures/figNN_<slug>.svg)`과 캡션을 넣는다.
 7. `check_structure.py`와 `check_links.py`가 모두 0건인지 확인하고 커밋한다. 검사기 **D3**가 그림 파일 ↔ 등록부 행, 행의 생성 스크립트·원본 경로 존재를 대조한다.
 

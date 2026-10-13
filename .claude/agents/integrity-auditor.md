@@ -11,7 +11,7 @@ description: >
   English triggers: audit, consistency check, dead code, stale reference, orphan file.
   제외: 찾은 문제의 코드 수정(→ vulkan-expert/hailo-expert/cpp-expert/python-expert),
   빌드·테스트·검증 레이어 실행(→ verify 스킬), 성능 측정(→ measure 스킬), .graphml 내부 수정(→ graphml-expert),
-  기능 구현·버그 수정.
+  논문 논증·서술 검토(→ paper-reviewer), 기능 구현·버그 수정.
 model: claude-sonnet-5-5
 effort: high
 tools: Read, Grep, Glob, Bash, Edit
@@ -62,6 +62,7 @@ YOLO(`03_models/yolov11m.hef`) 추론을 수행하며, Vulkan으로 전·후처�
    정본 `summary.md`와 대조한다. 여러 문서에 반복되는 수치(예: FPS·지연·대역폭)는 모든 사본을 확인한다.
 3. 정본에 "인용 금지"·"대체됨"으로 표시된 수치가 다른 문서에 인용돼 있는지 찾는다.
 4. `.graphml` 다이어그램에 적힌 수치는 텍스트로 grep해 대조만 하고 고치지 않는다.
+5. 값이 정본과 **같은지**까지만 본다. 그 값이 논문의 주장을 뒷받침하는지(조건 혼합·일반화·새로움)는 `paper-reviewer` 소관이다.
 
 ### C. 죽은 코드
 1. `01_src/`, `02_shaders/`, `05_tests/`의 추적 소스가 모두 CMakeLists에 등록되거나 include되는지.

@@ -220,7 +220,7 @@ HailoRT는 **실행한 디렉터리(CWD)**에 `hailort.log`를 쓴다.
 | `07_results` | 쓰기는 measure·verify 스킬, 이동은 relocate.py, 정합 점검은 integrity-auditor |
 | `08_learn`, `README.md` | 메인 에이전트 (기계적 수정은 integrity-auditor) |
 | `09_diagrams` | graphml-expert (포맷), 수치는 도메인 전문가 |
-| `10_paper`, `.claude`, `CLAUDE.md`, `STRUCTURE.md`, `06_tools/structure_rules.toml` | 메인 에이전트(사용자 확인) |
+| `10_paper`, `.claude`, `CLAUDE.md`, `STRUCTURE.md`, `06_tools/structure_rules.toml` | 메인 에이전트(사용자 확인). 논문 논증 검토는 paper-reviewer(읽기 전용) |
 
 ## 5. 예외 정책
 
