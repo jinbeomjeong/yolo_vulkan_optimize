@@ -7,7 +7,7 @@ __pycache__/
 10_paper/build/
 
 # 런타임 로그 — HailoRT 가 CWD 에 떨어뜨리는 잔재만 제외한다.
-#   07_results/**/hailort*.log(159개, 2 MB)는 측정 신뢰성 판정의 근거이므로 추적한다
+#   07_results/**/hailort*.log(605개, 8 MB, 2026-10-14)는 측정 신뢰성 판정의 근거이므로 추적한다
 #   (measure 스킬 4단계: 온도·클럭 경고가 있으면 그 실행은 신뢰 불가).
 /hailort.log
 /pyhailort.log

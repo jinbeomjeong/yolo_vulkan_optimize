@@ -23,7 +23,7 @@
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
 | | `04_data/` | 입력 영상(기본 `video_h265.mp4`, 혼잡 장면용 `mot20_{02,05}_h265.mp4`)과 테스트용 원시 텐서 픽스처 (git에 없음) |
 | **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 10개(`test_postproc_live` 를 따로 세면 11), ctest 항목 177개 |
-| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 12개), `python/`(9개 + 단위 테스트 `tests/` 109개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
+| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 12개), `python/`(10개 + 논문 스크립트 `paper/` 11개 + 단위 테스트 `tests/` 141개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
 | | [`07_results/`](../07_results/) | 실험별 측정 원시 출력과 `summary.md` |
 | **문서** | [`08_learn/`](00_README.md) | 지금 읽고 있는 이 자습 교재 13장 |
 | | [`09_diagrams/`](../09_diagrams/) | yEd로 여는 파이프라인 다이어그램 2장 |
@@ -309,7 +309,7 @@ Ctrl+C(INT)나 TERM을 받으면 락을 지우고 바로 끝난다(종료 코드
 
 | 폴더 | 내용 |
 |---|---|
-| [`06_tools/python/`](../06_tools/python/) | `compare_detections.py`(검출 비교), `gen_glyph_font_8x16.py`(폰트 헤더 생성 — 빌드에 관여하지 않는 재현 기록), `check_links.py`(문서 링크·`file:line`·`--stale` 옛 경로), `check_structure.py`(폴더 배치 규칙), `relocate.py`(매핑표 기반 이동), `hef_bytes.py`·`hef_byte_model.py`(HEF 바이트 회계), `frame_log_stats.py`(`--frame-log` 분석), `fw_actions_breakdown.py`(NPU 컨텍스트별 시간 분해), `tests/`(stdlib 단위 테스트) |
+| [`06_tools/python/`](../06_tools/python/) | `compare_detections.py`(검출 비교), `gen_glyph_font_8x16.py`(폰트 헤더 생성 — 빌드에 관여하지 않는 재현 기록), `check_links.py`(문서 링크·`file:line`·`--stale` 옛 경로), `check_structure.py`(폴더 배치 규칙), `relocate.py`(매핑표 기반 이동), `hef_bytes.py`·`hef_byte_model.py`(HEF 바이트 회계), `hef_context_layers.py`(HEF 컨텍스트 ↔ ONNX 블록 대응), `frame_log_stats.py`(`--frame-log` 분석), `fw_actions_breakdown.py`(NPU 컨텍스트별 시간 분해), `paper/`(논문 그림 `fig*`·`build_figures.py`와 docx `build_docx.py`·`make_reference_docx.py` 생성 스크립트), `tests/`(stdlib 단위 테스트) |
 | [`06_tools/probes/`](../06_tools/probes/) | 일회성 프로브 소스. 빌드 대상이 아니며, 어떤 실험에서 쓴 것인지는 해당 `summary.md`에 적혀 있다. `hvs_probe/` 는 외부 저장소 헤더 기준이라 이 저장소에서 그대로는 빌드되지 않는다 |
 
 ---

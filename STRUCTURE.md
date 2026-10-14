@@ -116,7 +116,7 @@
 | 폴더 | 담는 것 |
 |---|---|
 | `bench/` | 측정 셸 `*_bench.sh`와 공통부 `lib/common.sh`. 바이너리는 `$BIN_DIR`, 파이썬은 `$PY_HAILO`(둘 다 `lib/common.sh`에서만 정의) |
-| `python/` | 빌드와 무관한 파이썬 도구(`check_links.py`, `check_structure.py`, `relocate.py` 등). `paper/`는 논문 그림 생성 스크립트(§2.7) |
+| `python/` | 빌드와 무관한 파이썬 도구(`check_links.py`, `check_structure.py`, `relocate.py` 등). `paper/`는 논문 그림·docx 생성 스크립트(§2.7), `tests/`는 그 단위 테스트(`unittest`) |
 | `probes/` | 빌드하지 않는 일회성 C/C++ 프로브 |
 
 벤치 스크립트를 추가·삭제하면 `.claude/hooks/npu_guard.py`가 그 목록을 glob으로 찾는지, 그리고 하드코딩된 폴백 `_BENCH_FALLBACK`(있을 때)이 `bench/` 최상위 `.sh`와 같은지 검사기(C10)로 확인한다. C10은 그 파일 안의 **리터럴 목록만** 본다 — 동적으로 계산되는 이름은 자동으로 맞는 것으로 넘긴다.

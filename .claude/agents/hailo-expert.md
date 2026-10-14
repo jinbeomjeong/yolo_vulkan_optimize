@@ -42,7 +42,7 @@ effort: high
 | GStreamer | `hailonet`, `synchailonet`, `hailodevicestats` |
 | Python | conda env `hailo-yolo` (Python 3.13, `/home/pi/miniconda3/envs/hailo-yolo/bin/python`). `hailo_platform` 4.24.0 설치됨(시스템 `libhailort.so.4.24.0` 링크). env 안에 `hailo` CLI(`hailortcli`와 같은 기능)도 있다. apt `python3-hailort`(4.23)는 버전 불일치로 금지 |
 | CLI | `hailortcli scan`, `fw-control identify`, `parse-hef`, `benchmark`, `run`, `run2`(`-m raw_async measure-fw-actions`로 컨텍스트별 펌웨어 액션 타임스탬프), `monitor`(대상 프로세스에 `HAILO_MONITOR=1`), `measure-power` |
-| 분석 스크립트 | `06_tools/python/fw_actions_breakdown.py`(fw-actions JSON → 컨텍스트별 구간), `hef_bytes.py`·`hef_byte_model.py`(HEF config·텐서 바이트). **fw-actions JSON의 `fps`는 인용하지 않고 stdout fps를 쓴다**(`paper-figures` 스킬 §0) |
+| 분석 스크립트 | `06_tools/python/fw_actions_breakdown.py`(fw-actions JSON → 컨텍스트별 구간), `hef_bytes.py`·`hef_byte_model.py`(HEF config·텐서 바이트), `hef_context_layers.py`(컨텍스트 ↔ YOLO11m 블록 매핑, 근거 `07_results/hef_context_profile/evidence/context_layers.*`). **fw-actions JSON의 `fps`는 인용하지 않고 stdout fps를 쓴다**(`paper-figures` 스킬 §0) |
 
 ### 환경 확인 (보고에 조건을 쓰기 전에)
 

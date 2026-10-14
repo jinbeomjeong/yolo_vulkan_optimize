@@ -75,11 +75,11 @@ uname -r
 | `8.0 GT/s PCIe` | Gen3 |
 | `16.0 GT/s PCIe` | Gen4 |
 
-두 벤치 스크립트는 `pcie_link()` 함수로 이 줄을 `env_bench.txt`에 자동으로 남긴다.
+벤치 스크립트는 `06_tools/bench/lib/common.sh`의 `pcie_link()` 함수로 이 줄을 `env_bench.txt`에 자동으로 남긴다.
 링크 세대는 `/boot/firmware/config.txt`의 `dtparam=pciex1_gen`으로 바뀌므로, **이 문서를 포함해
 어떤 문서에 적힌 값도 믿지 말고 읽는다.**
 
-Hailo 칩 온도는 `hailo_platform`으로 읽는다(`pipeline_bench.sh`의 `hailo_temp()`를 그대로 쓸 것):
+Hailo 칩 온도는 `hailo_platform`으로 읽는다(`06_tools/bench/lib/common.sh`의 `hailo_temp()`를 그대로 쓸 것):
 
 ```bash
 /home/pi/miniconda3/envs/hailo-yolo/bin/python -c \
