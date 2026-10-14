@@ -131,20 +131,21 @@
     figNN_<slug>.svg     본문용(벡터)
     figNN_<slug>.png     투고·미리보기용 300 dpi
   template/
-    reference.docx       docx 서식 견본(글꼴·여백·스타일). 손으로 관리하는 입력 — 추적
+    reference.docx       docx 서식 견본(글꼴·여백·스타일). make_reference_docx.py 의 산출물 — 추적. 손으로 고치지 않는다
   build/                 docx 산출물(paper_ko.docx 등). git 밖(.gitignore) — 언제든 다시 만든다
 06_tools/python/paper/
   paper_style.py         공용 스타일(글꼴·크기·색)
   figNN_<slug>.py        그림 하나당 스크립트 하나 — 07_results 만 읽고 10_paper/figures 에 쓴다
   build_figures.py       전체 재생성
   build_docx.py          paper_ko.md + template/reference.docx → build/paper_ko.docx (conda python-dev 에서 실행)
+  make_reference_docx.py 서식 견본 생성기 → template/reference.docx (서식을 바꿀 때는 이 스크립트를 고치고 다시 만든다)
 ```
 
 - 그림 파일은 **스크립트 실행으로만** 만든다(손으로 고치지 않는다). 다이어그램은 예외로, `09_diagrams/*.graphml`을 yEd GUI로 내보낸 것이다.
-- 담당: 스크립트는 python-expert, 실행·논문 삽입·커밋은 메인 에이전트(`10_paper`는 사용자 확인 대상). 절차는 `.claude/skills/paper-figures/`.
+- 담당: 그림 스크립트(`figNN_*`, `paper_style.py`, `build_figures.py`)는 python-expert, 실행·논문 삽입·커밋은 메인 에이전트(`10_paper`는 사용자 확인 대상). 절차는 `.claude/skills/paper-figures/`.
 - 수치의 출처는 `07_results` 정본뿐이다. 등록부의 행마다 생성 스크립트와 원본 경로를 적는다. 검사기 D3(`check_structure.py`)가 그림 파일 ↔ 등록부 행과 경로 존재를 대조한다.
-- docx 는 `build_docx.py` 실행으로만 만든다(산출물을 손으로 고치지 않는다 — 고칠 것은 원고나 견본에서 고친다). 그림은 `figures/` 의 PNG 를 넣는다.
-  스크립트 작성은 docx-expert, 실행·견본 교체·커밋은 메인 에이전트다. 결정: docx 견본은 `10_paper/template/`, 산출물은 `10_paper/build/`(추적 안 함), 스크립트는 `06_tools/python/paper/` (사용자 결정, 2026-10-14)
+- docx 는 `build_docx.py` 실행으로만 만든다(산출물을 손으로 고치지 않는다 — 내용은 원고에서, 서식은 `make_reference_docx.py`에서 고친다). 그림은 `figures/` 의 PNG 를 넣는다.
+  docx 스크립트 작성은 docx-expert, 실행·견본 재생성·커밋은 메인 에이전트다. 결정: docx 견본은 `10_paper/template/`, 산출물은 `10_paper/build/`(추적 안 함), 스크립트는 `06_tools/python/paper/` (사용자 결정, 2026-10-14)
 
 ## 3. `07_results/` 레이아웃
 
@@ -216,13 +217,13 @@ HailoRT는 **실행한 디렉터리(CWD)**에 `hailort.log`를 쓴다.
 |---|---|
 | `01_src/{hailo,tools/hailo}`, `03_models`, `04_data/raw_tensors` | hailo-expert |
 | `01_src/{vulkan,display,testkit,tools/vulkan,tools/display}`, `02_shaders` | vulkan-expert |
-| `01_src/{core,toolkit,decode,isp,tools/isp,tools/decode}`, `CMakeLists.txt`, `cmake/` | cpp-expert |
+| `01_src/{core,toolkit,decode,isp,tools/isp,tools/decode}`, `**/CMakeLists.txt`, `cmake/` | cpp-expert |
 | `01_src/ref` | 그 원문을 쓰는 셰이더·경로의 전문가 (바꾸면 verify ctest 필수) |
 | `01_src/pipeline` | 바뀌는 단계의 전문가 |
 | `01_src/{gstelem,tools/gst}` | gstreamer-expert (SandLetterbox 사용은 vulkan-expert, HailoRunner 바인딩은 hailo-expert 검토) |
 | `05_tests` | 테스트 대상 도메인의 전문가 + verify 스킬 |
 | `06_tools/bench` | 실행은 measure 스킬, 수정은 측정 대상 도메인의 전문가 |
-| `06_tools/python` | python-expert |
+| `06_tools/python` | python-expert (하위 예외: `paper/` docx 스크립트는 docx-expert, HEF·fw-actions 분석은 hailo-expert) |
 | `07_results` | 쓰기는 measure·verify 스킬, 이동은 relocate.py, 정합 점검은 integrity-auditor |
 | `08_learn`, `README.md` | 메인 에이전트 (기계적 수정은 integrity-auditor) |
 | `09_diagrams` | graphml-expert (포맷), 수치는 도메인 전문가 |

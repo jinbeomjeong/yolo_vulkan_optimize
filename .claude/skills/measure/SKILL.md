@@ -10,6 +10,9 @@ description: >
 
 # 측정 프로토콜
 
+**실행 주체는 메인 에이전트다**(벤치 락 `build/.bench_running`은 한 번에 하나뿐이다). 시작 전·끝난 뒤 보드 상태 점검은
+`status-reporter`, 결과가 이상할 때의 원인 분석은 측정 대상 도메인의 전문가(`hailo-expert`·`vulkan-expert`·`cpp-expert`)가 맡는다.
+
 성능 수치는 조건을 적지 않으면 쓸모가 없고, 과열 상태에서 재면 **틀린 값이 조용히 기록된다**.
 이 프로젝트에는 이미 그렇게 버려진 측정이 있다(`07_results/npu_benchmark/runs/gen3/summary.md`의
 "신뢰 불가" 표). 아래 순서를 지킨다.

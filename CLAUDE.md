@@ -113,7 +113,7 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론 파이프�
 
 **지점** — 장시간 백그라운드 작업(측정·벤치·`ctest`)을 **시작하기 전**과 **끝난 뒤** ·
 여러 위임을 **병렬로 돌리기 전**(같은 파일을 건드리는지, NPU·GPU가 비어 있는지) ·
-**커밋하기 전**(무엇이 섞여 있는지) · **세션을 다시 잡았을 때**.
+**커밋하기 전**(무엇이 섞여 있는지 — 큰 변경이면 그다음 `integrity-auditor`로 정합 점검) · **세션을 다시 잡았을 때**.
 
 **시간** — 한 작업이 **한 시간**을 넘기면 그 사이에 한 번 부른다.
 
@@ -166,21 +166,22 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론 파이프�
 |---|---|---|
 | `01_src/hailo/`, `01_src/tools/hailo/`, `03_models/`, `04_data/raw_tensors/` | `hailo-expert` | 픽스처는 `yvo_hailo_raw_probe` 산출물. **HEF 교체는 사용자 결정**(§목적 3) |
 | `01_src/vulkan/`, `01_src/display/`, `01_src/testkit/`, `01_src/tools/{vulkan,display}/`, `02_shaders/` | `vulkan-expert` | `display/kms_scanout.*`(libdrm atomic)을 크게 바꾸면 `cpp-expert` 검토 |
-| `01_src/core/`, `01_src/decode/`, `01_src/isp/`, `01_src/tools/{isp,decode}/`, `CMakeLists.txt`, `cmake/` | `cpp-expert` | `core/`의 dma-heap·dma-buf 글루를 바꾸면 양쪽 전문가 검토 |
+| `01_src/core/`, `01_src/decode/`, `01_src/isp/`, `01_src/tools/{isp,decode}/`, `**/CMakeLists.txt`, `cmake/` | `cpp-expert` | `core/`의 dma-heap·dma-buf 글루(`dma_heap_alloc.hpp` 등)를 바꾸면 양쪽 전문가 검토. 하위 `CMakeLists.txt`에 타깃을 더하는 일은 그 도메인 전문가가 하고 `cpp-expert`가 검토 |
 | `01_src/ref/` | 그 원문을 쓰는 셰이더·경로의 전문가 | **바꾸면 `verify` ctest 필수**(비트 일치 테스트의 기준이다) |
 | `01_src/toolkit/` | `cpp-expert` | 라이브러리가 include하면 안 된다 |
-| `01_src/pipeline/` | 바뀌는 단계의 전문가 | 디코더 연결은 `cpp-expert`, `gpu_postproc_stage`는 `vulkan-expert`, `infer_stage`는 `hailo-expert` |
+| `01_src/pipeline/` | 바뀌는 단계의 전문가 | 디코더 연결·`input_pacer`·`slot_exchange`는 `cpp-expert`, `gpu_postproc_stage`는 `vulkan-expert`, `infer_stage`는 `hailo-expert` |
 | `01_src/gstelem/`, `01_src/tools/gst/` | `gstreamer-expert` | `SandLetterbox` 사용·dma-buf 수명은 `vulkan-expert`, `HailoRunner` 바인딩은 `hailo-expert`, CMake 선택 의존은 `cpp-expert` 검토 |
 | `05_tests/` | 테스트 대상 도메인의 전문가 + `verify` 스킬 | |
 | `06_tools/bench/` | 실행은 `measure` 스킬, 수정은 측정 대상 도메인의 전문가 | 추가·삭제 시 `npu_guard`가 자동으로 찾는지 확인(검사기 C10). 지금 도는 중인지는 `status-reporter` |
-| `06_tools/python/` | `python-expert` | |
+| `06_tools/python/` | `python-expert` | 하위 예외: `paper/build_docx.py`·`make_reference_docx.py`는 `docx-expert`, HEF·fw-actions 분석(`hef_*.py`, `fw_actions_breakdown.py`)은 `hailo-expert`(작성 시 `python-expert` 검토 가능) |
 | `06_tools/probes/` | 소속 도메인의 전문가 | 빌드하지 않는다 |
 | `07_results/` | 쓰기는 `measure`(측정)·`verify`(`verification/`) 스킬, 이동은 `relocate.py`, 정합 점검은 `integrity-auditor` | 결과 파일 내용은 고치지 않는다. 삭제·`FORCE=1` 덮어쓰기는 §사용자 확인(바이트 동일 사본은 `STRUCTURE.md` §3.4 절차로 예외) |
 | `08_learn/`, `README.md` | 메인 에이전트 | 기계적 수정(경로·줄번호·개수)은 `integrity-auditor` |
 | `09_diagrams/` | `graphml-expert`(포맷) | 수치 변경은 도메인 전문가 |
-| `10_paper/`, `.claude/`, `~/.claude/agents/*`, `~/.claude/settings.json`, `CLAUDE.md`, `STRUCTURE.md`, `06_tools/structure_rules.toml` | 메인 에이전트(사용자 확인) | **§사용자 확인**이 정본이다. 승인된 계획이어도 위임하지 않는다. `.claude/agents`·훅 변경은 **다음 세션부터** 반영된다. `~/.claude/**`는 저장소 밖이라 검사기·`placement_guard` 훅이 보지 않는다. `10_paper/figures/`는 `06_tools/python/paper/` 스크립트(작성은 `python-expert`)의 실행 산출물이고 실행은 메인 에이전트가 한다(`paper-figures` 스킬). 논문 논증 검토는 `paper-reviewer`(읽기 전용) |
+| `10_paper/`, `.claude/`, `~/.claude/agents/*`, `~/.claude/settings.json`, `CLAUDE.md`, `STRUCTURE.md`, `06_tools/structure_rules.toml` | 메인 에이전트(사용자 확인) | **§사용자 확인**이 정본이다. 승인된 계획이어도 위임하지 않는다. `.claude/agents`·`~/.claude/agents` 변경은 **다음 사용자 턴부터** 반영될 수 있다(같은 턴의 호출은 옛 정의이거나 not found. 훅과 확실한 반영은 새 세션). `~/.claude/**`는 저장소 밖이라 검사기·`placement_guard` 훅이 보지 않는다. `10_paper/figures/`는 `06_tools/python/paper/` 그림 스크립트(작성은 `python-expert`)의 실행 산출물이고 실행은 메인 에이전트가 한다(`paper-figures` 스킬). 논문 논증 검토는 `paper-reviewer`(읽기 전용) |
 | `11_logs/` | 누구나 | git 밖. 최근 실행 흔적 조회는 `status-reporter` |
 | `build*/` | 쓰지 않는다 | 산출물. 락·`bin`/`out` 상태 **읽기**는 `status-reporter` |
+| 루트 설정 파일 `environment.yml`, `.mcp.json`, `.gitignore` | 메인 에이전트 | `environment.yml`의 패키지 변경은 시스템 변경과 같이 다룬다(§사용자 확인). 기계적 서술 점검은 `integrity-auditor` |
 
 ## 서브에이전트 라우팅 (프로젝트 우선)
 전역 지침보다 이 규칙이 우선한다.
@@ -194,11 +195,14 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론 파이프�
 - GStreamer 파이프라인 전반(구성·caps 협상·성능·appsink 연동) → `gstreamer-expert`(전역).
   단, hailonet/synchailonet의 HEF·HailoRT 설정 문제 → `hailo-expert`, vulkan* 요소의 셰이더·호스트 코드 → `vulkan-expert`.
   hailonet이 들어간 파이프라인 작업은 파이프라인 문자열·연결은 `gstreamer-expert`, NPU 설정은 `hailo-expert`에 나눠 맡긴다.
+  hailonet 파이프라인 전체의 fps·지연은 `gstreamer-expert`, NPU 단독 처리량(`hailortcli`)은 `hailo-expert`가 잰다(정식 기록은 `measure` 스킬).
+  **앱 본체(`01_src/pipeline/`, `yvo_pipeline`)는 GStreamer를 쓰지 않는다** — "파이프라인"·"element"처럼 낱말만 겹치는 작업은 `gstreamer-expert`로 보내지 않는다.
 - Hailo↔Vulkan 버퍼 공유(zero-copy)처럼 양쪽에 걸치면: 먼저 인터페이스(dma-buf fd, 크기, 포맷, 정렬,
   동기화 시점)를 정하고 HailoRT 쪽은 `hailo-expert`, Vulkan import 쪽은 `vulkan-expert`에 나눠 위임한다.
-- `09_diagrams/*.graphml`(yEd 파이프라인 다이어그램 2장)의 **파일 포맷·스키마·yEd 방언·검증**이 핵심인 작업
+- `09_diagrams/*.graphml`(yEd 파이프라인 다이어그램 3장 — 원본 2장 + 논문판 `pipeline_paper.graphml`)의 **파일 포맷·스키마·yEd 방언·검증**이 핵심인 작업
   → `graphml-expert`(전역). 관리 규약은 `09_diagrams/README.md`에 있다.
-  단 다이어그램에 적힌 **수치를 고치는 일**은 측정 문서를 근거로 하는 작업이라 해당 영역 전문 에이전트에 맡긴다.
+  단 다이어그램에 적힌 **수치를 고치는 일**은 측정 문서를 근거로 한다. 흐름: `integrity-auditor`가 불일치를 보고 →
+  메인 에이전트가 `07_results` 정본으로 값을 확정(여러 영역에 걸치면 해당 전문가에게 확인) → `graphml-expert`가 확정값을 받아 편집.
   "파이프라인 그래프", "노드", "추론 그래프"처럼 **단어만 겹치는** 작업은 `graphml-expert`로 보내지 않는다.
 - 문서·코드 무결성 점검(문서의 링크·`file:line`·심볼·개수·수치가 코드와 `07_results` 정본에 맞는지, 죽은 코드,
   미인용·중복 결과 파일, `CLAUDE.md`·`.claude` 설정 서술의 정합) → `integrity-auditor`(프로젝트, Sonnet 5.5 · effort high).
@@ -210,7 +214,7 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론 파이프�
     바이트 동일 사본만 `STRUCTURE.md` §3.4 절차로 예외다).
 - 런타임 상태 확인(지금 무엇이 돌고 있나 — 벤치 락 `build/.bench_running`의 PID 생존, NPU 점유 `/dev/hailo0`,
   벤치 진행률, 작업 트리, 검사기 3종의 수치, PCIe·온도·스로틀·V3D 클럭, 루트 잔재·산출물 신선도·DRM master)
-  → `status-reporter`(프로젝트, Sonnet 5.5 · effort high). 호출 시점은 §긴 작업 중 상태 확인.
+  → `status-reporter`(프로젝트, Sonnet 5.5 · effort medium). 호출 시점은 §긴 작업 중 상태 확인.
   - **아무것도 고치지 않고 부하를 거는 명령을 하나도 돌리지 않는다**(읽기 전용, `Edit`·`Write` 없음).
     락·잔재 삭제와 `FORCE=1` 재측정은 §사용자 확인 대상이라 "지우십시오"로 보고만 한다.
   - 검사기 **수치는 전하되 위반의 조사·판정·수정은 `integrity-auditor`**, 빌드·테스트는 `verify` 스킬,
@@ -229,9 +233,10 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론 파이프�
     **"코드 리뷰"는 이 에이전트로 보내지 않는다**(해당 도메인 전문 에이전트).
 - Word(.docx) 읽기·쓰기·변환(논문 원고 → docx 포함) → `docx-expert`(전역, Opus 5.5 · effort high, 도구는 conda `python-dev`).
   `10_paper/` 원고(`.md`) 수정은 여전히 메인 에이전트가 한다 — 이 에이전트는 원고를 읽어 docx를 만들 뿐이다.
-  위치는 `STRUCTURE.md` §2.7: 스크립트 `06_tools/python/paper/build_docx.py`(작성은 이 에이전트), 견본 `10_paper/template/reference.docx`,
-  산출물 `10_paper/build/`(git 밖). `10_paper/` 안의 파일은 이 에이전트가 **쓰지 않는다** — 견본은 임시 폴더에 만들어 보고하고,
-  복사와 `build_docx.py` 실행은 메인 에이전트가 한다.
+  위치는 `STRUCTURE.md` §2.7: 스크립트 `06_tools/python/paper/{build_docx,make_reference_docx}.py`(작성은 이 에이전트),
+  견본 `10_paper/template/reference.docx`(`make_reference_docx.py`의 산출물 — 서식을 바꿀 때는 생성기를 고친다), 산출물 `10_paper/build/`(git 밖).
+  `10_paper/` 안의 파일은 이 에이전트가 **쓰지 않는다** — 견본·docx 시험 출력은 임시 폴더에 만들어 보고하고,
+  견본 재생성·복사와 `build_docx.py` 실행은 메인 에이전트가 한다. 단순 재빌드는 위임하지 않고 메인 에이전트가 바로 돌린다.
 - 위임 프롬프트에 대상 파일, 목표, 제약, 검증 방법(셰이더 컴파일·검증 레이어·측정 조건)을 포함한다.
   **새 파일을 만드는 작업이면 둘 위치를 `STRUCTURE.md` 기준으로 프롬프트에 적고**, 끝에 `check_structure.py` 결과를 보고하게 한다.
   전역 에이전트(`cpp`·`python`·`gstreamer`·`graphml`·`docx-expert`)는 다른 프로젝트도 쓰므로 정의 파일에 이 프로젝트 규칙을 적지 않는다 —

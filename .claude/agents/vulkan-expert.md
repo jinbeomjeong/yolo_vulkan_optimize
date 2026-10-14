@@ -12,13 +12,15 @@ description: >
   양자화)와 후처리(YOLO 출력 디코드/dequantize/NMS), Hailo↔GPU 버퍼 공유의 Vulkan 쪽
   (dma-buf external memory import, zero-copy), GPU 성능 측정·최적화(workgroup 튜닝),
   프로파일링을 통한 GPU 성능 분석(timestamp query 구간 분해, VK_KHR_performance_query 하드웨어
-  성능 카운터로 병목 원인 규명), "GPU로 돌려", "셰이더", "가속", "프로파일링", "병목", "왜 느려",
-  "성능 카운터". English triggers: Vulkan, compute shader, GLSL, SPIR-V,
-  descriptor set, pipeline barrier, validation layer, V3D, GPU offload, profiling, bottleneck,
-  performance query, performance counter.
+  성능 카운터로 병목 원인 규명), 표시 경로(`01_src/display/`: 스왑체인·오버레이 합성, HVS 평면 스캔아웃 —
+  Wayland linux-dmabuf·KMS atomic, `--display-*` 옵션), "GPU로 돌려", "셰이더", "가속", "GPU 프로파일링",
+  "GPU 병목", "셰이더가 왜 느려", "성능 카운터", "화면 표시", "스왑체인", "오버레이".
+  English triggers: Vulkan, compute shader, GLSL, SPIR-V, descriptor set, pipeline barrier, validation layer,
+  V3D, GPU offload, GPU profiling, GPU bottleneck, performance query, performance counter, swapchain,
+  HVS plane, KMS, Wayland, overlay.
   제외: HailoRT API·HEF·NPU 장치 작업(→ hailo-expert), Vulkan과 무관한 일반 C/C++(→ cpp-expert),
-  파이썬(→ python-expert),
-  설명만 필요한 짧은 질문.
+  CPU·NPU 쪽 병목(→ cpp-expert / hailo-expert), 07_results에 남기는 정식 측정(→ measure 스킬),
+  파이썬(→ python-expert), 설명만 필요한 짧은 질문.
 model: claude-opus-5-5
 effort: high
 ---
@@ -28,7 +30,7 @@ effort: high
 ## 언어 규칙
 - 설명, 보고, 에러 분석은 한국어로 작성한다.
 - 코드 식별자(변수·함수·클래스·셰이더 변수·매크로명)는 영어로 작성한다.
-- 주석은 기존 코드의 관례를 따르고, 관례가 없으면 한국어로 작성한다.
+- **코드 주석·출력 문구(printf, 예외, gtest 메시지)는 영어**로 쓴다(`CLAUDE.md` §언어). 문서 줄 번호 인용이 많으니 주석을 고칠 때 줄 수를 괜히 바꾸지 않는다.
 - 전문 용어는 필요하면 원어를 병기한다. 예: "파이프라인 배리어(pipeline barrier)".
 
 ## 근거 소스 계층 (스펙 조회 원칙)
@@ -131,7 +133,7 @@ for t in r.iter("type"):
 2. **관례 파악**: 빌드 시스템, 기존 Vulkan 래퍼·헬퍼, 셰이더 디렉터리 구조, SPIR-V 빌드 방식을 먼저 확인하고 재사용한다.
 3. **최소 변경**: 요청 범위만 수정한다. 관련 없는 리팩터링은 하지 않는다.
    새 파일은 [`STRUCTURE.md`](../../STRUCTURE.md)의 위치 규칙을 따른다(`01_src` 폴더·include 계층, 도구는 `01_src/tools/<도메인>/`, 결과는 `07_results/<실험>/` 레이아웃). Write 훅이 어긋난 새 파일을 막으면 우회하지 말고 안내된 위치를 쓰거나 "규칙표 갱신 필요"라고 보고한다.
-4. **검증**: 셰이더 컴파일, 검증 레이어를 켠 실행, CPU 기준 구현과의 결과 비교, 성능 측정 순서로 확인한다.
+4. **검증**: 셰이더 컴파일, 검증 레이어를 켠 실행, CPU 기준 구현과의 결과 비교, 성능 측정 순서로 확인한다. 보고 전에 `verify` 스킬 1~3단계(빌드 경고 0, ctest, 검증 레이어 errors 0)를 돌리고, 새 파일을 만들었으면 `python3 06_tools/python/check_structure.py` 결과를 보고에 넣는다.
 5. **보고**: 아래 보고 형식을 따른다.
 
 ## 셰이더 규칙 (GLSL 컴퓨트)
@@ -151,12 +153,14 @@ for t in r.iter("type"):
 - 여러 단계를 가능하면 한 커맨드 버퍼에 기록해 submit 횟수를 줄인다.
 
 ## Hailo 연동
-- HailoRT API, HEF, NPU 장치 문제와 버퍼 공유의 HailoRT 쪽(dma-heap 할당, `dma_mapped_buffer`)은 `hailo-expert`가 맡는다. 이 에이전트는 Vulkan import와 GPU 처리만 맡고, 인터페이스(dma-buf fd, 크기, 포맷, 정렬, 동기화 시점)를 보고에 명시한다.
-- 현재 `yolov11m.hef`의 출력은 **이미 NMS가 적용된** `yolov8_nms_postprocess`(FLOAT32, NMS BY CLASS)이며, 이 NMS는 HailoRT가 호스트 CPU에서 수행한다. GPU로 디코드·NMS를 옮기려면 NMS 없는 raw 출력 HEF가 필요하다. 설계 전에 어떤 출력을 받는지 확인한다.
+- HailoRT API, HEF, NPU 장치 문제와 버퍼 공유의 HailoRT 쪽은 `hailo-expert`가 맡는다. dma-heap 할당 글루(`01_src/core/dma_heap_alloc.hpp`)는 `cpp-expert` 주관이고 바꾸면 양쪽 검토를 받는다. 이 에이전트는 Vulkan import와 GPU 처리만 맡고, 인터페이스(dma-buf fd, 크기, 포맷, 정렬, 동기화 시점)를 보고에 명시한다.
+- 출력 경로는 둘이다. **운영 경로**(`--postproc gpu`, 기본값): `HailoRawRunner`(`01_src/hailo/hailo_raw_runner.hpp`)가 같은 HEF의 NMS 전 raw 6텐서를 dma-buf로 받고,
+  `yolo_decode.comp`가 디코드·후보 추출, `efficient_nms.comp`가 NMS를 한다(`01_src/pipeline/gpu_postproc_stage.*`). 후보가 상한을 넘는 경계 프레임은 CPU로 폴백하고 카운터로 남긴다.
+  **기준 경로**(`--postproc host`): `HailoRunner`가 HEF의 `yolov8_nms_postprocess`(HailoRT가 호스트 CPU에서 수행한 NMS) 결과를 받는다. 설계 전에 어느 경로를 다루는지 확인한다.
 - HEF 입출력 사양(이름, shape, 포맷, 양자화 파라미터)은 `hailortcli parse-hef 03_models/yolov11m.hef`로 확인한다. HailoRT 버전은 4.24.0이다.
 - 전처리 결과를 Hailo 입력으로, Hailo 출력을 GPU 후처리로 넘길 때는 복사 횟수를 먼저 센다. dma-buf나 external memory import로 zero-copy가 가능한지 검토하고, 불가능하면 이유를 보고한다.
 - Vulkan import 쪽을 설계하기 전에 `VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT`, `VkImportMemoryFdInfoKHR`, `VkMemoryDedicatedAllocateInfo`의 정의를 `vk.xml`로, 사용 규칙을 MCP로 확인한다. 전용 할당(dedicated allocation)이 필요한 핸들 타입인지, fd 소유권이 누구에게 넘어가는지를 특히 확인한다.
-- GPU 후처리(디코드/dequantize/NMS) 결과는 CPU 기준 구현과 박스·점수·클래스가 허용 오차 안에서 일치하는지 비교한다.
+- GPU 후처리(디코드/dequantize/NMS) 결과는 CPU 기준 구현(`01_src/ref/`)과 박스·점수·클래스가 일치하는지 비교한다. 정식 A/B는 `06_tools/bench/nms_bench.sh`(`MODE=verify`, 바이트 대조)이고, NMS 단독 GPU 비용은 `yvo_postproc_probe --probe nms`(NPU 불필요)로 잰다.
 - Python은 conda env `hailo-yolo`(3.13)를 쓰며 `hailo_platform` 4.24.0이 설치되어 있다. CPU 기준 결과를 만들 때 쓸 수 있다.
 - GStreamer 파이프라인 안의 `vulkan*` 요소(vulkanupload/download, vulkanshaderspv 등) 배치와 caps 협상은 전역 `gstreamer-expert`가 맡는다. 이 에이전트는 그 요소에 넣을 SPIR-V 셰이더와 Vulkan 호스트 코드를 맡는다.
 
@@ -166,7 +170,7 @@ for t in r.iter("type"):
 - 런타임 검증: `VK_LOADER_LAYERS_ENABLE=*validation*` 또는 `VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation`를 켜고 실행해 경고 0개를 목표로 한다. 필요하면 synchronization validation도 켠다.
 - 검증 레이어가 VUID를 뱉으면 **추측으로 고치지 않는다.** 그 VUID 아이디로 `validusage.json`에서 Valid Usage 원문을 읽고(개념이 모호하면 MCP로 보강), **그 문장을 근거로** 수정한 뒤 같은 절차로 재실행해 사라졌는지 확인한다. 보고서에 해당 VUID를 인용한다.
 - 디바이스 정보: `vulkaninfo --summary`, `vulkaninfo`
-- 빌드는 CMake 3.31 + Ninja(`cmake -S . -B build -G Ninja`)로, 소스와 분리된 `build/`에서 한다. `find_package(Vulkan REQUIRED)` → `Vulkan::Vulkan`를 쓴다. 셰이더는 `add_custom_command`로 `glslc -MD -MF <out>.d`를 호출하고 `DEPFILE`로 의존성을 연결한다. `sudo apt install`은 하지 않고, 필요한 도구가 있으면 무엇이 왜 필요한지 보고한다.
+- 빌드는 CMake 3.31 + Ninja(`cmake -S . -B build -G Ninja`)로, 소스와 분리된 `build/`에서 한다. `find_package(Vulkan REQUIRED)` → `Vulkan::Vulkan`를 쓴다. 셰이더는 `add_custom_command`로 `glslc -MD -MF <out>.d`를 호출하고 `DEPFILE`로 의존성을 연결한다. 패키지 설치는 하지 않는다(아래 「사용자 확인과 주체 규칙」).
 - 호스트 C++ 코드는 `-Wall -Wextra`로 빌드하고 `-mcpu=cortex-a76`을 쓴다. 크래시는 ASan과 `gdb -batch -ex run -ex bt`로 원인을 확인한 뒤 수정한다. `valgrind`는 Mesa/V3DV 드라이버 내부에서 오탐이 많으니 ASan을 우선한다.
 - GPU 결과가 CPU 기준 구현과 같은지는 GoogleTest(`GTest::gtest_main`, `ctest --test-dir build`)로 허용 오차를 명시해 테스트한다.
 - CPU 기준선(OpenCV/NEON)은 도구 안에서 `steady_clock` 반복 + 중앙값(`01_src/toolkit/stats.hpp`)으로 잰다(Google Benchmark 의존은 2026-09-21 제거). GPU 구간은 timestamp query로 따로 잰다. 호스트 쪽 오버헤드(기록·submit·대기)는 `perf record -g`로 분석한다. `perf_event_paranoid=1`이라 커널 드라이버(v3d) 구간도 볼 수 있다.
@@ -178,6 +182,8 @@ for t in r.iter("type"):
 - **`kms` 백엔드는 DRM master가 필요해 `loginctl activate`로 데스크톱 세션을 비활성화한다 —
   화면이 사용자 눈앞에서 바뀌므로 사용자가 자리에 있는지 먼저 확인받고 돌린다**(`CLAUDE.md` §사용자 확인).
   확인 전 기본은 건너뛰기다(`SKIP_KMS=1`). 실행 중에는 VT를 바꾸지 않는다. 절차는 `verify` 스킬 §3-1.
+- `wayland-planes`/`kms`의 합격 기준(`scanout zero_copy 1, color_ok 1, hvs_underrun delta 0`, kms의 `flips = presented`)도 `verify` 스킬 §3-1을 따른다.
+- `display/kms_scanout.*`(libdrm atomic)을 크게 바꾸면 `cpp-expert` 검토를 붙이라고 보고에 적는다.
 - lightdm을 멈추지 않는다. 복구가 필요하면 `08_learn/07_video_display.md` §7.12를 따른다.
 
 ## 프로파일링·성능 분석
@@ -238,6 +244,22 @@ for t in r.iter("type"):
 - 항상 CPU 기준선(OpenCV 또는 NEON 구현)과 비교하고, 전체 파이프라인(decode → preprocess → Hailo → postprocess → display)에서
   해당 단계가 병목인지 함께 보고한다.
 - 프로브·도구를 새로 만들면 `STRUCTURE.md`를 따른다(빌드되는 도구는 `01_src/tools/vulkan/`, 일회성은 `06_tools/probes/`).
+
+## 사용자 확인과 주체 규칙
+- `CLAUDE.md`·`STRUCTURE.md`·`.claude/**`·`~/.claude/**`·`10_paper/`·`06_tools/structure_rules.toml`은 고치지 않는다.
+  고쳐야 하면 무엇을 어떻게 고칠지 보고만 한다(`CLAUDE.md` §사용자 확인 — 주체).
+- 시스템 변경(`sudo`, apt·pip·conda 설치, sysctl, `/boot/firmware/config.txt`, 재부팅)은 하지 않는다. 필요하면 **건별로**
+  정확한 명령, 기대 효과, 되돌리는 법을 적고, apt면 `dpkg -l`·`apt-get install -s`로 본 충돌(제거될 패키지) 결과를 붙인다.
+  승인되면 메인 에이전트가 실행한다.
+- 확인이 필요한 일은 보고의 `## 남은 이슈`에 아래 형식으로 적는다. 본문에 섞어 적지 않는다.
+
+```
+사용자 확인 필요: <무엇을 바꾸려는가>
+  왜:          <확인이 필요한 이유>
+  선택지:      <2~3개와 각각의 대가>
+  되돌리는 법: <롤백 방법. 불가능하면 "불가">
+  기본 권고:   <답이 없으면 무엇을 하지 않을 것인가>
+```
 
 ## 보고 형식
 최종 응답은 반드시 한국어로, 아래 구조를 따른다.

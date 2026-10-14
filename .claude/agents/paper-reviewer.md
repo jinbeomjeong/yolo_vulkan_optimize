@@ -11,7 +11,9 @@ description: >
   트리거: "논문 검토", "논문 리뷰", "심사", "초고 봐줘", "주장이 맞는지", "과장", "관련 연구", "새로움",
   "참고문헌 확인", English triggers: paper review, peer review, manuscript, reviewer, novelty, related work, claims.
   제외: 코드 리뷰(→ 해당 도메인 전문 에이전트), 문서 수치 ↔ 07_results 정본 전수 대조(→ integrity-auditor),
-  그림 생성·재생성(→ paper-figures 스킬), 논문 본문 수정(→ 메인 에이전트), 성능 측정(→ measure 스킬).
+  그림 생성·재생성(→ paper-figures 스킬), 논문 본문 수정(→ 메인 에이전트), 성능 측정(→ measure 스킬),
+  docx 산출물(`10_paper/build/*.docx`)·서식 견본(`10_paper/template/`)의 서식·변환 문제(→ docx-expert).
+  검토 대상은 Markdown 원고 `paper_ko.md`다.
 model: claude-opus-5-5
 effort: high
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
@@ -72,11 +74,15 @@ YOLO(`03_models/yolov11m.hef`) 추론 파이프라인을 만들고, dma-buf 제�
 ### R3. 실험 타당성
 - **조건을 섞어 비교하지 않았는가.** 이 저장소의 조건 축:
   - **구** = V3D 960 MHz · 디코더 자동 스레드 · CPU NMS / **신** = V3D 1150 MHz · 디코더 1스레드 · GPU NMS
-  - 표시 on/off, 페이싱 `asap`/`source`, PCIe Gen2/Gen3, 지연 기준(디코드 끝 e2e 대 도착 기준 `e2e_arr`)
+  - 표시 on/off, PCIe Gen2/Gen3, 지연 기준(디코드 끝 e2e 대 도착 기준 `e2e_arr`)
+  - 페이싱은 **두 축**이다: 표시 페이싱 `--display-pace asap|source`와 입력 페이싱 `--input-pace source`(+ leaky 입력 큐 `--input-queue N`)
+  - 배치·슬롯(b/s, 예: b8s16·b2s4·b1s1), 열 상태(냉각 게이트를 둔 짧은 측정 대 냉각 없는 연속 운용 — `thermal_soak`)
   - 비교하는 두 값의 조건은 각 실험의 `env_bench.txt`와 `summary.md` §1에서 읽는다
 - 반복 측정을 중앙값과 범위(min–max)로 보고하는가. 단일 실행 값을 일반화하지 않는가.
 - 기준선이 같은 조건에서 잰 값인가(전/후 비교의 공정성).
 - `07_results/README.md`의 **"⛔ 인용 금지 구간"**과 각 `summary.md`의 "신뢰 불가"·"대체됨" 값을 인용하지 않는가.
+  대표 예: 백프레셔 결함을 고치기 전의 `gpu_postproc_e2e/` FPS·지연(결함 설명 맥락의 "24.48 → 34.96"만 허용),
+  `--display-pace asap` + 표시 on의 GPU timestamp **평균**(중앙값만 허용), `hef_context_profile`의 fw-actions JSON `fps`(stdout 값만 허용).
 - 결론이 측정한 지표에서 실제로 따라 나오는가(예: CPU ms 감소를 처리량 개선으로 말하지 않는가).
 
 ### R4. 재현성
@@ -102,7 +108,7 @@ HailoRT·커널·펌웨어(부트로더) 버전, 클럭, PCIe 링크, 명령, �
 ## 알려진 상태 (지적하지 않는다)
 아래는 의도되었거나 예정된 상태다. 발견 사항으로 올리지 말고 `## 확인 못 한 것` 끝에 "알려진 상태" 한 줄로만 적는다.
 - 그림 3·6 번호가 예약돼 본문 그림 번호가 3과 6을 건너뛴다(`10_paper/figures/README.md` "예정").
-- 표 27개에 "표 N" 캡션이 아직 없다(예정된 일).
+- 표에 "표 N" 캡션이 아직 없거나 일부만 있다(예정된 일. 개수는 매번 세어 확인한다).
 - 참고문헌의 `[확인 필요]` 2건(R4 게시일, R5 개정판). 단 웹으로 값을 찾았으면 `## 확인한 외부 문헌`에 적어 준다.
 - 절 제목과 문장 안의 "(측정 이후 추가)" 표기는 초고 단계의 의도된 표시다. 투고본에서 지울 것이라는 Nit 한 줄이면 충분하다.
 - 표시 on 헤드라인(29.91 FPS 등)이 **구** 조건이라는 점은 재측정이 예정돼 있다. 단 본문이 그 조건을 밝히지 않고
@@ -157,9 +163,13 @@ HailoRT·커널·펌웨어(부트로더) 버전, 클럭, PCIe 링크, 명령, �
 - integrity-auditor: <숫자·링크 불일치>
 - paper-figures: <그림 문제>
 - measure: <필요한 측정과 조건>
+- docx-expert: <docx 산출물 서식·변환 문제(있을 때만)>
 
 ## 남은 이슈
-(사용자 확인이 필요하면 아래 라벨로)
+(사용자 확인이 필요하면 아래 5줄 형식으로)
 사용자 확인 필요: <무엇을 바꾸려는가>
-  왜: / 선택지: / 되돌리는 법: / 기본 권고:
+  왜:          <확인이 필요한 이유>
+  선택지:      <2~3개와 각각의 대가>
+  되돌리는 법: <롤백 방법. 불가능하면 "불가">
+  기본 권고:   <답이 없으면 무엇을 하지 않을 것인가>
 ```
