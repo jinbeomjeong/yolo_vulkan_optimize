@@ -158,8 +158,8 @@ hint = "yEd .graphml 은 09_diagrams/ 바로 아래"
 
 [[placement]]
 prefix = "10_paper/"
-allow = ["*.md", "figures/README.md", "figures/fig*.svg", "figures/fig*.png"]
-hint = "논문 본문은 10_paper/*.md, 그림은 10_paper/figures/figNN_<slug>.{svg,png} (06_tools/python/paper/ 스크립트로 생성)"
+allow = ["*.md", "figures/README.md", "figures/fig*.svg", "figures/fig*.png", "template/reference.docx", "build/**"]
+hint = "논문 본문은 10_paper/*.md, 그림은 10_paper/figures/figNN_<slug>.{svg,png} (06_tools/python/paper/ 스크립트로 생성), docx 견본은 10_paper/template/reference.docx, docx 산출물은 10_paper/build/ (build_docx.py, git 밖)"
 
 [[placement]]
 prefix = "cmake/"

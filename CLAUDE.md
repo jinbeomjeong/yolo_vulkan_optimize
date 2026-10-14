@@ -229,8 +229,9 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론 파이프�
     **"코드 리뷰"는 이 에이전트로 보내지 않는다**(해당 도메인 전문 에이전트).
 - Word(.docx) 읽기·쓰기·변환(논문 원고 → docx 포함) → `docx-expert`(전역, Opus 5.5 · effort high, 도구는 conda `python-dev`).
   `10_paper/` 원고(`.md`) 수정은 여전히 메인 에이전트가 한다 — 이 에이전트는 원고를 읽어 docx를 만들 뿐이다.
-  docx 산출물·서식 견본을 저장소에 둘 위치는 아직 규칙표에 없다. 정하기 전에는 **저장소 밖 임시 폴더에만** 만들게 하고,
-  위임 프롬프트에 그 경로를 적는다.
+  위치는 `STRUCTURE.md` §2.7: 스크립트 `06_tools/python/paper/build_docx.py`(작성은 이 에이전트), 견본 `10_paper/template/reference.docx`,
+  산출물 `10_paper/build/`(git 밖). `10_paper/` 안의 파일은 이 에이전트가 **쓰지 않는다** — 견본은 임시 폴더에 만들어 보고하고,
+  복사와 `build_docx.py` 실행은 메인 에이전트가 한다.
 - 위임 프롬프트에 대상 파일, 목표, 제약, 검증 방법(셰이더 컴파일·검증 레이어·측정 조건)을 포함한다.
   **새 파일을 만드는 작업이면 둘 위치를 `STRUCTURE.md` 기준으로 프롬프트에 적고**, 끝에 `check_structure.py` 결과를 보고하게 한다.
   전역 에이전트(`cpp`·`python`·`gstreamer`·`graphml`·`docx-expert`)는 다른 프로젝트도 쓰므로 정의 파일에 이 프로젝트 규칙을 적지 않는다 —

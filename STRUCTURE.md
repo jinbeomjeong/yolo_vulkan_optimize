@@ -130,15 +130,21 @@
     README.md            그림 등록부: 번호 · 파일 · 생성 스크립트 · 원본 경로 · 측정 조건 · 논문 절
     figNN_<slug>.svg     본문용(벡터)
     figNN_<slug>.png     투고·미리보기용 300 dpi
+  template/
+    reference.docx       docx 서식 견본(글꼴·여백·스타일). 손으로 관리하는 입력 — 추적
+  build/                 docx 산출물(paper_ko.docx 등). git 밖(.gitignore) — 언제든 다시 만든다
 06_tools/python/paper/
   paper_style.py         공용 스타일(글꼴·크기·색)
   figNN_<slug>.py        그림 하나당 스크립트 하나 — 07_results 만 읽고 10_paper/figures 에 쓴다
   build_figures.py       전체 재생성
+  build_docx.py          paper_ko.md + template/reference.docx → build/paper_ko.docx (conda python-dev 에서 실행)
 ```
 
 - 그림 파일은 **스크립트 실행으로만** 만든다(손으로 고치지 않는다). 다이어그램은 예외로, `09_diagrams/*.graphml`을 yEd GUI로 내보낸 것이다.
 - 담당: 스크립트는 python-expert, 실행·논문 삽입·커밋은 메인 에이전트(`10_paper`는 사용자 확인 대상). 절차는 `.claude/skills/paper-figures/`.
 - 수치의 출처는 `07_results` 정본뿐이다. 등록부의 행마다 생성 스크립트와 원본 경로를 적는다. 검사기 D3(`check_structure.py`)가 그림 파일 ↔ 등록부 행과 경로 존재를 대조한다.
+- docx 는 `build_docx.py` 실행으로만 만든다(산출물을 손으로 고치지 않는다 — 고칠 것은 원고나 견본에서 고친다). 그림은 `figures/` 의 PNG 를 넣는다.
+  스크립트 작성은 docx-expert, 실행·견본 교체·커밋은 메인 에이전트다. 결정: docx 견본은 `10_paper/template/`, 산출물은 `10_paper/build/`(추적 안 함), 스크립트는 `06_tools/python/paper/` (사용자 결정, 2026-10-14)
 
 ## 3. `07_results/` 레이아웃
 
