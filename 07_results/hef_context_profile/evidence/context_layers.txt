@@ -1,0 +1,97 @@
+# HEF context -> YOLO11m block map (06_tools/python/hef_context_layers.py)
+hef: 03_models/yolov11m.hef  md5 51566585905b7190d6d03c9b60710f1d  size 33667662  header v2  proto @44 size 4865122  sdk 3.34.0  hw_arch HAILO8P
+network group: yolov11m, contexts: 4, Hailo layers (global list): 680
+method: position-inferred: per-context layer lists from the opaque ProtoHEFHef.mapping bytes (field 3, not in hef.proto, layout found by position); cross-checked with schema edge layers (hef.proto v4.24.0 ContextMetadata.edge_layers original_names) and fw-actions activation counts
+fw-actions: 07_results/hef_context_profile/raw/b1_run1/fwactions.json
+
+## Contexts (full = every ONNX node of the block named in the HEF is in this context)
+context 0 (dynamic_0): model.0-5 | partial: model.6 [cv1, Split, m.0/cv1, m.0/cv2, m.0/m/m.0/cv1]
+context 1 (dynamic_1): model.7-10 | partial: model.6 [m.0/m/m.0/cv2, m.0/m/m.0/Add, m.0/m/m.1, m.0/Concat, m.0/cv3, Concat, cv2]
+context 2 (dynamic_2): model.11-21 | partial: model.23 [cv2.0, cv3.0, cv2.1/cv2.1.0, cv2.1/cv2.1.1, cv3.1/cv3.1.0]
+context 3 (dynamic_3): model.22 | partial: model.23 [cv2.1/cv2.1.2, cv3.1/cv3.1.1, cv3.1/cv3.1.2, cv2.2, cv3.2]
+
+## Per-context detail
+context 0 (yolov11m_context_0): Hailo layers 190 (with ONNX names 63, compiler-generated 127)
+  non-/model original names: images, model_script_layer_normalization1
+  context boundary layers: send [0->2 #2893, 0->1 #2895, 0->1 #2897, 0->1 #2899, 0->1 #2901, 0->1 #2903]  recv [-]
+  edge H2D BOUNDARY      yolov11m/input_layer1 640x640x3 orig-> -
+  edge D2H INTER_CONTEXT yolov11m/conv_feature_splitter3_2 40x40x256 ctx[1] orig-> model.6
+  edge D2H INTER_CONTEXT yolov11m/conv21 80x80x512 ctx[2] orig-> model.4
+  edge D2H INTER_CONTEXT yolov11m/conv25 40x40x128 ctx[1] orig-> model.6
+  edge D2H INTER_CONTEXT yolov11m/conv24 40x40x128 ctx[1] orig-> model.6
+  edge D2H INTER_CONTEXT yolov11m/conv_feature_splitter3_1 40x40x256 ctx[1] orig-> model.6
+  edge D2H INTER_CONTEXT yolov11m/conv26 40x40x128 ctx[1] orig-> model.6
+  fw-actions dynamic_0: match (hef edges {'boundary_input': 1, 'inter_context_output': 6}; fw {'boundary_input': 1, 'inter_context_output': 6})
+context 1 (yolov11m_context_1): Hailo layers 197 (with ONNX names 76, compiler-generated 121)
+  context boundary layers: send [1->2 #2905, 1->2 #2907]  recv [0->1 #2896, 0->1 #2898, 0->1 #2900, 0->1 #2902, 0->1 #2904]
+  DDR layers: output_from_cluster_5_to_ddr_636_i4, external_output_layer_yolov11m_context_1_to_ddr_524, external_input_layer_yolov11m_context_1_from_ddr_524, input_to_cluster_0_from_ddr_639_i4
+  edge H2D DDR           yolov11m/ddr_portal_from_dw1_defuse_reshape_hxf_to_w_transposed_to_dw1_defuse_1x1 20x20x2304 ctx[1] orig-> -
+  edge H2D INTER_CONTEXT yolov11m/yolov11m_yolov11m_context_0_to_yolov11m_context_1_2900 40x40x128 ctx[0] orig-> model.6
+  edge H2D INTER_CONTEXT yolov11m/yolov11m_yolov11m_context_0_to_yolov11m_context_1_2904 40x40x128 ctx[0] orig-> model.6
+  edge H2D INTER_CONTEXT yolov11m/yolov11m_yolov11m_context_0_to_yolov11m_context_1_2896 40x40x256 ctx[0] orig-> model.6
+  edge H2D INTER_CONTEXT yolov11m/yolov11m_yolov11m_context_0_to_yolov11m_context_1_2898 40x40x256 ctx[0] orig-> model.6
+  edge H2D INTER_CONTEXT yolov11m/yolov11m_yolov11m_context_0_to_yolov11m_context_1_2902 40x40x128 ctx[0] orig-> model.6
+  edge D2H DDR           yolov11m/dw1 20x20x2304 ctx[1] orig-> -
+  edge D2H INTER_CONTEXT yolov11m/conv31 40x40x512 ctx[2] orig-> model.6
+  edge D2H INTER_CONTEXT yolov11m/conv49 20x20x512 ctx[2, 2] orig-> model.10
+  fw-actions dynamic_1: match (hef edges {'inter_context_input': 5, 'inter_context_output': 2, 'ddr_buffer_input': 1, 'ddr_buffer_output': 1}; fw {'inter_context_input': 5, 'inter_context_output': 2, 'ddr_buffer_input': 1, 'ddr_buffer_output': 1})
+context 2 (yolov11m_context_2): Hailo layers 223 (with ONNX names 100, compiler-generated 123)
+  context boundary layers: send [2->3 #2910, 2->3 #2913, 2->3 #2915]  recv [0->2 #2894, 1->2 #2906, 1->2 #2908, 1->2 #2909]
+  edge H2D INTER_CONTEXT yolov11m/yolov11m_yolov11m_context_1_to_yolov11m_context_2_2909 20x20x512 ctx[1] orig-> model.21
+  edge H2D INTER_CONTEXT yolov11m/yolov11m_yolov11m_context_1_to_yolov11m_context_2_2908 20x20x512 ctx[1] orig-> model.11
+  edge H2D INTER_CONTEXT yolov11m/yolov11m_yolov11m_context_1_to_yolov11m_context_2_2906 40x40x512 ctx[1] orig-> model.12
+  edge H2D INTER_CONTEXT yolov11m/yolov11m_yolov11m_context_0_to_yolov11m_context_2_2894 80x80x512 ctx[0] orig-> model.15
+  edge D2H INTER_CONTEXT yolov11m/conv88 40x40x256 ctx[3] orig-> model.23
+  edge D2H INTER_CONTEXT yolov11m/conv86 40x40x64 ctx[3] orig-> model.23
+  edge D2H BOUNDARY      yolov11m/conv74_178 80x80x80 stride 8 orig-> model.23
+  edge D2H BOUNDARY      yolov11m/conv71_178 80x80x64 stride 8 orig-> model.23
+  edge D2H INTER_CONTEXT yolov11m/concat20 20x20x1024 ctx[3] orig-> model.21
+  fw-actions dynamic_2: match (hef edges {'boundary_output': 2, 'inter_context_input': 4, 'inter_context_output': 3}; fw {'boundary_output': 2, 'inter_context_input': 4, 'inter_context_output': 3})
+context 3 (yolov11m_context_3): Hailo layers 70 (with ONNX names 38, compiler-generated 32)
+  context boundary layers: send [-]  recv [2->3 #2911, 2->3 #2914, 2->3 #2916]
+  edge H2D INTER_CONTEXT yolov11m/yolov11m_yolov11m_context_2_to_yolov11m_context_3_2914 40x40x64 ctx[2] orig-> model.23
+  edge H2D INTER_CONTEXT yolov11m/yolov11m_yolov11m_context_2_to_yolov11m_context_3_2916 40x40x256 ctx[2] orig-> model.23
+  edge H2D INTER_CONTEXT yolov11m/yolov11m_yolov11m_context_2_to_yolov11m_context_3_2911 20x20x1024 ctx[2] orig-> model.22
+  edge D2H BOUNDARY      yolov11m/conv90_178 40x40x80 stride 16 orig-> model.23
+  edge D2H BOUNDARY      yolov11m/conv87_178 40x40x64 stride 16 orig-> model.23
+  edge D2H BOUNDARY      yolov11m/conv105_178 20x20x80 stride 32 orig-> model.23
+  edge D2H BOUNDARY      yolov11m/conv102_178 20x20x64 stride 32 orig-> model.23
+  fw-actions dynamic_3: match (hef edges {'boundary_output': 4, 'inter_context_input': 3}; fw {'boundary_output': 4, 'inter_context_input': 3})
+host op yolov11m/yolov8_nms_postprocess: type yolov8, score 0.2, iou 0.7, classes 80, max/class 100, regression_length 16, decoders [stride 8, stride 16, stride 32], input pads 6
+
+## YOLO11m blocks
+source: https://github.com/ultralytics/ultralytics/blob/3131844a4a48f1266db52c4bb1f8adfc7d3e9d7f/ultralytics/cfg/models/11/yolo11.yaml (scale m = [0.50, 1.00, 512]; repeats 2 -> 1)
+c3k rule: https://github.com/ultralytics/ultralytics/blob/9a1a1471ec0834041ca101d23302909809ed58bb/ultralytics/nn/tasks.py parse_model(): 'if m is C3k2: if scale in {"m", "l", "x"}: c3k = True'
+idx  module       from          args                   ctx    nodes  HEF check
+  0  Conv         -1            [64, 3, 2]             0          3  ok  # P1/2
+  1  Conv         -1            [128, 3, 2]            0          3  ok  # P2/4
+  2  C3k2         -1            [256, False, 0.25]     0         32  ok; top-level repeats 1 (m.0); C3k inside (m.0/m/{m.0,m.1}): c3k=True
+  3  Conv         -1            [256, 3, 2]            0          3  ok  # P3/8
+  4  C3k2         -1            [512, False, 0.25]     0         32  ok; top-level repeats 1 (m.0); C3k inside (m.0/m/{m.0,m.1}): c3k=True
+  5  Conv         -1            [512, 3, 2]            0          3  ok  # P4/16
+  6  C3k2         -1            [512, True]            0,1       32  ok; top-level repeats 1 (m.0); C3k inside (m.0/m/{m.0,m.1}): c3k=True
+  7  Conv         -1            [1024, 3, 2]           1          3  ok  # P5/32
+  8  C3k2         -1            [1024, True]           1         32  ok; top-level repeats 1 (m.0); C3k inside (m.0/m/{m.0,m.1}): c3k=True
+  9  SPPF         -1            [1024, 5]              1         10  ok
+ 10  C2PSA        -1            [1024]                 1         23  ok; PSABlock repeats 1 (m.0); no 'attn/pe' node name in the HEF; unnamed DDR buffer in the same context: dw1 20x20x2304 (context 1) - candidate for attn/pe (3x3 depthwise unrolled to 9*C features; inferred)
+ 11  nn.Upsample  -1            [None, 2, "nearest"]   2          1  ok
+ 12  Concat       [-1, 6]       [1]                    2          1  ok  # cat backbone P4
+ 13  C3k2         -1            [512, False]           2         32  ok; top-level repeats 1 (m.0); C3k inside (m.0/m/{m.0,m.1}): c3k=True
+ 14  nn.Upsample  -1            [None, 2, "nearest"]   2          1  ok
+ 15  Concat       [-1, 4]       [1]                    2          1  ok  # cat backbone P3
+ 16  C3k2         -1            [256, False]           2         32  ok; top-level repeats 1 (m.0); C3k inside (m.0/m/{m.0,m.1}): c3k=True  # P3/8-small
+ 17  Conv         -1            [256, 3, 2]            2          3  ok
+ 18  Concat       [-1, 13]      [1]                    2          1  ok  # cat head P4
+ 19  C3k2         -1            [512, False]           2         32  ok; top-level repeats 1 (m.0); C3k inside (m.0/m/{m.0,m.1}): c3k=True  # P4/16-medium
+ 20  Conv         -1            [512, 3, 2]            2          3  ok
+ 21  Concat       [-1, 10]      [1]                    2          1  ok  # cat head P5
+ 22  C3k2         -1            [1024, True]           3         32  ok; top-level repeats 1 (m.0); C3k inside (m.0/m/{m.0,m.1}): c3k=True  # P5/32-large
+ 23  Detect       [16, 19, 22]  [nc]                   2,3       60  ok; no DFL/decode nodes on chip: only cv2.i/cv3.i convs (decode+NMS = host nms_op)  # Detect(P3, P4, P5)
+
+## Checks
+partition: ok
+headers: ok
+edges: ok
+fw_actions: ok
+coverage: ok
+note: the per-context lists rely on the position-inferred mapping layout; the schema edge layers and fw-actions counts above are the independent cross-checks.
