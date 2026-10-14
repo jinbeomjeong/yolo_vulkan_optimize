@@ -270,11 +270,18 @@ NPU의 배치 크기 B에 대한 한 배치 처리 시간을 측정하여 선형
 > 컨텍스트 단위로 대응하며 컨텍스트 전환 자체의 비용은 0.01 ms다. 즉 두 항 모두 PCIe 전송 바이트로 설명된다. 줄일 수 있는 것은 전환이 아니라
 > 바이트이고, 그 상한(컨텍스트가 적은 HEF)은 모델 교체를 요구한다. 액션 이름의 해석은 공식 문서가 없어 추정이다.
 
-![그림 2. 컨텍스트별 고정비와 프레임당 비용](figures/fig02_npu_context_cost.svg)
+![그림 2. YOLO11m 블록과 HEF 컨텍스트의 대응, 컨텍스트별 고정비와 프레임당 비용](figures/fig02_npu_context_cost.svg)
 
-**그림 2.** 배치 구간의 컨텍스트별 고정비 a와 프레임당 비용 b(구간 = a + b·B). 고정비 24.8 ms 중 dynamic_3가 10.0 ms(40%)로 가장 크다.
-적합 잔차 rms는 dynamic_1이 0.263 ms(B = 2 3회 중 1회가 0.93 ms 길었다)이고 나머지 셋은 0.01 ms 이하다(측정: 2026-10-12, PCIe Gen3 x1,
-`hailortcli run2 measure-fw-actions` 펌웨어 타임스탬프, B = 1·2·8 × 반복 3(9회 적합), 원본: `07_results/hef_context_profile/evidence/breakdown.json`).
+**그림 2.** (a) YOLO11m(ultralytics yolo11.yaml, scale m) 블록 model.0–23과 HEF 컨텍스트 4개의 대응.
+dynamic_0은 model.0–5와 6 일부, dynamic_1은 6 나머지와 7–10(SPPF·C2PSA), dynamic_2는 넥 model.11–21과 Detect P3 머리·P4 머리 일부,
+dynamic_3은 model.22와 P4 머리 나머지·P5 머리를 계산한다. 두 색으로 나눈 상자는 두 컨텍스트에 걸친 블록이고 칠 폭은 컨텍스트별 ONNX 노드 수 비다.
+칩 밖 출력 6개(dynamic_2의 stride 8 두 개, dynamic_3의 stride 16·32 네 개)는 호스트 쪽 후처리로 간다.
+(b) 배치 구간의 컨텍스트별 고정비 a와 프레임당 비용 b(구간 = a + b·B). 고정비 24.8 ms 중 dynamic_3가 10.0 ms(40%)로 가장 크다.
+적합 잔차 rms는 dynamic_1이 0.263 ms(B = 2 3회 중 1회가 0.93 ms 길었다)이고 나머지 셋은 0.01 ms 이하다
+(분석 (a): 2026-10-14, HEF 컴파일러 메타데이터(hef.proto 스키마 밖 필드, 배치는 위치로 추정)로 판정하고 스키마의 경계 레이어와
+펌웨어 액션 기록으로 4개 컨텍스트 모두 교차 확인, 장치 미사용, 원본: `07_results/hef_context_profile/evidence/context_layers.json`;
+측정 (b): 2026-10-12, PCIe Gen3 x1, `hailortcli run2 measure-fw-actions` 펌웨어 타임스탬프, B = 1·2·8 × 반복 3(9회 적합),
+원본: `07_results/hef_context_profile/evidence/breakdown.json`).
 
 
 ### 제약 3 — 컴퓨트 자원의 세부 한계
