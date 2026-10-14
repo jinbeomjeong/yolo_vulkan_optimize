@@ -145,7 +145,9 @@
 - 담당: 그림 스크립트(`figNN_*`, `paper_style.py`, `build_figures.py`)는 python-expert, 실행·논문 삽입·커밋은 메인 에이전트(`10_paper`는 사용자 확인 대상). 절차는 `.claude/skills/paper-figures/`.
 - 수치의 출처는 `07_results` 정본뿐이다. 등록부의 행마다 생성 스크립트와 원본 경로를 적는다. 검사기 D3(`check_structure.py`)가 그림 파일 ↔ 등록부 행과 경로 존재를 대조한다.
 - docx 는 `build_docx.py` 실행으로만 만든다(산출물을 손으로 고치지 않는다 — 내용은 원고에서, 서식은 `make_reference_docx.py`에서 고친다). 그림은 `figures/` 의 PNG 를 넣는다.
-  docx 스크립트 작성은 docx-expert, 실행·견본 재생성·커밋은 메인 에이전트다. 결정: docx 견본은 `10_paper/template/`, 산출물은 `10_paper/build/`(추적 안 함), 스크립트는 `06_tools/python/paper/` (사용자 결정, 2026-10-14)
+  docx 스크립트 작성은 docx-expert, 실행·견본 재생성·커밋은 메인 에이전트다.
+  docx 스크립트의 실행 환경(정의 파일 없음 — 이 줄이 정본): conda `python-dev`(Python 3.13, conda-forge `--override-channels -c conda-forge`): python-docx 1.2.0 · lxml 6.1.3 · pandoc 3.12.1 · defusedxml 0.7.1 · mammoth 1.13.0 · docxcompose 2.2.0 · docxtpl 0.20.2 · pillow 12.3.0 · cairosvg 2.9.1 · nodejs 26.10.0, pip docx2python 3.7.1, npm(env 안 전역) docx 9.11.0. 렌더 검사는 시스템 LibreOffice 25.2·poppler-utils·fonts-nanum·fonts-noto-cjk.
+  결정: python-dev 환경은 정의 파일 없이 이 문서에 패키지·버전만 적는다 (사용자 결정, 2026-10-14) 결정: docx 견본은 `10_paper/template/`, 산출물은 `10_paper/build/`(추적 안 함), 스크립트는 `06_tools/python/paper/` (사용자 결정, 2026-10-14)
 
 ## 3. `07_results/` 레이아웃
 

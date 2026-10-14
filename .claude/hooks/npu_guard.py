@@ -17,7 +17,7 @@ import sys
 # Commands that open the NPU. Only executables that link yvo_hailo (or yvo_stages) in 01_src/tools/CMakeLists.txt,
 # 01_src/pipeline or 05_tests and actually open a VDevice are listed. test_postproc opens the NPU via PostprocLive.*.
 NPU_CMDS = {"yvo_pipeline", "yvo_hailo_selftest", "yvo_hailo_raw_probe", "yvo_isp_pipeline",
-            "hailortcli", "test_detections", "test_gst_detections", "test_postproc", "ctest"}
+            "hailortcli", "hailo", "test_detections", "test_gst_detections", "test_postproc", "ctest"}
 # yvo_gst_pipeline depends on --sink (gst_pipeline.cpp): hailo (default) opens a VDevice; fake|hold only
 # decode + run the Vulkan letterbox, so they are classified as load.
 GST_PIPELINE = "yvo_gst_pipeline"

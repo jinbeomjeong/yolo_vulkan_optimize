@@ -381,7 +381,7 @@ grim -o HDMI-A-1 shot.png
 - [`07_results/op_point/summary.md`](07_results/op_point/summary.md) §8 — 운용점 확정 근거와 최종 결론
 - [`07_results/display_e2e/summary.md`](07_results/display_e2e/summary.md) — 표시 통합 측정
 - [`07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md`](07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md) §4.3 — 왜 이 설계인가(메모리 제약)
-- [`09_diagrams/`](09_diagrams/README.md) — yEd 로 여는 파이프라인 다이어그램 2장(분기·스레드 경계·dma-buf 소유권)
+- [`09_diagrams/`](09_diagrams/README.md) — yEd 로 여는 파이프라인 다이어그램 3장(원본 2장 — 분기·스레드 경계·dma-buf 소유권 — + 논문판 1장)
 - [`10_paper/paper_ko.md`](10_paper/paper_ko.md) — 논문 형식의 전체 서술
 - `CLAUDE.md` — 폴더 규약, 개발 환경, 서브에이전트 라우팅
 

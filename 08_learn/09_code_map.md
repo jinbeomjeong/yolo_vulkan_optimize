@@ -26,7 +26,7 @@
 | | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 12개), `python/`(10개 + 논문 스크립트 `paper/` 11개 + 단위 테스트 `tests/` 141개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
 | | [`07_results/`](../07_results/) | 실험별 측정 원시 출력과 `summary.md` |
 | **문서** | [`08_learn/`](00_README.md) | 지금 읽고 있는 이 자습 교재 13장 |
-| | [`09_diagrams/`](../09_diagrams/) | yEd로 여는 파이프라인 다이어그램 2장 |
+| | [`09_diagrams/`](../09_diagrams/) | yEd로 여는 파이프라인 다이어그램 3장(원본 2장 + 논문판 1장) |
 | | [`10_paper/`](../10_paper/) | 논문 초고 `paper_ko.md` |
 | **로그** | `11_logs/` | 07_results에 기록하지 않는 디버깅 실행의 런타임 로그 (git에 없음) |
 
