@@ -538,8 +538,8 @@ GPU 시간(ms)도 마찬가지다. V3D 클럭은 펌웨어(부트로더)가 정�
 #### GPU — **여유 있다. 주기의 약 24.5%.**
 
 `disp_asap` 실행에서 GPU 4패스의 중앙값 합이다(V3D 960 MHz, CPU NMS라 `efficient_nms`는 없다).
-1150 MHz에서는 전처리가 약 14% 짧아지므로 비율은 이보다 조금 더 낮다
-([`bootloader_20260925`](../07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)).
+1150 MHz · 현재 기본값(디코더 1스레드 · GPU NMS)으로 다시 잰 값은 `efficient_nms`를 포함한 5패스 합 **6.036 ms = 주기의 21.1%**다
+([`v3d1150_20261016`](../07_results/display_e2e/runs/v3d1150_20261016/summary.md) §2.1, 2026-10-16).
 
 | 구간 | median | p90 |
 |---|---:|---:|

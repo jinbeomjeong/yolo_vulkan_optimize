@@ -1,0 +1,25 @@
+[vulkan WARNING] Layer "VK_LAYER_KHRONOS_validation" forced enabled due to env var 'VK_LOADER_LAYERS_ENABLE'
+[vulkan WARNING] Layer "VK_LAYER_KHRONOS_validation" forced enabled due to env var 'VK_LOADER_LAYERS_ENABLE'
+[cfg] video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 1920x1080 mode=dmabuf layout=nhcw batch=8 slots=16 gpu_depth=3 postproc=gpu/export device=V3D 7.1.10.2
+[hevc @ 0x555588d0b450] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+== yvo_pipeline (dmabuf, nhcw, batch 8, slots 16, gpu_depth 3, postproc gpu/export) ==
+frames          200 (decoded 200, errors 0)
+wall            3.952 s, 50.60 FPS
+cpu             1.436 ms/frame (process user+sys 287.2 ms, 7% of one core)
+decode call ms  mean 3.664  median 3.807  p90 6.701  max 40.875
+gpu shader ms   mean 1.890  median 1.859  p90 1.978  max 3.563
+npu latency ms  mean 287.911  median 293.543  p90 302.883  max 306.130
+e2e latency ms  mean 319.281  median 305.937  p90 430.904  max 578.765  (decode return → NPU completion callback)
+slot wait ms    mean 14.191  p90 117.382  (time the main thread waited for a free slot)
+gpu post ms     mean 0.480  median 0.446  p90 0.562  max 1.689  (yolo_decode.comp pass 1)
+cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+nms backend     gpu
+gpu nms ms      mean 0.0523  median 0.0480  p90 0.0634  max 0.2884  (efficient_nms.comp)
+nms fallback    0 frames (capacity 0, iou guard 0)
+candidates      mean 16.43  max 35  overflow frames 0
+slot hold ms    mean 10.944  median 5.034  p90 10.081  max 155.041  (NPU completion callback → slot return)
+held frames max 2 (decoder limit about 13), slot timeout 0
+detections      606 total, 3.03 / frame
+hailo chip temp 63.8 -> 67.4 C
+soc temp        70.8 -> 70.8 C
+vk validation   errors 0, warnings 2

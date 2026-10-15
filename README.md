@@ -60,8 +60,8 @@ dma-buf 세 그룹(디코더 SAND / 전처리 NHCW / 원시 텐서)이 전부 ze
 
 > **구간별 지연 수치는 여기 적지 않는다.** 같은 값이 세 곳에 복제돼 있다가 한 번 어긋난 적이 있어
 > (`09_diagrams/README.md` 의 정렬 기록), 2026-09-21 에 이 도식에서는 **흐름만** 남겼다.
-> 구간 median 은 [`display_e2e/summary.md`](07_results/display_e2e/summary.md) §3.1 이 정본이고,
-> 같은 값을 붙인 그림이 [`09_diagrams/pipeline_overview.graphml`](09_diagrams/pipeline_overview.graphml) 에 있다.
+> 구간 median 은 [`display_e2e/runs/v3d1150_20261016/summary.md`](07_results/display_e2e/runs/v3d1150_20261016/summary.md) §2.1(V3D 1150 MHz · 현재 기본값)이 정본이고
+> (960 MHz 당시 값은 [`display_e2e/summary.md`](07_results/display_e2e/summary.md) §3.1), 같은 값을 붙인 그림이 [`09_diagrams/pipeline_overview.graphml`](09_diagrams/pipeline_overview.graphml) 에 있다.
 
 ---
 

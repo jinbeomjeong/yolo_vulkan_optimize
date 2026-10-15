@@ -94,7 +94,8 @@ File ▸ Export 를 대신 눌러 준다. 사용자 화면을 건드리지 않�
 
 | 항목 | 출처 |
 |---|---|
-| ⓒ GPU 4패스 구간별 median (전처리 2.088 / 후처리 0.626 / 변환 4.153 / 오버레이 0.128 ms, 합 6.995 ms) — V3D 960 MHz | [`07_results/display_e2e/summary.md`](../07_results/display_e2e/summary.md) §3.1 |
+| GPU 구간별 median `[1150 MHz]` (전처리 1.812 / 후처리 0.400 / 변환 3.662 / 오버레이 0.124 ms, NMS 포함 5패스 합 6.036 ms = 21.1%) — 2026-10-16 재측정, 현재 기본값(1스레드·GPU NMS), `disp_asap` | [`07_results/display_e2e/runs/v3d1150_20261016/summary.md`](../07_results/display_e2e/runs/v3d1150_20261016/summary.md) §2.1 |
+| (이전 값) ⓒ GPU 4패스 구간별 median (전처리 2.088 / 후처리 0.626 / 변환 4.153 / 오버레이 0.128 ms, 합 6.995 ms) — V3D 960 MHz. 노드 `d5` 에 "이전 값"으로만 남는다 | [`07_results/display_e2e/summary.md`](../07_results/display_e2e/summary.md) §3.1 |
 | ⓒ glass-to-glass 101.20 ms(median) · p90 118.36 ms | 같은 문서 §3.2 |
 | ⓒ FPS · CPU ms/f · 검출 3369 · dropped 0 · held_frames_max | 같은 문서 §3 표 |
 | ⓝ GPU NMS median b2s4 0.0486 / p90 0.0578 ms · b8s16 0.0500 / 0.0595 ms · fallback 0 · 검출 9457 바이트 동일 · CSD 잡 4 → 5 · 표시 off 기준선 b2s4 34.99 fps / CPU 0.908 ms/f, b8s16 51.50 / 0.869 | [`07_results/gpu_nms_e2e/summary.md`](../07_results/gpu_nms_e2e/summary.md) §2·§3·§5 |
@@ -138,7 +139,9 @@ id 로 찾으면 된다 (`grep -n 'id="n_pre"' pipeline_overview.graphml`).
 - **디코더 스레드 수** — overview `n_dec` 라벨 4행 `[측정 조건: FFmpeg 자동 5스레드]`, detail `n0::n0` 라벨 3행
   (`FFmpeg 프레임 스레드 기본 1 (YVO_DEC_THREADS) · 측정 당시 자동 5`), 두 노드와 detail `n0` 의 `d5`.
   기본값의 정본은 `01_src/pipeline/main.cpp:196`, 환경변수를 읽는 곳은 `:348` 이다.
-- **V3D 클럭** — overview `n_pre`·`n_post`·`n_conv`·`n_ovl` 라벨의 `[960 MHz]`와 `d5`, detail `n0::n5`·`n0::n7` 의 `d5`.
+- **V3D 클럭** — overview `n_pre`·`n_post`·`n_conv`·`n_ovl` 라벨의 `[1150 MHz]`와 `d5`, `n_note_perf` 의 GPU 합 줄, detail `n0::n5`·`n0::n7` 의 `d5`.
+  2026-10-16 에 GPU 구간을 현재 기본값으로 다시 재서([`display_e2e/runs/v3d1150_20261016`](../07_results/display_e2e/runs/v3d1150_20261016/summary.md)) 모든 셰이더 노드가 `[1150 MHz]` 가 됐다.
+  `[MHz]` 꼬리표는 **측정 당시 V3D 클럭**이다 — V3D 클럭은 GPU 전체에 하나뿐이고(부트로더 펌웨어 기본값) 셰이더마다 다르지 않다.
 - **공통 요약** — overview `n_note_perf` 라벨의 측정 조건 3줄과 `d5`, detail `n_src_note` 의 `측정 조건 :` 줄과 출처 3줄.
 - **ⓝ 현재 조건 값(2026-10-08)** — 라벨: overview `n_nms` 3행·`n_note_perf` 마지막 줄·`n_note_planes` 6~8행·`n_ovlp` 4행·`n_hvs` 5행,
   detail `n0::n5` 3행·`n0::n8` 6행·`n4` 3행·`n_src_note` 의 `측정 조건 :` 줄과 마지막 줄. `d5` 만 더한 곳: overview `n_conv`·`n_ovl`·`n_ab24`, detail `n0::n7`·`n3`.
@@ -156,7 +159,7 @@ id 로 찾으면 된다 (`grep -n 'id="n_pre"' pipeline_overview.graphml`).
 | `n_conv` | 표시 변환 `display_convert.comp` median (`d5` 에 ⓝ vk_source 평균 3.234 ms · TFU 3.72 ms/f) |
 | `n_ovl` | 오버레이 `overlay_boxes.comp` median (`d5` 에 ⓝ vk_source 평균 0.111 ms) |
 | `n_pres` | present 간격 median |
-| `n_note_perf` | FPS · CPU · glass-to-glass · GPU 4패스 합 (**요약 수치는 전부 여기**). 마지막 줄은 ⓝ 현재 기본 표시 off 기준선(`gpu_nms_e2e`) |
+| `n_note_perf` | FPS · CPU · glass-to-glass · GPU 5패스 합(`[1150 MHz]`, `display_e2e/runs/v3d1150_20261016`) (**요약 수치는 전부 여기**). 마지막 줄은 ⓝ 현재 기본 표시 off 기준선(`gpu_nms_e2e`) |
 | `n_note_cmd` | 최종 실행 커맨드 (`op_point/summary.md` §8.3 과 한 글자도 다르면 안 된다) |
 | `n_note_planes` | 대안 표시 경로 요약·상태와 ⓝ 정식 측정 요약(6~8행: CPU · V3D · 지연 · `--slots 6` 필요). b2/s4·b2/s6 전문과 늦은 프레임은 `d5` |
 | `n_ovlp` | `overlay_boxes_buf.spv`(overlay_boxes.comp 의 storage-buffer 변형) + 지우기의 V3D 평균 — ⓝ wlp 0.336 / kms 0.330 ms(b2/s4). Vulkan 합성의 `overlay_boxes.comp` 값과 이름만 같다 |

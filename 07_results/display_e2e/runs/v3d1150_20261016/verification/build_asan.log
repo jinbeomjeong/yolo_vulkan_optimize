@@ -1,0 +1,88 @@
+-- ccache enabled: /usr/bin/ccache
+-- YVO_SANITIZE: ASan + UBSan on every target
+-- libpisp 1.7.0 - building yvo_isp.
+-- GStreamer 1.26.2 - building yvo_gstelem.
+-- Configuring done (0.1s)
+-- Generating done (0.1s)
+-- Build files have been written to: /home/pi/workspace/yolo_vulkan_optimize/build-asan
+[1/81] glslc + spirv-val ../yolo_decode.comp -> yolo_decode_noatomic.spv
+[2/81] glslc + spirv-val ../yolo_decode.comp -> yolo_decode_legacy.spv
+[3/81] glslc + spirv-val heap_sum.comp -> heap_sum.spv
+[4/81] glslc + spirv-val display_probe.comp -> display_probe.spv
+[5/81] glslc + spirv-val ../yolo_decode.comp -> yolo_decode_norescan.spv
+[6/81] glslc + spirv-val ../yolo_decode.comp -> yolo_decode_stop1_legacy.spv
+[7/81] glslc + spirv-val ../yolo_decode.comp -> yolo_decode_stop1.spv
+[8/81] glslc + spirv-val ../yolo_decode.comp -> yolo_decode_stop2.spv
+[9/81] glslc + spirv-val ../yolo_decode.comp -> yolo_decode_stop3.spv
+[10/81] Building CXX object 01_src/gstelem/CMakeFiles/yvo_gstelem.dir/tensor_meta.cpp.o
+[11/81] Building CXX object 01_src/isp/CMakeFiles/yvo_isp.dir/nhcw_repack.cpp.o
+[12/81] Building CXX object 01_src/gstelem/CMakeFiles/yvo_gstelem.dir/register.cpp.o
+[13/81] Building CXX object 01_src/gstelem/CMakeFiles/yvo_gstelem.dir/gst_drm_frame.cpp.o
+[14/81] Building CXX object 01_src/hailo/CMakeFiles/yvo_hailo.dir/hailo_runner.cpp.o
+[15/81] Building CXX object 01_src/pipeline/CMakeFiles/yvo_stages.dir/slot_exchange.cpp.o
+[16/81] embed display_probe.spv -> display_probe_spv.h
+[17/81] embed heap_sum.spv -> heap_sum_spv.h
+[18/81] embed yolo_decode_legacy.spv -> yolo_decode_legacy_spv.h
+[19/81] Building CXX object 01_src/gstelem/CMakeFiles/yvo_gstelem.dir/sand_letterbox_element.cpp.o
+[20/81] embed yolo_decode_norescan.spv -> yolo_decode_norescan_spv.h
+[21/81] embed yolo_decode_noatomic.spv -> yolo_decode_noatomic_spv.h
+[22/81] Building CXX object 01_src/isp/CMakeFiles/yvo_isp.dir/isp_resizer.cpp.o
+[23/81] embed yolo_decode_stop1_legacy.spv -> yolo_decode_stop1_legacy_spv.h
+[24/81] embed yolo_decode_stop1.spv -> yolo_decode_stop1_spv.h
+[25/81] embed yolo_decode_stop2.spv -> yolo_decode_stop2_spv.h
+[26/81] Linking CXX static library 01_src/isp/libyvo_isp.a
+[27/81] embed yolo_decode_stop3.spv -> yolo_decode_stop3_spv.h
+[28/81] Building CXX object 01_src/gstelem/CMakeFiles/yvo_gstelem.dir/hailo_infer_sink.cpp.o
+[29/81] Building CXX object 01_src/hailo/CMakeFiles/yvo_hailo.dir/hailo_raw_runner.cpp.o
+[30/81] Linking CXX static library 01_src/hailo/libyvo_hailo.a
+[31/81] Linking CXX static library 01_src/gstelem/libyvo_gstelem.a
+[32/81] Building CXX object 01_src/pipeline/CMakeFiles/yvo_stages.dir/gpu_postproc_stage.cpp.o
+[33/81] Linking CXX static library 01_src/pipeline/libyvo_stages.a
+[34/81] Building CXX object 01_src/tools/CMakeFiles/yvo_display_pipeline_probe.dir/display/display_pipeline_probe.cpp.o
+[35/81] Building CXX object 01_src/tools/CMakeFiles/yvo_isp_probe.dir/isp/isp_probe.cpp.o
+[36/81] Building CXX object 01_src/tools/CMakeFiles/yvo_preproc_bench.dir/vulkan/preproc_bench.cpp.o
+[37/81] Building CXX object 01_src/tools/CMakeFiles/yvo_hailo_selftest.dir/hailo/hailo_selftest.cpp.o
+[38/81] Building CXX object 01_src/tools/CMakeFiles/yvo_drm_dump.dir/decode/drm_dump.cpp.o
+[39/81] Building CXX object 01_src/tools/CMakeFiles/yvo_isp_bench.dir/isp/isp_bench.cpp.o
+[40/81] Building CXX object 01_src/tools/CMakeFiles/yvo_gst_sand_probe.dir/gst/gst_sand_probe.cpp.o
+[41/81] Building CXX object 01_src/tools/CMakeFiles/yvo_gst_pipeline.dir/gst/gst_pipeline.cpp.o
+[42/81] Building CXX object 01_src/tools/CMakeFiles/yvo_isp_pipeline.dir/isp/isp_pipeline.cpp.o
+[43/81] Building CXX object 01_src/tools/CMakeFiles/yvo_perf_counters.dir/vulkan/perf_counters.cpp.o
+[44/81] Building CXX object 01_src/pipeline/CMakeFiles/yvo_pipeline.dir/main.cpp.o
+[45/81] Building CXX object 01_src/tools/CMakeFiles/yvo_display_probe.dir/display/display_probe.cpp.o
+[46/81] Building CXX object 05_tests/CMakeFiles/test_preproc.dir/test_preproc.cpp.o
+[47/81] Building CXX object 05_tests/CMakeFiles/test_detections.dir/test_detections.cpp.o
+[48/81] Building CXX object 05_tests/CMakeFiles/test_isp_preproc.dir/test_isp_preproc.cpp.o
+[49/81] Building CXX object 05_tests/CMakeFiles/test_display_options.dir/test_display_options.cpp.o
+[50/81] Building CXX object 01_src/tools/CMakeFiles/yvo_hailo_raw_probe.dir/hailo/hailo_raw_probe.cpp.o
+[51/81] Building CXX object 05_tests/CMakeFiles/test_display_convert.dir/test_display_convert.cpp.o
+[52/81] Building CXX object 05_tests/CMakeFiles/test_postproc.dir/test_postproc.cpp.o
+[53/81] Building CXX object 05_tests/CMakeFiles/test_gst_detections.dir/test_gst_detections.cpp.o
+[54/81] Linking CXX executable bin/yvo_pipeline
+[55/81] Linking CXX executable bin/yvo_hailo_selftest
+[56/81] Linking CXX executable bin/yvo_hailo_raw_probe
+[57/81] Linking CXX executable bin/yvo_perf_counters
+[58/81] Linking CXX executable bin/yvo_display_probe
+[59/81] Linking CXX executable bin/yvo_preproc_bench
+[60/81] Linking CXX executable bin/yvo_display_pipeline_probe
+[61/81] Linking CXX executable bin/yvo_isp_bench
+[62/81] Linking CXX executable bin/yvo_isp_probe
+[63/81] Linking CXX executable bin/yvo_drm_dump
+[64/81] Linking CXX executable bin/yvo_gst_sand_probe
+[65/81] Linking CXX executable bin/yvo_isp_pipeline
+[66/81] Linking CXX executable bin/yvo_gst_pipeline
+[67/81] Building CXX object 05_tests/CMakeFiles/test_pipeline_logic.dir/test_pipeline_logic.cpp.o
+[68/81] Linking CXX executable bin/test_isp_preproc
+[69/81] Linking CXX executable bin/test_preproc
+[70/81] Linking CXX executable bin/test_detections
+[71/81] Linking CXX executable bin/test_pipeline_logic
+[72/81] Linking CXX executable bin/test_display_options
+[73/81] Linking CXX executable bin/test_postproc
+[74/81] Linking CXX executable bin/test_display_convert
+[75/81] Linking CXX executable bin/test_gst_detections
+[76/81] Building CXX object 01_src/tools/CMakeFiles/yvo_postproc_probe.dir/vulkan/postproc_probe.cpp.o
+[77/81] Linking CXX executable bin/yvo_postproc_probe
+[78/81] Building CXX object 05_tests/CMakeFiles/test_gst_adapter.dir/test_gst_adapter.cpp.o
+[79/81] Linking CXX executable bin/test_gst_adapter
+[80/81] Building CXX object 05_tests/CMakeFiles/test_overlay.dir/test_overlay.cpp.o
+[81/81] Linking CXX executable bin/test_overlay

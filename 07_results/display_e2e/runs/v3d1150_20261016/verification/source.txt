@@ -1,0 +1,12 @@
+445bbfe
+ 01_src/hailo/hailo_runner.cpp          |  23 +++++--
+ 01_src/hailo/hailo_runner.hpp          |   9 ++-
+ 01_src/pipeline/gpu_postproc_stage.cpp |   1 +
+ 01_src/pipeline/gpu_postproc_stage.hpp |   7 ++-
+ 01_src/pipeline/infer_stage.hpp        |   9 ++-
+ 01_src/pipeline/main.cpp               |  35 ++++++++---
+ 01_src/pipeline/slot_exchange.cpp      |   9 ++-
+ 01_src/pipeline/slot_exchange.hpp      |  35 ++++++++++-
+ 05_tests/test_pipeline_logic.cpp       | 109 ++++++++++++++++++++++++++++++++-
+ 9 files changed, 212 insertions(+), 25 deletions(-)
+29253f8e54a58a60219cfef97a828b35064d4ac8f112bdd6c4908dd636dbb2e1  -

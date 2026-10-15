@@ -602,7 +602,7 @@ NPU는 프레임마다 텐서 **6개**를 내놓는다(스케일 3개 × {클래
 합 **6.995 ms**(`efficient_nms.comp` 추가 전 4개), 프레임 주기 28.6 ms의 24.5%다
 ([`display_e2e/summary.md`](../07_results/display_e2e/summary.md) §3.1, `disp_asap`).
 표의 ms 값과 아래 워크그룹 스윕은 모두 **V3D 960 MHz** 조건이다. 1150 MHz(부트로더 2026-09-25)에서 전처리는 표시 off 기준
-b1 1.81 ms, b4·b8 약 2.0 ms다([`bootloader_20260925`](../07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)). 나머지 셰이더는 1150 MHz에서 다시 재지 않았다.
+b1 1.81 ms, b4·b8 약 2.0 ms다([`bootloader_20260925`](../07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)). 2026-10-16에 현재 기본값(1150 MHz · 디코더 1스레드 · GPU NMS)으로 다시 잰 `disp_asap` 중앙값은 전처리 1.812 · 후처리 0.400 · NMS 0.038 · 변환 3.662 · 오버레이 0.124 ms, 5패스 합 **6.036 ms**(주기의 21.1%)다([`v3d1150_20261016`](../07_results/display_e2e/runs/v3d1150_20261016/summary.md) §2.1). 후처리 감소(−36%)에는 argmax 지름길 몫이 섞여 있어 클럭 효과만이 아니다.
 
 ¹ 정식 A/B [`gpu_nms_e2e`](../07_results/gpu_nms_e2e/summary.md)(2026-10-08, 표시 off, b2s4·b8s16, 폴백 0). 단독 프로브 0.054 ms, 후보 1024 최악 3.05 ms. CPU 억제는 약 2 µs/frame이라 CPU 절감은 보이지 않고 회귀도 없다. 혼잡 장면(후보 평균 약 180개)에서는 0.178~0.186 ms이고, 후보가 1024개를 넘는 프레임은 CPU로 넘긴다([`nms_crowd_stress`](../07_results/nms_crowd_stress/summary.md)).
 색 변환식과 letterbox 규칙의 상세는 [07_video_display.md](07_video_display.md),
@@ -801,7 +801,7 @@ w | 0x80808080  = 0x88808280   바이트마다 최상위 비트를 세워 빌림
 > 컴퓨트는 scatter write 만 하므로 그 비용이 0 이다."
 > — [`overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) 머리 주석
 
-실측으로 컴퓨트 오버레이는 검출 5개에 **0.128~0.196 ms** 다. 렌더패스를 열었다면
+실측으로 컴퓨트 오버레이는 검출 5개에 **0.128~0.196 ms** 다(V3D 960 MHz. 1150 MHz 현재 기본값에서는 0.124 ms). 렌더패스를 열었다면
 그리기를 시작하기도 전에 3.6 ms를 냈을 것이다.
 
 **교훈**: "표준적인 방법"이 이 하드웨어에서 표준적으로 빠른 것은 아니다.
@@ -888,7 +888,7 @@ V3D 컴파일러에 최악이라 기각했다. 그래서 **파이프라인 하�
 V3D가 타일 기반 렌더러라서, 이미 컴퓨트가 써 둔 이미지 위에 `LOAD_OP_LOAD` 로 렌더패스를 열면
 타일러가 **프레임버퍼 전체를 읽고 다시 쓴다**(720p RGBA 3.69 MB × 2 ≈ 3.6 ms).
 박스 몇 개 그리자고 낼 비용이 아니다. 컴퓨트는 필요한 픽셀에만 흩뿌려 쓰므로(scatter write)
-그 고정비가 0이고, 실측 **0.128 ms** 로 끝난다.
+그 고정비가 0이고, 실측 **0.128 ms**(V3D 960 MHz. 1150 MHz에서 0.124 ms) 로 끝난다.
 근거: [`overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) 머리 주석 "왜 컴퓨트인가",
 [`display_e2e/summary.md`](../07_results/display_e2e/summary.md) §3.1.
 

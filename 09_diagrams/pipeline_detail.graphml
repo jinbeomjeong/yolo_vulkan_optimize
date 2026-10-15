@@ -169,7 +169,7 @@ GPU NMS 중앙 0.0486 · p90 0.0578 ms (b2s4) · fallback 0 [1150 MHz]<y:LabelMo
         </data>
       </node>
       <node id="n0::n7">
-        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/display/ (별도 라이브러리 yvo_display). 수치: 07_results/display_e2e/summary.md §3.1 변환 4.153 ms / 오버레이 0.128 ms(median) — V3D 960 MHz(부트로더 2025-12-08) 조건 값으로 그대로 둔다. V3D 1150 MHz(07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md) · 디코더 1스레드 · GPU NMS 의 현재 조건 값(2026-10-08)은 07_results/display_planes_e2e/summary.md §2.2 의 vk_source(b2/s4, source 페이싱) 평균: disp_convert 3.234 ms · disp_overlay 0.111 ms, 그리고 셰이더 timestamp 에 안 잡히는 TFU 3.72 ms/f(gpu_stats) — median 이 아니라 평균이고 페이싱도 달라 위 값과 직접 비교하지 않는다. 표시 CPU 증가분 +0.727 ms(FFmpeg 자동 5스레드 · CPU NMS 당시)의 정체는 vkQueuePresentKHR 자체다(같은 문서 §4).</data>
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/display/ (별도 라이브러리 yvo_display). 수치: 07_results/display_e2e/runs/v3d1150_20261016/summary.md §2.1 변환 3.662 ms / 오버레이 0.124 ms(median, disp_asap) — 2026-10-16 · V3D 1150 MHz · 디코더 1스레드 · GPU NMS 조건. 이전 값은 07_results/display_e2e/summary.md §3.1 변환 4.153 ms / 오버레이 0.128 ms(median, V3D 960 MHz(부트로더 2025-12-08))였다. 참고: 07_results/display_planes_e2e/summary.md §2.2 의 vk_source(2026-10-08, 1150 MHz · 디코더 1스레드 · GPU NMS, b2/s4, source 페이싱) 평균 disp_convert 3.234 ms · disp_overlay 0.111 ms, 그리고 셰이더 timestamp 에 안 잡히는 TFU 3.72 ms/f(gpu_stats) — median 이 아니라 평균이고 페이싱도 달라 위 값과 직접 비교하지 않는다. 표시 CPU 증가분 +0.727 ms(FFmpeg 자동 5스레드 · CPU NMS 당시)의 정체는 vkQueuePresentKHR 자체다(같은 문서 §4).</data>
         <data key="d6">
           <y:GenericNode configuration="com.yworks.flowchart.process">
             <y:Geometry height="54.0" width="480.0" x="130.0" y="708.0"/>
@@ -553,14 +553,14 @@ V3D 0 · CPU +0.89 ms · 검출 −2.33% 로 통합 보류<y:LabelModel>
       </data>
     </node>
     <node id="n_src_note">
-      <data key="d5">이 다이어그램의 모든 수치와 규약 문장의 출처 목록. 경로는 /home/pi/workspace/yolo_vulkan_optimize/ 기준 상대경로다. 측정 조건 줄(2026-09-30 추가): 다이어그램 수치는 모두 2026-09-28 이전 조건(V3D 960 MHz · FFmpeg 자동 5스레드 · CPU NMS)이다. 이후의 기본값 변화는 07_results/dec_threads/summary.md(디코더 스레드), 07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md(V3D 클럭), 앱 대 GStreamer 연구 경로 비교는 07_results/gst_pipeline/summary.md. 2026-10-08 정식 측정(현재 기본 조건 V3D 1150 MHz · 디코더 1스레드 · --nms gpu. n0::n5 라벨 3행은 [1150 MHz] 로 표기, n0::n8 라벨 6행·n4 라벨 3행도 이 조건이다): GPU NMS 는 07_results/gpu_nms_e2e/summary.md, 평면 표시는 07_results/display_planes_e2e/summary.md(b2/s4)와 07_results/display_planes_e2e/runs/slots6/summary.md(b2/s6). 옛 조건 수치는 대체하지 않고 그대로 둔다.</data>
+      <data key="d5">이 다이어그램의 모든 수치와 규약 문장의 출처 목록. 경로는 /home/pi/workspace/yolo_vulkan_optimize/ 기준 상대경로다. 측정 조건 줄(2026-09-30 추가): 다이어그램 수치는 모두 2026-09-28 이전 조건(V3D 960 MHz · FFmpeg 자동 5스레드 · CPU NMS)이다. 이후의 기본값 변화는 07_results/dec_threads/summary.md(디코더 스레드), 07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md(V3D 클럭), 앱 대 GStreamer 연구 경로 비교는 07_results/gst_pipeline/summary.md. 2026-10-08 정식 측정(현재 기본 조건 V3D 1150 MHz · 디코더 1스레드 · --nms gpu. n0::n5 라벨 3행은 [1150 MHz] 로 표기, n0::n8 라벨 6행·n4 라벨 3행도 이 조건이다): GPU NMS 는 07_results/gpu_nms_e2e/summary.md, 평면 표시는 07_results/display_planes_e2e/summary.md(b2/s4)와 07_results/display_planes_e2e/runs/slots6/summary.md(b2/s6). 2026-10-16 회차(07_results/display_e2e/runs/v3d1150_20261016/summary.md §2.1, 같은 현재 기본 조건 · b2/s4 표시 on · disp_asap median)로 GPU 구간별 median 출처 줄과 n0::n7 설명의 변환·오버레이 값을 바꿨다(옛 display_e2e §3.1 값은 '이전 값'으로 남김). 그 밖의 옛 조건 수치는 대체하지 않고 그대로 둔다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="241.1" width="480.0" x="760.0" y="880.0"/>
           <y:Fill color="#FFFFFF" color2="#FFFFFF" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="232.14" modelName="custom" textColor="#000000" visible="true" width="453.0" x="13.5" y="4.48">수치·규약 출처
-GPU 구간별 median : 07_results/display_e2e/summary.md §3.1
+GPU 구간별 median : 07_results/display_e2e/runs/v3d1150_20261016/summary.md §2.1
 실행별 원시 출력  : 07_results/display_e2e/raw/disp_source_run1/stdout.log
 운용점 · 최종 커맨드 : 07_results/op_point/summary.md §8
 스레드 · 슬롯 규약 : 01_src/pipeline/main.cpp:1-54
@@ -570,7 +570,7 @@ slots+gpu_depth ≤ 10 : 01_src/pipeline/slot_exchange.cpp:57-62 (평면 :33-47)
 콜백 람다 :154 / NMS fallback :202 : gpu_postproc_stage.cpp
 평면 표시 : 01_src/display/plane_display.hpp
 버퍼 계약       : 01_src/core/frame_types.hpp
-측정 조건 : GPU NMS·평면 외 수치는 960 MHz · 자동 5스레드 · CPU NMS
+측정 조건 : GPU 구간·NMS·평면 외 수치는 960 MHz · 자동 5스레드 · CPU NMS
 디코더 스레드 기본 1 : 07_results/dec_threads/summary.md
 V3D 960→1150 MHz : 07_results/pipeline_ffmpeg_vulkan_hailo/
       runs/bootloader_20260925/summary.md

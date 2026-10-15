@@ -1,0 +1,40 @@
+-- ccache enabled: /usr/bin/ccache
+-- libpisp 1.7.0 - building yvo_isp.
+-- GStreamer 1.26.2 - building yvo_gstelem.
+-- Configuring done (0.1s)
+-- Generating done (0.1s)
+-- Build files have been written to: /home/pi/workspace/yolo_vulkan_optimize/build
+[1/34] Building CXX object 01_src/pipeline/CMakeFiles/yvo_stages.dir/slot_exchange.cpp.o
+[2/34] Building CXX object 01_src/hailo/CMakeFiles/yvo_hailo.dir/hailo_runner.cpp.o
+[3/34] Building CXX object 01_src/pipeline/CMakeFiles/yvo_stages.dir/gpu_postproc_stage.cpp.o
+[4/34] Building CXX object 01_src/gstelem/CMakeFiles/yvo_gstelem.dir/hailo_infer_sink.cpp.o
+[5/34] Building CXX object 01_src/hailo/CMakeFiles/yvo_hailo.dir/hailo_raw_runner.cpp.o
+[6/34] Linking CXX static library 01_src/hailo/libyvo_hailo.a
+[7/34] Linking CXX static library 01_src/gstelem/libyvo_gstelem.a
+[8/34] Linking CXX static library 01_src/pipeline/libyvo_stages.a
+[9/34] Building CXX object 01_src/tools/CMakeFiles/yvo_hailo_selftest.dir/hailo/hailo_selftest.cpp.o
+[10/34] Building CXX object 01_src/tools/CMakeFiles/yvo_isp_pipeline.dir/isp/isp_pipeline.cpp.o
+[11/34] Building CXX object 01_src/pipeline/CMakeFiles/yvo_pipeline.dir/main.cpp.o
+[12/34] Linking CXX executable bin/yvo_pipeline
+[13/34] Building CXX object 05_tests/CMakeFiles/test_detections.dir/test_detections.cpp.o
+[14/34] Linking CXX executable bin/yvo_hailo_selftest
+[15/34] Linking CXX executable bin/yvo_postproc_probe
+[16/34] Linking CXX executable bin/yvo_preproc_bench
+[17/34] Linking CXX executable bin/yvo_isp_bench
+[18/34] Linking CXX executable bin/yvo_isp_probe
+[19/34] Linking CXX executable bin/yvo_gst_sand_probe
+[20/34] Linking CXX executable bin/yvo_gst_pipeline
+[21/34] Linking CXX executable bin/yvo_isp_pipeline
+[22/34] Linking CXX executable bin/test_preproc
+[23/34] Linking CXX executable bin/test_detections
+[24/34] Linking CXX executable bin/test_isp_preproc
+[25/34] Linking CXX executable bin/test_gst_adapter
+[26/34] Linking CXX executable bin/test_overlay
+[27/34] Building CXX object 05_tests/CMakeFiles/test_postproc.dir/test_postproc.cpp.o
+[28/34] Linking CXX executable bin/test_postproc
+[29/34] Building CXX object 05_tests/CMakeFiles/test_gst_detections.dir/test_gst_detections.cpp.o
+[30/34] Linking CXX executable bin/test_gst_detections
+[31/34] Building CXX object 01_src/tools/CMakeFiles/yvo_hailo_raw_probe.dir/hailo/hailo_raw_probe.cpp.o
+[32/34] Linking CXX executable bin/yvo_hailo_raw_probe
+[33/34] Building CXX object 05_tests/CMakeFiles/test_pipeline_logic.dir/test_pipeline_logic.cpp.o
+[34/34] Linking CXX executable bin/test_pipeline_logic

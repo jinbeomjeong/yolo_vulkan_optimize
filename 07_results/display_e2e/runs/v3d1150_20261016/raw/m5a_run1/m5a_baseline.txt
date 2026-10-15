@@ -1,0 +1,5 @@
+display path            : 1920x1080 1:1 / compute -> swapchain storage image, images=4
+on-screen shader ms     : median=3.646 p90=3.707 max=6.373 (n=299)
+present_wait interval ms: median=16.661 p90=16.749 (n=294)
+on-screen overlay ms    : median=0.193 p90=0.206 max=0.397 (n=299)  → convert+overlay median=3.840
+presented=300 display_dropped=0 (NOT_READY 0, in-flight 0) recreates=1

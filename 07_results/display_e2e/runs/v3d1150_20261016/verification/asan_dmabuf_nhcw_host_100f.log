@@ -1,0 +1,17 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[cfg] video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 1920x1080 mode=dmabuf layout=nhcw batch=8 slots=16 gpu_depth=3 postproc=host device=V3D 7.1.10.2
+[hevc @ 0x518000010880] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+== yvo_pipeline (dmabuf, nhcw, batch 8, slots 16, gpu_depth 3, postproc host) ==
+frames          100 (decoded 100, errors 0)
+wall            2.019 s, 49.52 FPS
+cpu             4.767 ms/frame (process user+sys 476.7 ms, 24% of one core)
+decode call ms  mean 3.835  median 3.871  p90 6.379  max 34.940
+gpu shader ms   mean 2.001  median 1.941  p90 2.265  max 2.508
+npu latency ms  mean 284.334  median 297.542  p90 304.787  max 307.444
+e2e latency ms  mean 303.911  median 304.233  p90 365.268  max 437.470  (decode return → NPU completion callback)
+slot wait ms    mean 13.753  p90 120.055  (time the main thread waited for a free slot)
+held frames max 2 (decoder limit about 13), slot timeout 0
+detections      203 total, 2.03 / frame
+hailo chip temp 54.6 -> 56.9 C
+soc temp        74.7 -> 73.6 C
+vk validation   errors 0, warnings 1

@@ -290,7 +290,7 @@ NPU에 한 번에 여러 장을 묶어 보내는 것이 **batch**, 동시에 몇
 호스트가 개수를 모른 채 `vkCmdDispatchIndirect` 로 "버퍼에 적힌 만큼 돌려라"고 시킨다.
 
 결과: 검출 5개 0.151 ms / 40개 0.555 ms / 80개 1.023 ms.
-최종 파이프라인의 실측은 **0.128 ms**다.
+최종 파이프라인의 실측은 **0.128 ms**다(V3D 960 MHz. 1150 MHz 현재 기본값에서는 0.124 ms, [`v3d1150_20261016`](../07_results/display_e2e/runs/v3d1150_20261016/summary.md)).
 
 **근거**: [`display_vulkan_hdmi/summary.md`](../07_results/display_vulkan_hdmi/summary.md),
 [`10_paper/paper_ko.md`](../10_paper/paper_ko.md) §4.5
