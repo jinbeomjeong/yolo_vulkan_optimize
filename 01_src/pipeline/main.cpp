@@ -1104,6 +1104,9 @@ int run(const Args& a) {
 #endif
     };
     struct ReleaseOnExit { decltype(release_stages)& f; ~ReleaseOnExit() { f(); } } release_on_exit{release_stages};
+    // gpu: the HailoRT callback ends the main thread's SlotExchange wait (host: complete() already does). Set after
+    // release_on_exit so the stage (whose callbacks call it) is always destroyed before ex.
+    stage->set_wake_hook([&ex] { ex.wake(); });
 
     // Record completed results in pts order
     auto flush_results = [&]() {
@@ -1284,14 +1287,19 @@ int run(const Args& a) {
             }
             if (in_q.empty()) {
                 if (ingest_done) break;
-                // Nothing to submit: sleep until the next arrival in short steps, moving the downstream stages meanwhile.
+                // Nothing to submit until the next arrival: move the downstream stages, then block on the first of
+                // preprocessing → NPU, one GPU post-processing frame, or (nothing on the GPU) the next arrival / an NPU
+                // completion (SlotExchange::wake, complete). --display on keeps the 500 µs cap for display->pump().
                 stage->pump();
                 while (!gpu_q.empty() && pre.ready(gpu_q.front())) finish_gpu();
                 flush_results();
                 pump_display();
-                const auto left = sched.arrival(arrived) - Clock::now();
-                if (left > Clock::duration::zero())
-                    std::this_thread::sleep_for(std::min<Clock::duration>(left, std::chrono::microseconds(500)));
+                const auto t_next = sched.arrival(arrived);
+                if (Clock::now() >= t_next) continue;
+                if (!gpu_q.empty()) finish_gpu();   // blocking fence wait, then NPU submit
+                else if (!stage->drain_one())       // blocking: one GPU post-processing frame (false for host)
+                    ex.wait_event_until(need_display_ack ? std::min(t_next, Clock::now() + std::chrono::microseconds(500))
+                                                         : t_next);
                 continue;
             }
             // Same no-blocking rule as the asap slot loop (pump + finish_gpu + flush_results, then a short poll).
@@ -1302,9 +1310,13 @@ int run(const Args& a) {
                 if (!gpu_q.empty()) finish_gpu();
                 flush_results();
                 pump_display();
-                Clock::duration slice = std::chrono::milliseconds(2);
-                if (!ingest_done) slice = std::min(slice, sched.arrival(arrived) - Clock::now());
-                slot = ex.acquire_poll(std::max(slice, Clock::duration::zero()));
+                if (stage->drain_one()) {   // GPU post-processing in flight: finish one now (blocking) instead of polling
+                    slot = ex.try_acquire();
+                } else {                    // returns early on an NPU completion (wake) or a host completion
+                    Clock::duration slice = std::chrono::milliseconds(2);
+                    if (!ingest_done) slice = std::min(slice, sched.arrival(arrived) - Clock::now());
+                    slot = ex.acquire_poll(std::max(slice, Clock::duration::zero()));
+                }
                 if (!slot) {
                     if (Clock::now() - *slot_wait_since > std::chrono::seconds(5)) {
                         ++slot_timeout_count;
@@ -1368,7 +1380,8 @@ int run(const Args& a) {
                         while (!gpu_q.empty() && pre.ready(gpu_q.front())) finish_gpu();
                         display->pump();
                         flush_results();
-                        std::this_thread::sleep_for(std::chrono::microseconds(500));
+                        // 500 µs cap kept for display->pump(); ends early on an NPU/host completion (wake, complete).
+                        if (!stage->drain_one()) ex.wait_event_until(std::min(*dl, Clock::now() + std::chrono::microseconds(500)));
                     }
                 }
             }
@@ -1404,8 +1417,10 @@ int run(const Args& a) {
 #ifdef YVO_HAVE_DISPLAY
                     if (display) display->pump();
 #endif
-                    slot = ex.acquire_poll(std::chrono::milliseconds(2));
-                    // Stop signal. One iteration is 2 ms so we break out immediately (no waiting for the 5 s timeout).
+                    // GPU post-processing in flight: finish one (blocking). Otherwise a 2 ms poll that ends early on an
+                    // NPU completion (wake) or a host completion.
+                    slot = stage->drain_one() ? ex.try_acquire() : ex.acquire_poll(std::chrono::milliseconds(2));
+                    // Stop signal. One iteration is <= 2 ms so we break out immediately (no waiting for the 5 s timeout).
                     // **No exception** — the catch below is for real failures, and a user stop is not a failure.
                     if (!slot && stop_requested()) break;
                     if (!slot && Clock::now() > deadline) {

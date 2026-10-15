@@ -22,7 +22,7 @@
 | | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 — 본 파이프라인 5개 + `diag/` 진단 전용 2개 (`.comp`). `overlay_boxes.comp` 는 버퍼 변형까지 SPIR-V 2개로 빌드 |
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
 | | `04_data/` | 입력 영상(기본 `video_h265.mp4`, 혼잡 장면용 `mot20_{02,05}_h265.mp4`)과 테스트용 원시 텐서 픽스처 (git에 없음) |
-| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 10개(`test_postproc_live` 를 따로 세면 11), ctest 항목 177개 |
+| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 10개(`test_postproc_live` 를 따로 세면 11), ctest 항목 184개 |
 | | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 12개), `python/`(10개 + 논문 스크립트 `paper/` 11개 + 단위 테스트 `tests/` 141개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
 | | [`07_results/`](../07_results/) | 실험별 측정 원시 출력과 `summary.md` |
 | **문서** | [`08_learn/`](00_README.md) | 지금 읽고 있는 이 자습 교재 13장 |

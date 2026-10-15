@@ -3,11 +3,13 @@
 // — no NPU, GPU or display needed.
 //
 //   SlotExchange.*        slot pool + completion queue: FIFO order, two return conditions (compute + display),
-//                         duplicate / stale / out-of-range signals ignored, complete() from another thread
+//                         duplicate / stale / out-of-range signals ignored, complete() from another thread,
+//                         wake() / queued completions end acquire_poll and wait_event_until early (no lost wake)
 //   SlotBudget.*          validate_slot_budget(): the --display on startup gate on decoder frames held at once.
 //                         Expected messages are the exact text the check printed when it was inline in main.cpp parse().
 //                         plane_frames_held(): the plane-path count shared with yvo_pipeline's extra_hw_frames.
 //                         With --input-pace source the queued frames (--input-queue N) are added on every path.
+//                         Plane paths with matched sync need --slots >= 2 (the on-screen frame keeps its slot).
 //   LeakyQueue.*          --input-pace source queue: FIFO, a full queue drops (and hands back) the oldest
 //   ArrivalSchedule.*     t_arr(k) = t0 + k/fps on an absolute base, the boundary counts as due
 //   InputPacer.*          max_gap() (longest dropped run) and the validate_input_queue() startup gate
@@ -242,6 +244,81 @@ TEST(SlotExchange, AcquirePollWakesOnCompleteFromAnotherThread) {
     EXPECT_EQ(done[0].result.pts, 7);
 }
 
+// wake() before the wait is not lost: the flag is set under the lock, so the next wait returns at once (no slot).
+TEST(SlotExchange, WakeBeforeAcquirePollIsNotLost) {
+    SlotExchange ex(1, false);
+    ASSERT_EQ(ex.try_acquire(), std::optional<int>(0));
+    ex.wake();
+    const auto t0 = std::chrono::steady_clock::now();
+    EXPECT_FALSE(ex.acquire_poll(std::chrono::seconds(5)).has_value());
+    EXPECT_LT(std::chrono::steady_clock::now() - t0, std::chrono::seconds(1));
+    // Consumed: the next wait runs its full slice again.
+    const auto t1 = std::chrono::steady_clock::now();
+    EXPECT_FALSE(ex.acquire_poll(std::chrono::milliseconds(20)).has_value());
+    EXPECT_GE(std::chrono::steady_clock::now() - t1, std::chrono::milliseconds(15));
+}
+
+TEST(SlotExchange, WakeFromAnotherThreadEndsAcquirePoll) {
+    SlotExchange ex(1, false);
+    ASSERT_EQ(ex.try_acquire(), std::optional<int>(0));
+    std::thread waker([&] {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        ex.wake();
+    });
+    const auto t0 = std::chrono::steady_clock::now();
+    const auto s = ex.acquire_poll(std::chrono::seconds(5));
+    const auto waited = std::chrono::steady_clock::now() - t0;
+    waker.join();
+    EXPECT_FALSE(s.has_value()) << "wake() must not hand out a slot";
+    EXPECT_LT(waited, std::chrono::seconds(4)) << "woke by timeout, not by wake()";
+}
+
+// With display a completion does not free the slot, but it must still end the wait (the caller has to show it).
+TEST(SlotExchange, CompletionWithDisplayEndsAcquirePoll) {
+    SlotExchange ex(1, true);
+    ASSERT_EQ(ex.try_acquire(), std::optional<int>(0));
+    std::thread producer([&] {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        ex.complete(result_for(0, 3));
+    });
+    const auto t0 = std::chrono::steady_clock::now();
+    const auto s = ex.acquire_poll(std::chrono::seconds(5));
+    const auto waited = std::chrono::steady_clock::now() - t0;
+    producer.join();
+    EXPECT_FALSE(s.has_value());
+    EXPECT_LT(waited, std::chrono::seconds(4)) << "woke by timeout, not by the queued completion";
+    ASSERT_EQ(ex.take_done().size(), 1u);
+}
+
+TEST(SlotExchange, WaitEventUntilTimesOutWithoutEvent) {
+    SlotExchange ex(1, false);
+    const auto t0 = std::chrono::steady_clock::now();
+    EXPECT_FALSE(ex.wait_event_until(t0 + std::chrono::milliseconds(20)));
+    EXPECT_GE(std::chrono::steady_clock::now() - t0, std::chrono::milliseconds(15));
+    // A deadline in the past returns at once.
+    EXPECT_FALSE(ex.wait_event_until(std::chrono::steady_clock::now() - std::chrono::seconds(1)));
+}
+
+TEST(SlotExchange, WaitEventUntilEndsOnWakeAndOnCompletion) {
+    SlotExchange ex(1, false);
+    ASSERT_EQ(ex.try_acquire(), std::optional<int>(0));
+    std::thread waker([&] {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        ex.wake();
+    });
+    auto t0 = std::chrono::steady_clock::now();
+    EXPECT_TRUE(ex.wait_event_until(t0 + std::chrono::seconds(5)));
+    EXPECT_LT(std::chrono::steady_clock::now() - t0, std::chrono::seconds(4));
+    waker.join();
+    // A queued completion ends the wait until take_done() empties the queue.
+    ex.complete(result_for(0, 1));
+    t0 = std::chrono::steady_clock::now();
+    EXPECT_TRUE(ex.wait_event_until(t0 + std::chrono::seconds(5)));
+    EXPECT_LT(std::chrono::steady_clock::now() - t0, std::chrono::seconds(1));
+    ASSERT_EQ(ex.take_done().size(), 1u);
+    EXPECT_FALSE(ex.wait_event_until(std::chrono::steady_clock::now() + std::chrono::milliseconds(5)));
+}
+
 // The yvo_pipeline thread shape: main thread acquires slots and acks display; a worker thread (the HailoRT callback
 // thread stand-in) calls complete(). Every frame must complete exactly once, and a slot must never be handed out
 // while it is still out.
@@ -315,8 +392,8 @@ void run_threaded_pipeline(int slots, bool need_display, int frames) {
 
 TEST(SlotExchange, ThreadedCompleteWithoutDisplay) { run_threaded_pipeline(8, false, 20000); }
 
-// With display the slot is freed by the main thread's own display_done, so acquire_poll often sleeps its full 2 ms slice
-// (the same shape as main.cpp's acquisition loop) — fewer frames keep the test around one second.
+// With display the slot is freed by the main thread's own display_done; acquire_poll ends early on the queued completion
+// (the same shape as main.cpp's acquisition loop) — fewer frames keep the test short.
 TEST(SlotExchange, ThreadedCompleteWithDisplayAck) { run_threaded_pipeline(4, true, 2000); }
 
 // ═══════════════════════════════════════════════ validate_slot_budget
@@ -415,6 +492,32 @@ TEST(SlotBudget, PacedInputQueueAddsQueuedFrames) {
               std::string("--display-backend kms: decoder frames held would be 11, exceeding 10 "
                           "(slots 3 + 1 awaiting decode + 5 held by display + 2 in the input queue).\n") +
                   kStall + "Reduce --slots or --input-queue.\n");
+}
+
+std::string planes_min_msg(const char* backend, int slots) {
+    return std::string("--display-backend ") + backend + " --display-sync matched requires --slots >= 2 (now " +
+           std::to_string(slots) +
+           ").\nThe frame on screen keeps its slot until a newer frame is committed, and that frame needs a slot of its own: "
+           "with " + std::to_string(slots) + " slot(s) the pipeline deadlocks (slot wait timeout). "
+           "Use --slots 2 or more, or --display-sync latest.\n";
+}
+
+// Plane paths + matched: the on-screen frame holds its slot until the next commit → one slot deadlocks.
+TEST(SlotBudget, PlanesMatchedNeedTwoSlots) {
+    EXPECT_EQ(yvo::pipeline::kMinPlaneMatchedSlots, 2);
+    EXPECT_EQ(validate_slot_budget(SlotBudgetPath::WaylandPlanes, false, 1, 3, kExtra), planes_min_msg("wayland-planes", 1));
+    EXPECT_EQ(validate_slot_budget(SlotBudgetPath::Kms, false, 1, 3, kExtra), planes_min_msg("kms", 1));
+    EXPECT_EQ(validate_slot_budget(SlotBudgetPath::Kms, false, 1, 1, kExtra, 1), planes_min_msg("kms", 1));   // O2 + kms
+    EXPECT_EQ(validate_slot_budget(SlotBudgetPath::WaylandPlanes, false, 2, 3, kExtra), "");
+    EXPECT_EQ(validate_slot_budget(SlotBudgetPath::Kms, false, 2, 1, kExtra, 1), "");
+}
+
+// latest returns the slot right after show(); Composite on the submit fence → one slot is fine there.
+TEST(SlotBudget, OneSlotIsFineWithLatestOrComposite) {
+    EXPECT_EQ(validate_slot_budget(SlotBudgetPath::WaylandPlanes, true, 1, 3, kExtra), "");
+    EXPECT_EQ(validate_slot_budget(SlotBudgetPath::Kms, true, 1, 1, kExtra, 1), "");
+    EXPECT_EQ(validate_slot_budget(SlotBudgetPath::Composite, false, 1, 3, kExtra), "");
+    EXPECT_EQ(validate_slot_budget(SlotBudgetPath::Composite, true, 1, 1, kExtra, 1), "");
 }
 
 // ═══════════════════════════════════════════════ RESULT_CSV (toolkit/result_csv.hpp)

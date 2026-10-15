@@ -52,12 +52,17 @@ public:
     // Otherwise does nothing and returns false. Always false for host.
     virtual bool drain_one() { return false; }
 
-    // Main thread. The last-resort wait when all slots are on the NPU and there is nothing else to do.
-    // On the gpu path **nobody wakes the `SlotExchange` condvar** (completion notices go into the stage-internal
+    // Main thread. The last-resort wait when all slots are on the NPU (unused by yvo_pipeline since set_wake_hook()).
+    // On the gpu path the HailoRT callback does not complete() (completion notices go into the stage-internal
     // ready_, and slots are only returned when the main thread calls pump()). So we must wait
     // here. Returns true once at least one completion has arrived — the caller then calls pump()/drain_one() again.
     // For host the HailoRT callback wakes `SlotExchange` directly, so false (= existing path unchanged).
     virtual bool wait_completion(std::chrono::milliseconds) { return false; }
+
+    // Called by the stage on the NPU completion thread right after it queued a completion internally, so the main
+    // thread can stop waiting and pump() (yvo_pipeline: SlotExchange::wake). Set once, before the first submit().
+    // Host: unused — its Done callback calls SlotExchange::complete() directly, which already ends the wait.
+    virtual void set_wake_hook(std::function<void()> /*hook*/) {}
 
     virtual void drain() = 0;
 

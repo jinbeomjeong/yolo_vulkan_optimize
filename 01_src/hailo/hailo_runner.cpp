@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
@@ -159,11 +160,17 @@ HailoRunner::HailoRunner(const HailoRunnerConfig& cfg) : cfg_(cfg) {
 
 HailoRunner::~HailoRunner() {
     try {
-        drain();
+        if (!drain_for(cfg_.timeout))
+            std::fprintf(stderr, "[warn] HailoRunner: drain deadline (%lld ms) exceeded with %d jobs in flight; "
+                         "shutting down the model\n", static_cast<long long>(cfg_.timeout.count()), in_flight_.load());
     } catch (...) {
     }
     if (configured_) {
-        configured_->shutdown();
+        configured_->shutdown();  // HailoRT: abort, then wait (<= 10 s) until running completion callbacks return
+    }
+    {   // A lambda still running past that wait (e.g. blocked in user code) uses *this: wait for it, no deadline.
+        std::unique_lock<std::mutex> lk(mtx_);
+        cv_.wait(lk, [this] { return in_callback_.load() == 0; });
     }
     configured_.reset();
     std::lock_guard<std::mutex> lk(map_mtx_);
@@ -221,6 +228,7 @@ void HailoRunner::submit(const PreprocOutput& in, InferCallback cb) {
 
         auto job_exp = configured_->run_async(
             s.bindings, [this, slot, pts, lb, src_w, src_h, cb = std::move(cb)](const hailort::AsyncInferCompletionInfo& info) {
+                in_callback_.fetch_add(1);  // Paired with the decrement below; ~HailoRunner waits for 0
                 Slot& sl = *slots_[slot];
                 InferResult r;
                 r.slot = slot;
@@ -237,6 +245,7 @@ void HailoRunner::submit(const PreprocOutput& in, InferCallback cb) {
                 {
                     std::lock_guard<std::mutex> lk(mtx_);
                     in_flight_.fetch_sub(1);
+                    in_callback_.fetch_sub(1);
                 }
                 cv_.notify_all();
             });
@@ -255,9 +264,15 @@ void HailoRunner::submit(const PreprocOutput& in, InferCallback cb) {
     }
 }
 
-void HailoRunner::drain() {
+bool HailoRunner::drain_for(std::chrono::milliseconds timeout) {
     std::unique_lock<std::mutex> lk(mtx_);
-    cv_.wait(lk, [this] { return in_flight_.load() == 0; });
+    return cv_.wait_for(lk, timeout, [this] { return in_flight_.load() == 0; });
+}
+
+void HailoRunner::drain() {
+    if (!drain_for(cfg_.timeout))
+        throw HailoError("HailoRunner::drain(deadline exceeded, in flight " + std::to_string(in_flight_.load()) + ")",
+                         HAILO_TIMEOUT);
 }
 
 float HailoRunner::chip_temperature() const {

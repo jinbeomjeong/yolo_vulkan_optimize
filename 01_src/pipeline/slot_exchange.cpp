@@ -31,6 +31,13 @@ std::string validate_slot_budget(SlotBudgetPath path, bool latest_sync, int slot
                                  int extra_held_beyond_slots, int input_queue) {
     // Sums are taken in long long so absurd --slots/--gpu-depth values cannot overflow int (identical result otherwise).
     if (path == SlotBudgetPath::WaylandPlanes || path == SlotBudgetPath::Kms) {
+        const char* backend = path == SlotBudgetPath::Kms ? "kms" : "wayland-planes";
+        if (!latest_sync && slots < kMinPlaneMatchedSlots)
+            return format("--display-backend %s --display-sync matched requires --slots >= %d (now %d).\n"
+                          "The frame on screen keeps its slot until a newer frame is committed, and that frame needs a slot "
+                          "of its own: with %d slot(s) the pipeline deadlocks (slot wait timeout). "
+                          "Use --slots %d or more, or --display-sync latest.\n",
+                          backend, kMinPlaneMatchedSlots, slots, slots, kMinPlaneMatchedSlots);
         // matched: every frame held by the display occupies its own slot → slots + 1 (one decoded frame awaiting a slot).
         // latest : the slot comes back right after show, and the display holds extra_held_beyond_slots more outside the slots.
         const long long hold = plane_frames_held(latest_sync, slots, extra_held_beyond_slots, input_queue);
@@ -40,7 +47,7 @@ std::string validate_slot_budget(SlotBudgetPath path, bool latest_sync, int slot
             return format("--display-backend %s: decoder frames held would be %lld, exceeding %d "
                           "(slots %d + 1 awaiting decode%s%s).\nThe decoder stalls without an error when more than about 13 frames are held at once. "
                           "Reduce --slots%s.\n",
-                          path == SlotBudgetPath::Kms ? "kms" : "wayland-planes", hold, kMaxDecoderFramesHeld, slots,
+                          backend, hold, kMaxDecoderFramesHeld, slots,
                           by_display.c_str(), queued.c_str(), input_queue > 0 ? " or --input-queue" : "");
         }
         return {};

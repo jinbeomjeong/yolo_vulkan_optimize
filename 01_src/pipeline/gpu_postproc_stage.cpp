@@ -158,6 +158,7 @@ void GpuPostprocStage::submit(const PreprocOutput& in, const Done& on_done) {
             ready_.push_back(RawDone{r.slot, r.status, r.latency_ms, Clock::now()});
         }
         ready_cv_.notify_all();
+        if (wake_) wake_();   // after the push: whoever consumes the wake and then pump()s sees this completion
     });
 }
 

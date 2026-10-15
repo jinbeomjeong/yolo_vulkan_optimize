@@ -58,7 +58,7 @@ struct HailoRunnerConfig {
     float score_threshold = -1.0f;     // <0 keeps the HEF value (0.2). >=0 sets it via set_nms_score_threshold
     int src_width = 0;                 // Source size for clamping inverse-mapped coordinates. 0 = derive from LetterboxParams
     int src_height = 0;
-    std::chrono::milliseconds timeout{2000}; // wait_for_async_ready timeout
+    std::chrono::milliseconds timeout{2000}; // wait_for_async_ready timeout and drain() deadline
 };
 
 // Completion result. The callback runs on the HailoRT callback thread, so do no heavy work in it.
@@ -87,7 +87,7 @@ std::vector<Detection> parse_nms_by_class(const float* data, std::size_t bytes, 
 class HailoRunner {
 public:
     explicit HailoRunner(const HailoRunnerConfig& cfg);
-    ~HailoRunner();  // Waits for all in-flight jobs, then shuts down and unmaps dma-bufs
+    ~HailoRunner();  // Bounded drain (cfg.timeout), then shutdown, then unmaps dma-bufs. Never throws
 
     HailoRunner(const HailoRunner&) = delete;
     HailoRunner& operator=(const HailoRunner&) = delete;
@@ -98,7 +98,7 @@ public:
     // When the pipeline is full, blocks on wait_for_async_ready (backpressure). On timeout, HailoError(HAILO_TIMEOUT).
     void submit(const PreprocOutput& in, InferCallback cb);
 
-    // Wait until all in-flight jobs complete (user callbacks returned)
+    // Wait until all in-flight jobs complete (user callbacks returned). HailoError(HAILO_TIMEOUT) after cfg.timeout
     void drain();
 
     // For stage 2: pre-map the dma-buf for H2D (removes per-frame mapping cost). Released automatically in the destructor.
@@ -141,7 +141,10 @@ private:
     int max_bboxes_per_class_ = 0;
     float score_threshold_ = 0.0f;
 
+    bool drain_for(std::chrono::milliseconds timeout);  // true = in_flight_ reached 0 within timeout
+
     std::atomic<int> in_flight_{0};
+    std::atomic<int> in_callback_{0};  // Completion lambdas currently running (destructor waits for 0 before teardown)
     std::mutex mtx_;
     std::condition_variable cv_;
 

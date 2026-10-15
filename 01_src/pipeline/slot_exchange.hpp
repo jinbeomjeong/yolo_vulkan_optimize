@@ -12,6 +12,11 @@
 //   Signals for slots that are not out are ignored, so a duplicate complete/display_done is harmless.
 //   complete() always queues the result for take_done(), even when its slot signal is ignored.
 //   With need_display == false there is no display condition at all (the --display off regression path).
+// ── Wake (event-driven main-thread waits) ─────────────────────────────────────────────────────────────────────
+//   wake()                      → "an NPU completion is queued inside the stage" (GpuPostprocStage's HailoRT callback)
+//   acquire_poll / wait_event_until return early on wake() or on a queued completion (done_ not empty), so the main
+//   thread does not sleep out its slice. The wake flag is set under m_ → a wake() before the wait is not lost.
+//   Every return clears it: the caller must pump the stage (and take_done()) before waiting again.
 #pragma once
 
 #include <array>
@@ -70,10 +75,28 @@ public:
         return pop_locked();
     }
     // Waits only for slice (no blocking — the one who sets display_done is the caller itself). slice <= 0: no wait.
+    // Returns early (possibly without a slot) on wake() or a queued completion — take_done() before calling.
     std::optional<int> acquire_poll(Clock::duration slice) {
         std::unique_lock<std::mutex> lk(m_);
-        if (free_.empty()) cv_.wait_for(lk, slice, [&] { return !free_.empty(); });
+        if (free_.empty()) cv_.wait_for(lk, slice, [&] { return !free_.empty() || event_locked(); });
+        woken_ = false;
         return pop_locked();
+    }
+    // Main-thread idle wait that wants no slot (paced: until the next arrival). Returns at deadline, or earlier on
+    // wake() or a queued completion (take_done() before calling, or it returns at once). true = an event ended it.
+    bool wait_event_until(Clock::time_point deadline) {
+        std::unique_lock<std::mutex> lk(m_);
+        const bool ev = cv_.wait_until(lk, deadline, [&] { return event_locked(); });
+        woken_ = false;
+        return ev;
+    }
+    // Any thread (GpuPostprocStage's HailoRT callback via InferStage::set_wake_hook). Ends the current or next wait.
+    void wake() {
+        {
+            std::lock_guard<std::mutex> lk(m_);
+            woken_ = true;
+        }
+        cv_.notify_all();
     }
     std::vector<Completion> take_done() {
         std::lock_guard<std::mutex> lk(m_);
@@ -83,6 +106,7 @@ public:
     }
 
 private:
+    bool event_locked() const { return woken_ || !done_.empty(); }   // called with m_ held
     // Called with m_ held. Signals for slots that are not out are ignored (makes duplicate calls harmless).
     void mark(int slot, int which) {
         const auto i = static_cast<std::size_t>(slot);
@@ -111,6 +135,7 @@ private:
     std::vector<bool> out_;                    // whether the slot is out (guards against duplicate signals)
     std::deque<int> free_;
     std::deque<Completion> done_;
+    bool woken_ = false;                       // wake() since the last acquire_poll / wait_event_until return
 };
 
 // ── Decoder frame budget (--display on) ──────────────────────────────────────────────────────────────────────
@@ -132,12 +157,20 @@ inline long long plane_frames_held(bool latest_sync, int slots, int extra_held_b
     return static_cast<long long>(slots) + 1 + (latest_sync ? extra_held_beyond_slots : 0) + input_queue;
 }
 
+// Lower bound on the plane paths with matched sync. The frame on screen keeps its slot until the transport releases
+// it, and that happens only once a newer frame has been committed (KMS: on the next flip, kms_scanout.cpp handle_flip;
+// Wayland: wl_buffer.release after the next buffer replaces it). That newer frame needs a slot of its own, so with
+// one slot nothing ever releases it (slot wait timeout after 5 s). Two always progress: the on-screen frame's release
+// needs only one more commit. latest returns the slot right after show(); Composite on the submit fence → 1 is fine.
+inline constexpr int kMinPlaneMatchedSlots = 2;
+
 // Startup gate, called by yvo_pipeline parse() only when --display is on. Returns "" when the budget fits,
 // otherwise the complete stderr message (same text as the check that used to be inline in parse()).
 // extra_held_beyond_slots is PlaneDisplay::kExtraHeldBeyondSlots, passed in so pipeline/ does not need display/ here.
 // gpu_depth is used only by Composite; extra_held_beyond_slots only by the plane paths with latest_sync.
 // input_queue = --input-queue N with --input-pace source (0 with asap): the queued decoded frames are held on top of
 // the asap count on every path. 0 keeps the asap messages byte for byte.
+// Plane paths with matched sync also need slots >= kMinPlaneMatchedSlots (checked before the upper bound).
 std::string validate_slot_budget(SlotBudgetPath path, bool latest_sync, int slots, int gpu_depth,
                                  int extra_held_beyond_slots, int input_queue = 0);
 

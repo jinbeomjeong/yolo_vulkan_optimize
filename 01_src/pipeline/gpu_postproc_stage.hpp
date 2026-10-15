@@ -12,7 +12,7 @@
 //
 // ── Stage flow ─────────────────────────────────────────────────────────────────────────────────
 //   submit(out, cb)  [main]  record pts_/lb_ → raw_->submit(slot, pts, internal callback)
-//   internal callback  [HailoRT thread]  push {slot,status,latency} to ready_. **That is all.**
+//   internal callback  [HailoRT thread]  push {slot,status,latency} to ready_, then wake_ (if set). **That is all.**
 //                              (runner contract: no Vulkan calls, re-submit, or bulk GPU memory reads in the callback)
 //   pump()           [main]  drain ready_ → pp_->submit(slot, lb, src_w, src_h) → push pp_q_
 //                            if the front of pp_q_ is ready → wait → read_candidates → cpu_nms → Done
@@ -28,9 +28,11 @@
 #include <condition_variable>
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "hailo/hailo_raw_runner.hpp"
@@ -77,6 +79,7 @@ public:
     bool drain_one() override;
     bool wait_completion(std::chrono::milliseconds timeout) override;
     void drain() override;
+    void set_wake_hook(std::function<void()> hook) override { wake_ = std::move(hook); }
     float chip_temperature() const override { return raw_->chip_temperature(); }
 
     double last_post_ms() const override { return last_post_ms_; }
@@ -127,6 +130,8 @@ private:
     std::vector<double> latency_;       // per-slot NPU latency (read in finish)
     std::vector<hailo_status> status_;  // per-slot NPU status
     std::deque<int> pp_q_;              // slots queued on GPU pass 1 (submit order)
+    // Written before the first submit() (main), called on the HailoRT callback thread — the submit hand-off orders them.
+    std::function<void()> wake_;
 
     std::vector<double> post_ms_, nms_us_, cand_, hold_ms_, gpu_nms_ms_;
     std::vector<std::chrono::steady_clock::time_point> t_done_;   // per-slot callback arrival time
