@@ -303,7 +303,7 @@ python 06_tools/python/compare_detections.py ref/detections.jsonl test/detection
 
 ```bash
 bash 06_tools/bench/op_point_bench.sh    # 운용점 스윕 (배치·슬롯)
-bash 06_tools/bench/display_bench.sh     # 표시 e2e (M5a 기준선 + M4). CSV 59열 — 이전(48·53열) CSV 와 APPEND 불가
+bash 06_tools/bench/display_bench.sh     # 표시 e2e (M5a 기준선 + M4). CSV 61열(끝 2열 컴포지터 labwc CPU) — 이전(48·53·59열) CSV 와 APPEND 불가
 bash 06_tools/bench/pipeline_bench.sh    # 기존 9설정 회귀 기준선
 bash 06_tools/bench/decode_bench.sh      # 디코드 경로 비교
 bash 06_tools/bench/dec_threads_bench.sh # 디코더 프레임 스레드 수 스윕 + 자동 대 1스레드 회귀 A/B

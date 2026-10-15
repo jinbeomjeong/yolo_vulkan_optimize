@@ -12,7 +12,7 @@
 #   Their config schema has no per-run environment and a single global FRAMES; this experiment needs
 #   YVO_DEC_THREADS per config and full-video and 900-frame configs in one interleaved session.
 #   Cool-down, environment snapshot and loop structure follow op_point_bench.sh / gst_pipeline_bench.sh;
-#   the RESULT_CSV + RESULT_CSV2 column names are display_bench.sh's (59-column header minus its 4 script fields).
+#   the RESULT_CSV + RESULT_CSV2 column names are display_bench.sh's (61-column header minus its 4 script + 2 labwc fields).
 #
 # Usage:
 #   bash 06_tools/bench/dec_threads_bench.sh                  # all, 3 runs per config
@@ -223,7 +223,7 @@ fi
 
 RAW="$OUT_DIR/results_raw.csv"
 # 10 script columns + RESULT_CSV 22 + RESULT_CSV2 without label and its duplicate ok (33) = 65 columns.
-# The 55 app columns use display_bench.sh's names (its 59-column header minus run,cool_wait_s,hailort_*).
+# The 55 app columns use display_bench.sh's names (its 61-column header minus run,cool_wait_s,hailort_*,labwc_*).
 #   ⚠ If main.cpp appends RESULT_CSV2 fields, N_CSV2 and this header must change together.
 SCRIPT_COLS="id,threads,run,exit_code,cool_wait_s,hailort_warnings,hailort_errors,unreliable,hailo_pre_c,note"
 CSV1_COLS="label,mode,layout,batch,slots,frames,wall_s,fps,cpu_ms_per_frame,decode_ms_mean,gpu_ms_mean,gpu_ms_p90,npu_ms_mean,npu_ms_p90,e2e_ms_mean,e2e_ms_p90,detections,hailo_t0,hailo_t1,soc_t0,soc_t1,ok"

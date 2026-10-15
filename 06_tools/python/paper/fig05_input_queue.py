@@ -15,7 +15,8 @@ import paper_style as ps
 
 STEM = "fig05_input_queue"
 SRC = ps.RESULTS / "input_pacing" / "runs" / "code_2f2d3d0" / "results_raw.csv"
-CONFIGS = (("b1s1", "b1/s1 (O2)", ps.PALETTE[0]), ("b2s4", "b2/s4", ps.PALETTE[1]))
+CONFIGS = (("b1s1", "b1/s1", ps.PALETTE[0]), ("b2s4", "b2/s4", ps.PALETTE[1]))
+O2_QUEUE = 1   # operating point O2 is b1/s1 with N=1 only: marked on that point, not in the legend
 QUEUES = (1, 2, 3)
 METRICS = ("e2e_arr_mean", "e2e_arr_p90", "drop_rate")
 
@@ -53,11 +54,15 @@ def main(out_dir: str | Path | None = None) -> list[Path]:
             p90 = ps.median_min_max(d[n]["e2e_arr_p90"])
             drop = ps.median_min_max(d[n]["drop_rate"])
             if cfg == "b1s1":   # b2/s4 is flat: labelled once at its right end below
-                # offsets keep every label clear of the lines; N=2 sits between the lines with a leader
-                off, ha, arrow = {QUEUES[0]: ((-6, 5), "right", None), QUEUES[-1]: ((8, -10), "left", None)}.get(
-                    n, ((0, -24), "center", {"arrowstyle": "-", "color": col, "lw": 0.5, "shrinkA": 1, "shrinkB": 3}))
+                # offsets keep every label clear of the lines; no leader lines (they read as error bars)
+                off, ha, va = {QUEUES[0]: ((-6, 5), "right", "baseline"), QUEUES[-1]: ((8, -10), "left", "baseline")}.get(
+                    n, ((9, -2.5), "left", "center"))   # N=2: right of the point, between b1/s1 and b2/s4 mean lines
                 ax1.annotate(ps.fmt_half_up(mean[0]), (n, mean[0]), textcoords="offset points", xytext=off,
-                             ha=ha, va="center" if arrow else "baseline", fontsize=6.5, arrowprops=arrow)
+                             ha=ha, va=va, fontsize=6.5)
+                if n == O2_QUEUE:
+                    for ax, y in ((ax1, mean[0]), (ax2, 100 * drop[0])):
+                        ax.annotate("O2", (n, y), textcoords="offset points", xytext=(6, -5), ha="left",
+                                    va="center", fontsize=6.5, fontweight="bold", color=col)
             ax2.annotate(f"{ps.fmt_half_up(100 * drop[0])}%", (n, 100 * drop[0]), textcoords="offset points", xytext=(0, 5),
                          ha="center", fontsize=6.5)
             lines.append(f"{cfg} N={n}: runs {len(d[n]['e2e_arr_mean'])}, e2e_arr mean {mean[0]:.2f} "

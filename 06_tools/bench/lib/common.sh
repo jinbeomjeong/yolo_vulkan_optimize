@@ -226,3 +226,32 @@ result_csv12() {
                                    out = (out=="" ? $i : out OFS $i) } print out }' <<<"$l2")
   fi
 }
+
+# ── Compositor (labwc) CPU over a run (2026-10-16) ─────────────────────────────────────────────
+# proc_stat / stat_ticks moved here from display_planes_bench.sh so display_bench.sh records the same
+# raw/<run>/labwc_stat_{pre,post}.txt. Fields are split on blanks, which is right for comm values without
+# spaces ("(labwc)", "(yvo_pipeline)").
+# proc_stat <pid> <out>: one-line copy of /proc/<pid>/stat; empty file when the process is gone.
+#   cat, not the former printf "$(< ...)": bash 5.2 exits a set -e script when $(< file) fails, even under ||, so a
+#   process exiting mid-run killed the bench. For a live process the output is byte-identical (one line + "\n").
+proc_stat() { cat /proc/"$1"/stat > "$2" 2>/dev/null || : > "$2"; }
+stat_ticks() { awk '{ print $14 + $15 }' "$1" 2>/dev/null || echo ""; }   # utime + stime (clock ticks)
+
+# labwc_pid: pid of the labwc compositor, empty when there is none (headless, kms tty session).
+labwc_pid() { pgrep -x labwc | head -1 || true; }
+
+# labwc_cpu_cols <pre stat> <post stat> <frames> -> "labwc_cpu_ms,labwc_cpu_ms_per_frame" (no newline).
+#   utime+stime delta of one labwc process between the two /proc/<pid>/stat copies, ticks -> ms (CLK_TCK, 10 ms
+#   resolution at 100 Hz). "nan,nan" when a file is missing or empty (no labwc, or it exited during the run) or when
+#   pid (field 1) or starttime (field 22) differ (a different process); per-frame is nan when frames is not > 0.
+labwc_cpu_cols() {
+  [[ -s "$1" && -s "$2" ]] || { printf 'nan,nan'; return; }
+  awk -v n="$3" -v t="$(getconf CLK_TCK)" '
+    FILENAME == ARGV[1] && FNR == 1 { p = $1; s = $22; a = $14 + $15; h0 = 1 }
+    FILENAME == ARGV[2] && FNR == 1 { q = $1; e = $22; b = $14 + $15; h1 = 1 }
+    END {
+      if (!h0 || !h1 || p != q || s != e || t + 0 <= 0) { printf "nan,nan"; exit }
+      ms = (b - a) * 1000 / t
+      if (n + 0 > 0) printf "%.1f,%.4f", ms, ms / n; else printf "%.1f,nan", ms
+    }' "$1" "$2"
+}

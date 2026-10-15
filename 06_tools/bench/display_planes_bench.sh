@@ -3,7 +3,7 @@
 # Plan: 07_results/display_vulkan_hdmi/notes/formal_measurement_plan.md §5 (experiment B), §6, §7.
 #
 # Why a separate script:
-#   display_bench.sh has no --display-backend axis and is the reproduction reference of display_e2e (must not change).
+#   display_bench.sh has no --display-backend axis and is the reproduction reference of display_e2e (configs unchanged).
 #   Structure (cool-down gate, interleaving, results_raw/results CSV, stdout metric extraction, V3D gpu_stats deltas)
 #   follows nms_bench.sh (experiment A). Per-run side files (gpu_stats, labwc /proc stat, debugfs state mid-run) follow
 #   07_results/display_vulkan_hdmi/evidence/hvs_review/baseline/run_baseline.sh.
@@ -322,7 +322,7 @@ drm_fdinfo() {
   done
   printf '%s' "$buf" > "$out"
 }
-proc_stat() { { printf '%s\n' "$(< /proc/"$1"/stat)"; } > "$2" 2>/dev/null || : > "$2"; }
+# proc_stat <pid> <out> lives in lib/common.sh (shared with display_bench.sh, 2026-10-16).
 clients_snap() { cat "$DRI_DIR/clients" > "$1" 2>/dev/null || echo unreadable > "$1"; }
 
 # ── stdout metrics ──────────────────────────────────────────────────────────────
@@ -365,7 +365,7 @@ v3d_delta() {
 }
 # Sum of drm-engine-* ns over every block of an fdinfo dump (one process).
 fdinfo_engine_ns() { awk '/^drm-engine-/ { s += $2 } END { printf "%.0f", s + 0 }' "$1" 2>/dev/null || echo 0; }
-stat_ticks() { awk '{ print $14 + $15 }' "$1" 2>/dev/null || echo ""; }   # utime + stime (clock ticks)
+# stat_ticks <stat file> (utime + stime ticks) lives in lib/common.sh.
 
 SCRIPT_COLS="id,backend,pace,run,exit_code,cool_wait_s,hailort_warnings,hailort_errors,unreliable,hailo_pre_c,note"
 CSV1_COLS="label,mode,layout,batch,slots,frames,wall_s,fps,cpu_ms_per_frame,decode_ms_mean,gpu_ms_mean,gpu_ms_p90,npu_ms_mean,npu_ms_p90,e2e_ms_mean,e2e_ms_p90,detections,hailo_t0,hailo_t1,soc_t0,soc_t1,ok"

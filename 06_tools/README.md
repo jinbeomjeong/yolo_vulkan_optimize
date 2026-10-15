@@ -12,7 +12,7 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 | 스크립트 | 무엇을 재나 | 출력 |
 |---|---|---|
 | `op_point_bench.sh` | 운용점 스윕 (batch·slots) — 최종 결론의 근거 | `07_results/op_point/` |
-| `display_bench.sh` | 화면 표시 포함 종단간. `results_raw.csv` 59열(RESULT_CSV 22 + RESULT_CSV2 뒤 33 + 스크립트 4) — 48·53열 옛 CSV 와 `APPEND=1` 불가 | `07_results/display_e2e/` |
+| `display_bench.sh` | 화면 표시 포함 종단간. `results_raw.csv` 61열(RESULT_CSV 22 + RESULT_CSV2 뒤 33 + 스크립트 4 + labwc CPU 2, 실행마다 `labwc_stat_{pre,post}.txt`) — 48·53·59열 옛 CSV 와 `APPEND=1` 불가 | `07_results/display_e2e/` |
 | `pipeline_bench.sh` | 회귀 기준선 (고정 9설정) | `07_results/pipeline_ffmpeg_vulkan_hailo/` |
 | `gst_pipeline_bench.sh` | 앱(`yvo_pipeline` dmabuf/NHCW) 대 GStreamer 연구 경로(`yvo_gst_pipeline --sink hailo`), batch 1/4/8 × 같은 slots. `results_raw.csv`·`results.csv` 앞 26열은 `pipeline_bench.sh` 와 같고 뒤에 도구 열이 붙는다(gst `decode_ms_mean` = nan, NaN 안전 중앙값). 바이너리는 `APP_BIN`·`GST_BIN`, `DETS=1` 검출 비교(`evidence/compare_b<B>`), `DRYRUN=1` 명령줄만 출력 | `07_results/gst_pipeline/` |
 | `dec_threads_bench.sh` | 앱의 FFmpeg HEVC 프레임 스레드 수(`YVO_DEC_THREADS`) — nhcw b8/s16 스레드 스윕(1·2·3·4·auto) + 모드별 auto 대 1 회귀 A/B(ptr·nhwc·b1·b4·gpu 후처리·지연·표시). 설정 형식 `id|threads|frames|args`(auto = 변수 제거). `results_raw.csv` 65열(스크립트 10 + RESULT_CSV 22 + RESULT_CSV2 33), NaN 안전 중앙값. 기본 매 실행 전 냉각(`COOL_EVERY=1`), 표시 실행은 `wlr-randr` HDMI-A-1 확인 + `timeout -s KILL 90`, `SKIP_DISPLAY=1`, `DRYRUN=1` | `07_results/dec_threads/` |

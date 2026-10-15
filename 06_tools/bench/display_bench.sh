@@ -12,9 +12,23 @@
 # ⚠ Split the axes: throughput verdicts use pace=asap, latency/drop verdicts use pace=source.
 #   With pace=source FPS is pinned to the source 30, making the "FPS ±2%" verdict meaningless.
 #
+# Compositor CPU (2026-10-16): cpu_ms_per_frame is the app process only (getrusage RUSAGE_SELF). To get
+#   "app + compositor" CPU/frame from the same runs, every run — display off too, since the idle compositor share is
+#   part of a fair comparison — copies /proc/<labwc pid>/stat right before and right after yvo_pipeline into
+#   raw/<id>_run<N>/labwc_stat_{pre,post}.txt (same method and file names as display_planes_bench.sh) and appends
+#   labwc_cpu_ms (user+sys delta) and labwc_cpu_ms_per_frame (/ frames) as the last 2 CSV columns.
+#   app + compositor = cpu_ms_per_frame + labwc_cpu_ms_per_frame. No labwc (headless) or a labwc that exited or was
+#   replaced during the run -> both nan; the run itself goes on. Caveats: the labwc window is the whole yvo_pipeline
+#   lifetime (init and teardown included), wider than the getrusage window of cpu_ms_per_frame; tick resolution is
+#   1/CLK_TCK s (10 ms) per endpoint.
+#
 # Usage:
 #   bash 06_tools/bench/display_bench.sh
 #   RUNS=3 FRAMES=900 ONLY='disp_on' bash 06_tools/bench/display_bench.sh
+#   CHECK_ONLY=1 bash 06_tools/bench/display_bench.sh                 # binary/path check only, exit
+#   OUT_DIR=/path [FORCE=1] [APPEND=1] bash ...                        # APPEND needs the same 61-column header
+#   Output: OUT_DIR (default 07_results/display_e2e) / {env_bench.txt, results_raw.csv (61 columns), results.csv,
+#           raw/<id>_run<N>/{stdout.log, hailort.log, labwc_stat_{pre,post}.txt}, raw/m5a_run1/, raw/_session/}
 set -euo pipefail
 
 PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -91,13 +105,14 @@ fi
 cat "$OUT_DIR/env_bench.txt"
 
 RAW="$OUT_DIR/results_raw.csv"
-# 22 RESULT_CSV fields + 33 RESULT_CSV2 fields after label + 4 script fields = 59 columns
+# 22 RESULT_CSV fields + 33 RESULT_CSV2 fields after label + 4 script fields + 2 labwc fields = 61 columns
 #   RESULT_CSV2 = 8 postproc fields (ok duplicates RESULT_CSV's ok, so the awk below drops it) + 14 display + 5 GPU NMS fields
 #                 + 6 plane-scanout fields ("-" except for wayland-planes / kms; see the RESULT_CSV2 comment in main.cpp)
+#   labwc_cpu_ms, labwc_cpu_ms_per_frame = compositor CPU over the run (labwc_cpu_cols in lib/common.sh; nan if no labwc).
 #   ⚠ That line is appended wholesale via cut -f3-, so if main.cpp appends fields this header must change too.
-#   It cannot be mixed via APPEND=1 with the old header lacking the 5 NMS fields (07_results/display_e2e/, 48 columns)
-#   nor with the 53-column header lacking the 6 scanout fields.
-CSV_HEADER="label,mode,layout,batch,slots,frames,wall_s,fps,cpu_ms_per_frame,decode_ms_mean,gpu_ms_mean,gpu_ms_p90,npu_ms_mean,npu_ms_p90,e2e_ms_mean,e2e_ms_p90,detections,hailo_t0,hailo_t1,soc_t0,soc_t1,ok,postproc,alloc,gpu_post_mean,gpu_post_p90,cpu_nms_us_mean,cand_mean,cand_max,cand_overflow,display,sync,pace,disp_convert_mean,disp_convert_p90,disp_overlay_mean,present_interval_median,e2e_glass_mean,e2e_glass_p90,presented,display_dropped,recreates,held_frames_max,slot_timeout_count,nms,gpu_nms_mean,gpu_nms_p90,nms_fallback,nms_verify_mismatch,scanout_zero_copy,plane_color_ok,hvs_underrun_delta,overlay_skipped,frame_cb_timeouts,zero_copy_feedback,run,cool_wait_s,hailort_warnings,hailort_errors"
+#   The APPEND=1 header check refuses older headers: 48 columns (no NMS fields, 07_results/display_e2e/),
+#   53 columns (no scanout fields) and 59 columns (no labwc fields, before 2026-10-16).
+CSV_HEADER="label,mode,layout,batch,slots,frames,wall_s,fps,cpu_ms_per_frame,decode_ms_mean,gpu_ms_mean,gpu_ms_p90,npu_ms_mean,npu_ms_p90,e2e_ms_mean,e2e_ms_p90,detections,hailo_t0,hailo_t1,soc_t0,soc_t1,ok,postproc,alloc,gpu_post_mean,gpu_post_p90,cpu_nms_us_mean,cand_mean,cand_max,cand_overflow,display,sync,pace,disp_convert_mean,disp_convert_p90,disp_overlay_mean,present_interval_median,e2e_glass_mean,e2e_glass_p90,presented,display_dropped,recreates,held_frames_max,slot_timeout_count,nms,gpu_nms_mean,gpu_nms_p90,nms_fallback,nms_verify_mismatch,scanout_zero_copy,plane_color_ok,hvs_underrun_delta,overlay_skipped,frame_cb_timeouts,zero_copy_feedback,run,cool_wait_s,hailort_warnings,hailort_errors,labwc_cpu_ms,labwc_cpu_ms_per_frame"
 if [[ "$APPEND" == "1" && -f "$RAW" ]]; then
   head -1 "$RAW" | grep -qx "$CSV_HEADER" || { echo "APPEND=1 but the existing $RAW header differs" >&2; exit 1; }
 else
@@ -126,12 +141,16 @@ for ((r = 1; r <= RUNS; r++)); do
     run_dir="$OUT_DIR/raw/${id}_run${r}"
     rm -rf "$run_dir"; mkdir -p "$run_dir"
     echo "[$(date +%T)] run $r/$RUNS $id (hailo $(hailo_temp) C)"
+    # Compositor CPU window: /proc/<labwc pid>/stat right before and right after the yvo_pipeline process (same pid).
+    lpid=$(labwc_pid)
+    if [[ -n "$lpid" ]]; then proc_stat "$lpid" "$run_dir/labwc_stat_pre.txt"; fi
     set +e
     # shellcheck disable=SC2086
     (cd "$run_dir" && "$BIN" --video "$VIDEO" --hef "$HEF" $args \
         "${frames_arg[@]}" --quiet --csv-label "$id" > stdout.log 2>&1)
     rc=$?
     set -e
+    if [[ -n "$lpid" ]]; then proc_stat "$lpid" "$run_dir/labwc_stat_post.txt"; fi
     nwarn=0; nerr=0
     if [[ -f "$run_dir/hailort.log" ]]; then
       nwarn=$(grep -E '\[warning\]' "$run_dir/hailort.log" | grep -cE "$WARN_RE" || true)
@@ -149,13 +168,19 @@ for ((r = 1; r <= RUNS; r++)); do
     #   l2 = postproc,alloc,gpu_post_mean,gpu_post_p90,cpu_nms_us_mean,cand_mean,cand_max,cand_overflow,[ok],14 display fields
     l2=$(awk -F, 'BEGIN{OFS=","}{ out=""; for(i=1;i<=NF;i++){ if(i==9) continue;
                                    out = (out=="" ? $i : out OFS $i) } print out }' <<<"$l2")
-    echo "$l1,$l2,$r,$COOL_WAITED,$nwarn,$nerr" >> "$RAW"
-    echo "  $(grep -E '^wall|^cpu |^held frames' "$run_dir/stdout.log" | tr '\n' ' ') hailo_warn=$nwarn err=$nerr rc=$rc"
+    # labwc_cpu_ms,labwc_cpu_ms_per_frame over the completed frames (field 6 of RESULT_CSV)
+    lcols=$(labwc_cpu_cols "$run_dir/labwc_stat_pre.txt" "$run_dir/labwc_stat_post.txt" "$(cut -d, -f6 <<<"$l1")")
+    echo "$l1,$l2,$r,$COOL_WAITED,$nwarn,$nerr,$lcols" >> "$RAW"
+    echo "  $(grep -E '^wall|^cpu |^held frames' "$run_dir/stdout.log" | tr '\n' ' ') labwc_ms/frame=${lcols#*,} hailo_warn=$nwarn err=$nerr rc=$rc"
   done
 done
 
 /usr/bin/python3 - "$RAW" "$OUT_DIR/results.csv" <<'EOF'
-import csv, statistics, sys
+import csv, math, statistics, sys
+
+def median_nan(vals):   # nan runs (e.g. labwc_* without a compositor) are left out; all nan -> nan
+    vals = [v for v in vals if not math.isnan(v)]
+    return statistics.median(vals) if vals else math.nan
 
 rows = list(csv.DictReader(open(sys.argv[1])))
 if not rows:
@@ -184,7 +209,7 @@ with open(sys.argv[2], "w", newline="") as f:
                ["fps_min", "fps_max", "hailort_warnings", "hailort_errors", "all_ok"])
     for lab in order:
         g = groups[lab]
-        med = [statistics.median(float(x[k]) for x in g) for k in num]
+        med = [median_nan([float(x[k]) for x in g]) for k in num]
         fps = [float(x["fps"]) for x in g]
         w.writerow([lab, g[0]["postproc"], g[0]["display"], g[0]["sync"], g[0]["pace"], len(g)] +
                    [f"{v:.3f}" for v in med] + [f"{min(fps):.2f}", f"{max(fps):.2f}",
@@ -192,7 +217,7 @@ with open(sys.argv[2], "w", newline="") as f:
                     sum(int(x["hailort_errors"]) for x in g),
                     int(all(x["ok"] == "1" for x in g))])
 
-show = ["fps_median", "cpu_ms_per_frame_median", "gpu_ms_mean_median", "e2e_ms_mean_median",
+show = ["fps_median", "cpu_ms_per_frame_median", "labwc_cpu_ms_per_frame_median", "gpu_ms_mean_median", "e2e_ms_mean_median",
         "disp_convert_mean_median", "disp_overlay_mean_median", "present_interval_median_median",
         "e2e_glass_mean_median", "presented_median", "display_dropped_median",
         "held_frames_max_median", "slot_timeout_count_median", "detections_median"]
