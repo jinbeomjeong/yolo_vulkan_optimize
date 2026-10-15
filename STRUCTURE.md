@@ -141,7 +141,7 @@
   make_reference_docx.py 서식 견본 생성기 → template/reference.docx (서식을 바꿀 때는 이 스크립트를 고치고 다시 만든다)
 ```
 
-- 그림 파일은 **스크립트 실행으로만** 만든다(손으로 고치지 않는다). 다이어그램은 예외로, `09_diagrams/*.graphml`을 yEd GUI로 내보낸 것이다.
+- 그림 파일은 **스크립트 실행으로만** 만든다(손으로 고치지 않는다). 다이어그램은 예외로, `09_diagrams/*.graphml`을 yEd로 내보낸 것이다(가상 화면 런처 `yed-auto export`, `09_diagrams/README.md`).
 - 담당: 그림 스크립트(`figNN_*`, `paper_style.py`, `build_figures.py`)는 python-expert, 실행·논문 삽입·커밋은 메인 에이전트(`10_paper`는 사용자 확인 대상). 절차는 `.claude/skills/paper-figures/`.
 - 수치의 출처는 `07_results` 정본뿐이다. 등록부의 행마다 생성 스크립트와 원본 경로를 적는다. 검사기 D3(`check_structure.py`)가 그림 파일 ↔ 등록부 행과 경로 존재를 대조한다.
 - docx 는 `build_docx.py` 실행으로만 만든다(산출물을 손으로 고치지 않는다 — 내용은 원고에서, 서식은 `make_reference_docx.py`에서 고친다). 그림은 `figures/` 의 PNG 를 넣는다.

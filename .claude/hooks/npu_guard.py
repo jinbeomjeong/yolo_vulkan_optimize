@@ -106,6 +106,8 @@ def classify(shell_cmd):
             load_hit = "ninja"
         elif base == "perf" and re.search(r"\b(record|stat)\b", seg):
             load_hit = "perf"
+        elif base == "yed-auto" or (base == "java" and "yed.jar" in seg):
+            load_hit = "yEd (JVM + Xvfb)"
     return npu_hit, load_hit
 
 

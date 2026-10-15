@@ -2,7 +2,7 @@
 
 `10_paper/paper_ko.md`에 들어가는 그림의 목록이다. 규칙의 정본은 `STRUCTURE.md` §2.7이고, 절차는 `.claude/skills/paper-figures/SKILL.md`에 있다.
 
-- 그림 파일(`figNN_<slug>.svg|png`)은 `06_tools/python/paper/`의 스크립트로만 만든다. 다만 다이어그램은 yEd 내보내기로 만든다.
+- 그림 파일(`figNN_<slug>.svg|png`)은 `06_tools/python/paper/`의 스크립트로만 만든다. 다만 다이어그램은 yEd 내보내기(가상 화면 런처 `yed-auto export`, `09_diagrams/README.md` §내보내기)로 만든다.
 - 수치는 `07_results` 정본에서만 가져온다. 행마다 생성 스크립트와 원본 경로를 적고, 원본 경로는 저장소 루트 기준으로 쓴다.
 - 조건 약어:
   - **구**: 960 MHz · 디코더 자동 스레드 · CPU NMS
@@ -21,5 +21,5 @@
 
 ### 예정 (번호만 비워 둠)
 
-- 그림 3 `fig03_pipeline` — §4.1 블록도. 원본 `09_diagrams/pipeline_paper.graphml`을 yEd GUI로 내보낸다(사용자 동석 시).
+- 그림 3 `fig03_pipeline` — §4.1 블록도. 원본 `09_diagrams/pipeline_paper.graphml`을 `yed-auto export`로 내보낸다(사용자 동석 불필요).
 - 그림 6 `fig06_o2_breakdown` — §6.6.3 (5) O2 지연 분해. 깨움 코드 측정 회차가 나온 뒤 `input_pacing/runs/frame_log`과 전후 비교로 그린다.

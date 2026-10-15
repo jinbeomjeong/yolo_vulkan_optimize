@@ -7,7 +7,7 @@
 |---|---|---:|
 | [`pipeline_overview.graphml`](pipeline_overview.graphml) | 개요 1장. 소스 → 디코드 → GPU 전처리 → NPU → GPU 후처리 → GPU NMS → 오버레이 → present → HDMI 와 **표시 분기·재합류**, 구간별 실측 지연, **대안 표시 경로(HVS 평면 스캔아웃)** | 29 / 19 |
 | [`pipeline_detail.graphml`](pipeline_detail.graphml) | 상세 1장. **스레드 경계**(메인 / HailoRT 콜백), **dma-buf 소유권 3그룹**(+ 평면 백엔드의 ④ AB24 박스 dma-buf), 슬롯 수명, 제약·전제·함정·종료 순서, 대안 표시 경로(`PlaneDisplay`), 미연결 경로 | 39 / 22 |
-| [`pipeline_paper.graphml`](pipeline_paper.graphml) | **논문판** 1장(폭 17.5 cm 그림용 단순화판, `10_paper/paper_ko.md` §4.1 의 ASCII 그림을 대체). HEVC 파일 → HW 디코더 → GPU 전처리 → NPU → GPU 후처리(디코드 + NMS) → Vulkan 합성 → present → HDMI, **대안 표시 경로(HVS 평면, 청색 점선)**, dma-buf 전달을 간선 라벨로, CPU 의 몫(제어만, 복사 0)을 띠 노드로. 번호 ①~⑦ 은 §4.1 그대로. **구간 시간 수치는 넣지 않았다**(조건에 따라 달라짐 — 수치는 위 두 장과 07_results). 내보내기: yEd File ▸ Export → `10_paper/figures/fig03_pipeline.svg` / `.png` | 20 / 12 |
+| [`pipeline_paper.graphml`](pipeline_paper.graphml) | **논문판** 1장(폭 17.5 cm 그림용 단순화판, `10_paper/paper_ko.md` §4.1 의 ASCII 그림을 대체). HEVC 파일 → HW 디코더 → GPU 전처리 → NPU → GPU 후처리(디코드 + NMS) → Vulkan 합성 → present → HDMI, **대안 표시 경로(HVS 평면, 청색 점선)**, dma-buf 전달을 간선 라벨로, CPU 의 몫(제어만, 복사 0)을 띠 노드로. 번호 ①~⑦ 은 §4.1 그대로. **구간 시간 수치는 넣지 않았다**(조건에 따라 달라짐 — 수치는 위 두 장과 07_results). 내보내기: `yed-auto export`(아래 §내보내기) → `10_paper/figures/fig03_pipeline.svg` / `.png` | 20 / 12 |
 
 세 장 모두 **좌표를 직접 지정**해 두었으므로 yEd 에서 레이아웃을 다시 돌릴 필요가 없다.
 모든 노드의 `description`(`d5`)에 **소스 파일 절대경로·심볼·수치 출처**가 들어 있다 —
@@ -30,7 +30,22 @@ DISPLAY=:0 java $(tr -d '\r' < /home/pi/yed/yed.vmoptions | tr '\n' ' ') -jar ye
 Swing 에는 Wayland 백엔드가 없으므로 `WAYLAND_DISPLAY` 가 아니라 `DISPLAY=:0`(XWayland) 이다.
 창이 뜨고도 내용이 안 그려져 보이면 창을 한 번 클릭해 포커스를 준다(XWayland + Swing 의 첫 repaint 문제).
 
-SVG/PNG/PDF 내보내기는 yEd GUI 에서 사람이 한다(File ▸ Export). yEd 에는 헤드리스 변환 모드가 없다.
+위 명령은 **사용자 화면**에 창을 띄운다 — 사람이 보고 편집할 때 쓴다(`CLAUDE.md` §사용자 확인: 사용자 환경 점유).
+
+## 내보내기·렌더 확인 (가상 화면, 사람 불필요)
+
+yEd 자체에는 명령행 내보내기가 없다. 대신 전역 런처 `~/.claude/tools/yed-auto/yed-auto` 가 yEd 를 비공개 Xvfb 화면에서 띄워
+File ▸ Export 를 대신 눌러 준다. 사용자 화면을 건드리지 않고, 원본 파일과 `~/.yEd` 설정을 바꾸지 않는다(임시 사본으로 연다).
+
+```bash
+~/.claude/tools/yed-auto/yed-auto check  09_diagrams/pipeline_paper.graphml          # 열림·노드/간선 수·로드 오류
+~/.claude/tools/yed-auto/yed-auto export 09_diagrams/pipeline_paper.graphml <out>.svg  # .png .pdf 도 같다
+~/.claude/tools/yed-auto/yed-auto render 09_diagrams/pipeline_paper.graphml <out>.png  # 화면 캡처(눈으로 확인용)
+```
+
+- 각 형식의 옵션 대화상자는 기본값으로 통과한다. 비트맵 너비는 `--width PX`, 배율은 `--scale S`.
+- 측정 중(`build/.bench_running`)에는 `npu_guard` 훅이 막는다 — JVM·Xvfb 가 몇 초간 CPU 를 쓴다.
+- 결정: yEd 는 가상 화면 런처로 자동화한다(Xvfb 설치, Java 런처) (사용자 결정, 2026-10-16).
 
 ## 색 규약 (세 장 공통)
 

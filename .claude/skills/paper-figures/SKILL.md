@@ -69,7 +69,7 @@ description: >
 ## 6. 다이어그램
 
 - 원본은 `09_diagrams/*.graphml`이다. 논문용으로 줄인 판은 `09_diagrams/pipeline_paper.graphml`로 `graphml-expert`가 만든다. 원본 2장의 색 규약과 ⓒ/ⓝ 수치 표기를 따른다.
-- yEd에는 헤드리스 내보내기가 없다. **사용자가 자리에 있을 때** yEd GUI(File ▸ Export)로 SVG/PNG를 내보내 `10_paper/figures/`에 둔다. 여는 방법은 `09_diagrams/README.md`에 있다.
+- 내보내기는 가상 화면 런처로 한다: `~/.claude/tools/yed-auto/yed-auto export 09_diagrams/pipeline_paper.graphml 10_paper/figures/fig03_pipeline.svg`(`.png`도 같은 방법). 사용자 동석이 필요 없다. 내보낸 PNG는 Read로 직접 본다(한글 라벨·잘림). 사용법은 `09_diagrams/README.md` §내보내기.
 - 다이어그램에 적힌 수치를 고치는 일은 그 측정 영역의 전문가가 맡는다.
 
 ## 7. 재측정 뒤

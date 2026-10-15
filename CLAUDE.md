@@ -83,7 +83,7 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론 파이프�
 | 모델·**HEF 교체** | 재컴파일(DFC)은 x86 전용이라 Pi에서는 분석·측정까지만 한다 |
 | **시스템 변경** — `sudo`, sysctl, `/boot/firmware/config.txt`, 펌웨어·드라이버, 패키지 설치(apt·pip), 재부팅 | 건별로 명령·기대 효과·되돌리는 법을 보고하고, **승인받은 그 명령만** 메인 에이전트가 `sudo -S -p '' … < /home/pi/workspace/pwd.txt`로 실행한다(암호 파일은 읽거나 출력하지 않는다). 서브에이전트는 하지 않는다. apt 설치 전에는 `dpkg -l`로 이미 설치된 것과 충돌(제거될 패키지)을 먼저 본다. 결정: 시스템 변경은 건별 승인 뒤 메인 에이전트가 실행 (사용자 결정, 2026-10-14) |
 | 보관된 결과 폴더 **덮어쓰기**(`FORCE=1`) | `guard_out_dir`가 막는 것을 푸는 일이다 |
-| **사용자 환경 점유** — kms 세션 전환(`loginctl activate`), yEd GUI 창, 장시간 측정 | 사용자가 자리에 있을 때만. 측정은 `npu_guard` 락으로 다른 작업을 막는다 |
+| **사용자 환경 점유** — kms 세션 전환(`loginctl activate`), 사용자 화면(`:0`)의 yEd GUI 창(가상 화면 런처 `yed-auto`는 해당 없음), 장시간 측정 | 사용자가 자리에 있을 때만. 측정은 `npu_guard` 락으로 다른 작업을 막는다 |
 | **설계 이탈** — 승인된 계획·설계와 다르게 가야 할 때 | 고치기 전에 보고한다. 이탈한 채로 끝내고 사후 통보하지 않는다 |
 
 **주체.** `CLAUDE.md`·`STRUCTURE.md`·`.claude/**`·`~/.claude/**`·`10_paper/`·`06_tools/structure_rules.toml`은
