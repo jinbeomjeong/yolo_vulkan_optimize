@@ -96,20 +96,20 @@ File ▸ Export 를 대신 눌러 준다. 사용자 화면을 건드리지 않�
 |---|---|
 | GPU 구간별 median `[1150 MHz]` (전처리 1.812 / 후처리 0.400 / 변환 3.662 / 오버레이 0.124 ms, NMS 포함 5패스 합 6.036 ms = 21.1%) — 2026-10-16 재측정, 현재 기본값(1스레드·GPU NMS), `disp_asap` | [`07_results/display_e2e/runs/v3d1150_20261016/summary.md`](../07_results/display_e2e/runs/v3d1150_20261016/summary.md) §2.1 |
 | (이전 값) ⓒ GPU 4패스 구간별 median (전처리 2.088 / 후처리 0.626 / 변환 4.153 / 오버레이 0.128 ms, 합 6.995 ms) — V3D 960 MHz. 노드 `d5` 에 "이전 값"으로만 남는다 | [`07_results/display_e2e/summary.md`](../07_results/display_e2e/summary.md) §3.1 |
-| ⓒ glass-to-glass 101.20 ms(median) · p90 118.36 ms | 같은 문서 §3.2 |
-| ⓒ FPS · CPU ms/f · 검출 3369 · dropped 0 · held_frames_max | 같은 문서 §3 표 |
+| `n_note_perf` glass-to-glass 100.10 ms(median) · p90 116.04 ms, FPS · CPU ms/f · 검출 3369 · dropped 0 · held_frames_max · GPU 5패스 합 — 2026-10-16 회차 `[1150 MHz]` | [`07_results/display_e2e/runs/v3d1150_20261016/summary.md`](../07_results/display_e2e/runs/v3d1150_20261016/summary.md) §2.1·§2.2 |
+| (이전 값) ⓒ glass-to-glass 101.20 ms(median) · p90 118.36 ms, FPS · CPU ms/f — V3D 960 MHz | [`07_results/display_e2e/summary.md`](../07_results/display_e2e/summary.md) §3·§3.2 |
 | ⓝ GPU NMS median b2s4 0.0486 / p90 0.0578 ms · b8s16 0.0500 / 0.0595 ms · fallback 0 · 검출 9457 바이트 동일 · CSD 잡 4 → 5 · 표시 off 기준선 b2s4 34.99 fps / CPU 0.908 ms/f, b8s16 51.50 / 0.869 | [`07_results/gpu_nms_e2e/summary.md`](../07_results/gpu_nms_e2e/summary.md) §2·§3·§5 |
 | ⓝ 평면 표시 b2/s4 — CPU vk 2.059 → wlp 1.569 / kms 1.576 ms/f · V3D 10.19 → 2.89 / 2.86 ms/f(TFU 3.72) · 평면 slot wait 28~30 ms · 박스 그리기+지우기 평균 0.336 / 0.330 ms · vk_source convert 평균 3.234 / overlay 0.111 ms | [`07_results/display_planes_e2e/summary.md`](../07_results/display_planes_e2e/summary.md) §2·§3 |
 | ⓝ 평면 표시 b2/s6 — slot wait 0 · held_frames_max 5 · CPU 2.189 → 1.747 / 1.759 ms/f · 디코드 → 화면 평균 vk 101.43 / wlp 102.25 / kms 101.58 ms · 늦은 프레임 약 25~27% | [`07_results/display_planes_e2e/runs/slots6/summary.md`](../07_results/display_planes_e2e/runs/slots6/summary.md) §2·§3 |
 | ⓒ decode call 0.107 ms(FFmpeg 자동 5스레드) · NPU median 69.7 / mean 73.9 ms · present 간격 16.955 ms · cpu nms 2.667 µs (CPU NMS 당시 측정 — 지금 기본은 GPU NMS, description 에만 남김) | [`07_results/display_e2e/raw/disp_source_run1/stdout.log`](../07_results/display_e2e/raw/disp_source_run1/stdout.log) |
 | 운용점 `b2/s4 --postproc gpu` 와 최종 실행 커맨드 | [`07_results/op_point/summary.md`](../07_results/op_point/summary.md) §8 |
 | 스레드·슬롯 규약, 종료 순서 | `01_src/pipeline/main.cpp:1-54` |
-| `slots + gpu_depth <= 10` 강제 (Vulkan 합성 경로) | `01_src/pipeline/slot_exchange.cpp:57-62` (호출 `main.cpp:391-402`) |
-| 평면 백엔드 보유 상한 `slots + 1 (+5 latest) <= 10`. 평면 경로는 release 까지 최대 5장을 쥐어 b2/s4 에서 슬롯 대기 28~30 ms — **표시 on 평면 경로는 `--slots 6` 필요**(ⓝ [`runs/slots6`](../07_results/display_planes_e2e/runs/slots6/summary.md) 결론 4) | `01_src/pipeline/slot_exchange.cpp:33-47` (호출 `main.cpp:391-402`) |
+| `slots + gpu_depth <= 10` 강제 (Vulkan 합성 경로) | `01_src/pipeline/slot_exchange.cpp:64-69` (호출 `main.cpp:391-402`) |
+| 평면 백엔드 보유 상한 `slots + 1 (+5 latest) <= 10`. 평면 경로는 release 까지 최대 5장을 쥐어 b2/s4 에서 슬롯 대기 28~30 ms — **표시 on 평면 경로는 `--slots 6` 필요**(ⓝ [`runs/slots6`](../07_results/display_planes_e2e/runs/slots6/summary.md) 결론 4) | `01_src/pipeline/slot_exchange.cpp:33-54` (호출 `main.cpp:391-402`) |
 | `--postproc gpu` ⇒ `--mode dmabuf --layout nhcw` 강제 | `01_src/pipeline/main.cpp:487-492` |
 | `--nms gpu\|cpu\|verify`(기본 gpu)는 `--postproc gpu` 전용 | `01_src/pipeline/main.cpp:32-34`, `:493-496` |
 | 스레드 규율(VkQueue 1개 → Vulkan 은 메인 스레드만) | `01_src/pipeline/infer_stage.hpp:9-17` |
-| HailoRT 콜백 람다 / CPU NMS fallback 호출 | `01_src/pipeline/gpu_postproc_stage.cpp:154` / `:202` (억제 분기 `finish()` `:190-227`) |
+| HailoRT 콜백 람다 / CPU NMS fallback 호출 | `01_src/pipeline/gpu_postproc_stage.cpp:154` / `:203` (억제 분기 `finish()` `:191-228`) |
 | GPU NMS (`efficient_nms.comp`, yolo_decode 뒤 같은 커맨드 버퍼) | `01_src/vulkan/yolo_postproc.hpp:10`, `01_src/vulkan/efficient_nms.hpp` |
 | 평면 스캔아웃(대안 표시 경로) | `01_src/display/plane_display.hpp:1-42`, `overlay_plane.hpp`, `wayland_plane_scanout.hpp:1-30`, `kms_scanout.hpp:1-57` |
 | `DrmFrame` · `PreprocOutput` · `Detection` 계약 | `01_src/core/frame_types.hpp` |
@@ -159,7 +159,7 @@ id 로 찾으면 된다 (`grep -n 'id="n_pre"' pipeline_overview.graphml`).
 | `n_conv` | 표시 변환 `display_convert.comp` median (`d5` 에 ⓝ vk_source 평균 3.234 ms · TFU 3.72 ms/f) |
 | `n_ovl` | 오버레이 `overlay_boxes.comp` median (`d5` 에 ⓝ vk_source 평균 0.111 ms) |
 | `n_pres` | present 간격 median |
-| `n_note_perf` | FPS · CPU · glass-to-glass · GPU 5패스 합(`[1150 MHz]`, `display_e2e/runs/v3d1150_20261016`) (**요약 수치는 전부 여기**). 마지막 줄은 ⓝ 현재 기본 표시 off 기준선(`gpu_nms_e2e`) |
+| `n_note_perf` | FPS · CPU · glass-to-glass · GPU 5패스 합(`[1150 MHz]`, `display_e2e/runs/v3d1150_20261016`) (**요약 수치는 전부 여기**). 마지막 줄은 같은 회차의 표시 off b2s4 (`gpu_nms_e2e` 기준선은 `d5`) |
 | `n_note_cmd` | 최종 실행 커맨드 (`op_point/summary.md` §8.3 과 한 글자도 다르면 안 된다) |
 | `n_note_planes` | 대안 표시 경로 요약·상태와 ⓝ 정식 측정 요약(6~8행: CPU · V3D · 지연 · `--slots 6` 필요). b2/s4·b2/s6 전문과 늦은 프레임은 `d5` |
 | `n_ovlp` | `overlay_boxes_buf.spv`(overlay_boxes.comp 의 storage-buffer 변형) + 지우기의 V3D 평균 — ⓝ wlp 0.336 / kms 0.330 ms(b2/s4). Vulkan 합성의 `overlay_boxes.comp` 값과 이름만 같다 |

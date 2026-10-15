@@ -114,7 +114,7 @@ set_dma_buffer(NHCW export fd)<y:LabelModel>
         </data>
       </node>
       <node id="n0::n4">
-        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/gpu_postproc_stage.cpp GpuPostprocStage::push_ready_to_gpu() (:164) → YoloPostproc::submit (:185). --nms gpu|verify 면 yolo_decode.comp 뒤 같은 커맨드 버퍼에 efficient_nms.comp 가 기록된다(01_src/vulkan/yolo_postproc.hpp:10). main.cpp:1-54 '⚠ NPU 완료분을 GPU 로 미는 일도 메인 스레드가 한다 — VkQueue 가 하나뿐이라 vkQueueSubmit 을 다른 스레드에서 하면 안 되기 때문이다.'</data>
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/gpu_postproc_stage.cpp GpuPostprocStage::push_ready_to_gpu() (:165) → YoloPostproc::submit (:186). --nms gpu|verify 면 yolo_decode.comp 뒤 같은 커맨드 버퍼에 efficient_nms.comp 가 기록된다(01_src/vulkan/yolo_postproc.hpp:10). main.cpp:1-54 '⚠ NPU 완료분을 GPU 로 미는 일도 메인 스레드가 한다 — VkQueue 가 하나뿐이라 vkQueueSubmit 을 다른 스레드에서 하면 안 되기 때문이다.'</data>
         <data key="d6">
           <y:GenericNode configuration="com.yworks.flowchart.process">
             <y:Geometry height="54.0" width="480.0" x="130.0" y="456.0"/>
@@ -132,7 +132,7 @@ YoloPostproc::submit (decode → efficient_nms)  [vkQueueSubmit, 메인 전용]<
         </data>
       </node>
       <node id="n0::n5">
-        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/gpu_postproc_stage.cpp:190 GpuPostprocStage::finish(). --nms gpu(기본): pp_-&gt;read_nms 로 efficient_nms.comp 결과를 읽는다(:215). IoU 보호대·용량 초과·잘못된 클래스 프레임만 yvo::cpu_nms_greedy_by_class 로 fallback (:198-227, 호출 :202). --nms cpu: CPU 억제만(:209-210). --nms verify: 둘 다 돌려 비트 비교(:222-224). GPU NMS 정식 측정(2026-10-08, 07_results/gpu_nms_e2e/summary.md §2·§3, V3D 1150 MHz · 디코더 프레임 스레드 1 · 표시 off, 설정당 3회 중앙값): b2s4 median 0.0486 / p90 0.0578 ms, b8s16 0.0500 / 0.0595 ms, fallback 0, V3D CSD 잡 프레임당 4 → 5, 전체 1816프레임 검출 9457 이 --nms cpu 와 바이트 동일(--nms verify 불일치 0). 같은 실험의 CPU NMS 는 약 2 µs/frame 이라 판정은 'CPU 절감'이 아니라 '회귀 없음 + GPU 비용 약 0.05 ms'다 — 라벨 3행. display_e2e(2026-09-20) 수치는 CPU NMS · V3D 960 MHz(부트로더 2025-12-08) · FFmpeg 자동 5스레드 당시 값: 07_results/display_e2e/raw/disp_source_run1/stdout.log 'cpu nms us median 2.667', 'gpu post ms median 0.588'.</data>
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/gpu_postproc_stage.cpp:191 GpuPostprocStage::finish(). --nms gpu(기본): pp_-&gt;read_nms 로 efficient_nms.comp 결과를 읽는다(:216). IoU 보호대·용량 초과·잘못된 클래스 프레임만 yvo::cpu_nms_greedy_by_class 로 fallback (:199-228, 호출 :203). --nms cpu: CPU 억제만(:210-211). --nms verify: 둘 다 돌려 비트 비교(:223-225). GPU NMS 정식 측정(2026-10-08, 07_results/gpu_nms_e2e/summary.md §2·§3, V3D 1150 MHz · 디코더 프레임 스레드 1 · 표시 off, 설정당 3회 중앙값): b2s4 median 0.0486 / p90 0.0578 ms, b8s16 0.0500 / 0.0595 ms, fallback 0, V3D CSD 잡 프레임당 4 → 5, 전체 1816프레임 검출 9457 이 --nms cpu 와 바이트 동일(--nms verify 불일치 0). 같은 실험의 CPU NMS 는 약 2 µs/frame 이라 판정은 'CPU 절감'이 아니라 '회귀 없음 + GPU 비용 약 0.05 ms'다 — 라벨 3행. display_e2e(2026-09-20) 수치는 CPU NMS · V3D 960 MHz(부트로더 2025-12-08) · FFmpeg 자동 5스레드 당시 값: 07_results/display_e2e/raw/disp_source_run1/stdout.log 'cpu nms us median 2.667', 'gpu post ms median 0.588'.</data>
         <data key="d6">
           <y:GenericNode configuration="com.yworks.flowchart.process">
             <y:Geometry height="54.0" width="480.0" x="130.0" y="540.0"/>
@@ -187,7 +187,7 @@ GPU NMS 중앙 0.0486 · p90 0.0578 ms (b2s4) · fallback 0 [1150 MHz]<y:LabelMo
         </data>
       </node>
       <node id="n0::n8">
-        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/display/plane_display.hpp PlaneDisplay (DisplaySink 의 두 번째 구현, 스레드: 전부 메인 스레드). 대안 표시 경로 --display-backend wayland-planes (WaylandPlaneScanout: labwc 에 linux-dmabuf wl_buffer, 부모 surface = 영상, sync subsurface = 박스) / kms (KmsScanout: KMS atomic 직접 커밋, card1 DRM master 필요). 영상은 디코더 NV12 SAND128 dma-buf 를 그대로 HVS 영상 평면에, 박스는 OverlayPlane 이 overlay_boxes_buf.spv 로 그린 AB24 LINEAR dma-buf(링 3개)를 그 위 평면에 올린다. display_convert.comp 를 거치지 않는다. display_done 은 submit 펜스가 아니라 스캔아웃 release(wl_buffer.release / 다음 flip) 때 세운다(plane_display.hpp:10-18). 01_src/pipeline/main.cpp:21-29, slot_exchange.cpp:33-47. 상태: 정식 측정 완료(2026-10-08, V3D 1150 MHz · 디코더 프레임 스레드 1 · --nms gpu, HDMI 1080p60, matched · source 페이싱). b2/s4(07_results/display_planes_e2e/summary.md): CPU vk 2.059 → wayland-planes 1.569 / kms 1.576 ms/f, V3D 10.19 → 2.89 / 2.86 ms/f(TFU 3.72 ms 소멸), 그러나 프레임을 release 까지 최대 5장 쥐어 슬롯 대기 평균 28~30 ms. b2/s6(07_results/display_planes_e2e/runs/slots6/summary.md): slot wait 0, held_frames_max 5, CPU 2.189 → 1.747 / 1.759 ms/f(−0.44 ms, −20%), V3D 10.22 → 2.86 / 2.83 ms/f(−72%), 디코드 → 화면 평균 vk 101.43 / wlp 102.25 / kms 101.58 ms(지연 이득 없음). wayland-planes ≈ kms. 표시 on 평면 경로는 --slots 6 이 필요하다 — 라벨 6행. 열린 항목: source 페이싱에서 프레임의 약 25~27% 가 한 vblank 늦게 나간다(원인 미검증).</data>
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/display/plane_display.hpp PlaneDisplay (DisplaySink 의 두 번째 구현, 스레드: 전부 메인 스레드). 대안 표시 경로 --display-backend wayland-planes (WaylandPlaneScanout: labwc 에 linux-dmabuf wl_buffer, 부모 surface = 영상, sync subsurface = 박스) / kms (KmsScanout: KMS atomic 직접 커밋, card1 DRM master 필요). 영상은 디코더 NV12 SAND128 dma-buf 를 그대로 HVS 영상 평면에, 박스는 OverlayPlane 이 overlay_boxes_buf.spv 로 그린 AB24 LINEAR dma-buf(링 3개)를 그 위 평면에 올린다. display_convert.comp 를 거치지 않는다. display_done 은 submit 펜스가 아니라 스캔아웃 release(wl_buffer.release / 다음 flip) 때 세운다(plane_display.hpp:10-18). 01_src/pipeline/main.cpp:21-29, slot_exchange.cpp:33-54. 상태: 정식 측정 완료(2026-10-08, V3D 1150 MHz · 디코더 프레임 스레드 1 · --nms gpu, HDMI 1080p60, matched · source 페이싱). b2/s4(07_results/display_planes_e2e/summary.md): CPU vk 2.059 → wayland-planes 1.569 / kms 1.576 ms/f, V3D 10.19 → 2.89 / 2.86 ms/f(TFU 3.72 ms 소멸), 그러나 프레임을 release 까지 최대 5장 쥐어 슬롯 대기 평균 28~30 ms. b2/s6(07_results/display_planes_e2e/runs/slots6/summary.md): slot wait 0, held_frames_max 5, CPU 2.189 → 1.747 / 1.759 ms/f(−0.44 ms, −20%), V3D 10.22 → 2.86 / 2.83 ms/f(−72%), 디코드 → 화면 평균 vk 101.43 / wlp 102.25 / kms 101.58 ms(지연 이득 없음). wayland-planes ≈ kms. 표시 on 평면 경로는 --slots 6 이 필요하다 — 라벨 6행. 열린 항목: source 페이싱에서 프레임의 약 25~27% 가 한 vblank 늦게 나간다(원인 미검증).</data>
         <data key="d6">
           <y:GenericNode configuration="com.yworks.flowchart.process">
             <y:Geometry height="92.0" width="220.0" x="390.0" y="792.0"/>
@@ -258,7 +258,7 @@ s6 필요 · V3D −72% · CPU −20%<y:LabelModel>
         </data>
       </node>
       <node id="n1::n1">
-        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/gpu_postproc_stage.cpp:155-160. 메인 스레드의 push_ready_to_gpu() 가 batch.swap(ready_) 로 통째로 가져간다.</data>
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/gpu_postproc_stage.cpp:155-161. 메인 스레드의 push_ready_to_gpu() 가 batch.swap(ready_) 로 통째로 가져간다.</data>
         <data key="d6">
           <y:GenericNode configuration="com.yworks.flowchart.process">
             <y:Geometry height="54.0" width="420.0" x="790.0" y="204.0"/>
@@ -421,7 +421,7 @@ FOREIGN 큐 소유권 전환 (release / acquire)<y:LabelModel>
       </data>
     </node>
     <node id="n4">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/slot_exchange.cpp:57-62 의 시작 시 검사(Vulkan 합성 경로, 호출 main.cpp:391-402). 평면 백엔드(wayland-planes / kms)는 slot_exchange.cpp:33-47 에서 slots + 1 (+ latest 면 PlaneDisplay::kExtraHeldBeyondSlots 5, 정의 01_src/display/plane_display.hpp:142) ≤ 10 으로 따로 막는다 — 프레임을 스캔아웃 release 까지 쥐기 때문이다. '⚠ 디코더 13프레임 제약: 동시에 약 13프레임을 넘게 잡으면 디코더가 에러 없이 멈춘다. matched 는 slots + gpu_depth 를, latest 는 gpu_depth + image_count 를 잡는다. 여유를 두고 10 에서 막는다.' 운용점 b2/s4 는 4+3=7 (실측 held_frames_max 4, 여유 6). 평면 경로 정식 측정(2026-10-08, V3D 1150 MHz · 디코더 1스레드): 평면 경로는 프레임을 release 까지 최대 5장 쥐어(held_frames_max 5) b2/s4 에서는 디코드된 프레임이 평균 28~30 ms 슬롯을 기다리고 fps 가 29.23~29.33 으로 떨어진다(07_results/display_planes_e2e/summary.md 결론 4). b2/s6 에서는 slot wait 0, fps 29.87~29.90(runs/slots6/summary.md 결론 1·4) — 표시 on 평면 경로의 운용점은 b2/s6 이고, matched 보유 상한은 6 + 1 = 7 ≤ 10 이다. 라벨 3행.</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/slot_exchange.cpp:64-69 의 시작 시 검사(Vulkan 합성 경로, 호출 main.cpp:391-402). 평면 백엔드(wayland-planes / kms)는 slot_exchange.cpp:33-54 에서 slots + 1 (+ latest 면 PlaneDisplay::kExtraHeldBeyondSlots 5, 정의 01_src/display/plane_display.hpp:142) ≤ 10 으로 따로 막는다 — 프레임을 스캔아웃 release 까지 쥐기 때문이다. '⚠ 디코더 13프레임 제약: 동시에 약 13프레임을 넘게 잡으면 디코더가 에러 없이 멈춘다. matched 는 slots + gpu_depth 를, latest 는 gpu_depth + image_count 를 잡는다. 여유를 두고 10 에서 막는다.' 운용점 b2/s4 는 4+3=7 (실측 held_frames_max 4, 여유 6). 평면 경로 정식 측정(2026-10-08, V3D 1150 MHz · 디코더 1스레드): 평면 경로는 프레임을 release 까지 최대 5장 쥐어(held_frames_max 5) b2/s4 에서는 디코드된 프레임이 평균 28~30 ms 슬롯을 기다리고 fps 가 29.23~29.33 으로 떨어진다(07_results/display_planes_e2e/summary.md 결론 4). b2/s6 에서는 slot wait 0, fps 29.87~29.90(runs/slots6/summary.md 결론 1·4) — 표시 on 평면 경로의 운용점은 b2/s6 이고, matched 보유 상한은 6 + 1 = 7 ≤ 10 이다. 라벨 3행.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="79.7" width="340.0" x="1300.0" y="75.0"/>
@@ -564,10 +564,10 @@ GPU 구간별 median : 07_results/display_e2e/runs/v3d1150_20261016/summary.md �
 실행별 원시 출력  : 07_results/display_e2e/raw/disp_source_run1/stdout.log
 운용점 · 최종 커맨드 : 07_results/op_point/summary.md §8
 스레드 · 슬롯 규약 : 01_src/pipeline/main.cpp:1-54
-slots+gpu_depth ≤ 10 : 01_src/pipeline/slot_exchange.cpp:57-62 (평면 :33-47)
+slots+gpu_depth ≤ 10 : 01_src/pipeline/slot_exchange.cpp:64-69 (평면 :33-54)
 --postproc gpu 전제 : 01_src/pipeline/main.cpp:487-492
 스레드 규율      : 01_src/pipeline/infer_stage.hpp:9-17
-콜백 람다 :154 / NMS fallback :202 : gpu_postproc_stage.cpp
+콜백 람다 :154 / NMS fallback :203 : gpu_postproc_stage.cpp
 평면 표시 : 01_src/display/plane_display.hpp
 버퍼 계약       : 01_src/core/frame_types.hpp
 측정 조건 : GPU 구간·NMS·평면 외 수치는 960 MHz · 자동 5스레드 · CPU NMS

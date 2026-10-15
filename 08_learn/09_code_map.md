@@ -108,7 +108,7 @@ GPU 전처리를 테스트하는 `test_preproc`을 빌드할 때 Wayland 라이�
 
 > ⚠ **여기 적힌 함정이 실제 함정이다.** 예를 들어 "디코더는 약 13프레임 이상 붙잡으면
 > 에러 없이 조용히 멈춘다"는 문장 때문에 `slots + gpu_depth <= 10` 검사가
-> [`slot_exchange.cpp:30-63`](../01_src/pipeline/slot_exchange.cpp) 의 `validate_slot_budget()` 에 들어 있다(`slots + gpu_depth` 합 검사는 :57-62, HVS 평면 백엔드용 보유 검사는 :33-47, 호출은 `main.cpp:391-402`).
+> [`slot_exchange.cpp:30-71`](../01_src/pipeline/slot_exchange.cpp) 의 `validate_slot_budget()` 에 들어 있다(`slots + gpu_depth` 합 검사는 :64-69, HVS 평면 백엔드용 보유 검사는 :33-54, 호출은 `main.cpp:391-402`).
 
 ### 3단계 — 수식의 원문을 본다 (2시간)
 

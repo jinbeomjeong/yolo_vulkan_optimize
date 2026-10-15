@@ -13,7 +13,7 @@
 // ╚══════════════════════════════════════════════════════════════════════════════════════════╝
 //
 // R0. Coordinate system — affine absorption
-//     `Detection` is already in **source 1920x1080 coordinates** (`hailo_runner.cpp:54-82` does the inverse transform).
+//     `Detection` is already in **source 1920x1080 coordinates** (`hailo_runner.cpp:55-81` does the inverse transform).
 //     The transform to canvas (swapchain image) coordinates is done only by the single push-constant affine:
 //         fx = x * sx + tx,   fy = y * sy + ty      (all float32)
 //     If the canvas is 1920x1080 it is the **identity** (sx=sy=1, tx=ty=0); if smaller, the same uniform scale + centering

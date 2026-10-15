@@ -36,14 +36,14 @@ build/bin/yvo_pipeline \
   --display on --display-fullscreen --display-sync matched --display-pace source
 ```
 
-위 커맨드(`--display-pace source`)의 실측:
-**29.91 FPS(소스 30 fps 추종) · glass-to-glass median 101.20 ms(p90 118.36) · CPU 2.18 ms/frame ·
+위 커맨드(`--display-pace source`)의 실측(2026-10-16, V3D 1150 MHz · 디코더 1스레드 · GPU NMS, 코드 `2f2d3d0`):
+**29.91 FPS(소스 30 fps 추종) · glass-to-glass median 100.10 ms(p90 116.04, 3회 범위 95.4~100.1) · CPU 1.832 ms/frame ·
 프레임 드롭 0 · 검출 3369(변화 없음)**.
-`--display-pace asap` 으로 바꾸면 **34.87 FPS · glass 130.75 ms · CPU 1.84 ms/frame** 이다.
-근거는 [`display_e2e/summary.md`](display_e2e/summary.md) §3·§3.2(운용점 확정은 [`op_point/summary.md`](op_point/summary.md) §8).
+`--display-pace asap` 으로 바꾸면 **34.87 FPS · glass 127.91 ms · CPU 1.626 ms/frame** 이다.
+근거는 [`display_e2e/runs/v3d1150_20261016/summary.md`](display_e2e/runs/v3d1150_20261016/summary.md) §2.2(운용점 확정은 [`op_point/summary.md`](op_point/summary.md) §8).
 ⚠ 두 페이싱은 **다른 실행**이다. FPS·CPU·glass 를 섞어 인용하지 마라.
-현재 기본값(1스레드·1150 MHz·GPU NMS)의 `source` 참고치는 CPU **1.78 ms/frame**(같은 회차 자동 스레드 2.07), glass **평균** 99.5 ms,
-드롭 0, 검출 3369 다([`dec_threads/`](dec_threads/summary.md)). 위 101.20 은 **중앙값**이다 — 섞지 않는다. `asap` 은 다시 재지 않았다.
+이전 측정(2026-09-20, 960 MHz · 자동 5스레드 · CPU NMS, [`display_e2e/summary.md`](display_e2e/summary.md) §3·§3.2)은 `source` glass 101.20 ms(p90 118.36) · CPU 2.18,
+`asap` 130.75 ms · CPU 1.84 였다. 그 사이 클럭·디코더 스레드·억제 위치·메인 스레드 대기 코드가 함께 바뀌었다 — 차이를 한 요인으로 돌리지 않는다.
 
 운용점은 용도에 따라 고른다 — 최대 처리량은 `b8/s16`(51.5 FPS, 지연 325 ms — 자동 5스레드 조건, 1스레드 기본값에서는 318.6 ms,
 [`dec_threads/`](dec_threads/summary.md)), **최소 지연(O2)은 `--batch 1 --slots 1 --input-pace source --input-queue 1`** 이다(표시 off 기준값, 화면까지는 Vulkan 합성 표시로 도착 → 화면 평균 73.1 ms).

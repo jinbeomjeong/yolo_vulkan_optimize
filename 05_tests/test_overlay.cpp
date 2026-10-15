@@ -534,7 +534,7 @@ TEST(OverlayDeterminism, TenRepeatsIdenticalWithText) {
 
 // ─────────────────────────── OverlayVsOpenCV (reference only, not a gate) ───────────────────────────
 #ifdef YVO_HAVE_OPENCV
-// Compares with a 640x640 canvas drawn by OpenCV in the same way as draw_and_save() (main.cpp:450-470).
+// Compares with a 640x640 canvas drawn by OpenCV in the same way as draw_and_save() (main.cpp:411-431).
 // **Bit-exactness is impossible in principle**: FONT_HERSHEY_SIMPLEX is a vector font with different metrics, and
 // cv::rectangle uses a different pixel-center convention. Only the loose geometric criteria of plan §7 are checked.
 TEST(OverlayVsOpenCV, GeometryWithinOnePixel) {

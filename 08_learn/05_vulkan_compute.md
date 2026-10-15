@@ -593,16 +593,17 @@ NPU는 프레임마다 텐서 **6개**를 내놓는다(스케일 3개 × {클래
 
 | 셰이더 | 입력 → 출력 | 하는 일 | 실측 중앙값 |
 |---|---|---|---:|
-| [`sand_letterbox.comp`](../02_shaders/sand_letterbox.comp) | 디코더 SAND128 NV12 → NHCW 640×640×3 | de-SAND + 축소 + YUV→RGB + letterbox 패딩 | **2.088 ms** |
-| [`yolo_decode.comp`](../02_shaders/yolo_decode.comp) | 원시 6텐서 → 후보 박스 ~16개 | dequantize + DFL softmax + threshold + 좌표 역변환 | **0.626 ms** (표의 값은 960 MHz. 1150 MHz 단계 분해(argmax 지름길 이후, 2026-10-11): 클래스 스캔 약 0.34 ms 고정, emit은 통과 클래스가 1개면 클래스 텐서를 다시 읽지 않아 운용 임계값 0.2에서 0.04~0.05 ms(혼잡 장면에서도. 임계값을 0.02·0.003으로 낮추면 폴백이 늘어 0.14·1.09 ms), DFL은 후보 수에 비례, 좌표 역변환은 0.01 ms 미만 — [`postproc_stage_cost`](../07_results/postproc_stage_cost/summary.md), 회차 [`emit_shortcut`](../07_results/postproc_stage_cost/runs/emit_shortcut/summary.md)) |
-| [`display_convert.comp`](../02_shaders/display_convert.comp) | 디코더 SAND128 NV12 → 스왑체인 RGBA | de-SAND + YUV→RGB (1:1) | **4.153 ms** |
-| [`overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) | 검출 목록 → 스왑체인 RGBA (변형 `overlay_boxes_buf`: → AB24 dma-buf 버퍼) | 박스 테두리 + 라벨 글자 + HUD 그리기 | **0.128 ms** (image 경로) |
+| [`sand_letterbox.comp`](../02_shaders/sand_letterbox.comp) | 디코더 SAND128 NV12 → NHCW 640×640×3 | de-SAND + 축소 + YUV→RGB + letterbox 패딩 | **1.812 ms** |
+| [`yolo_decode.comp`](../02_shaders/yolo_decode.comp) | 원시 6텐서 → 후보 박스 ~16개 | dequantize + DFL softmax + threshold + 좌표 역변환 | **0.400 ms** (단계 분해(argmax 지름길 이후, 2026-10-11): 클래스 스캔 약 0.34 ms 고정, emit은 통과 클래스가 1개면 클래스 텐서를 다시 읽지 않아 운용 임계값 0.2에서 0.04~0.05 ms(혼잡 장면에서도. 임계값을 0.02·0.003으로 낮추면 폴백이 늘어 0.14·1.09 ms), DFL은 후보 수에 비례, 좌표 역변환은 0.01 ms 미만 — [`postproc_stage_cost`](../07_results/postproc_stage_cost/summary.md), 회차 [`emit_shortcut`](../07_results/postproc_stage_cost/runs/emit_shortcut/summary.md)) |
+| [`display_convert.comp`](../02_shaders/display_convert.comp) | 디코더 SAND128 NV12 → 스왑체인 RGBA | de-SAND + YUV→RGB (1:1) | **3.662 ms** |
+| [`overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) | 검출 목록 → 스왑체인 RGBA (변형 `overlay_boxes_buf`: → AB24 dma-buf 버퍼) | 박스 테두리 + 라벨 글자 + HUD 그리기 | **0.124 ms** (image 경로) |
 | [`efficient_nms.comp`](../02_shaders/efficient_nms.comp) | 후보 박스 → 최종 검출 | bitonic 정렬 + 클래스별 greedy 억제 | **0.049~0.050 ms** (파이프라인 중앙값, 1150 MHz ¹) |
 
-합 **6.995 ms**(`efficient_nms.comp` 추가 전 4개), 프레임 주기 28.6 ms의 24.5%다
-([`display_e2e/summary.md`](../07_results/display_e2e/summary.md) §3.1, `disp_asap`).
-표의 ms 값과 아래 워크그룹 스윕은 모두 **V3D 960 MHz** 조건이다. 1150 MHz(부트로더 2026-09-25)에서 전처리는 표시 off 기준
-b1 1.81 ms, b4·b8 약 2.0 ms다([`bootloader_20260925`](../07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)). 2026-10-16에 현재 기본값(1150 MHz · 디코더 1스레드 · GPU NMS)으로 다시 잰 `disp_asap` 중앙값은 전처리 1.812 · 후처리 0.400 · NMS 0.038 · 변환 3.662 · 오버레이 0.124 ms, 5패스 합 **6.036 ms**(주기의 21.1%)다([`v3d1150_20261016`](../07_results/display_e2e/runs/v3d1150_20261016/summary.md) §2.1). 후처리 감소(−36%)에는 argmax 지름길 몫이 섞여 있어 클럭 효과만이 아니다.
+합 **6.036 ms**(5개, NMS는 같은 실행의 0.038 ms), 프레임 주기 28.6 ms의 21.1%다
+([`v3d1150_20261016`](../07_results/display_e2e/runs/v3d1150_20261016/summary.md) §2.1, `disp_asap`, 2026-10-16, V3D 1150 MHz · 디코더 1스레드 · GPU NMS).
+표의 NMS 행만 표시 off 정식 A/B 값이다(¹). 아래 워크그룹 스윕은 **V3D 960 MHz** 조건이다.
+이전 측정(960 MHz · 자동 5스레드 · CPU NMS, [`display_e2e/summary.md`](../07_results/display_e2e/summary.md) §3.1)은 전처리 2.088 · 후처리 0.626 · 변환 4.153 · 오버레이 0.128 ms,
+4개 합 6.995 ms(24.5%)였다. 후처리 감소(−36%)에는 argmax 지름길 몫이 섞여 있어 클럭 효과만이 아니다.
 
 ¹ 정식 A/B [`gpu_nms_e2e`](../07_results/gpu_nms_e2e/summary.md)(2026-10-08, 표시 off, b2s4·b8s16, 폴백 0). 단독 프로브 0.054 ms, 후보 1024 최악 3.05 ms. CPU 억제는 약 2 µs/frame이라 CPU 절감은 보이지 않고 회귀도 없다. 혼잡 장면(후보 평균 약 180개)에서는 0.178~0.186 ms이고, 후보가 1024개를 넘는 프레임은 CPU로 넘긴다([`nms_crowd_stress`](../07_results/nms_crowd_stress/summary.md)).
 색 변환식과 letterbox 규칙의 상세는 [07_video_display.md](07_video_display.md),
