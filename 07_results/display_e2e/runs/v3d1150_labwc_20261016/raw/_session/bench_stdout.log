@@ -1,0 +1,61 @@
+[M5a] GPU baseline with NPU idle (yvo_display_probe --probe convert, fullscreen, 5 overlays)
+display path            : 1920x1080 1:1 / compute -> swapchain storage image, images=4
+on-screen shader ms     : median=3.637 p90=3.669 max=4.975 (n=299)
+present_wait interval ms: median=16.665 p90=16.688 (n=294)
+on-screen overlay ms    : median=0.192 p90=0.201 max=0.323 (n=299)  → convert+overlay median=3.828
+presented=300 display_dropped=0 (NOT_READY 0, in-flight 0) recreates=1
+# display_bench 2026-10-16T08:14:19+09:00
+kernel: 6.18.50+rpt-rpi-2712
+soc temp: 69.2 C, hailo temp: 55.8 C
+throttled=0xe0000
+frequency(0)=2400033792
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+libavcodec61: 8:7.1.5-0+deb13u1+rpt2
+hailort: 4.24.0
+mesa-vulkan-drivers: 26.2.2-1~bpo13+0~rpt1
+labwc: 0.20.2-1~bpo13+1
+libwlroots-0.20: 0.20.2-1+rpt4
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_pipeline
+bin md5: 3dda5b0fe9b7cf16994a7e96d342d8fc
+video: /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 frames: 900 runs: 3
+wayland: /run/user/1000/wayland-0
+[08:14:20] run 1/3 reg_host_off (hailo 55.8 C)
+  wall            25.737 s, 34.97 FPS cpu             3.047 ms/frame (process user+sys 2742.5 ms, 11% of one core) held frames max 2 (decoder limit about 13), slot timeout 0  labwc_ms/frame=0.0333 hailo_warn=0 err=0 rc=0
+[08:14:47] run 1/3 disp_off (hailo 66.8 C)
+  wall            25.724 s, 34.99 FPS cpu             1.040 ms/frame (process user+sys 935.8 ms, 4% of one core) cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0) held frames max 2 (decoder limit about 13), slot timeout 0  labwc_ms/frame=0.0111 hailo_warn=0 err=0 rc=0
+[08:15:13] run 1/3 disp_asap (hailo 73.5 C)
+  wall            25.789 s, 34.90 FPS cpu             1.664 ms/frame (process user+sys 1497.8 ms, 6% of one core) cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0) held frames max 4 (decoder limit about 13), slot timeout 0  labwc_ms/frame=0.5000 hailo_warn=0 err=0 rc=0
+  cooling (chip temp 78.5 C > 75 C): hailo 78.4 C -> <= 65 C (max 120s)
+  cooled 65s, hailo 64.8 C
+[08:16:49] run 1/3 disp_source (hailo 64.8 C)
+  wall            30.073 s, 29.93 FPS cpu             1.768 ms/frame (process user+sys 1591.3 ms, 5% of one core) cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0) held frames max 4 (decoder limit about 13), slot timeout 0  labwc_ms/frame=0.4778 hailo_warn=0 err=0 rc=0
+[08:17:20] run 2/3 reg_host_off (hailo 72.7 C)
+  wall            25.741 s, 34.96 FPS cpu             2.894 ms/frame (process user+sys 2604.6 ms, 10% of one core) held frames max 2 (decoder limit about 13), slot timeout 0  labwc_ms/frame=0.0222 hailo_warn=0 err=0 rc=0
+  cooling (chip temp 78.5 C > 75 C): hailo 78.4 C -> <= 65 C (max 120s)
+  cooled 70s, hailo 64.4 C
+[08:19:00] run 2/3 disp_off (hailo 64.5 C)
+  wall            25.723 s, 34.99 FPS cpu             0.943 ms/frame (process user+sys 848.6 ms, 3% of one core) cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0) held frames max 2 (decoder limit about 13), slot timeout 0  labwc_ms/frame=0.0222 hailo_warn=0 err=0 rc=0
+[08:19:27] run 2/3 disp_asap (hailo 73.2 C)
+  wall            25.806 s, 34.88 FPS cpu             1.589 ms/frame (process user+sys 1430.1 ms, 6% of one core) cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0) held frames max 4 (decoder limit about 13), slot timeout 0  labwc_ms/frame=0.4778 hailo_warn=0 err=0 rc=0
+  cooling (chip temp 78.7 C > 75 C): hailo 78.6 C -> <= 65 C (max 120s)
+  cooled 70s, hailo 64.7 C
+[08:21:07] run 2/3 disp_source (hailo 64.7 C)
+  wall            30.088 s, 29.91 FPS cpu             1.959 ms/frame (process user+sys 1762.9 ms, 6% of one core) cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0) held frames max 4 (decoder limit about 13), slot timeout 0  labwc_ms/frame=0.5333 hailo_warn=0 err=0 rc=0
+[08:21:38] run 3/3 reg_host_off (hailo 73.0 C)
+  wall            25.747 s, 34.96 FPS cpu             3.268 ms/frame (process user+sys 2941.6 ms, 11% of one core) held frames max 2 (decoder limit about 13), slot timeout 0  labwc_ms/frame=0.0222 hailo_warn=0 err=0 rc=0
+  cooling (chip temp 78.7 C > 75 C): hailo 78.5 C -> <= 65 C (max 120s)
+  cooled 70s, hailo 64.8 C
+[08:23:18] run 3/3 disp_off (hailo 64.8 C)
+  wall            25.725 s, 34.99 FPS cpu             0.891 ms/frame (process user+sys 802.0 ms, 3% of one core) cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0) held frames max 2 (decoder limit about 13), slot timeout 0  labwc_ms/frame=0.0111 hailo_warn=0 err=0 rc=0
+[08:23:45] run 3/3 disp_asap (hailo 73.5 C)
+  wall            25.805 s, 34.88 FPS cpu             1.568 ms/frame (process user+sys 1411.5 ms, 5% of one core) cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0) held frames max 4 (decoder limit about 13), slot timeout 0  labwc_ms/frame=0.4889 hailo_warn=0 err=0 rc=0
+  cooling (chip temp 79.0 C > 75 C): hailo 78.9 C -> <= 65 C (max 120s)
+  cooled 70s, hailo 64.9 C
+[08:25:25] run 3/3 disp_source (hailo 65.0 C)
+  wall            30.081 s, 29.92 FPS cpu             1.684 ms/frame (process user+sys 1515.7 ms, 5% of one core) cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0) held frames max 4 (decoder limit about 13), slot timeout 0  labwc_ms/frame=0.4778 hailo_warn=0 err=0 rc=0
+label        | fps_median | cpu_ms_per_frame_median | labwc_cpu_ms_per_frame_median | gpu_ms_mean_median | e2e_ms_mean_median | disp_convert_mean_median | disp_overlay_mean_median | present_interval_median_median | e2e_glass_mean_median | presented_median | display_dropped_median | held_frames_max_median | slot_timeout_count_median | detections_median
+-------------+------------+-------------------------+-------------------------------+--------------------+--------------------+--------------------------+--------------------------+--------------------------------+-----------------------+------------------+------------------------+------------------------+---------------------------+------------------
+reg_host_off | 34.960     | 3.047                   | 0.022                         | 1.864              | 139.010            | 0.000                    | 0.000                    | 0.000                          | 0.000                 | 0.000            | 0.000                  | 2.000                  | 0.000                     | 3369.000         
+disp_off     | 34.990     | 0.943                   | 0.011                         | 1.844              | 139.840            | 0.000                    | 0.000                    | 0.000                          | 0.000                 | 0.000            | 0.000                  | 2.000                  | 0.000                     | 3369.000         
+disp_asap    | 34.880     | 1.589                   | 0.489                         | 0.946              | 131.230            | 3.678                    | 0.115                    | 18.158                         | 128.690               | 900.000          | 0.000                  | 4.000                  | 0.000                     | 3369.000         
+disp_source  | 29.920     | 1.768                   | 0.478                         | 1.760              | 78.760             | 3.298                    | 0.108                    | 17.061                         | 99.140                | 900.000          | 0.000                  | 4.000                  | 0.000                     | 3369.000         

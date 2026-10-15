@@ -7,17 +7,17 @@ Vulkan(V3D GPU)으로 밀어낸** 프로젝트다. 디코드·전처리·추론�
 실측(1080p30 HEVC, PCIe Gen3 x1, 운용점 `b2/s4 --postproc gpu`, 표시 on, 900프레임 ×3회 중앙값,
 2026-10-16 · **V3D 1150 MHz · 디코더 1스레드 · `--nms gpu`** · 코드 `2f2d3d0`):
 
-| `--display-pace` | FPS | glass-to-glass | CPU ms/frame | 드롭 |
+| `--display-pace` | FPS | glass-to-glass | CPU ms/frame (앱 + 컴포지터 labwc) | 드롭 |
 |---|---:|---:|---:|---:|
-| **`source`** (기본·최종 운용) | **29.91** (소스 30 fps 추종) | **100.10 ms** (3회 95.4~100.1) | **1.832** | 0 |
-| `asap` | 34.87 | 127.91 ms | 1.626 | 0 |
+| **`source`** (기본·최종 운용) | **29.92** (소스 30 fps 추종) | **98.32 ms** (3회 97.1~100.1) | **2.246** (1.768 + 0.478) | 0 |
+| `asap` | 34.88 | 127.92 ms | 2.067 (1.589 + 0.489) | 0 |
 
-검출 수는 표시 off/on, 두 페이싱 전부 **3369 로 동일**하다.
-근거: [`07_results/display_e2e/runs/v3d1150_20261016/summary.md`](07_results/display_e2e/runs/v3d1150_20261016/summary.md) §2.2.
+검출 수는 표시 off/on, 두 페이싱 전부 **3369 로 동일**하다. 비교 기준(호스트 NMS, 표시 off)은 3.080 ms/frame(앱 3.047)이다.
+근거: [`07_results/display_e2e/runs/v3d1150_labwc_20261016/summary.md`](07_results/display_e2e/runs/v3d1150_labwc_20261016/summary.md) §2(같은 날 컴포지터 없이 잰 회차 [`v3d1150_20261016`](07_results/display_e2e/runs/v3d1150_20261016/summary.md) 의 앱 CPU 1.832 / 1.626 과 3회 범위가 겹친다).
 > **이전 측정(2026-09-20): V3D 960 MHz · FFmpeg 디코더 자동 5스레드 · 억제 CPU**(지금의 `--nms cpu`)에서는
 > `source` 29.91 FPS · glass 101.20 ms · CPU 2.18, `asap` 34.87 · 130.75 ms · 1.84 였다([`display_e2e/summary.md`](07_results/display_e2e/summary.md) §3·§3.2).
 > 그 사이 클럭·디코더 스레드·억제 위치·메인 스레드 대기 코드가 함께 바뀌어 차이를 한 요인으로 돌리지 않는다.
-> `source` glass 의 차이(101.20 대 100.10)는 3회 실행 범위 안이다. 옛 조건을 재현하려면 `--nms cpu` 와 `YVO_DEC_THREADS=0` 을 준다
+> `source` glass 의 차이(101.20 대 98.32)는 두 회차의 실행별 범위가 겹쳐 판정하지 않는다. 옛 조건을 재현하려면 `--nms cpu` 와 `YVO_DEC_THREADS=0` 을 준다
 > (V3D 클럭은 펌웨어가 정한다).
 > - V3D 클럭이 바뀌어도 FPS·CPU 는 그대로이고 GPU 전처리만 약 14% 빨라졌다([`bootloader_20260925`](07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)).
 > - 현재 기본값의 **표시 off 정식 기준선**(2026-10-08): b8s16 51.50 fps · CPU 0.869 ms/frame, GPU NMS 는 CPU NMS 대비 회귀 없음·검출 바이트 동일([`gpu_nms_e2e/`](07_results/gpu_nms_e2e/summary.md)). 표시 on 정식 측정은 [`display_planes_e2e/`](07_results/display_planes_e2e/summary.md)에 있다 — Vulkan 합성 소스 페이싱 b2/s4 CPU 2.059 ms/frame, 평면 경로는 CPU −0.44 ms/f·V3D −72%·지연 같음(`--slots 6` 필요). 위 표와는 회차·코드(메인 스레드 대기 변경 이전)가 달라 섞지 않는다.
@@ -229,7 +229,7 @@ loginctl activate <데스크톱 세션 id>    # (또는 sudo chvt 7) 데스크�
 | `--display-connector NAME` | 첫 연결 HDMI-A | `kms` 의 출력 커넥터(다른 백엔드에서는 경고 후 무시) |
 | `--display-fullscreen` | 꺼짐 | **반드시 켠다.** 창 모드는 에러·경고 없이 표시 변환이 **2.6배**(4.22 → 10.92 ms, V3D 960 MHz 측정) 느려진다. 평면 백엔드는 자동으로 전체화면이다 |
 | `--display-sync matched\|latest` | `matched` | `matched` 는 프레임과 그 검출을 정확히 맞춘다. `latest` 는 화면을 즉시 띄우고 박스만 뒤처진다 |
-| `--display-pace source\|asap` | 표시 on 이면 `source` | 소스 fps 로 페이싱. `asap` 이면 큐가 꽉 차 glass 100.10 → 127.91 ms (둘 다 median, 1150 MHz · 1스레드 · GPU NMS) |
+| `--display-pace source\|asap` | 표시 on 이면 `source` | 소스 fps 로 페이싱. `asap` 이면 큐가 꽉 차 glass 98.32 → 127.92 ms (둘 다 median, 1150 MHz · 1스레드 · GPU NMS) |
 | `--postproc-alloc export\|heap` | `export` | **`heap` 은 쓰지 마라** — 3자 일관성(PCIe DMA ↔ CPU 캐시 ↔ V3D)이 미검증이다 |
 | `--score T` | HEF 값 0.2 | 검출 점수 임계값 |
 | `--frames N` / `--quiet` / `--csv-label L` | | 측정용 |

@@ -1,0 +1,33 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[hevc @ 0x555568e13cc0] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+== yvo_pipeline (dmabuf, nhcw, batch 2, slots 4, gpu_depth 3, postproc gpu/export) ==
+frames          900 (decoded 900, errors 0)
+wall            25.806 s, 34.88 FPS
+cpu             1.589 ms/frame (process user+sys 1430.1 ms, 6% of one core)
+decode call ms  mean 3.216  median 3.822  p90 5.865  max 24.274
+gpu shader ms   mean 0.945  median 1.575  p90 1.897  max 2.454
+npu latency ms  mean 96.638  median 97.226  p90 97.773  max 141.388
+e2e latency ms  mean 131.264  median 137.565  p90 154.838  max 196.890  (decode return → NPU completion callback)
+slot wait ms    mean 25.235  p90 48.532  (time the main thread waited for a free slot)
+gpu post ms     mean 0.229  median 0.406  p90 0.468  max 0.748  (yolo_decode.comp pass 1)
+cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+nms backend     gpu
+gpu nms ms      mean 0.0273  median 0.0375  p90 0.0566  max 0.0756  (efficient_nms.comp)
+nms fallback    0 frames (capacity 0, iou guard 0)
+candidates      mean 16.81  max 45  overflow frames 0
+slot hold ms    mean 3.620  median 4.020  p90 6.439  max 42.905  (NPU completion callback → slot return)
+disp convert ms mean 3.678  median 3.660  p90 3.784  (display_convert.comp)
+disp overlay ms mean 0.115  median 0.124  p90 0.141  (overlay_boxes.comp)
+present interval ms median 18.158  p90 50.688  (n=898)
+glass-to-glass  mean 128.77  median 128.05  p90 136.94  (n=900, slot acquired → reaches screen)
+decode-to-screen mean 154.01  median 158.49  p90 175.13  (n=900, decode return → reaches screen, includes slot wait)
+display         presented 900, dropped 0, recreates 1, overlay overflow 0
+display warmup  0 presentations excluded from glass / decode-to-screen / present interval / late frames (glass n 900 of 900, glass median 128.05)
+held frames max 4 (decoder limit about 13), slot timeout 0
+detections      3369 total, 3.74 / frame
+hailo chip temp 73.1 -> 79.2 C
+soc temp        68.1 -> 68.6 C
+vk validation   errors 0, warnings 1
+RESULT_CSV,disp_asap,dmabuf,nhcw,2,4,900,25.806,34.88,1.589,3.216,0.945,1.897,96.64,97.77,131.26,154.84,3369,73.1,79.2,68.1,68.6,1
+RESULT_CSV2,disp_asap,gpu,export,0.2294,0.4682,0.000,16.81,45,0,1,wayland,matched,asap,3.6776,3.7844,0.1152,18.158,128.77,136.94,900,0,1,4,0,gpu,0.0273,0.0566,0,0,-,-,-,-,-,-
+RESULT_CSV3,disp_asap,0,128.05,900,50.688,898,-,-,-,-,-,-,-,1,154.01,158.49,175.13,900
