@@ -59,7 +59,7 @@
 | `a2p`(arrival-to-present) | 프레임이 **도착한** 시각 → 화면에 닿은 시각 | `--input-pace source` + 표시 on — 사람이 실제로 보는 지연 |
 | glass-to-glass | 슬롯을 얻은 시각 → 화면에 나간 시각 | 표시 on |
 
-같은 b1/s1 이 e2e 79.2 ms, `e2e_arr` 58.3 ms 로 나온다([`input_pacing`](../07_results/input_pacing/summary.md)) — 시작점이 다른 값이라 비교하지 않는다.
+같은 b1/s1 이 e2e 79.2 ms, `e2e_arr` 58.4 ms 로 나온다([`code_2f2d3d0`](../07_results/input_pacing/runs/code_2f2d3d0/summary.md), 2026-10-16) — 시작점이 다른 값이라 비교하지 않는다.
 
 ---
 

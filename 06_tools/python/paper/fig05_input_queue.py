@@ -1,6 +1,6 @@
 """Figure 5: leaky input queue size N vs arrival-based latency (e2e_arr) and drop rate, b1/s1 and b2/s4.
 
-Source: input_pacing/results_raw.csv (one row per run; settings src_b1s1_q{1,2,3} and src_b2s4_q{1,2,3},
+Source: input_pacing/runs/code_2f2d3d0/results_raw.csv (2026-10-16, commit 2f2d3d0; one row per run; settings src_b1s1_q{1,2,3} and src_b2s4_q{1,2,3},
 3 runs each, `--input-pace source`, display off). Plotted per N: median over the 3 runs with the min-max range of
   e2e_arr_mean, e2e_arr_p90 (ms, arrival time t0 + k/30 s -> result complete) and drop_rate (dropped / arrived).
 The asap control rows have no e2e_arr (their e2e starts at decode end) and are not drawn — different definition.
@@ -14,7 +14,7 @@ from pathlib import Path
 import paper_style as ps
 
 STEM = "fig05_input_queue"
-SRC = ps.RESULTS / "input_pacing" / "results_raw.csv"
+SRC = ps.RESULTS / "input_pacing" / "runs" / "code_2f2d3d0" / "results_raw.csv"
 CONFIGS = (("b1s1", "b1/s1 (O2)", ps.PALETTE[0]), ("b2s4", "b2/s4", ps.PALETTE[1]))
 QUEUES = (1, 2, 3)
 METRICS = ("e2e_arr_mean", "e2e_arr_p90", "drop_rate")

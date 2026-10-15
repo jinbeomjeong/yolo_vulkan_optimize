@@ -1,6 +1,6 @@
-"""Figure 8: arrival -> present latency (a2p) and present-interval distribution, O2 Vulkan b1/s1 and Vulkan b2/s4.
+"""Figure 7: arrival -> present latency (a2p) and present-interval distribution, O2 Vulkan b1/s1 and Vulkan b2/s4.
 
-Source: input_pacing/runs/display_on/raw/dvk_{b1s1,b2s4}_run{1,2,3}/frame_log.csv (`--frame-log`, display on,
+Source: input_pacing/runs/code_2f2d3d0_display_on/raw/dvk_{b1s1,b2s4}_run{1,2,3}/frame_log.csv (`--frame-log`, display on,
 Vulkan compose, `--input-pace source --input-queue 1`, HDMI 1080p60). Parsing and per-frame quantities come from
 06_tools/python/frame_log_stats.py (imported, not copied): a2p = present_ms - arrival_ms of processed frames.
 The 3 runs of a setting are pooled frame by frame.
@@ -13,8 +13,8 @@ Exclusion rule (applied per run, identically to both panels):
      "끝 3프레임").
 Present intervals are the diffs of the sorted present_ms of the remaining frames of each run (pooled), binned by
 the nearest multiple of the 60 Hz vblank (frame_log_stats.vsync_histogram).
-The mean and p90 in the legend and the vertical lines are the canonical numbers of display_on/summary.md: the median
-over the 3 runs of the per-run RESULT_CSV5 `a2p_mean` / `a2p_p90` (display_on/results_raw.csv, warmup 30 cut, no drain
+The mean and p90 in the legend and the vertical lines are the canonical numbers of code_2f2d3d0_display_on/summary.md: the median
+over the 3 runs of the per-run RESULT_CSV5 `a2p_mean` / `a2p_p90` (code_2f2d3d0_display_on/results_raw.csv, warmup 30 cut, no drain
 cut). The pooled p90 of the histogram is a different statistic (not the median of per-run p90s); it is only printed
 to stdout, next to the per-run frame_log values and the frames each exclusion rule removed.
 """
@@ -31,7 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import frame_log_stats as fls  # noqa: E402
 
 STEM = "fig07_arrival_to_present"
-RUN_DIR = ps.RESULTS / "input_pacing" / "runs" / "display_on"
+RUN_DIR = ps.RESULTS / "input_pacing" / "runs" / "code_2f2d3d0_display_on"
 RAW_CSV = RUN_DIR / "results_raw.csv"
 CONFIGS = (("dvk_b1s1", "b1/s1 (O2), Vulkan 합성", ps.PALETTE[0]),
            ("dvk_b2s4", "b2/s4, Vulkan 합성", ps.PALETTE[1]))

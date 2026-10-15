@@ -58,7 +58,7 @@
 이 둘 중 무엇을 고를지 정하는 것을 **운용점(operating point) 선택**이라고 한다.
 
 > 반대쪽 끝, **지연만 최소로** 하는 운용점은 `--batch 1 --slots 1` 에 **입력 페이싱**(`--input-pace source --input-queue 1`)을 더한 것이다.
-> 프레임이 카메라처럼 33.3 ms 간격으로 도착하고, NPU 가 못 따라가는 몫(약 19%)은 버린다. 도착부터 결과까지 평균 58.3 ms 다([`input_pacing`](../07_results/input_pacing/summary.md), 2026-10-12, 표시 off). 화면에 보이기까지는 평균 73.1 ms 다([`display_on`](../07_results/input_pacing/runs/display_on/summary.md)).
+> 프레임이 카메라처럼 33.3 ms 간격으로 도착하고, NPU 가 못 따라가는 몫(약 19%)은 버린다. 도착부터 결과까지 평균 58.4 ms 다([`code_2f2d3d0`](../07_results/input_pacing/runs/code_2f2d3d0/summary.md), 2026-10-16, 표시 off). 화면에 보이기까지는 평균 70.2 ms 다([`code_2f2d3d0_display_on`](../07_results/input_pacing/runs/code_2f2d3d0_display_on/summary.md)).
 
 ### (4) glass-to-glass 지연
 

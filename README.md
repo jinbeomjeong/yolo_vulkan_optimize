@@ -117,9 +117,9 @@ build/bin/yvo_pipeline \
 
 | 목적 | 인자 | 결과 |
 |---|---|---|
-| **실시간 표시** (권장) | `--batch 2 --slots 4` | 표시 off 34.95 FPS / 표시 on `pace source` **29.91 FPS, glass 101 ms**. 입력 페이싱(표시 off)이면 도착 기준 평균 81.3 · p90 104 ms, 버림 0. 40분 연속 운용에서도 칩이 데워진 평형 상태로 34.25~34.75 FPS 를 유지한다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
+| **실시간 표시** (권장) | `--batch 2 --slots 4` | 표시 off 34.99 FPS / 표시 on `pace source` **29.91 FPS, glass 100 ms**(2026-10-16, [`v3d1150_20261016`](07_results/display_e2e/runs/v3d1150_20261016/summary.md)). 입력 페이싱(표시 off)이면 도착 기준 평균 80.7 · p90 100 ms, 버림 0([`code_2f2d3d0`](07_results/input_pacing/runs/code_2f2d3d0/summary.md)). 40분 연속 운용에서도 칩이 데워진 평형 상태로 34.25~34.75 FPS 를 유지한다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
 | 최대 처리량 (**단시간만**) | `--batch 8 --slots 16` | 51.5 FPS, e2e 325 ms. ⚠ **추가 냉각 없이는 약 5분 만에 Hailo 칩이 red zone(약 120 °C)에 닿아 칩이 추론을 멈춘다** — 51.5 FPS 는 칩이 식어 있는 처음 약 2분의 값이다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
-| **최소 지연** (O2, 2026-10-12 확정) | `--batch 1 --slots 1 --input-pace source --input-queue 1` | **도착 기준 평균 58.3 · p90 72.7 · max 75.3 ms**(표시 off). 화면까지는 `--display on --display-fullscreen`(Vulkan 합성)으로 **도착 → 화면 평균 73.1 · p90 82.6 ms**, 버림 22.2%([`display_on`](07_results/input_pacing/runs/display_on/summary.md) — HVS 평면 백엔드는 slots 1 에서 교착하므로 쓰지 않는다). 처리 24.4 FPS 라 30 fps 입력의 **18.6% 를 버린다**(가장 오래된 프레임부터, 연속 버림 최대 1). 페이싱 없는 `--batch 1 --slots 1` 은 디코드 끝 기준 79.2 ms 지만 그중 약 42 ms 가 파일을 앞서 읽어 생긴 슬롯 대기다([`input_pacing/`](07_results/input_pacing/summary.md)) |
+| **최소 지연** (O2, 2026-10-12 확정) | `--batch 1 --slots 1 --input-pace source --input-queue 1` | **도착 기준 평균 58.4 · p90 71.7 · max 75.0 ms**(표시 off). 화면까지는 `--display on --display-fullscreen`(Vulkan 합성)으로 **도착 → 화면 평균 70.2 · p90 78.6 ms**, 버림 19.1%(2026-10-16 · 코드 `2f2d3d0` 재측정, [`code_2f2d3d0`](07_results/input_pacing/runs/code_2f2d3d0/summary.md) · [`code_2f2d3d0_display_on`](07_results/input_pacing/runs/code_2f2d3d0_display_on/summary.md) — HVS 평면 백엔드는 slots 1 에서 교착하므로 쓰지 않는다). 처리 24.4 FPS 라 30 fps 입력의 **18.6% 를 버린다**(가장 오래된 프레임부터, 연속 버림 최대 1). 페이싱 없는 `--batch 1 --slots 1` 은 디코드 끝 기준 79.2 ms 지만 그중 약 42 ms 가 파일을 앞서 읽어 생긴 슬롯 대기다([`input_pacing/`](07_results/input_pacing/summary.md)) |
 | 영상만 저지연 표시 | 위에 `--display-sync latest` 추가 | 화면 glass 28 ms, 박스만 뒤처진다 |
 
 > 최소 지연 행과 페이싱 값은 **현재 기본값**(V3D 1150 MHz·디코더 1스레드·GPU 후처리·GPU 억제, 2026-10-12)이고, 나머지 지연은
@@ -130,7 +130,7 @@ build/bin/yvo_pipeline \
 > **지연의 기점을 섞지 않는다.** 입력 페이싱(`--input-pace source`)의 `e2e_arr` 는 프레임이 **도착한 시각**(카메라라면 찍힌 시각)부터 결과까지,
 > 페이싱 + 표시 on 의 `arrival-to-present`(a2p)는 **도착한 시각부터 화면에 닿을 때까지**, 페이싱 없는 e2e 는 **디코드가 끝난 시각**부터,
 > 표시의 glass-to-glass 는 **슬롯을 얻은 시각**부터 잰다.
-> 페이싱하면 30 fps 를 따라가는 b2/s4 는 평균 81.3 ms(b2/s3 81.6 ms, 둘이 같다)·p90 104 ms·버림 0 이다.
+> 페이싱하면 30 fps 를 따라가는 b2/s4 는 평균 80.7 ms(b2/s3 80.5 ms, 둘이 같다)·p90 100 ms·버림 0 이다(2026-10-16 · 코드 `2f2d3d0`. 그 전 코드에서는 81.3 · 81.6 · p90 104 ms).
 > 입력 큐 크기는 1 이 맞다 — 2·3 은 b2 에서 효과가 없고(큐 최대 깊이 늘 1) b1 에서 한 단계마다 +33 ms 다([`input_pacing/`](07_results/input_pacing/summary.md)).
 
 **지연은 slots 가, 처리량의 천장은 batch 가 정한다.** 지연 ≈ `slots × 프레임 주기` 이고,
@@ -394,6 +394,6 @@ grim -o HDMI-A-1 shot.png
 - **카메라(CSI) 입력** — 디코더가 HEVC 파일만 받는다(`01_src/decode/ffmpeg_drm_decoder.cpp:166`).
   프레임이 소스 시각에 도착하는 상황은 입력 페이싱으로 모사해 쟀다([`input_pacing/`](07_results/input_pacing/summary.md)) —
   실제 센서의 촬영 시각·ISP 지연은 미측정이다. 카메라로 가면 ISP 전처리 경로 재검토 조건도 함께 열린다
-- **최소 지연 운용점의 표시는 Vulkan 합성으로만** — HVS 평면 백엔드는 slots 1 에서 교착하고(기존 제약), slots 2 는 처리가 vblank 3개(50 ms)에 잠긴다. kms 와 표시 on 입력 큐 2 이상은 미측정([`display_on`](07_results/input_pacing/runs/display_on/summary.md))
+- **최소 지연 운용점의 표시는 Vulkan 합성으로만** — HVS 평면 백엔드는 slots 1 에서 교착하고(기존 제약), slots 2 는 처리가 vblank 3개(50 ms)에 잠긴다. kms 와 표시 on 입력 큐 2 이상은 미측정([`code_2f2d3d0_display_on`](07_results/input_pacing/runs/code_2f2d3d0_display_on/summary.md))
 - **다중 스트림은 불가능하다** — 1080p30 두 개 = 60 FPS 인데 NPU 상한이 51.7 이다.
   확보한 CPU 여유는 이 한계를 풀지 못한다
