@@ -33,8 +33,8 @@ GPU 전처리가 장치 입력 레이아웃(NHCW)을 직접 생성하게 하여 
 전처리, 원시 출력 텐서의 GPU 디코드(호스트 NMS(Non-Maximum Suppression) 대체), CPU 기준 구현과 비트 단위로 일치하는 억제
 (일치를 보장할 수 없는 경계 프레임만 CPU가 처리), 디코더 프레임을 CPU 복사 없이 재사용하는 가시화를 구현하였다.
 억제는 처음에 CPU에서 수행하였고(§6.5), 표시 통합 수치(§6.7)는 GPU 억제 구성에서 잰 값이다.
-셋째, 대상 NPU 런타임의 저수준 비동기 추론 경로에서 장치 형식 입력과 원시 출력을 **모두** dma-buf로 지정한 구성이 동작함을 검증하고, 그 경로의 크기 인자 계약을 찾았다
-(런타임 API 문서는 스트림별 dma-buf 지정을 기술하지만 이 저수준 경로의 동작과 크기 계약은 기술하지 않는다).
+셋째, 대상 NPU 런타임의 네트워크 그룹 비동기 추론(`infer_async`) 경로에서 장치 형식 입력과 원시 출력을 **모두** dma-buf로 지정한 구성이 동작함을 검증하고,
+그 경로의 크기 인자 계약을 찾았다(런타임 API 문서는 고수준 추론 API와 저수준 스트림 API의 dma-buf 사용을 기술하지만, 이 경로에는 문서 주석이 없다).
 
 1920×1080 30 fps HEVC 입력과 YOLO11m 모델에서, 후처리와 가시화까지 GPU로 옮긴 제안 파이프라인은 표시를 켜고도
 파이프라인 호스트 CPU(응용·컴포지터·커널 스레드의 합)를 프레임당 **2.444 ms에서 2.044 ms로 약 16% 줄였다**.
@@ -79,9 +79,10 @@ preprocessing produce the device input layout (NHCW) removes the conversion and 
 writes, we implement preprocessing, GPU decoding of the raw output tensors (replacing host NMS), suppression that matches the
 CPU reference bit for bit (only boundary frames fall back to the CPU), and visualization that reuses decoder frames without
 CPU copies, using only Vulkan 1.3 core compute shaders. Suppression was first done on the CPU (Section 6.5); the
-display-integrated figures (Section 6.7) use GPU suppression. Third, we verify that the NPU runtime's low-level asynchronous
-inference path works with **both** the device-format input and the raw outputs given as dma-bufs, and we identify that path's
-size-argument contract; the runtime API documentation describes per-stream dma-buf binding but not this low-level path.
+display-integrated figures (Section 6.7) use GPU suppression. Third, we verify that the NPU runtime's network-group
+asynchronous inference call (`infer_async`) works with **both** the device-format input and the raw outputs given as
+dma-bufs, and we identify that path's size-argument contract; the runtime API documentation describes dma-buf use for its
+high-level inference API and its low-level stream API, but this call carries no documentation.
 
 For 1920×1080 30 fps HEVC input with YOLO11m, the proposed pipeline, which also moves postprocessing and visualization
 to the GPU, reduces the pipeline's host CPU time (the application, the compositor, and kernel threads) from **2.444 ms to
@@ -164,9 +165,9 @@ CPU 여유가 줄고, CPU가 약한 보드에서는 처리량과 지연까지 CP
    기준은 GPU 전처리를 적용한 호스트 NMS 경로(표시 없음)이고, 조건은 §6.7(GPU 1150 MHz·디코더 1스레드·GPU 억제·CPU 주파수 고정)이다.
    측정 빌드에서는 두 경로 모두 추론 완료 이벤트로 슬롯 대기를 끝낸다(§4.6.3).
 
-3. **대상 NPU 런타임의 저수준 비동기 추론 경로(`infer_async`)에서 장치 형식(NHCW) 입력 1개와 원시 출력 6개를 모두 dma-buf로 지정한 구성이 동작함을 검증하였다**(§4.2, §6.5).
-   출력 바이트 일치와 파일 디스크립터 누수 0을 확인하고, 이 경로의 크기 인자 계약(§5.2)을 찾았다. 런타임 API 문서는 스트림마다 dma-buf를 지정하는 기능
-   (`set_dma_buffer`, 출력 방향 `dma_map_dmabuf`)을 기술하지만, 장치 형식을 쓰는 이 저수준 경로에서의 동작과 크기 계약은 기술하지 않는다.
+3. **대상 NPU 런타임의 네트워크 그룹 비동기 추론(`ConfiguredNetworkGroup::infer_async`, 이름 붙인 버퍼 맵 하나로 입출력을 넘기는 경로)에서 장치 형식(NHCW) 입력 1개와 원시 출력 6개를 모두 dma-buf로 지정한 구성이 동작함을 검증하였다**(§4.2, §6.5).
+   출력 바이트 일치와 파일 디스크립터 누수 0을 확인하고, 이 경로의 크기 인자 계약(§5.2)을 찾았다. 런타임 API 문서는 고수준 추론 API의 스트림별 지정(`set_dma_buffer`)과
+   저수준 스트림 API(`InputStream`/`OutputStream`)의 버퍼 매핑(`dma_map_dmabuf`, 입력 H2D·출력 D2H)을 기술하지만, `infer_async`에는 문서 주석이 없고 크기 계약도 기술하지 않는다.
    디코더·GPU·NPU·디스플레이를 dma-buf로 잇는 구성 자체는 벤더 SDK의 기존 패턴을 따른다(§2.2).
 
 4. **기준 경로와 검출이 동등함을 검증하였다.** 1,816프레임(영상 1개)에 대해 검출 총수가
@@ -225,8 +226,8 @@ Linux 커널의 dma-buf 프레임워크는 서로 다른 디바이스 드라이�
 통합 NPU를 갖는 SoC의 벤더 SDK에는 전처리가 NPU의 하드웨어 레이아웃으로 직접 쓰고 dma-buf로 넘기는 경로⁴와,
 GPU 전처리·NPU 추론·GPU 오버레이를 dma-buf로 잇는 파이프라인⁵도 이미 있다.
 본 연구는 **PCIe로 연결된 외장 NPU**와 `HOST_CACHED` 메모리가 없는 통합 GPU 사이를 dma-buf로 잇는다는 점이 다르다.
-대상 NPU 런타임의 API 문서는 입력·출력 스트림마다 dma-buf를 지정하는 기능을 기술한다. 다만 본 연구가 쓰는 저수준 경로(장치 형식 입력, 원시 출력)에서
-입력과 출력을 **모두** dma-buf로 지정한 구성의 동작과 크기 계약은 기술되어 있지 않아 별도로 검증하였다(§6.5). 같은 런타임의 사용자 포럼에도
+대상 NPU 런타임의 API 문서는 고수준 추론 API와 저수준 스트림 API(`InputStream`/`OutputStream`)에서 dma-buf를 쓰는 방법을 기술한다. 다만 본 연구가 쓰는
+네트워크 그룹 비동기 추론(`infer_async`, 장치 형식 입력, 원시 출력)에는 문서 주석이 없어, 입력과 출력을 **모두** dma-buf로 지정한 구성의 동작과 크기 계약을 별도로 검증하였다(§6.5). 같은 런타임의 사용자 포럼에도
 호스트 쪽 NHWC→NHCW 변환을 피하려면 장치 형식의 원시 스트림을 쓰라는 안내가 있다⁶. 본 연구가 보탠 것은 그 변환의 비용이 연산이 아니라
 비캐시 GPU 메모리의 바이트 단위 읽기에서 온다는 진단과 정량화다(§6.3).
 
@@ -525,8 +526,8 @@ NHWC→NHCW 전치임을 확인하였다(명령 수준에서 §6.3의 측정 루
 따라서 저수준 경로, 즉 네트워크 그룹을 직접 구성하고 비동기 추론 요청을 발행하는 방식을 사용한다.
 
 이때 **입력과 출력을 모두 dma-buf로 지정**한다. 추론 요청의 버퍼 서술자는 입출력을 구분하지 않는
-단일 맵이므로 구조적으로 가능하다. 런타임 API 문서는 고수준 API의 스트림별 dma-buf 지정을 기술하지만 이 저수준 경로에는
-문서 주석이 없어, 실제 동작과 크기 계약을 별도로 검증하였다(§5.2, §6.5).
+단일 맵이므로 구조적으로 가능하다. 런타임 API 문서는 고수준 추론 API와 저수준 스트림 API(`InputStream`/`OutputStream`)의 dma-buf 사용을 기술하지만
+이 `infer_async`에는 문서 주석이 없어, 실제 동작과 크기 계약을 별도로 검증하였다(§5.2, §6.5).
 
 ### 4.4.2 GPU 디코드 셰이더
 
@@ -878,7 +879,7 @@ NHCW 경로에서는 **샘플 0건**으로 사라졌다. 총 사이클은 13.1 G
 
 ### 6.5.2 입출력 동시 dma-buf 사용의 검증
 
-§4.4.1의 구성, 즉 저수준 경로에서 **입력과 출력을 모두 dma-buf로 사용하는 추론**은 런타임 API 문서에 이 경로의 동작이 기술되어 있지 않아
+§4.4.1의 구성, 즉 네트워크 그룹 비동기 추론(`infer_async`)에서 **입력과 출력을 모두 dma-buf로 사용하는 추론**은 런타임 API 문서에 이 경로의 동작이 기술되어 있지 않아
 별도로 검증하였다. 16프레임에 대해 호스트 메모리 입력 실행과 결과를 비교하였다.
 
 **표 12.** 입출력 동시 dma-buf 추론의 검증 결과
@@ -1201,8 +1202,8 @@ N이 효과가 없고, 처리가 소스보다 느린 배치 1/슬롯 1에서는 
 > 따라서 합은 하한이다. 표시를 켠 실행은 프레임당 인터럽트가 약 126회로 기준 경로(약 71회)보다 많으므로, 계수되지 않는 유휴 중 인터럽트 몫은
 > 제안 경로 쪽에서 더 클 수 있다. 이 치우침은 감소율을 과대평가하는 방향이다. 그 크기를 별도 회차에서 직접 재었다. 같은 코드·설정·거버너로 irq·softirq tracepoint를
 > 응용의 CPU 측정 창에 맞춰 기록하고, 끊긴 태스크가 유휴(pid 0)인 처리 시간을 미계수 몫으로 집계하였다(4설정 × 3회, 2026-10-16). 미계수 몫은 프레임당
-> 기준 경로 0.211, 표시 없음 0.222, 최대속도 + 표시 0.328, 소스 페이싱 + 표시 0.399 ms였다(3회 범위 ±2% 이내). 하드웨어 인터럽트의 95~97%가 유휴 중에 처리되었고,
-> 회당 평균은 1.9~2.5 µs였다. 기준 → 최대속도 + 표시의 증가분 0.118 ms는 감소폭 0.400 ms보다 작아, 양쪽에 더해도 2.655 → 2.372 ms로 약 11% 감소한다
+> 기준 경로 0.211, 표시 없음 0.222, 최대속도 + 표시 0.328, 소스 페이싱 + 표시 0.399 ms였다(3회 범위 ±3% 이내). 하드웨어 인터럽트 처리 시간의 95~97%(설정별 중앙값)가 유휴 중이었고,
+> 회당 평균은 1.9~2.5 µs였다. 기준 → 최대속도 + 표시의 증가분 0.117 ms는 감소폭 0.400 ms보다 작아, 양쪽에 더해도 2.655 → 2.372 ms로 약 11% 감소한다
 > (소스 페이싱은 2.521 ms로 약 5% 감소). tracepoint 비용은 처리 시간을 늘리는 쪽이라 이 몫은 상한 쪽이며, 서로 다른 실행의 값을 더한 것이다. 파이프라인과 무관한 사용자 프로세스는 합에서 빠지지만 캐시·메모리 대역폭 경합으로 파이프라인 시간에 주는 영향은 가르지 않았다.
 > 감소율의 범위는 반복 바깥 루프의 같은 회차 실행끼리 짝지은 값이다(파이프라인 22.2·15.6·18.1·14.1·24.1%, 응용 + 컴포지터 31.9·26.9·26.8·26.2·33.3%,
 > 응용만 47.2·42.9·42.7·42.5·47.9%).
@@ -1261,7 +1262,7 @@ N이 효과가 없고, 처리가 소스보다 느린 배치 1/슬롯 1에서는 
 | 후처리 (YOLO 디코드) | 0.448 | **0.398** | (해석 보류, 각주) |
 | 억제 (GPU NMS) | 0.0474 | **0.0382** | (해석 보류, 각주) |
 | 표시 변환 | 3.627 | **3.650** | +0.6% |
-| 오버레이 | 0.191 | **0.118** | −38.2% |
+| 오버레이 | 0.191 | **0.117** | −38.2% |
 
 
 GPU 예산은 소스 페이싱 실행에서 5개 구간 중앙값의 합으로 **5.986 ms**(p90 합 6.188 ms)이며,
@@ -1596,7 +1597,7 @@ PCIe 오류(AER, Advanced Error Reporting) 계수도 감시하지 않았다. 반
 본 논문은 Raspberry Pi 5 계열 보드(Compute Module 5)와 Hailo-8 NPU로 구성된 임베디드 환경에서, 하드웨어 디코더·GPU·NPU·
 디스플레이를 dma-buf 기반 제로 카피로 연결하고 전처리·후처리·가시화를 GPU 컴퓨트 셰이더로
 오프로딩한 실시간 객체 검출 파이프라인을 구현하고 평가하였다. 구성은 벤더 SDK의 기존 패턴을 따르며, 본 연구가 보탠 것은
-외장 NPU 런타임 안에 숨은 비캐시 메모리 읽기의 진단·정량화, V3D 제약 아래 Vulkan 1.3 core 구현, 저수준 추론 경로에서 입출력을 모두 dma-buf로 쓰는 구성의 검증이다.
+외장 NPU 런타임 안에 숨은 비캐시 메모리 읽기의 진단·정량화, V3D 제약 아래 Vulkan 1.3 core 구현, 네트워크 그룹 비동기 추론 경로에서 입출력을 모두 dma-buf로 쓰는 구성의 검증이다.
 
 주요 결과는 다음과 같다.
 
