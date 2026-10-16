@@ -171,6 +171,8 @@ python3 06_tools/python/check_links.py
 2. **`--display-pace asap` + 표시 on 조건의 GPU timestamp `mean`.**
    V3D 가 연속 제출된 커맨드 버퍼를 병합해 한쪽 구간이 0에 가깝게 기록된다(**원인 미확정**).
    이 조건에서는 **중앙값만** 쓴다. 근거: [`display_e2e/summary.md`](display_e2e/summary.md).
+   단 2026-10-16 회차 [`v3d1150_syscpu_20261016`](display_e2e/runs/v3d1150_syscpu_20261016/summary.md)에서는 전처리 **중앙값**까지 실행별 0.94~1.79 ms 로 흔들렸다.
+   그래서 이 조건의 전처리·후처리·억제 중앙값도 해석을 보류하고(논문 §6.7), GPU 예산은 소스 페이싱 실행으로 잰다. 표시 변환·오버레이 중앙값은 안정적이다.
 
 > 이 규칙의 정본은 원래 `10_paper/paper_ko.md` 부록 A.4 였다. 논문은 저장소 밖으로 나가거나
 > 개정될 문서이므로 2026-09-21 에 이리로 옮겼다. 논문 A.4 는 이제 이 절을 참조한다.

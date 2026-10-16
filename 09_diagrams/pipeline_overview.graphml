@@ -68,14 +68,14 @@ SAND128 NV12 · 복사 0<y:LabelModel>
       </data>
     </node>
     <node id="n_pre">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/sand_letterbox.comp, 호출부는 01_src/vulkan/ SandLetterbox::submit/wait. 수치 출처: 07_results/display_e2e/runs/v3d1150_20261016/summary.md §2.1 '전처리 sand_letterbox.comp 1.812 ms(median, disp_asap, p90 1.885)' — 실행별 stdout median 의 3회 중앙값(b2/s4 표시 on, 900프레임×3). 측정 조건: 2026-10-16 · V3D 1150 MHz · 디코더 1스레드 · GPU NMS · disp_asap median — 라벨의 [1150 MHz] 표기. 이전 값은 2.088 ms(07_results/display_e2e/summary.md §3.1, 2026-09-20, V3D 960 MHz(부트로더 2025-12-08) · FFmpeg 자동 5스레드 · CPU NMS)였다. 참고로 같은 셰이더는 pipeline_bench b1 gpu_ms_mean 기준 960→1150 MHz 에서 2.11→1.81 ms 로 줄었다(07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md) — 벤치와 지표가 달라 라벨 값(display_e2e median)의 출처로 쓰지 않는다.</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/sand_letterbox.comp, 호출부는 01_src/vulkan/ SandLetterbox::submit/wait. 수치 출처: 07_results/display_e2e/runs/v3d1150_syscpu_20261016/raw/disp_source_run*/stdout.log(3회 중앙값, 논문 §6.7) '전처리 sand_letterbox.comp 1.797 ms(median, disp_source, p90 1.840)' — 실행별 stdout median 의 3회 중앙값. 측정 조건: 2026-10-16 · V3D 1150 MHz · 디코더 1스레드 · GPU NMS · disp_source median(b2/s4 표시 on 소스 30 fps, 900프레임×3) — 라벨의 [1150 MHz] 표기. 이전 값은 2.088 ms(07_results/display_e2e/summary.md §3.1, 2026-09-20, V3D 960 MHz(부트로더 2025-12-08) · FFmpeg 자동 5스레드 · CPU NMS)였다. 참고로 같은 셰이더는 pipeline_bench b1 gpu_ms_mean 기준 960→1150 MHz 에서 2.11→1.81 ms 로 줄었다(07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md) — 벤치와 지표가 달라 라벨 값(display_e2e median)의 출처로 쓰지 않는다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="66.3" width="260.0" x="300.0" y="324.3"/>
           <y:Fill color="#99CC00" color2="#99CC00" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="44.26" modelName="custom" textColor="#000000" visible="true" width="217.41" x="21.3" y="11.02">sand_letterbox.comp
-[V3D GPU] median 1.812 ms [1150 MHz]
+[V3D GPU] median 1.797 ms [1150 MHz]
 de-SAND + letterbox + BT.709→sRGB<y:LabelModel>
               <y:SmartNodeLabelModel distance="4.0"/>
             </y:LabelModel>
@@ -142,14 +142,14 @@ batch 2 · slots 4 · PCIe Gen3 x1<y:LabelModel>
       </data>
     </node>
     <node id="n_post">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/yolo_decode.comp, 호출부는 01_src/pipeline/gpu_postproc_stage.cpp GpuPostprocStage::push_ready_to_gpu → YoloPostproc::submit. 수치 출처: 07_results/display_e2e/runs/v3d1150_20261016/summary.md §2.1 '후처리 yolo_decode.comp (pass 1) 0.400 ms(median, disp_asap, p90 0.470)' — 실행별 stdout median 의 3회 중앙값(b2/s4 표시 on, 900프레임×3). 측정 조건: 2026-10-16 · V3D 1150 MHz · 디코더 1스레드 · GPU NMS · disp_asap median — 라벨의 [1150 MHz] 표기. 주의: 이전 값 대비 −36% 에는 2026-10-11 yolo_decode.comp argmax 지름길 몫(GPU 후처리 −32~−35%, 07_results/gpu_nms_e2e/runs/argmax_shortcut_mot20_05/summary.md)이 섞여 있어 클럭(960→1150 MHz) 효과만이 아니다(같은 summary §3). 이전 값은 0.626 ms(07_results/display_e2e/summary.md §3.1, 2026-09-20, V3D 960 MHz(부트로더 2025-12-08) · FFmpeg 자동 5스레드 · CPU NMS)였다.</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/yolo_decode.comp, 호출부는 01_src/pipeline/gpu_postproc_stage.cpp GpuPostprocStage::push_ready_to_gpu → YoloPostproc::submit. 수치 출처: 07_results/display_e2e/runs/v3d1150_syscpu_20261016/raw/disp_source_run*/stdout.log(3회 중앙값, 논문 §6.7) '후처리 yolo_decode.comp (pass 1) 0.442 ms(median, disp_source, p90 0.479)' — 실행별 stdout median 의 3회 중앙값. 측정 조건: 2026-10-16 · V3D 1150 MHz · 디코더 1스레드 · GPU NMS · disp_source median(b2/s4 표시 on 소스 30 fps, 900프레임×3) — 라벨의 [1150 MHz] 표기. 주의: 이전 값 대비 −29% 에는 2026-10-11 yolo_decode.comp argmax 지름길 몫(GPU 후처리 −32~−35%, 07_results/gpu_nms_e2e/runs/argmax_shortcut_mot20_05/summary.md)이 섞여 있어 클럭(960→1150 MHz) 효과만이 아니다(같은 summary §3). 이전 값은 0.626 ms(07_results/display_e2e/summary.md §3.1, 2026-09-20, V3D 960 MHz(부트로더 2025-12-08) · FFmpeg 자동 5스레드 · CPU NMS)였다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="66.3" width="260.0" x="300.0" y="764.9"/>
           <y:Fill color="#99CC00" color2="#99CC00" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="44.26" modelName="custom" textColor="#000000" visible="true" width="225.89" x="17.06" y="11.02">yolo_decode.comp (pass 1)
-[V3D GPU] median 0.400 ms [1150 MHz]
+[V3D GPU] median 0.442 ms [1150 MHz]
 dequant + DFL + threshold + 역변환<y:LabelModel>
               <y:SmartNodeLabelModel distance="4.0"/>
             </y:LabelModel>
@@ -199,14 +199,14 @@ dequant + DFL + threshold + 역변환<y:LabelModel>
       </data>
     </node>
     <node id="n_ovl">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/overlay_boxes.comp, 호출부는 01_src/display/ DisplayPipeline::pump. 수치 출처: 07_results/display_e2e/runs/v3d1150_20261016/summary.md §2.1 '오버레이 overlay_boxes.comp 0.124 ms(median, disp_asap, p90 0.143)' — 실행별 stdout median 의 3회 중앙값(b2/s4 표시 on, 900프레임×3). 측정 조건: 2026-10-16 · V3D 1150 MHz · 디코더 1스레드 · GPU NMS · disp_asap median — 라벨의 [1150 MHz] 표기. 이전 값은 0.128 ms(07_results/display_e2e/summary.md §3.1, 2026-09-20, V3D 960 MHz(부트로더 2025-12-08) · FFmpeg 자동 5스레드 · CPU NMS)였다. 참고: 07_results/display_planes_e2e/summary.md §2.2 의 vk_source(2026-10-08, 1150 MHz · 디코더 1스레드 · GPU NMS, b2/s4, 표시 on, source 페이싱) disp_overlay_ms 평균 0.111 ms 는 median 이 아니라 평균이고 페이싱도 달라 라벨 값(median, disp_asap)과 직접 비교하지 않는다.</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/overlay_boxes.comp, 호출부는 01_src/display/ DisplayPipeline::pump. 수치 출처: 07_results/display_e2e/runs/v3d1150_syscpu_20261016/raw/disp_source_run*/stdout.log(3회 중앙값, 논문 §6.7) '오버레이 overlay_boxes.comp 0.119 ms(median, disp_source, p90 0.140)' — 실행별 stdout median 의 3회 중앙값. 측정 조건: 2026-10-16 · V3D 1150 MHz · 디코더 1스레드 · GPU NMS · disp_source median(b2/s4 표시 on 소스 30 fps, 900프레임×3) — 라벨의 [1150 MHz] 표기. 이전 값은 0.128 ms(07_results/display_e2e/summary.md §3.1, 2026-09-20, V3D 960 MHz(부트로더 2025-12-08) · FFmpeg 자동 5스레드 · CPU NMS)였다. 참고: 07_results/display_planes_e2e/summary.md §2.2 의 vk_source(2026-10-08, 1150 MHz · 디코더 1스레드 · GPU NMS, b2/s4, 표시 on, source 페이싱) disp_overlay_ms 평균 0.111 ms 는 median 이 아니라 평균이라 라벨 값(median, disp_source)과 직접 비교하지 않는다.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="66.3" width="260.0" x="300.0" y="1089.1999999999998"/>
           <y:Fill color="#99CC00" color2="#99CC00" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="44.26" modelName="custom" textColor="#000000" visible="true" width="246.02" x="6.99" y="11.02">overlay_boxes.comp
-[V3D GPU] median 0.124 ms [1150 MHz]
+[V3D GPU] median 0.119 ms [1150 MHz]
 dispatchIndirect (검출 수만큼)<y:LabelModel>
               <y:SmartNodeLabelModel distance="4.0"/>
             </y:LabelModel>
@@ -254,14 +254,14 @@ labwc(Wayland) · --display-fullscreen<y:LabelModel>
       </data>
     </node>
     <node id="n_conv">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/display_convert.comp, 호출부는 01_src/display/ DisplayPipeline. 디코더 SAND dma-buf 를 그대로 다시 읽는다(복사 0). 수치 출처: 07_results/display_e2e/runs/v3d1150_20261016/summary.md §2.1 '표시 변환 display_convert.comp 3.662 ms(median, disp_asap, p90 3.788)' — 실행별 stdout median 의 3회 중앙값(b2/s4 표시 on, 900프레임×3). NPU 유휴 기준선(M5a, yvo_display_probe --probe convert 1080p 1:1)은 같은 회차 shader median 3.685 ms(같은 summary §2.3). 측정 조건: 2026-10-16 · V3D 1150 MHz · 디코더 1스레드 · GPU NMS · disp_asap median — 라벨의 [1150 MHz] 표기. 이전 값은 4.153 ms, M5a 4.226 ms(07_results/display_e2e/summary.md §3.1, 2026-09-20, V3D 960 MHz(부트로더 2025-12-08) · FFmpeg 자동 5스레드 · CPU NMS)였다. 참고: 07_results/display_planes_e2e/summary.md §2.2 의 vk_source(2026-10-08, 1150 MHz · 디코더 1스레드 · GPU NMS, b2/s4, 표시 on, source 페이싱) disp_convert_ms 평균 3.234 ms 는 median 이 아니라 평균이고 페이싱도 달라 라벨 값(median, disp_asap)과 직접 비교하지 않는다. 같은 표의 TFU 3.72 ms/f(gpu_stats, 셰이더 timestamp 에 안 잡히는 Vulkan 합성 경로 비용)는 평면 경로에서 사라진다(같은 문서 결론 2).</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/02_shaders/display_convert.comp, 호출부는 01_src/display/ DisplayPipeline. 디코더 SAND dma-buf 를 그대로 다시 읽는다(복사 0). 수치 출처: 07_results/display_e2e/runs/v3d1150_syscpu_20261016/raw/disp_source_run*/stdout.log(3회 중앙값, 논문 §6.7) '표시 변환 display_convert.comp 3.600 ms(median, disp_source, p90 3.698)' — 실행별 stdout median 의 3회 중앙값. NPU 유휴 기준선(M5a, yvo_display_probe --probe convert 1080p 1:1) 3.691 ms, 화면 위 변환 3.638 ms(07_results/display_e2e/runs/v3d1150_syscpu_20261016/summary.md §2.4). 측정 조건: 2026-10-16 · V3D 1150 MHz · 디코더 1스레드 · GPU NMS · disp_source median(b2/s4 표시 on 소스 30 fps, 900프레임×3) — 라벨의 [1150 MHz] 표기. 이전 값은 4.153 ms, M5a 4.226 ms(07_results/display_e2e/summary.md §3.1, 2026-09-20, V3D 960 MHz(부트로더 2025-12-08) · FFmpeg 자동 5스레드 · CPU NMS)였다. 참고: 07_results/display_planes_e2e/summary.md §2.2 의 vk_source(2026-10-08, 1150 MHz · 디코더 1스레드 · GPU NMS, b2/s4, 표시 on, source 페이싱) disp_convert_ms 평균 3.234 ms 는 median 이 아니라 평균이라 라벨 값(median, disp_source)과 직접 비교하지 않는다. 같은 표의 TFU 3.72 ms/f(gpu_stats, 셰이더 timestamp 에 안 잡히는 Vulkan 합성 경로 비용)는 평면 경로에서 사라진다(같은 문서 결론 2).</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="66.3" width="260.0" x="650.0" y="985.1999999999999"/>
           <y:Fill color="#99CC00" color2="#99CC00" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="44.26" modelName="custom" textColor="#000000" visible="true" width="224.55" x="17.72" y="11.02">display_convert.comp
-[V3D GPU] median 3.662 ms [1150 MHz]
+[V3D GPU] median 3.600 ms [1150 MHz]
 SAND→RGBA 1:1 (전체화면 고정)<y:LabelModel>
               <y:SmartNodeLabelModel distance="4.0"/>
             </y:LabelModel>
@@ -409,23 +409,23 @@ SAND→RGBA 1:1 (전체화면 고정)<y:LabelModel>
       </data>
     </node>
     <node id="n_note_perf">
-      <data key="d5">성능 요약. 출처(정본): /home/pi/workspace/yolo_vulkan_optimize/07_results/display_e2e/runs/v3d1150_20261016/summary.md §2.2(처리량·CPU·glass-to-glass, 설정당 3회 중앙값)와 §2.1(GPU 구간, disp_asap median, 5패스 = 전처리·후처리·NMS·표시 변환·오버레이, p90 합 6.342 ms = 22.2%). 3회 범위: disp_source glass median 95.40~100.11 ms, CPU 1.800~1.836 ms/f. glass 는 실행별 stdout 의 glass-to-glass median·p90 을 3회 중앙값으로 낸 값이라 results.csv 의 e2e_glass_mean_median(평균의 중앙값)과 다르다(같은 summary §2.2). 검출 3369 · 드롭 0 · slot timeout 0 은 이 회차 전 실행 공통(§1), held_frames_max 4 는 표시 on 실행의 stdout 'held frames max 4' 다. 라벨 마지막 줄은 같은 회차의 disp_off(§2.2)다. 측정 조건: 2026-10-16, V3D 1150 MHz(부트로더 2026-09-25 기본값, 07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md), FFmpeg 디코더 프레임 스레드 1(07_results/dec_threads/summary.md), --nms gpu(efficient_nms.comp, 07_results/gpu_nms_e2e/summary.md), 코드 2f2d3d0(메인 스레드 이벤트 대기 · 평면 matched 슬롯 하한 · HailoRunner 종료 안전화 — 같은 summary §4), b2/s4, 900프레임 × 3회, HDMI-A-1 1080p60. 모 실험 대비 이 조건들(과 2026-10-11 argmax 지름길)이 한꺼번에 바뀌었으므로 CPU·glass 차이를 클럭 효과로 읽지 않는다(같은 summary §3). 이전 값은 07_results/display_e2e/summary.md §3(2026-09-20, V3D 960 MHz · FFmpeg 자동 5스레드 · CPU NMS)의 disp_source 29.910 FPS · CPU 2.179 ms/f · glass 101.20 / p90 118.36 ms, disp_asap 34.870 FPS · CPU 1.842 ms/f · glass 130.75 ms, GPU 4패스(CPU NMS) median 합 6.995 ms = 24.5% 였다. 참고 — 현재 기본 조건의 표시 off 정식 기준선(2026-10-08, 07_results/gpu_nms_e2e/summary.md §2·§5, 1150 MHz · 디코더 1스레드 · --nms gpu, 3회 중앙값): b2s4 34.99 fps · CPU 0.908 ms/f · e2e 평균 139.6 ms, b8s16 51.50 fps · CPU 0.869 ms/f · e2e 평균 321.9 ms. 참고 — 표시 on 평면 경로 비교 회차(2026-10-08): 07_results/display_planes_e2e/summary.md §2.1(b2/s4 vk_source = Vulkan 합성: 29.91 fps · CPU 2.059 ms/f · glass 중앙 94.37 / p90 123.66 ms)과 runs/slots6/summary.md(b2/s6 vk_source: CPU 2.189 ms/f · 디코드 → 화면 평균 101.43 ms). 다른 회차·코드라 이 노드의 값과 직접 비교하지 않는다. 평면 경로 수치는 n_note_planes.</data>
+      <data key="d5">성능 요약. 출처(정본): /home/pi/workspace/yolo_vulkan_optimize/07_results/display_e2e/runs/v3d1150_syscpu_20261016/summary.md §2.1(CPU 분해, 설정당 3회 중앙값)·§2.4(지연·처리량)과 07_results/display_e2e/runs/v3d1150_syscpu_20261016/raw/disp_source_run*/stdout.log(GPU 구간, disp_source median 의 3회 중앙값 — 논문 §6.7 표 24와 같다. 5패스 = 전처리·후처리·NMS·표시 변환·오버레이, p90 합 6.215 ms = 18.6%). 이 회차 summary 에는 GPU 구간 표가 없어 GPU 출처는 stdout 과 논문 §6.7 이다. 파이프라인 CPU = 앱 + 컴포지터(labwc) + 커널 스레드 증가분(같은 summary §2.1)이고, idle 중 hardirq 시간은 커널 설정상 계수되지 않아(같은 summary §1 '계수 한계'·§3) 커널 계수 한계로 하한이다. 3회 범위: disp_source glass median 90.53~100.08 ms, 파이프라인 CPU 2.556~2.744 ms/f. glass 는 실행별 stdout 의 glass-to-glass median·p90 을 3회 중앙값으로 낸 값이라 평균의 중앙값(99.81 ms, 같은 summary §2.4)과 다르다. 검출 3369 · 드롭 0 · slot timeout 0 은 이 회차 전 실행 공통(§1), held_frames_max 4 는 표시 on 실행의 stdout 'held frames max 4' 다. 라벨 마지막 줄은 같은 회차의 disp_off(§2.1)다. 측정 조건: 2026-10-16, V3D 1150 MHz(부트로더 2026-09-25 기본값, 07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md), FFmpeg 디코더 프레임 스레드 1(07_results/dec_threads/summary.md), --nms gpu(efficient_nms.comp, 07_results/gpu_nms_e2e/summary.md), 코드 2f2d3d0(메인 스레드 이벤트 대기 · 평면 matched 슬롯 하한 · HailoRunner 종료 안전화 — 같은 코드로 잰 앞 회차 07_results/display_e2e/runs/v3d1150_20261016/summary.md §4), b2/s4, 900프레임 × 3회, HDMI-A-1 1080p60. 모 실험 대비 이 조건들(과 2026-10-11 argmax 지름길)이 한꺼번에 바뀌었으므로 CPU·glass 차이를 클럭 효과로 읽지 않는다(앞 회차 summary §3). 이전 값의 CPU 는 앱 CPU 라 파이프라인 CPU 와 정의가 다르다. 이전 값은 07_results/display_e2e/summary.md §3(2026-09-20, V3D 960 MHz · FFmpeg 자동 5스레드 · CPU NMS)의 disp_source 29.910 FPS · CPU 2.179 ms/f · glass 101.20 / p90 118.36 ms, disp_asap 34.870 FPS · CPU 1.842 ms/f · glass 130.75 ms, GPU 4패스(CPU NMS) median 합 6.995 ms = 24.5% 였다. 참고 — 현재 기본 조건의 표시 off 정식 기준선(2026-10-08, 07_results/gpu_nms_e2e/summary.md §2·§5, 1150 MHz · 디코더 1스레드 · --nms gpu, 3회 중앙값): b2s4 34.99 fps · CPU 0.908 ms/f · e2e 평균 139.6 ms, b8s16 51.50 fps · CPU 0.869 ms/f · e2e 평균 321.9 ms. 참고 — 표시 on 평면 경로 비교 회차(2026-10-08): 07_results/display_planes_e2e/summary.md §2.1(b2/s4 vk_source = Vulkan 합성: 29.91 fps · CPU 2.059 ms/f · glass 중앙 94.37 / p90 123.66 ms)과 runs/slots6/summary.md(b2/s6 vk_source: CPU 2.189 ms/f · 디코드 → 화면 평균 101.43 ms). 다른 회차·코드라 이 노드의 값과 직접 비교하지 않는다. 평면 경로 수치는 n_note_planes.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
-          <y:Geometry height="160.16" width="400.0" x="1000.0" y="420.0"/>
+          <y:Geometry height="172.0" width="430.0" x="1000.0" y="420.0"/>
           <y:Fill color="#FFFFFF" color2="#FFFFFF" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
-          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="151.62" modelName="custom" textColor="#000000" visible="true" width="393.9" x="3.05" y="4.27">성능 (07_results/display_e2e/runs/v3d1150_20261016 §2)
-disp_source (최종 운용) : 29.910 FPS · CPU 1.832 ms/f
-    glass-to-glass median 100.10 · p90 116.04 ms
-disp_asap : 34.870 FPS · CPU 1.626 ms/f · glass 127.91 ms
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="151.62" modelName="custom" textColor="#000000" visible="true" width="393.9" x="3.05" y="4.27">성능 (07_results/display_e2e/runs/v3d1150_syscpu_20261016 §2)
+disp_source (최종 운용) : 29.900 FPS · 파이프라인 CPU 2.567 ms/f (앱 1.744)
+    glass-to-glass median 96.66 · p90 120.26 ms
+disp_asap : 34.890 FPS · 파이프라인 CPU 2.505 ms/f (앱 1.622) · glass 128.00 ms
 검출 3369 (4설정 동일) · dropped 0 · slot timeout 0
 held_frames_max 4 (디코더 한계 약 13 — 여유 6)
-GPU 5패스 합 median 6.036 ms = 주기 28.6 ms 의 21.1%
+GPU 5패스 합 median 6.004 ms = 주기 33.4 ms 의 18.0% (disp_source)
 측정 조건 : V3D 1150 MHz · FFmpeg 1스레드 · GPU NMS
   (2026-10-16, 코드 2f2d3d0, b2/s4, 900f × 3)
   이전 값(960 MHz · 자동 5스레드 · CPU NMS) → 07_results/display_e2e §3
-표시 off b2s4 (같은 회차) : 34.99 FPS · CPU 0.947 ms/f<y:LabelModel>
+표시 off b2s4 (같은 회차) : 34.97 FPS · 파이프라인 CPU 1.111 ms/f (앱 0.878)<y:LabelModel>
               <y:SmartNodeLabelModel distance="4.0"/>
             </y:LabelModel>
             <y:ModelParameter>

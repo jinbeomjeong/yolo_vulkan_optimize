@@ -61,7 +61,7 @@ dma-buf 세 그룹(디코더 SAND / 전처리 NHCW / 원시 텐서)이 전부 ze
 
 > **구간별 지연 수치는 여기 적지 않는다.** 같은 값이 세 곳에 복제돼 있다가 한 번 어긋난 적이 있어
 > (`09_diagrams/README.md` 의 정렬 기록), 2026-09-21 에 이 도식에서는 **흐름만** 남겼다.
-> 구간 median 은 [`display_e2e/runs/v3d1150_20261016/summary.md`](07_results/display_e2e/runs/v3d1150_20261016/summary.md) §2.1(V3D 1150 MHz · 현재 기본값)이 정본이고
+> 구간 median 은 [`display_e2e/runs/v3d1150_syscpu_20261016`](07_results/display_e2e/runs/v3d1150_syscpu_20261016/summary.md)의 `raw/disp_source_run*/stdout.log` 3회 중앙값(소스 페이싱, V3D 1150 MHz · 현재 기본값, 논문 §6.7 표 24)이 정본이고
 > (960 MHz 당시 값은 [`display_e2e/summary.md`](07_results/display_e2e/summary.md) §3.1), 같은 값을 붙인 그림이 [`09_diagrams/pipeline_overview.graphml`](09_diagrams/pipeline_overview.graphml) 에 있다.
 
 ---
@@ -119,7 +119,7 @@ build/bin/yvo_pipeline \
 
 | 목적 | 인자 | 결과 |
 |---|---|---|
-| **실시간 표시** (권장) | `--batch 2 --slots 4` | 표시 off 34.99 FPS / 표시 on `pace source` **29.91 FPS, glass 100 ms**(2026-10-16, [`v3d1150_20261016`](07_results/display_e2e/runs/v3d1150_20261016/summary.md)). 입력 페이싱(표시 off)이면 도착 기준 평균 80.7 · p90 100 ms, 버림 0([`code_2f2d3d0`](07_results/input_pacing/runs/code_2f2d3d0/summary.md)). 40분 연속 운용에서도 칩이 데워진 평형 상태로 34.25~34.75 FPS 를 유지한다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
+| **실시간 표시** (권장) | `--batch 2 --slots 4` | 표시 off 34.97 FPS / 표시 on `pace source` **29.90 FPS, glass 97 ms**(median 96.66, 2026-10-16, [`v3d1150_syscpu_20261016`](07_results/display_e2e/runs/v3d1150_syscpu_20261016/summary.md)). 입력 페이싱(표시 off)이면 도착 기준 평균 80.7 · p90 100 ms, 버림 0([`code_2f2d3d0`](07_results/input_pacing/runs/code_2f2d3d0/summary.md)). 40분 연속 운용에서도 칩이 데워진 평형 상태로 34.25~34.75 FPS 를 유지한다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
 | 최대 처리량 (**단시간만**) | `--batch 8 --slots 16` | 51.5 FPS, e2e 325 ms. ⚠ **추가 냉각 없이는 약 5분 만에 Hailo 칩이 red zone(약 120 °C)에 닿아 칩이 추론을 멈춘다** — 51.5 FPS 는 칩이 식어 있는 처음 약 2분의 값이다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
 | **최소 지연** (O2, 2026-10-12 확정) | `--batch 1 --slots 1 --input-pace source --input-queue 1` | **도착 기준 평균 58.4 · p90 71.7 · max 75.0 ms**(표시 off). 화면까지는 `--display on --display-fullscreen`(Vulkan 합성)으로 **도착 → 화면 평균 70.2 · p90 78.6 ms**, 버림 19.1%(2026-10-16 · 코드 `2f2d3d0` 재측정, [`code_2f2d3d0`](07_results/input_pacing/runs/code_2f2d3d0/summary.md) · [`code_2f2d3d0_display_on`](07_results/input_pacing/runs/code_2f2d3d0_display_on/summary.md) — HVS 평면 백엔드는 slots 1 에서 교착하므로 쓰지 않는다). 처리 24.4 FPS 라 30 fps 입력의 **18.6% 를 버린다**(가장 오래된 프레임부터, 연속 버림 최대 1). 페이싱 없는 `--batch 1 --slots 1` 은 디코드 끝 기준 79.2 ms 지만 그중 약 42 ms 가 파일을 앞서 읽어 생긴 슬롯 대기다([`input_pacing/`](07_results/input_pacing/summary.md)) |
 | 영상만 저지연 표시 | 위에 `--display-sync latest` 추가 | 화면 glass 28 ms, 박스만 뒤처진다 |
