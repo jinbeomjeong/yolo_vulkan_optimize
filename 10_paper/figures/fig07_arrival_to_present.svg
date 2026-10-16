@@ -886,7 +886,7 @@ z
 " style="fill: none; stroke: #0072b2; stroke-linejoin: miter"/>
     </g>
     <g id="text_15">
-     <text style="font-size: 7.5px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(60.19024 29.88774)">b1/s1 (O2), Vulkan 합성</text>
+     <text style="font-size: 7.5px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(60.19024 29.88774)">b1/s1 (O2), 스왑체인 경로</text>
      <text style="font-size: 7.5px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(60.19024 38.40024)">평균 70.2 · p90 78.6 ms (3회 중앙값)</text>
     </g>
     <g id="patch_11">
@@ -899,7 +899,7 @@ z
 " style="fill: none; stroke: #e69f00; stroke-linejoin: miter"/>
     </g>
     <g id="text_16">
-     <text style="font-size: 7.5px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(60.19024 50.66274)">b2/s4, Vulkan 합성</text>
+     <text style="font-size: 7.5px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(60.19024 50.66274)">b2/s4, 스왑체인 경로</text>
      <text style="font-size: 7.5px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(60.19024 59.17524)">평균 101.2 · p90 123.4 ms (3회 중앙값)</text>
     </g>
     <g id="line2d_26">
@@ -1183,7 +1183,7 @@ z
 " style="fill: #0072b2; stroke: #333333; stroke-width: 0.5; stroke-linejoin: miter"/>
     </g>
     <g id="text_37">
-     <text style="font-size: 7.5px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="350.207841" y="29.77524" transform="rotate(-0 350.207841 29.77524)">b1/s1 (O2), Vulkan 합성</text>
+     <text style="font-size: 7.5px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="350.207841" y="29.77524" transform="rotate(-0 350.207841 29.77524)">b1/s1 (O2), 스왑체인 경로</text>
     </g>
     <g id="patch_26">
      <path d="M 329.207841 41.81274 
@@ -1194,7 +1194,7 @@ z
 " style="fill: #e69f00; stroke: #333333; stroke-width: 0.5; stroke-linejoin: miter"/>
     </g>
     <g id="text_38">
-     <text style="font-size: 7.5px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="350.207841" y="41.81274" transform="rotate(-0 350.207841 41.81274)">b2/s4, Vulkan 합성</text>
+     <text style="font-size: 7.5px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="350.207841" y="41.81274" transform="rotate(-0 350.207841 41.81274)">b2/s4, 스왑체인 경로</text>
     </g>
    </g>
   </g>

@@ -117,6 +117,7 @@ fi
   echo "soc temp: $(soc_temp) C, hailo temp: $(hailo_temp) C"
   vcgencmd get_throttled 2>/dev/null || true
   vcgencmd measure_clock arm 2>/dev/null || true
+  for g in /sys/devices/system/cpu/cpufreq/policy*; do echo "cpufreq $(basename "$g"): governor $(cat "$g/scaling_governor") cur_khz $(cat "$g/scaling_cur_freq")"; done
   pcie_link
   pkg_versions "${PKGS_DISPLAY_BENCH[@]}"   # labwc/libwlroots matter: the wayland-planes COLOR_RANGE inversion is a compositor behavior
   echo "bin: $BIN"

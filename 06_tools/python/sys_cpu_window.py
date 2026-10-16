@@ -36,6 +36,10 @@ Notes on the numbers:
     resolution is one tick (10 ms at clk_tck 100) per process.
   - A process that starts and exits inside the window is in neither snapshot, so it is in no class. Its CPU is
     visible as unattributed_ms (sys_busy_ms minus the classes) and, once reaped, in reaped_children_ms.
+  - cpufreq.<policyN> = {governor_a/_b, cur_khz_a/_b, avg_mhz, time_in_state_delta {kHz: ms}} from sysfs cpufreq
+    (avg_mhz = time-weighted mean of the window's time_in_state growth, null + avg_mhz_null_reason if that growth is
+    0); cpufreq_avg_mhz = CPU-time-weighted mean over policies, cpufreq_governor = the governor ("mixed" if not one),
+    cpufreq_error = null, or why the values are null/incomplete. time_in_state resolution is one clock_t (10 ms).
 """
 
 from __future__ import annotations
@@ -58,6 +62,7 @@ BUSY_COLS = ("user", "nice", "system", "irq", "softirq", "steal")
 SCHEDSTAT_VERSION = 17
 KTHREAD_GROUPS = (("kworker", "kworker*"), ("ksoftirqd", "ksoftirqd*"), ("irq_thread", "irq/*"),
                   ("v3d", "v3d*"), ("hailo", "hailo*"))
+CPUFREQ_DIR = Path("/sys/devices/system/cpu/cpufreq")
 TOP_N_PROCS = 10
 TOP_N_IRQS = 15
 MAX_LISTED = 50
@@ -89,6 +94,17 @@ class Snapshot:
     sched_run_ns: dict[str, int]
     interrupts: dict[str, tuple[str, int]]  # label -> (description, sum over CPUs)
     procs: dict[int, Proc] = field(default_factory=dict)
+    cpufreq: dict[str, CpufreqPolicy] = field(default_factory=dict)  # "policy0" -> state
+    cpufreq_error: str | None = None  # set when the cpufreq directory is missing or unreadable
+
+
+@dataclass
+class CpufreqPolicy:
+    governor: str | None
+    cur_khz: int | None
+    ncpus: int  # CPUs in affected_cpus (1 if unreadable); weight of the policy in cpufreq_avg_mhz
+    time_in_state: dict[int, int] | None  # kHz -> clock_t ticks since boot; None if stats are unavailable
+    errors: list[str] = field(default_factory=list)
 
 
 class Stop(Exception):
@@ -189,15 +205,55 @@ def _read_procs() -> dict[int, Proc]:
     return procs
 
 
+def _read_cpufreq_policy(d: Path) -> CpufreqPolicy:
+    """One cpufreq policy directory. Every file is optional: a failed read leaves None and a note in errors."""
+    pol = CpufreqPolicy(governor=None, cur_khz=None, ncpus=1, time_in_state=None)
+    try:
+        pol.governor = (d / "scaling_governor").read_text(encoding="utf-8").strip()
+    except OSError as e:
+        pol.errors.append(f"scaling_governor: {e.strerror or e}")
+    try:
+        pol.cur_khz = int((d / "scaling_cur_freq").read_text(encoding="utf-8").split()[0])
+    except (OSError, ValueError, IndexError) as e:
+        pol.errors.append(f"scaling_cur_freq: {getattr(e, 'strerror', None) or e}")
+    try:
+        pol.ncpus = max(1, len((d / "affected_cpus").read_text(encoding="utf-8").split()))
+    except OSError:
+        pass  # weight 1; only matters with several policies
+    try:
+        tis: dict[int, int] = {}
+        for line in (d / "stats" / "time_in_state").read_text(encoding="utf-8").splitlines():
+            parts = line.split()
+            if len(parts) >= 2:
+                tis[int(parts[0])] = int(parts[1])
+        pol.time_in_state = tis
+    except (OSError, ValueError) as e:
+        pol.errors.append(f"stats/time_in_state: {getattr(e, 'strerror', None) or e}")
+    return pol
+
+
+def read_cpufreq() -> tuple[dict[str, CpufreqPolicy], str | None]:
+    """All cpufreq policies (sorted by number), or ({}, reason) when there are none."""
+    try:
+        dirs = [d for d in CPUFREQ_DIR.glob("policy*") if d.name[6:].isdigit()]
+    except OSError as e:
+        return {}, f"{CPUFREQ_DIR}: {e.strerror or e}"
+    if not dirs:
+        return {}, f"no {CPUFREQ_DIR}/policy* directories"
+    dirs.sort(key=lambda d: int(d.name[6:]))
+    return {d.name: _read_cpufreq_policy(d) for d in dirs}, None
+
+
 def take_snapshot() -> Snapshot:
     t0 = time.perf_counter()
     t_ns = time.monotonic_ns()
     stat_lines = _parse_stat(_read("/proc/stat"))
+    cpufreq, cpufreq_error = read_cpufreq()
     version, run = _parse_schedstat(_read("/proc/schedstat"))
     irqs = _parse_interrupts(_read("/proc/interrupts"))
     procs = _read_procs()
     took_ms = (time.perf_counter() - t0) * 1e3
-    return Snapshot(t_ns, took_ms, stat_lines, version, run, irqs, procs)
+    return Snapshot(t_ns, took_ms, stat_lines, version, run, irqs, procs, cpufreq, cpufreq_error)
 
 
 def _kthread_group(comm: str) -> str:
@@ -214,6 +270,55 @@ def _top(items: list[dict], n: int) -> list[dict]:
 
 def _round(x: float) -> float:
     return round(x, 3)
+
+
+def diff_cpufreq(a: Snapshot, b: Snapshot, clk_tck: int) -> dict:
+    """cpufreq, cpufreq_avg_mhz, cpufreq_governor, cpufreq_error for the window A..B. Never raises."""
+    tick_ms = 1e3 / clk_tck
+    errors = [f"{w}: {e}" for w, e in (("A", a.cpufreq_error), ("B", b.cpufreq_error)) if e]
+    policies: dict[str, dict] = {}
+    governors: set[str | None] = set()
+    wsum = 0.0  # sum over policies of kHz * ms * ncpus
+    wt = 0.0  # sum over policies of ms * ncpus
+    for name in sorted(set(a.cpufreq) | set(b.cpufreq), key=lambda n: int(n[6:])):
+        pa, pb = a.cpufreq.get(name), b.cpufreq.get(name)
+        if pa is None or pb is None:
+            errors.append(f"{name}: only in snapshot {'A' if pb is None else 'B'}")
+            continue
+        errors.extend(f"{name} {w}: {e}" for w, p in (("A", pa), ("B", pb)) for e in p.errors)
+        governors.update((pa.governor, pb.governor))
+        pol: dict = {"governor_a": pa.governor, "governor_b": pb.governor,
+                     "cur_khz_a": pa.cur_khz, "cur_khz_b": pb.cur_khz,
+                     "avg_mhz": None, "time_in_state_delta": None}
+        reason = None
+        if pa.time_in_state is None or pb.time_in_state is None:
+            reason = "stats/time_in_state unreadable"
+        else:
+            delta = {k: pb.time_in_state.get(k, 0) - pa.time_in_state.get(k, 0)
+                     for k in sorted(set(pa.time_in_state) | set(pb.time_in_state))}
+            pol["time_in_state_delta"] = {str(k): _round(v * tick_ms) for k, v in delta.items()}
+            total = sum(delta.values())
+            if any(v < 0 for v in delta.values()):
+                reason = "time_in_state went backwards (stats reset during the window?)"
+            elif total == 0:
+                reason = f"time_in_state grew by 0 (window shorter than its {tick_ms:g} ms resolution?)"
+            else:
+                pol["avg_mhz"] = _round(sum(k * v for k, v in delta.items()) / total / 1e3)
+                wsum += sum(k * v for k, v in delta.items()) * tick_ms * pb.ncpus
+                wt += total * tick_ms * pb.ncpus
+        if reason:
+            pol["avg_mhz_null_reason"] = reason
+        policies[name] = pol
+    avg = _round(wsum / wt / 1e3) if wt > 0 else None
+    if avg is None and policies and not errors:
+        errors.append("no policy has a usable time_in_state delta (see cpufreq.<policy>.avg_mhz_null_reason)")
+    governors.discard(None)
+    return {
+        "cpufreq": policies or None,
+        "cpufreq_avg_mhz": avg,
+        "cpufreq_governor": (governors.pop() if len(governors) == 1 else "mixed") if governors else None,
+        "cpufreq_error": "; ".join(errors) if errors else None,
+    }
 
 
 def diff_snapshots(a: Snapshot, b: Snapshot, clk_tck: int, app_comm: str) -> tuple[dict, list[str]]:
@@ -327,6 +432,9 @@ def diff_snapshots(a: Snapshot, b: Snapshot, clk_tck: int, app_comm: str) -> tup
     irq_items.sort(key=lambda d: d["count"], reverse=True)
     res["interrupts"] = {"total": total, "top": irq_items[:TOP_N_IRQS]}
     res["irq_count"] = total
+
+    # sysfs cpufreq (appended last so the existing keys keep their order)
+    res.update(diff_cpufreq(a, b, clk_tck))
     return res, warnings
 
 

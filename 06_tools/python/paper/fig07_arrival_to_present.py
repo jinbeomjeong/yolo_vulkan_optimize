@@ -33,8 +33,8 @@ import frame_log_stats as fls  # noqa: E402
 STEM = "fig07_arrival_to_present"
 RUN_DIR = ps.RESULTS / "input_pacing" / "runs" / "code_2f2d3d0_display_on"
 RAW_CSV = RUN_DIR / "results_raw.csv"
-CONFIGS = (("dvk_b1s1", "b1/s1 (O2), Vulkan 합성", ps.PALETTE[0]),
-           ("dvk_b2s4", "b2/s4, Vulkan 합성", ps.PALETTE[1]))
+CONFIGS = (("dvk_b1s1", "b1/s1 (O2), 스왑체인 경로", ps.PALETTE[0]),
+           ("dvk_b2s4", "b2/s4, 스왑체인 경로", ps.PALETTE[1]))
 RUNS = (1, 2, 3)
 WARMUP_PRESENTS = 30
 DRAIN_ROWS = 3
