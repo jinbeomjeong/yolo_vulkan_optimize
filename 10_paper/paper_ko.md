@@ -1,9 +1,9 @@
 # 제로 카피 버퍼 공유와 GPU 오프로딩을 통한 임베디드 객체 검출 파이프라인의 호스트 부하 최소화
-## — Raspberry Pi 5와 Hailo-8 NPU 기반 실시간 구현
+## — Raspberry Pi 5 계열(BCM2712)과 Hailo-8 NPU 기반 실시간 구현
 
 **Minimizing Host Overhead in an Embedded Object Detection Pipeline
 via Zero-Copy Buffer Sharing and GPU Offloading
-— A Real-Time Implementation on Raspberry Pi 5 with Hailo-8 NPU**
+— A Real-Time Implementation on a Raspberry Pi 5-Class (BCM2712) Board with a Hailo-8 NPU**
 
 저자: `[작성 필요]`
 
@@ -17,34 +17,33 @@ via Zero-Copy Buffer Sharing and GPU Offloading
 
 엣지 환경의 객체 검출은 NPU(Neural Processing Unit)의 보급으로 추론 자체의 비용은 크게 낮아졌으나,
 전처리·후처리·가시화가 여전히 호스트 CPU에 남아 전체 파이프라인의 병목으로 작용한다.
-본 논문은 Raspberry Pi 5(BCM2712)와 Hailo-8 NPU로 구성된 단일 보드 환경에서,
+본 논문은 Raspberry Pi 5 계열 보드(Compute Module 5, BCM2712)와 Hailo-8 NPU로 구성된 단일 보드 환경에서,
 하드웨어 비디오 디코더·GPU(VideoCore VII)·NPU·디스플레이를 **dma-buf 기반 제로 카피 버퍼 공유**로
 연결하고, 전처리·후처리·가시화를 **GPU 컴퓨트 셰이더로 오프로딩**하여 호스트 부하를 최소화한
 실시간 객체 검출 파이프라인을 제안한다.
 
 제안 기법의 핵심은 세 가지다. 첫째, GPU 전처리가 NPU의 **장치 입력 레이아웃(NHCW)을 직접 생성**하여
 런타임의 호스트 측 레이아웃 변환을 제거한다. 이 과정에서 변환 비용의 실체가 전치(transpose) 연산이 아니라
-**CPU가 비캐시 GPU 메모리를 stride 접근으로 읽는 비용**임을 대역폭 측정으로 규명하였다
-(순차 1.479 GB/s, stride-3 접근 시 0.088 GB/s).
+**CPU가 비캐시 GPU 메모리를 바이트 단위로 읽는 비용**임을 직접 측정으로 확인하였다
+(같은 전치가 malloc 버퍼에서 0.95 ms, GPU 메모리에서 12.7 ms이며, GPU 메모리를 넓은 load로 순차 복사하면 0.78 ms다).
 둘째, NPU의 원시 출력 텐서를 GPU 버퍼로 직접 수신하여 호스트 NMS(Non-Maximum Suppression)를 GPU 디코드로 대체한다.
 억제는 처음에 CPU에서 수행하였고(§6.5), 이후 CPU 기준 구현과 비트 단위로 일치하는 GPU 셰이더로 옮겼다
 (일치를 보장할 수 없는 경계 프레임만 CPU가 처리한다). 표시 통합 수치(§6.7)는 후자의 구성에서 잰 값이다.
 셋째, 디코더가 생성한 프레임을 추가 복사 없이 표시 경로가 재사용하여 가시화를 GPU 안에서 완결한다.
 
-1920×1080 30 fps HEVC 입력과 YOLOv11m 모델에 대해, GPU 전처리까지 적용한 호스트 NMS 경로(표시 없음)와 비교하면
-후처리와 가시화까지 GPU로 옮긴 제안 파이프라인은 표시를 켜고도 응용·컴포지터·커널 스레드를 합친 파이프라인 호스트 CPU를
-프레임당 **3.189 ms에서 2.505 ms로 약 21% 줄였다**. 두 값은 같은 회차의 3회 중앙값이고 표시는 최대속도 페이싱이다.
-같은 회차 실행끼리 짝지은 감소율은 17~29%이며, 응용과 컴포지터만 보면 약 32%, 응용 프로세스만 보면 3.089 → 1.622 ms(짝지은 감소율 45~53%)다.
-디코드를 소스 30 fps 시각표에 맞춰 시작하는 별도 실행(버림 없는 소스 속도 페이싱, §6.6.3의 leaky 입력 큐와 다른 장치)에서는
-파이프라인 CPU 2.567 ms/frame에 **응용 기준 표시 지연(빈 슬롯 획득 → 화면 도달, 촬영·디코드 제외) 중앙값 약 97 ms
-(3회 범위 90.5~100.1 ms), 프레임 드롭 0**으로 실시간 표시를 달성한다. 다만 표시 간격은 고르지 않다(§6.7).
-두 값은 **서로 다른 실행**이므로 섞어 인용해서는 안 된다(§6.7 표).
-이 수치는 GPU 클럭 1150 MHz, 디코더 1스레드, GPU 억제 조건에서 측정한 값이다(§6.7).
+1920×1080 30 fps HEVC 입력과 YOLOv11m 모델에서, 후처리와 가시화까지 GPU로 옮긴 제안 파이프라인은 표시를 켜고도
+파이프라인 호스트 CPU(응용·컴포지터·커널 스레드의 합)를 프레임당 **3.189 ms에서 2.505 ms로 약 21% 줄였다**.
+비교 기준은 GPU 전처리까지 적용한 호스트 NMS 경로(표시 없음)이고, 두 값은 같은 회차의 3회 중앙값이며 표시는 최대속도 페이싱이다.
+같은 회차 실행끼리 짝지은 감소율은 17~29%다. 응용과 컴포지터만 보면 약 32%, 응용 프로세스만 보면 3.089 → 1.622 ms(짝지은 감소율 45~53%)다.
+디코드를 소스 30 fps 시각표에 맞춰 시작하는 별도 실행(버림 없는 소스 속도 페이싱)에서는 파이프라인 CPU가 2.567 ms/frame이다.
+이때 **응용 기준 표시 지연(빈 슬롯 획득 → 화면 도달, 촬영·디코드 제외) 중앙값은 약 97 ms(3회 범위 90.5~100.1 ms)이고 프레임 드롭은 0**이다.
+다만 표시 간격은 고르지 않다(§6.7). 두 실행은 서로 다르므로 값을 섞어 인용해서는 안 된다.
+이 수치들은 GPU 클럭 1150 MHz, 디코더 1스레드, GPU 억제 조건에서 측정하였다(§6.7).
 §6.1 조건의 측정 이후 추가한 입력 페이싱(프레임이 소스 시각에 도착)에서는 배치 1/슬롯 1과 크기 1의 입력 큐가 도착 기준 평균 **58.4 ms**의
-최저 지연을 내며, 처리하지 못하는 약 19%의 프레임을 버린다(GPU 1150 MHz, 디코더 1스레드, 표시 없음, §6.6.3).
-검출 결과는 기준 경로와 **1,816프레임에서 9,457개로 완전히 동일**하여 정확도 손실이 없음을 확인하였다.
+최저 지연을 내며, 처리하지 못하는 약 19%의 프레임을 버린다(표시 없음, §6.6.3).
+검출 수는 1,816프레임에서 기준 경로와 같은 9,457개이고 IoU 0.9 기준 매칭 비율이 0.999로, 기준 경로 대비 검출 손실이 없음을 확인하였다.
 처리량은 PCIe 대역폭에 의해 제한되므로 개선되지 않았으며(최대속도 페이싱 34.97 → 34.89 fps), 본 연구의 기여는
-처리량이 아니라 호스트 부하와 실시간 가시화 경로의 확보에 있다.
+처리량이 아니라 호스트 부하 절감과 실시간 가시화 경로의 확보에 있다.
 
 **주제어**: 임베디드 추론, 이기종 컴퓨팅, 제로 카피, dma-buf, GPU 컴퓨트 셰이더, NPU, 실시간 객체 검출, 엣지 AI
 
@@ -54,37 +53,37 @@ via Zero-Copy Buffer Sharing and GPU Offloading
 
 While NPUs have substantially reduced the cost of inference itself in edge object detection,
 preprocessing, postprocessing, and visualization remain on the host CPU and become the pipeline bottleneck.
-This paper presents a real-time object detection pipeline on a single board comprising a Raspberry Pi 5
-(BCM2712) and a Hailo-8 NPU, in which the hardware video decoder, the GPU (VideoCore VII), the NPU, and
+This paper presents a real-time object detection pipeline on a single board comprising a Raspberry Pi 5-class
+board (Compute Module 5, BCM2712) and a Hailo-8 NPU, in which the hardware video decoder, the GPU (VideoCore VII), the NPU, and
 the display are connected through **dma-buf based zero-copy buffer sharing**, and preprocessing,
 postprocessing, and visualization are **offloaded to GPU compute shaders**.
 
 Three contributions are central. First, GPU preprocessing directly produces the **device input layout (NHCW)**
 of the NPU, eliminating host-side layout conversion at runtime; we further identify that the dominant cost of
-this conversion is not the transpose operation but the **CPU reading uncached GPU memory with strided access**
-(1.479 GB/s sequential versus 0.088 GB/s at stride 3). Second, raw output tensors of the NPU are received
+this conversion is not the transpose operation but the **CPU reading uncached GPU memory one byte at a time**,
+measured directly (the same transpose takes 0.95 ms on a malloc buffer and 12.7 ms on GPU memory, whereas a wide sequential
+copy of the GPU memory takes 0.78 ms). Second, raw output tensors of the NPU are received
 directly into GPU buffers, replacing host NMS with GPU decoding; suppression, first done on the CPU (Section 6.5),
 was later moved to a GPU shader that matches the CPU reference bit for bit, with only boundary frames falling back
 to the CPU. The display-integrated figures (Section 6.7) were measured with the latter.
 Third, decoder-produced frames are reused by the display path without additional copies, keeping
 visualization entirely within the GPU.
 
-For 1920×1080 30 fps HEVC input with YOLOv11m, compared with a host-NMS path that already uses GPU preprocessing
-(no display), the proposed pipeline, which also moves postprocessing and visualization to the GPU, reduces the pipeline's
-host CPU time (the application, the compositor, and kernel threads) from **3.189 ms to 2.505 ms per frame (about −21%;
-−17% to −29% when runs of the same session are paired)** with the display running at full speed (application and compositor
-only: about −32%; the application process alone: 3.089 → 1.622 ms, −45% to −53% paired). In a separate run in which decoding
-is started on the 30 fps source timetable (lossless source-rate pacing, distinct from the leaky input queue of Section 6.6.3),
-the pipeline uses 2.567 ms of host CPU per frame and reaches **a median application-level display latency (free-slot
-acquisition to screen, excluding capture and decode) of about 97 ms (90.5–100.1 ms over three runs) with zero dropped frames**, though the presentation
-intervals are uneven (Section 6.7); the two runs
-must not be combined. Both were measured with the GPU at 1150 MHz, one decoder thread, and GPU-side suppression
-(Section 6.7). With input pacing, added after the original Section 6.1 measurements (frames arrive at their source times;
-GPU at 1150 MHz, one decoder thread, no display), batch 1 with one slot and a one-frame input queue reaches the lowest
-latency of **58.4 ms mean from frame arrival** while dropping the ~19% of frames it cannot process (Section 6.6.3).
-Detection results are **identical to the reference path (9,457 detections over 1,816
-frames)**, confirming no accuracy loss. Throughput is bounded by PCIe bandwidth and therefore does not
-improve (34.97 → 34.89 fps); the contribution of this work lies in host overhead and in securing a
+For 1920×1080 30 fps HEVC input with YOLOv11m, the proposed pipeline, which also moves postprocessing and visualization
+to the GPU, reduces the pipeline's host CPU time (the application, the compositor, and kernel threads) from **3.189 ms to
+2.505 ms per frame (about −21%)** with the display running at full speed. The baseline is a host-NMS path that already uses
+GPU preprocessing (no display); both values are medians of three runs in the same session, and pairing runs of the same
+session gives −17% to −29% (application and compositor only: about −32%; the application process alone: 3.089 → 1.622 ms,
+−45% to −53% paired). In a separate run in which decoding is started on the 30 fps source timetable (lossless source-rate
+pacing), the pipeline uses 2.567 ms of host CPU per frame and reaches **a median application-level display latency
+(free-slot acquisition to screen, excluding capture and decode) of about 97 ms (90.5–100.1 ms over three runs) with zero
+dropped frames**, though the presentation intervals are uneven (Section 6.7). The two runs must not be combined. Both were
+measured with the GPU at 1150 MHz, one decoder thread, and GPU-side suppression (Section 6.7). With input pacing, added after
+the original Section 6.1 measurements (frames arrive at their source times; no display), batch 1 with one slot and a
+one-frame input queue reaches the lowest latency of **58.4 ms mean from frame arrival** while dropping the ~19% of frames it
+cannot process (Section 6.6.3). Detections match the reference path in count (9,457 over 1,816 frames) with a matching ratio
+of 0.999 at IoU 0.9, showing no detection loss relative to the reference path. Throughput is bounded by PCIe bandwidth and
+therefore does not improve (34.97 → 34.89 fps); the contribution of this work lies in host overhead and in securing a
 real-time visualization path, not in throughput.
 
 **Keywords**: embedded inference, heterogeneous computing, zero-copy, dma-buf, GPU compute shader, NPU,
@@ -108,8 +107,8 @@ real-time object detection, edge AI
 본 연구의 대상 플랫폼에서 이 문제는 다음과 같이 나타났다. 최적화 이전 구성에서 프레임당 호스트 CPU
 시간은 **17.6 ms**였고, 그중 **약 14 ms가 순수하게 레이아웃 변환**에 소모되었다. 이는 NPU 한 프레임
 처리 주기(약 19~29 ms)에 필적하는 값으로, 4코어 중 거의 1개를 상시 점유하는 부담이다.
-가시화를 추가하려 하면 문제는 더 심해진다. 1920×1080 RGBA 프레임을 CPU로 생성하면 프레임당
-10 ms 이상이 추가로 필요하며, 이는 어렵게 확보한 CPU 여유를 그대로 반납하는 결과가 된다.
+가시화를 추가하면 문제가 더 커질 수 있다. 1920×1080 RGBA 프레임 한 장은 약 8.3 MB이며, 이를 CPU로 색 변환·합성하면
+어렵게 확보한 CPU 여유를 다시 쓰게 된다(CPU 가시화 경로의 비용은 본 연구에서 측정하지 않았다).
 
 ## 1.2 문제 정의
 
@@ -129,29 +128,44 @@ real-time object detection, edge AI
 본 논문의 기여는 다음과 같다.
 
 1. **HW 디코더·GPU·NPU·디스플레이를 잇는 dma-buf 기반 제로 카피 체인을 설계하고 구현하였다.**
-   파이프라인 전 구간에서 CPU 메모리 복사가 발생하지 않으며, 입력과 출력 모두를 dma-buf로 사용하는
+   파이프라인 단계 사이에서 CPU 메모리 복사가 발생하지 않으며(스왑체인 표시 경로에는 드라이버가 수행하는 GPU 측 작업이
+   남는다, §6.7.1), 입력과 출력 모두를 dma-buf로 사용하는
    NPU 추론 경로가 실제로 동작함을 실증하였다(§4.2, §6.5).
 
 2. **GPU 전처리가 NPU의 장치 입력 레이아웃을 직접 생성하도록 하여 런타임 호스트 변환을 제거하였다.**
    이로써 프레임당 CPU 시간이 17.6 ms에서 3.5 ms로 감소하였다. 나아가 이 비용의 실체가 전치 연산이
-   아니라 **CPU의 비캐시 GPU 메모리 읽기**임을 대역폭 측정으로 규명하였다(§6.3, §6.4).
-   이 관찰은 특정 모델이나 프레임워크에 국한되지 않는 설계 원칙을 제공한다.
+   아니라 **CPU가 비캐시 GPU 메모리를 바이트 단위로 읽는 것**임을 직접 측정으로 보였다(§6.3, §6.4).
+   이 관찰은 캐시를 우회하는 공유 메모리만 노출하는 통합 GPU 플랫폼에서 버퍼의 소비자를 정하는 설계 지침으로 이어진다.
 
 3. **전처리·후처리·가시화를 모두 GPU 컴퓨트 셰이더로 오프로딩하였다**(억제의 경계 프레임 제외).
    표시를 포함한 상태에서도 응용·컴포지터·커널 스레드를 합친 파이프라인 호스트 CPU가 프레임당 3.189 ms에서 2.505 ms로 약 21%(같은 회차 실행끼리
    짝지으면 17~29%) 감소하였다. 응용 프로세스만은 3.089 → 1.622 ms다. 기준은 GPU 전처리를 적용한 호스트 NMS 경로(표시 없음)이고, 조건은 §6.7(GPU 1150 MHz·디코더 1스레드·GPU 억제)이다.
    측정 빌드에서는 두 경로 모두 추론 완료 이벤트로 슬롯 대기를 끝낸다(§4.6.3).
 
-4. **정확도 손실이 없음을 대규모 비교로 검증하였다.** 1,816프레임에 대해 검출 총수가
-   기준 경로와 완전히 동일하며(9,457개), IoU 0.9 기준 매칭 비율이 0.9990이다(§6.8).
+4. **기준 경로와 검출이 동등함을 검증하였다.** 1,816프레임(영상 1개)에 대해 검출 총수가
+   기준 경로와 같으며(9,457개), IoU 0.9 기준 매칭 비율이 0.9990이다(§6.8). 정답 대비 정확도(mAP)는 재지 않았다.
 
 5. **최저 지연 운용점을 프레임 도착 시점 기준으로 정의하고 측정하였다(측정 이후 추가).** 파일 입력의 지연 하한 중 절반 이상이
-   디코드가 앞서 달려 생긴 슬롯 대기임을 보이고, 입력 페이싱과 크기 1의 leaky 입력 큐로 이를 제거하여 도착 기준 평균 58.4 ms를 얻었다.
+   디코드가 앞서 달려 생긴 슬롯 대기임을 보이고, 입력 페이싱과 크기 1의 leaky 입력 큐로 이 대기를 피하여 도착 기준 평균 58.4 ms를 얻었다.
    입력 큐를 키우면 지연만 늘고 30 fps 추종 설정에서는 효과가 없음도 확인하였다(§6.6.3).
 
 본 논문은 아울러 **처리량이 개선되지 않았음을 명시한다.** 대상 플랫폼의 처리량 상한은 PCIe Gen3 x1
-대역폭이 결정하며, 제안 기법은 이 상한을 바꾸지 못한다. 기여는 호스트 부하 절감과, 그로 인해
-비로소 가능해진 실시간 가시화 경로의 확보에 있다.
+대역폭이 결정하며, 제안 기법은 이 상한을 바꾸지 못한다. 기여는 호스트 부하 절감과, 표시를 켜고도 기준 경로보다
+낮은 호스트 부하로 실시간 가시화 경로를 확보한 데 있다.
+
+## 1.4 용어
+
+본 논문은 다음 용어를 한 가지 뜻으로만 쓴다.
+
+- **HEF**(Hailo Executable Format): NPU 런타임이 읽는 컴파일된 모델 파일. **VStream**은 런타임이 호스트 쪽 형식 변환을 대신 해 주는 고수준 입출력 스트림이고, **장치 스트림**은 칩이 실제로 주고받는 형식 그대로의 스트림이다.
+- **SAND128**: 하드웨어 HEVC 디코더가 내는 128바이트 열 단위 타일 배치의 NV12 형식. **de-SAND**는 이를 선형 배치로 푸는 일이다. **DRM_PRIME**은 libavcodec이 디코드 프레임을 dma-buf 기술자로 내보내는 형식이다.
+- **슬롯**: 디코드부터 결과 완료까지 한 프레임이 쥐는 버퍼 묶음. 슬롯 수가 동시에 처리 중인 프레임의 상한이다(§4.6.2).
+- **e2e 지연**: 디코드 종료부터 후처리 완료까지. **도착 기준 지연**: 입력 페이싱에서 프레임의 소스 도착 시각부터 후처리 완료까지. **응용 기준 표시 지연**: 응용이 빈 슬롯을 얻은 시각부터 화면 도달까지로, 카메라 렌즈부터 재는 통상의 glass-to-glass와 다르다(§6.7).
+- **기준 경로**: GPU 전처리 + 런타임 호스트 NMS 경로(호스트 NMS 경로). **스왑체인 경로**: GPU 표시 변환과 Vulkan 스왑체인으로 표시하는 경로(Vulkan 합성). **평면 경로**: 디코더 프레임을 디스플레이 컨트롤러(HVS) 평면에 직접 올리는 경로.
+- **억제**: NMS(비최대 억제) 단계. **최대속도 페이싱**(`asap`): 파일을 최대 속도로 읽는다. **소스 페이싱**: 디코드 시작을 소스 시각표에 맞춘다(버림 없음). **입력 페이싱**: 프레임을 소스 시각에 도착시키고 크기 N의 leaky 입력 큐에서 넘치는 프레임을 버린다.
+- **수직동기**(vblank): 60 Hz 화면의 프레임 경계(16.7 ms). **present**: 완성된 프레임을 화면에 내도록 요청하는 호출.
+- **TFU**(Texture Formatting Unit): V3D GPU의 텍스처 형식 변환 유닛.
+- **§6.1 조건**(원 조건): GPU 960 MHz, 디코더 자동 프레임 스레드, CPU 억제. **새 조건**: GPU 1150 MHz, 디코더 1스레드, GPU 억제(§6.1 "측정 이후 바뀐 조건").
 
 ---
 
@@ -172,12 +186,19 @@ real-time object detection, edge AI
 Linux 커널의 dma-buf 프레임워크는 서로 다른 디바이스 드라이버가 동일한 물리 버퍼를 파일 디스크립터로
 공유하도록 한다 [R3]. 멀티미디어 파이프라인에서 디코더와 디스플레이 사이의 제로 카피는 널리 쓰이는
 기법이고¹, 모바일 GPU 추론에서도 텍스처를 입출력으로 직접 써서 복사를 없애는 엔진이 있다 [R13].
-그러나 저자가 확인한 범위에서는 본 연구처럼 **디코더·GPU·NPU·디스플레이 네 주체가 하나의 체인**을 이루는 사례를 찾지 못했다.
-특히 추론 가속기의 입력과 출력을 **동시에** dma-buf로 운용하는 구성은 벤더 문서에서도 명시된 사례를
-확인하지 못해, 본 연구에서 별도의 검증 과정을 거쳤다(§6.5).
+통합 메모리 SoC에서는 디코더·추론·화면 합성을 공유 버퍼로 잇는 프레임워크가 이미 있다(예: Jetson의 DeepStream 계열²).
+신경망 가속기 런타임 중에도 입출력 텐서를 외부에서 할당한 메모리로 지정하는 인터페이스를 제공하는 것이 있다(예: Rockchip RKNN³).
+본 연구는 **PCIe로 연결된 외장 NPU**와 `HOST_CACHED` 메모리가 없는 통합 GPU 사이를 dma-buf로 잇는다는 점이 다르다.
+대상 NPU 런타임에서 입력과 출력을 **동시에** dma-buf로 쓰는 구성은 벤더 문서에서 확인하지 못해 별도로 검증하였다(§6.5).
 
 ¹ M. Tretter and P. Zabel, "Zero-Copy Video Streaming on Embedded Systems the Easy Way," Embedded Linux Conference Europe, 2017-10-25, 발표자료.
 https://static.sched.com/hosted_files/osseu17/e2/zero-copy_video_streaming.pdf (접근일: 2026-10-13)
+
+² NVIDIA, "DeepStream SDK — NvBufSurface API (`NvBufSurfaceFromFd`)," DeepStream 4.0.2 Developer Guide.
+https://docs.nvidia.com/metropolis/deepstream/4.0.2/dev-guide/DeepStream%20Development%20Guide/baggage/nvbufsurface_8h.html (접근일: 2026-10-16)
+
+³ Rockchip, "rknn_api.h" (`rknn_set_io_mem`, `rknn_create_mem_from_fd`), rknn-toolkit2.
+https://github.com/airockchip/rknn-toolkit2 (접근일: 2026-10-16)
 
 ## 2.3 GPU 컴퓨트 오프로딩
 
@@ -185,6 +206,8 @@ https://static.sched.com/hosted_files/osseu17/e2/zero-copy_video_streaming.pdf (
 셰이더 기반 경량 추론 엔진 [R13] 등으로 이어져 왔다. 본 연구의 셰이더는 Vulkan 1.3 core 기능만 사용한다 [R2].
 본 연구의 차별점은 오프로딩 대상을 전처리에 한정하지 않고 **후처리와 가시화까지 확장**하였다는 점,
 그리고 오프로딩의 이득을 결정하는 것이 연산량이 아니라 **메모리 접근 특성**임을 실측으로 보인 점이다.
+통합 CPU/GPU 플랫폼에서 캐시를 우회하는 공유(zero-copy) 메모리의 접근 비용이 크다는 점은 Jetson 계열에서 이미 보고되었다 [R14].
+본 연구는 이를 Vulkan 메모리 타입이 `HOST_CACHED`를 제공하지 않는 V3D와 외장 NPU 사이의 입력 레이아웃 변환에 적용해 정량화하였다.
 
 > **참고문헌 정책**: 본 절의 인용 `[R*]`은 §참고문헌에 대응한다. 서지사항은 2026-10-13에 DOI·Crossref·발행처 페이지로
 > 확인하였고, 확인하지 못한 필드는 `[확인 필요]`로 표시하였다. 비학술 자료는 각주로 단다.
@@ -199,20 +222,23 @@ https://static.sched.com/hosted_files/osseu17/e2/zero-copy_video_streaming.pdf (
 
 | 구성요소 | 사양 |
 |---|---|
-| SoC | Broadcom BCM2712 (Cortex-A76 ×4 @ 2.4 GHz) [R5] |
+| 보드 | Raspberry Pi Compute Module 5 Rev 1.0 (RAM 16 GB) + 캐리어 보드 `[작성 필요: 모델]` [R5] |
+| SoC | Broadcom BCM2712 (Cortex-A76 ×4 @ 2.4 GHz) |
 | GPU | VideoCore VII (V3D 7.1), Mesa V3DV 26.2.2 [R6], Vulkan 1.3 |
 | GPU 클럭 | **960 MHz** (부트로더 2025-12-08의 펌웨어 기본값, §6.1에서 원 조건으로 분류한 측정). 부트로더 2026-09-25부터 1150 MHz이며, §6.1의 "측정 이후 바뀐 조건"에 적은 절은 이 값에서 쟀다 |
-| NPU | Hailo-8, PCIe Gen3 ×1 (8.0 GT/s), HailoRT 4.24.0 [R4] |
+| NPU | Hailo-8 `[작성 필요: 모듈 형태]`, PCIe Gen3 ×1 (8.0 GT/s, 펌웨어 설정 `dtparam=pciex1_gen=3`으로 활성화. 보드 사양은 Gen2), HailoRT 4.24.0 [R4] |
 | 비디오 디코더 | BCM2712 내장 HEVC 하드웨어 디코더 |
 | 디스플레이 | HDMI-A-1, 1920×1080@60 (Wayland 컴포지터) |
 | 커널 | Linux 6.18.50 |
 
 PCIe 링크 속도는 문서값이 아니라 sysfs의 `current_link_speed`로 매 측정 시 확인하였다.
 이는 링크 세대가 NPU 처리량을 거의 배로 바꾸는 지배적 변수이기 때문이다(§6.6).
+보드의 공식 사양은 PCIe Gen2 ×1이며, Gen3 동작은 경우에 따라 가능하나 지원되지 않는 모드로 명시되어 있다 [R5](§7.4 (3)).
 
 ## 3.2 모델과 텐서 사양
 
-모델은 YOLOv11m [R1]을 Hailo 컴파일러로 변환한 것을 사용하였다.
+모델은 YOLOv11m [R1]을 Hailo Dataflow Compiler로 변환한 HEF를 사용하였다(HEF 안의 버전 문자열 3.34.0, 출처 `[작성 필요]`).
+모델 컴파일러는 x86 전용이라 대상 보드에서 HEF를 다시 만들 수 없으며, 본 연구는 HEF를 바꾸지 않았다.
 
 **표 2.** 모델(HEF) 사양
 
@@ -266,7 +292,8 @@ NPU의 배치 크기 B에 대한 한 배치 처리 시간을 측정하여 선형
 > **T(B) = 24.8 + 16.2 · B  [ms]**
 
 배치당 고정비 24.8 ms와 프레임당 16.2 ms로 분해된다. PCIe를 Gen2에서 Gen3로 변경했을 때
-**두 항이 모두 정확히 절반으로 감소**한 점은 두 항이 모두 전송 지배적임을 시사한다.
+고정비는 약 46 → 24.8 ms(1.8배), 프레임당 비용은 32.6 → 16.2 ms(2.0배)로 줄어 Gen2 → Gen3 실효 전송률 비(약 1.97배)에 가깝다.
+이는 두 항이 모두 전송 지배적임을 시사한다(Gen2는 반복 1회).
 이 모델의 점근 처리량 상한은 1/0.0162 ≈ **61.6 fps**이며 실측 상한은 51.7 fps다.
 **제안 기법은 이 상한을 바꾸지 못한다.**
 
@@ -406,18 +433,19 @@ NHCW에서는 채널마다 4픽셀이 하나의 32비트 워드에 정렬되어 
 ### 4.3.2 비용의 실체
 
 이 최적화의 효과는 프레임당 CPU 시간 **17.6 ms → 3.5 ms**로 나타났다. 그런데 이 14 ms라는 값은
-전치 연산의 계산량으로 설명되지 않는다. 동일한 전치를 일반 malloc 버퍼에서 수행하면 약 1.2 ms에
-불과하다. **10배 이상의 차이가 어디서 오는지가 본 절의 핵심 관찰이다.**
+전치 연산의 계산량으로 설명되지 않는다. 같은 전치 루프를 일반 malloc 버퍼에서 돌리면 0.95 ms에
+불과하다(§6.3 표 9). **13배 이상의 차이가 어디서 오는지가 본 절의 핵심 관찰이다.**
 
 원인은 §3.3 제약 1이다. 전처리 출력은 GPU가 할당한 `HOST_COHERENT` 메모리이며, 런타임의 전치
-루프는 이 메모리를 **1바이트씩 stride 3으로 읽는다.** 캐시가 없는 매핑에서 stride 접근은 캐시 라인을
-전혀 활용하지 못하므로 최악의 패턴이 된다. §6.3에서 이를 대역폭으로 정량화한다.
+루프는 이 메모리를 **1바이트씩**(stride 3으로) 읽는다. 캐시가 없는 매핑에서는 바이트 load 하나하나가 메모리까지 가므로,
+접근 순서와 무관하게 넓은 순차 복사보다 약 16배 느리다. §6.3에서 이를 직접 측정한다.
 
 따라서 이 최적화의 본질은 **"전치를 없앤 것"이 아니라 "GPU가 쓴 메모리를 CPU가 읽는 일을 없앤 것"**
 이다. 이 해석은 다음의 일반화된 설계 원칙으로 이어진다.
 
-> **원칙**: 통합 GPU가 비캐시 메모리만 노출하는 플랫폼에서, GPU가 생산한 버퍼를 CPU가 순회하는
-> 모든 설계는 연산량으로 예측한 것보다 약 10배 비싸다. 해당 버퍼는 GPU 또는 DMA가 소비해야 한다.
+> **원칙**: 통합 GPU가 비캐시 메모리만 노출하는 본 플랫폼에서, GPU가 생산한 버퍼를 CPU가 읽는 비용은 읽기 단위에
+> 크게 좌우되었다. 넓은 순차 복사는 캐시 dma-heap 대비 약 6배, 바이트 단위 읽기는 malloc·캐시 dma-heap 대비 약 13~16배
+> 비쌌다(표 9). 따라서 그러한 버퍼는 GPU나 DMA가 소비하도록 두고, CPU가 꼭 읽어야 하면 넓은 순차 복사로 한 번에 가져오는 편이 유리하다.
 
 ## 4.4 GPU 후처리와 억제
 
@@ -455,7 +483,7 @@ NHCW 레이아웃은 CPU에게는 최악이었으나 **GPU에게는 유리하다
 그 근거는 다음과 같다. 이관의 동기와 검증은 이 절 끝의 각주에 적었다.
 
 - 프레임당 후보 수가 평균 16.81개(최대 45개)로 매우 적다. 이는 약 0.5 KB에 해당한다.
-- 이 데이터를 CPU가 읽는 것은 §4.3.2의 stride 순회와 전혀 다른 성격이다. 작고 연속적이다.
+- 이 데이터를 CPU가 읽는 것은 §4.3.2의 바이트 단위 순회와 전혀 다른 성격이다. 작고 연속적이다.
 - 실측 억제 비용은 프레임당 **2.2~2.7 µs**로, 전체 예산에서 무시할 수 있다.
 - 억제는 본질적으로 순차 의존성이 있는 연산이며 GPU가 잘하는 작업이 아니다.
 - CPU 기준 구현을 그대로 프로덕션 코드로 사용하므로 **기준 구현과 실사용 구현이 갈라지지 않는다.**
@@ -621,7 +649,7 @@ while (빈 슬롯 없음) {
 **측정 도중 빌드나 테스트를 수행하지 않도록** 별도의 상호 배제 장치를 두었다. CPU 시간 측정은
 동시 작업에 민감하게 오염된다.
 
-**측정 이후 바뀐 조건.** §6.2~§6.6.2와 §6.8.1~§6.8.4의 수치는 위 표의 조건에서 얻었다. §6.6.3, §6.7, §6.7.1, §6.8.5, §7.4 (1)과
+**측정 이후 바뀐 조건.** §6.2, §6.4~§6.6.2와 §6.8.1~§6.8.4의 수치는 위 표의 조건에서 얻었다(§6.3은 NPU와 디코더를 쓰지 않는 단독 측정이다). §6.6.3, §6.7, §6.7.1, §6.8.5, §7.4 (1)과
 "(측정 이후 추가)"로 표시한 항목은 아래의 바뀐 기본 조건 중 각 절의 측정일까지 적용된 조건에서 측정하였으며, 각 절에 조건과 날짜를 적었다.
 메인 스레드 대기 변경(2026-10-16)은 §6.6.3(프레임 기록 분석 (5) 제외)과 §6.7(§6.7.1 제외)에만 적용되었다.
 그 밖의 절에서 새 조건의 값은 실행과 통계량이 달라 원 측정값을 대체하지 않고 각주에 참고치로만 병기한다.
@@ -642,6 +670,13 @@ while (빈 슬롯 없음) {
 - **메인 스레드 대기**(2026-10-16, 커밋 `2f2d3d0`): 슬롯 대기가 추론 완료 이벤트로 일찍 끝나도록 바뀌었다(§4.6.3 각주).
   §6.6.3과 §6.7은 이 코드와 위 세 조건에서 같은 벤치·설정·집계로 다시 잰 값이다(2026-10-16, 900프레임 × 3회).
 
+절과 조건의 대응은 다음과 같다(코드 "이전"은 메인 스레드 대기 변경 이전).
+
+- **§6.1 조건**(960 MHz · 디코더 자동 · CPU 억제): §6.2, §6.4~§6.6.2(§6.6.1 (4) 제외), §6.8.1~§6.8.4, 각주에 "§6.1 조건"으로 적은 값
+- **새 조건 · 코드 이전**(1150 MHz · 디코더 1스레드 · GPU 억제): §6.6.1 (4)(표 18·그림 4, 2026-10-08), §6.6.3 프레임 기록 분석 (5), §6.7.1(2026-10-08), §6.8.5, §7.4 (1)(2026-10-11)
+- **새 조건 · 코드 `2f2d3d0`**: §6.6.3(분석 (5) 제외), §6.7(2026-10-16)
+- **단독 측정**(NPU·디코더 미사용, GPU 1150 MHz): §6.3 표 9(2026-10-16, 코드 `bc87e17`)
+
 ## 6.2 디코드 경로 선택
 
 **표 8.** 디코드 경로별 처리량과 CPU 비용
@@ -658,7 +693,7 @@ while (빈 슬롯 없음) {
 빠졌고, 그 결과 CPU 1코어가 포화되어 소프트웨어 디코드와 비슷한 비용이 되었다. 이는 프레임워크 자체의 속성이
 아니라 해당 패키지 버전의 결함이다(각주 ¹).
 
-그 복사 경로와 비교하면 dma-buf 기술자를 직접 수신할 때 CPU 시간이 **130배** 감소한다. 이 차이는 디코더의 성능이 아니라
+그 복사 경로와 비교하면 dma-buf 기술자를 직접 수신할 때 CPU 시간이 **약 110~130배** 감소한다. 이 차이는 디코더의 성능이 아니라
 **출력을 어떻게 수신하는가**에서 온다. 본 연구가 제로 카피를 설계 전제로 삼은 첫 번째 근거다.
 
 측정 이후 두 가지를 추가로 확인하였다. 첫째, 결함이 고쳐진 패키지에서 같은 프레임워크의 dma-buf 출력을 자체 요소로 받아
@@ -679,33 +714,42 @@ GPU로 디코드하는 선택지는 없다. 이 GPU의 Vulkan 드라이버에는
 출력 형식을 지정하지 않은 ffmpeg 명령행 도구도 프레임을 CPU로 내려받아 2.0 ms를 쓰며, DRM PRIME 형식을 유지하면 0.55 ms다.
 어느 경우든 비용을 정한 것은 디코더가 아니라 복사의 유무라는 결론은 같다.
 
-² 디코더 프레임 스레드 자동(5개) 조건이다. 스레드 1개에서의 디코드 처리량 상한은 약 266 fps(구현 주석 기준, 별도 측정 없음)로,
-여전히 NPU 상한(51.7 fps)보다 5배 높다.
+² 디코더 프레임 스레드 자동(5개) 조건이다. 디코더 1스레드에서도 파이프라인 처리량과 검출 수는 자동 스레드와 같았다
+(§6.1의 "측정 이후 바뀐 조건").
 
 ³ 소스 페이싱 표시에서 디코더 자동 스레드와 1스레드를 교대로 잰 비정식 A/B(GPU 1150 MHz, GPU 억제, 900프레임 × 3회)에서
-CPU는 2.073 → 1.778 ms/frame로 줄었고 glass-to-glass 평균은 99.48 → 99.52 ms로 같았으나, 응용 내부 e2e 지연 p90은 3회 모두
+CPU는 2.073 → 1.778 ms/frame로 줄었고 응용 기준 표시 지연 평균은 99.48 → 99.52 ms로 같았으나, 응용 내부 e2e 지연 p90은 3회 모두
 1스레드가 약 1.9 ms 높았다(98.67 → 100.55 ms).
 
 ## 6.3 메모리 접근 특성 (제약 1의 정량화)
 
-1,221,120 B(원시 텐서 6개 합계)를 CPU가 순차 `memcpy`로 읽는 시간을 할당처별로 측정하였다.
-반복 30회, 워밍업 3회 제외.
+NPU 입력과 같은 1,228,800 B(640×640×3) 버퍼를 할당처 세 곳에 두고, CPU가 네 가지 방식으로 읽어 malloc 버퍼에 쓰는 시간을
+측정하였다. 전치는 런타임 변환과 같은 1바이트 stride-3 루프를 스칼라로 컴파일한 것이다(디스어셈블로 벡터 명령이 없음을 확인).
+비교를 위해 같은 루프를 컴파일러가 자동 벡터화(NEON `ld3`)한 것도 쟀다.
 
-**표 9.** 할당처별 원시 텐서(1,221,120 B) CPU 읽기 시간과 대역폭
+**표 9.** 할당처·읽기 방식별 CPU 읽기 시간(1,228,800 B)
 
-| 할당처 | 중앙값 (ms) | p90 (ms) | **대역폭 (GB/s)** |
-|---|---:|---:|---:|
-| 호스트 malloc (기준) | 0.244 | 0.248 | **5.001** |
-| 캐시 dma-heap (동기화 ioctl 포함) | 0.396 | 0.444 | **3.084** |
-| **GPU `HOST_COHERENT`** | **0.826** | 0.853 | **1.479** |
+| 할당처 | 순차 `memcpy` (ms) | 1바이트 순차 (ms) | **1바이트 stride-3 전치 (ms)** | 전치, 자동 벡터화 (ms) |
+|---|---:|---:|---:|---:|
+| 호스트 malloc (기준) | 0.077 (15.96 GB/s) | 0.827 | 0.947 | 0.194 |
+| 캐시 dma-heap (동기화 ioctl 포함) | 0.135 (9.10 GB/s) | 0.878 | 0.992 | 0.243 |
+| **GPU `HOST_COHERENT`** | **0.784 (1.567 GB/s)** | **12.820** | **12.688 (0.097 GB/s)** | 8.167 |
 
-GPU 메모리의 순차 읽기 대역폭은 malloc의 **30%** 수준이다. 그런데 §4.3.2의 전치 루프는 순차가 아니라
-**stride 3 바이트 읽기**이며, 이 경우 실효 대역폭은 약 **0.088 GB/s**로 떨어진다.
-즉 순차 대비 **약 17배**의 추가 손실이 접근 패턴에서 발생한다.
+> 독립 실행 3회 × 셀당 30표본(워밍업 3)의 실행별 중앙값을 다시 3회 중앙값으로 묶었다. 읽기 방식과 할당처는 표본마다 교대하고 CPU는 한 코어에 고정하였다
+> (2026-10-16, GPU 1150 MHz, NPU·표시 미사용, 목적지 체크섬 검증 통과). 3회 범위는 GPU 메모리 행이 0.5% 이내다.
+> malloc 행은 원본이 표본 사이에 캐시에 남는 낙관적 기준이다. 같은 세션에서 원시 출력 6텐서(1,221,120 B)를 순차 `memcpy`로 읽는
+> 기존 방식은 malloc 0.193, 캐시 dma-heap 0.280, GPU 메모리 0.855 ms였고, 최초 측정(2026-09)은 각각 0.244 / 0.396 / 0.826 ms
+> (5.001 / 3.084 / 1.479 GB/s)였다.
 
-> 이것이 "전치 연산이 비싼 것이 아니라 메모리 읽기가 비싸다"는 §4.3.2 주장의 정량적 근거다.
-> 동일한 연산이 malloc 버퍼에서 1.2 ms, GPU 버퍼에서 14 ms인 차이는 연산량이 아니라
-> **대역폭 1.479 GB/s와 접근 패턴 페널티 약 17배의 곱**으로 설명된다.
+세 가지가 드러난다. 첫째, **같은 전치가 malloc 버퍼에서 0.95 ms, GPU 메모리에서 12.7 ms(13.4배)다.**
+GPU 메모리의 실효 대역폭 0.097 GB/s는 런타임 변환이 차지하던 약 14 ms를 버퍼 크기로 나눈 값(0.088 GB/s)과 10% 안에서 맞는다.
+둘째, **비용을 정하는 것은 stride가 아니라 읽기 단위다.** GPU 메모리를 1바이트씩 순차로 읽어도 12.8 ms로 stride-3 전치와 같고,
+같은 메모리를 넓은 load로 순차 복사하면 0.78 ms로 약 16배 빠르다. 캐시가 없는 매핑에서는 바이트 load 하나하나가 메모리까지 가기
+때문으로 해석한다(매핑의 페이지 속성은 직접 확인하지 않았다). 셋째, 컴파일러 벡터화로는 해소되지 않는다(`ld3` 전치 8.2 ms, 1.55배).
+
+> 이것이 "전치 연산이 비싼 것이 아니라 메모리 읽기가 비싸다"는 §4.3.2 주장의 직접 근거다. 런타임 변환 함수의 실제 루프가
+> 측정 루프와 같은지는 확인하지 않았으며(라이브러리에 심볼이 없다), 측정값 12.7 ms와 파이프라인에서 사라진 약 14 ms의 차이는
+> 그 루프 차이나 파이프라인 안의 경합일 수 있다.
 
 ## 6.4 레이아웃 정합 효과
 
@@ -746,6 +790,8 @@ NHCW 경로에서는 **샘플 0건**으로 사라졌다. 총 사이클은 13.1 G
 | 0.9 | 2 | 3.366 |
 | 0.99 | **0** | 3.363 |
 
+> 배치 8/슬롯 16, 600프레임, 설정당 1회, §6.1 조건(2026-09-20).
+
 **검출이 하나도 남지 않아도 비용이 줄지 않는다.** 이는 비용의 본체가 억제가 아니라
 **원시 텐서 전체를 순회하며 역양자화하는 작업**임을 뜻한다. 앵커 8,400개
 (80²+40²+20²)에 클래스 80과 DFL 64를 곱하면 약 120만 개의 값을 매 프레임 훑어야 한다.
@@ -755,7 +801,7 @@ NHCW 경로에서는 **샘플 0건**으로 사라졌다. 총 사이클은 13.1 G
 
 ### 6.5.2 입출력 동시 dma-buf 사용의 검증
 
-§4.4.1의 구성, 즉 **입력과 출력을 모두 dma-buf로 사용하는 추론**은 선행 사례를 찾을 수 없어
+§4.4.1의 구성, 즉 **입력과 출력을 모두 dma-buf로 사용하는 추론**은 대상 런타임의 벤더 문서에서 명시된 사례를 확인하지 못해
 별도로 검증하였다. 16프레임에 대해 호스트 메모리 입력 실행과 결과를 비교하였다.
 
 **표 12.** 입출력 동시 dma-buf 추론의 검증 결과
@@ -881,7 +927,7 @@ GPU 디코드 셰이더의 실행 시간은 중앙값 **0.5625 ms**, CPU 억제�
 
 **그림 4.** 배치 × 슬롯 격자의 처리량과 e2e 지연(디코드 종료 → 결과 완료, 평균과 괄호 안 p90). 굵은 테두리 칸(슬롯 = 2 × 배치)에서 처리량이
 배치 천장 B / T(B)에 닿는다. 회색 칸은 측정하지 않았다(슬롯 상한 8/16, 슬롯 < 배치)(측정: 2026-10-08, V3D 1150 MHz, 디코더 기본값 1스레드 —
-바이너리 빌드 시각 근거이며 실행 환경은 기록되지 않음, GPU 후처리·GPU 억제, 표시 없음, PCIe Gen3 x1, 900프레임 × 반복 3 중앙값,
+바이너리 빌드 시각 근거이며 실행 환경은 기록되지 않음. 처리량은 두 디코더 조건에서 같았다(§6.6.1 표 16 각주), GPU 후처리·GPU 억제, 표시 없음, PCIe Gen3 x1, 900프레임 × 반복 3 중앙값,
 원본: `07_results/op_point/runs/grid_gpu_postproc/results.csv`).
 
 
@@ -934,7 +980,7 @@ GPU 디코드 셰이더의 실행 시간은 중앙값 **0.5625 ms**, CPU 억제�
 크기 N의 **입력 큐**를 추가하였다(`--input-pace source --input-queue N`). 큐는 넘치면 가장 오래된 프레임을 버리고 꺼낼 때도 오래된 것부터
 꺼낸다(GStreamer `queue leaky=downstream`과 같은 의미). 최신 것부터 꺼내면 N ≥ 2에서 결과 순서가 바뀌므로 쓰지 않았다.
 
-지연의 기점은 셋이다. e2e는 **디코드 종료**부터(§6.6.1~6.6.2), glass-to-glass는 **슬롯 획득**부터(§6.7), 이 절의 **도착 기준 지연**은
+지연의 기점은 셋이다. e2e는 **디코드 종료**부터(§6.6.1~6.6.2), 응용 기준 표시 지연는 **슬롯 획득**부터(§6.7), 이 절의 **도착 기준 지연**은
 프레임이 도착한 시각부터 결과 완료까지다. 카메라라면 촬영 시각에 해당한다. 기점이 다른 값은 서로 비교하지 않는다.
 
 조건은 2026-10-16, 코드 커밋 `2f2d3d0`, GPU 1150 MHz, 디코더 1스레드, GPU 후처리·GPU 억제, 표시 없음, PCIe Gen3 x1, 도착 900프레임 × 3회(반복 바깥 루프)이며
@@ -1022,12 +1068,12 @@ N이 효과가 없고, 처리가 소스보다 느린 배치 1/슬롯 1에서는 
 
 **표 22.** 목적별 운용점
 
-| 목적 | 설정 | 처리량 | 지연 |
+| 목적 | 설정 | 처리량 | 지연 [기점·조건] |
 |---|---|---:|---:|
-| 최대 처리량 | 배치 8 / 슬롯 16 | 51.48 fps | e2e 325 ms |
-| **최소 지연** | 배치 1 / 슬롯 1 + 입력 페이싱(큐 1), 표시 없음 | 24.42 fps 처리(입력의 18.6% 버림) | **도착 기준 58.4 ms** |
-| 최소 지연, 화면까지 | 위 구성 + Vulkan 합성 표시 | 24.24 fps 처리(19.1% 버림) | 도착 → 화면 70.2 ms |
-| **30 fps 실시간 표시** | **배치 2 / 슬롯 4** | **34.96 fps** | **e2e 142 ms** |
+| 최대 처리량 | 배치 8 / 슬롯 16 | 51.48 fps | 325 ms [e2e · §6.1 조건] |
+| **최소 지연** | 배치 1 / 슬롯 1 + 입력 페이싱(큐 1), 표시 없음 | 24.42 fps 처리(입력의 18.6% 버림) | **58.4 ms [도착 기준 · 새 조건]** |
+| 최소 지연, 화면까지 | 위 구성 + Vulkan 합성 표시 | 24.24 fps 처리(19.1% 버림) | 70.2 ms [도착 → 화면 · 새 조건] |
+| **30 fps 실시간 표시** | **배치 2 / 슬롯 4** | **34.96 fps** | **142 ms [e2e · §6.1 조건]**, 80.7 ms [도착 기준 · 새 조건] |
 
 > 최소 지연 두 행은 §6.6.3 조건(2026-10-16, 코드 `2f2d3d0`)의 도착 기준 지연이고, 나머지는 §6.1 조건의 e2e다. 디코더 스레드 1개에서는
 > 최대 처리량 e2e 318.6 ms(호스트 NMS), 실시간 표시 139.5 ms(GPU 억제)이며 처리량은 같다.
@@ -1049,10 +1095,11 @@ N이 효과가 없고, 처리가 소스보다 느린 배치 1/슬롯 1에서는 
 **GPU 1150 MHz, 디코더 1스레드, GPU 억제**이다(2026-10-16, 코드 커밋 `2f2d3d0`, 배치 2/슬롯 4, PCIe Gen3 x1, 표 23 아래 각주).
 호스트 CPU는 응용의 CPU 측정 창(측정 구간의 시작·끝)에 맞춰 시스템 전체를 기록하였다. 응용이 창의 시작·끝을 알리는 순간
 모든 프로세스와 커널 스레드의 CPU 시간을 함께 찍어(창 표지를 받는 저장소의 `sys_cpu_window.py`) 응용, 표시를 맡는 컴포지터(labwc),
-커널 스레드, 그 밖의 프로세스로 나누었다. 본 논문은 앞의 세 가지 합을 **파이프라인 호스트 CPU**로 보고하며,
-파이프라인과 무관한 사용자 프로세스(측정 보조 도구, 작업 관리자 등)는 제외한다.
-본 논문의 glass-to-glass는 카메라 렌즈부터 재는 통상의 정의와 달리 응용이 빈 슬롯을 얻은 시각부터 화면 도달까지이며,
-촬영과 디코드 시간을 포함하지 않는다(응용 기준 표시 지연).
+커널 스레드, 그 밖의 프로세스로 나누었다. 본 논문은 앞의 세 가지 합을 **파이프라인 호스트 CPU**로 보고한다. 측정 중에는 파이프라인과 무관한 사용자 프로세스(대화형 개발 도구와
+작업 관리자가 대부분)가 프레임당 0.59~0.82 ms를 썼다. 이들은 프로세스 이름으로 분류해 제외하였으며, 표시로 늘어나는 데스크톱 패널 몫
+(프레임당 약 0.03 ms 이하)도 이 분류에 들어간다. 즉 측정 시스템은 완전히 유휴 상태가 아니었다(§7.4 (9)).
+본 논문의 **응용 기준 표시 지연**는 응용이 빈 슬롯을 얻은 시각부터 화면 도달까지이며, 촬영과 디코드 시간을 포함하지 않는다
+(카메라 렌즈부터 재는 통상의 glass-to-glass와 다르다).
 
 **표 23.** 표시 통합 종단간 성능
 
@@ -1067,7 +1114,8 @@ N이 효과가 없고, 처리가 소스보다 느린 배치 1/슬롯 1에서는 
 > (응용 열은 응용 자신이 잰 `getrusage` 값과 1 tick 안에서 같다). 커널 스레드는 창의 커널 스레드 시간에서, 같은 실행 직전 10 s의 유휴 기준선을
 > 창 길이 비례로 뺀 증가분이다(기준선 몫은 프레임당 0~0.03 ms). 프로세스별 시간의 해상도는 10 ms 틱(프레임당 약 0.011 ms)이다.
 > 이 커널은 인터럽트 시간 계수를 켜지 않아(`IRQ_TIME_ACCOUNTING` 꺼짐) 하드웨어 인터럽트 처리 시간은 끊긴 태스크에 더해지고, CPU가 유휴일 때의 몫은 잡히지 않는다.
-> 따라서 합은 하한이다. 파이프라인과 무관한 사용자 프로세스는 프레임당 0.59~0.82 ms였다.
+> 따라서 합은 하한이다. 표시를 켠 실행은 프레임당 인터럽트가 약 126회로 기준 경로(약 71회)보다 많으므로, 계수되지 않는 유휴 중 인터럽트 몫은
+> 제안 경로 쪽에서 더 클 수 있다. 이 치우침은 감소율을 과대평가하는 방향이다. 파이프라인과 무관한 사용자 프로세스는 프레임당 0.59~0.82 ms였다.
 > 감소율의 범위는 반복 바깥 루프의 같은 회차 실행끼리 짝지은 값이다(파이프라인 16.6·29.3·18.5%, 응용 + 컴포지터 27.9·38.4·29.1%, 응용만 44.6·52.6·45.9%).
 > 소스 페이싱 실행의 표시 간격 중앙값은 실행별 20.3·33.1·33.0 ms로, 배치 2의 짝을 연속 수직동기에 올린 뒤 쉬는 실행이 있어 30 fps가 고르게 보이지 않는다.
 > 지연은 **중앙값**이다(평균은 각각 128.74 / 99.81 ms). 본 논문의 시간 수치는 따로 적지 않으면 3회 실행의 중앙값이다(§6.6의 지연은 프레임 평균의 3회 중앙값이고, §6.7.1의 지연은 예외 — 이유는 그 표 아래) — 부록 A.4.
@@ -1080,14 +1128,14 @@ N이 효과가 없고, 처리가 소스보다 느린 배치 1/슬롯 1에서는 
 > 소스 페이싱 표시 지연 중앙값은 100.10·98.32 ms로, 회차 간 차이는 §7.4 (9)의 흔들림 범위 안이다.
 >
 > **§6.1 조건의 값.** 같은 벤치·설정으로 §6.1 조건(960 MHz, 디코더 자동 프레임 스레드, CPU 억제)에서 잰 값은 순서대로 응용 CPU 3.314 / 1.115 / 1.842 / 2.179 ms/frame(컴포지터·커널 스레드 미기록),
-> 처리량 34.960 / 34.950 / 34.870 / 29.910 fps, glass-to-glass 중앙값 130.75 / 101.20 ms(p90 140.56 / 118.36)다.
+> 처리량 34.960 / 34.950 / 34.870 / 29.910 fps, 응용 기준 표시 지연 중앙값 130.75 / 101.20 ms(p90 140.56 / 118.36)다.
 > 두 회차의 실행별 중앙값 범위(94.48~104.12 ms, 90.53~100.08 ms)가 겹치므로, 소스 페이싱 표시 지연의 차이(101.20 대 96.66 ms)는 판정하지 않는다.
 >
 > **해석상 주의.** 두 회차 사이에는 GPU 클럭, 디코더 스레드 수, 억제 위치에 더해 디코드 셰이더 변경(§6.5 각주)과 메인 스레드 대기 방식의 변경
 > (§4.6.3 각주)이 함께 바뀌었으므로, 차이를 어느 한 요인으로 돌리지 않는다. 같은 새 조건으로 표시 경로를 잰 §6.7.1의 회차(2026-10-08, 대기 방식 변경 이전 코드)에서는
 > 소스 페이싱 응용 CPU가 2.059 ms/frame(배치 2/슬롯 4), 2.189 ms/frame(슬롯 6)으로 위 1.744와 0.3~0.4 ms 차이가 나므로, CPU는 **같은 회차 안의 비교만** 쓴다.
 >
-> glass-to-glass는 응용이 **빈 슬롯을 얻은 시각**부터 잰다. 소스 페이싱 실행은 슬롯 대기가 0이라 디코드 → 화면과 같지만,
+> 응용 기준 표시 지연는 응용이 **빈 슬롯을 얻은 시각**부터 잰다. 소스 페이싱 실행은 슬롯 대기가 0이라 디코드 → 화면과 같지만,
 > 최대속도 실행은 슬롯 대기가 평균 25.2 ms였으므로 디코드 → 화면은 위 값보다 길다. 직접 잰 디코드 → 화면은 평균 153.96 ms, 중앙값 158.25 ms다.
 
 **핵심 결과는 세 가지다.**
@@ -1095,7 +1143,7 @@ N이 효과가 없고, 처리가 소스보다 느린 배치 1/슬롯 1에서는 
 **(1) 표시를 켜도 처리량 손실이 0.23%에 불과하다.** 그리고 **검출 수가 네 설정 모두 3,369개로
 완전히 동일**하다. 가시화가 검출 결과에 영향을 주지 않는다.
 
-**(2) glass-to-glass 지연이 96.66 ms(3회 범위 90.53~100.08 ms, p90 120.26 ms)다.** 같은 실행에서 디코드 종료부터 후처리 완료까지의 지연(e2e)은
+**(2) 응용 기준 표시 지연이 96.66 ms(3회 범위 90.53~100.08 ms, p90 120.26 ms)다.** 같은 실행에서 디코드 종료부터 후처리 완료까지의 지연(e2e)은
 중앙값 72.9 ms(평균 78.6 ms)이므로, 표시 경로가 더하는 지연은 평균 차로 **약 21 ms**다(변환 3.6 ms + present 1~2 수직동기.
 중앙값은 수직동기 양자화로 차를 정의하기 어렵다).
 검출 결과 없이 영상만 즉시 표시하는 모드에서는 28.2 ms까지 내려간다(§6.1 조건의 150프레임 확인 실행).
@@ -1184,7 +1232,7 @@ GPU는 박스 오버레이 버퍼만 그린다. 컴포지터를 거치는 경로
 
 ![그림 8. 표시 경로별 CPU, GPU 사용, 디코드 → 화면 지연](figures/fig08_display_paths.svg)
 
-**그림 8.** 표시 경로별 비교. (a) 프로세스 CPU(빗금은 컴포지터 labwc), (b) GPU(V3D) 사용 시간, (c) 디코드 → 화면 지연. KMS 경로의 컴포지터 CPU가
+**그림 8.** 표시 경로별 비교. (a) 프로세스 CPU(응용 + 컴포지터, 빗금은 컴포지터 labwc. 커널 스레드는 이 회차에서 기록하지 않아 포함하지 않는다), (b) GPU(V3D) 사용 시간, (c) 디코드 → 화면 지연. KMS 경로의 컴포지터 CPU가
 0인 것은 데스크톱 세션이 비활성이기 때문이다. 화면 도달 시각을 얻는 방법은 경로마다 다르다(평면: 하드웨어 표시 시각, 스왑체인: present 대기)
 (측정: 2026-10-08, GPU 1150 MHz, 디코더 1스레드, GPU 억제, 배치 2/슬롯 6, 소스 30 fps 페이싱, HDMI 1920×1080 60 Hz, 900프레임 × 반복 3 중앙값,
 원본: `07_results/display_planes_e2e/runs/slots6/results.csv`).
@@ -1192,7 +1240,7 @@ GPU는 박스 오버레이 버퍼만 그린다. 컴포지터를 거치는 경로
 
 **(3) 평면 경로는 슬롯을 더 요구한다.** 평면 경로는 디코더 프레임을 디스플레이 컨트롤러가 다 읽을 때(다음 페이지 넘김)까지
 쥐어야 하므로 최대 5장을 보유한다. 기존 운용점인 슬롯 4에서는 디코드된 프레임이 빈 슬롯을 평균 28~30 ms 기다렸고,
-처리량도 29.2~29.3 fps로 떨어졌다. 이 대기는 glass-to-glass(빈 슬롯을 얻은 시각부터 잼)에 잡히지 않아, glass-to-glass만 보면
+처리량도 29.2~29.3 fps로 떨어졌다. 이 대기는 응용 기준 표시 지연(빈 슬롯을 얻은 시각부터 잼)에 잡히지 않아, 그 지표만 보면
 두 경로가 비슷해 보였다(중앙값 99.9 대 94.4 ms). 디코드 반환부터 재면 평면 경로가 약 28 ms 길었다(평균 약 130 대 102 ms).
 슬롯 6에서 대기가 사라지고 위 표처럼 같아진다. §6.6.1에서 지연을 슬롯이 정한다고 한 결론이 표시 소비자에게도
 그대로 적용되는 셈이다 — 소비자가 버퍼를 오래 쥘수록 필요한 슬롯이 늘어난다.
@@ -1220,9 +1268,10 @@ GPU는 박스 오버레이 버퍼만 그린다. 컴포지터를 거치는 경로
 
 **검출 총수가 완전히 일치**하며, 엄격한 IoU 0.9 기준에서도 99.9%가 매칭된다.
 
-### 6.8.2 비트 일치가 불가능한 이유와 좌표 오차의 해석
+### 6.8.2 런타임 호스트 NMS와 비트 일치를 기대할 수 없는 이유와 좌표 오차의 해석
 
-GPU 후처리와 호스트 NMS의 **비트 단위 일치는 원리적으로 불가능하다.** 세 가지 독립적 이유가 있다.
+GPU 후처리와 런타임 호스트 NMS 사이의 **비트 단위 일치는 두 구현의 다음 차이 때문에 기대할 수 없다**
+(같은 GPU 억제와 본 연구의 CPU 기준 구현 사이의 비트 일치는 §4.4.3에서 이루었다). 세 가지 독립적 이유가 있다.
 첫째, 점수가 정수 양자화 값에 스케일을 곱한 것이므로 임계값 위에 이산적인 단계만 존재하여
 **동점이 대량 발생**하며, 동점 박스 간 생존자는 정렬 안정성에 의존한다.
 둘째, 소프트맥스의 지수 함수 구현이 CPU와 GPU에서 최종 비트가 다르다.
@@ -1347,7 +1396,8 @@ GPU 억제에는 두 경계가 있다. 후보가 1,024개를 넘으면 공유 �
 
 GPU 쪽에서도 메모리가 지배한다는 방증이 있다. 펌웨어 갱신으로 GPU 클럭이 1.198배 오른 뒤 메모리 읽기 위주의
 합산 셰이더는 1.10~1.13배만 빨라졌다. 하드웨어 성능 카운터로 보면 연산 부분의 사이클은 클럭을 따라 줄었으나
-메모리 읽기 대기 시간은 거의 그대로여서, 구간의 약 41%가 메모리 읽기 대기였다(카운터 의미의 해석은 추정).
+메모리 읽기 대기 시간은 거의 그대로여서, 구간의 약 41%가 메모리 읽기 대기였다(저장소 실험 `v3d_perf_counters`의 2026-09-25 부트로더 회차,
+합산 셰이더 단독, GPU 1150 MHz에서 1.80 / 4.35 ms. 카운터 의미의 해석은 추정이다).
 
 ## 7.2 같은 레이아웃이 소비자에 따라 반대 성질을 갖는다
 
@@ -1370,9 +1420,10 @@ PCIe 전송이 결정하며 실측 51.7 fps다. 확보한 CPU 여유는 이 상�
 이는 **병목이 아닌 자원의 여유는 처리량을 늘리지 못한다**는 일반적 사실의 사례다.
 
 그렇다면 호스트 부하 절감의 가치는 무엇인가. 두 가지다.
-첫째, **가시화가 비로소 가능해졌다.** CPU로 가시화하면 프레임당 10 ms 이상이 들어 확보한 여유를
-모두 소진하지만, GPU로 처리하면 표시를 켜고도 컴포지터와 커널 스레드를 합친 파이프라인 호스트 CPU가 기준 경로보다 낮다(3.189 → 2.505 ms, §6.7).
-둘째, **제거한 비용이 검출 수와 무관한 고정비**라는 점이다(§6.5.1). 입력 해상도를 높이거나
+첫째, **가시화를 더해도 호스트 부하가 기준보다 낮다.** GPU로 표시 변환과 오버레이를 수행하면 표시를 켜고도
+컴포지터와 커널 스레드를 합친 파이프라인 호스트 CPU가 표시 없는 기준 경로보다 낮다(3.189 → 2.505 ms, §6.7).
+CPU로 같은 가시화를 수행하는 경로는 측정하지 않았다.
+둘째, **제거한 비용이 검출 수와 무관한 고정비**라는 점이다(§6.5.1). 모델 입력 해상도를 높이거나
 모델을 키우면 이 비용은 선형으로 증가하여 언젠가 병목이 된다. 본 연구는 그 병목을 선제적으로
 제거한 것이다.
 
@@ -1396,8 +1447,9 @@ NPU 칩은 약 104 °C부터 클럭을 단계적으로 낮추고 약 120 °C에�
 대안도 재검토 대상이 된다. 프레임이 소스 시각에 도착하는 상황은 입력 페이싱으로 모사해 측정하였으나(§6.6.3),
 실제 센서의 촬영 시각과 ISP 지연은 포함되지 않는다.
 
-**(3) 단일 모델·단일 플랫폼 결과다.** §7.1의 원칙은 일반적이라 판단하나, 캐시 일관성 GPU를 갖는
-플랫폼에서는 정량적 결론이 달라질 것이다. 또한 CPU·지연 헤드라인은 1080p30 영상 1개(앞 900프레임)에서 잰 값이며,
+**(3) 단일 모델·단일 플랫폼 결과다.** §7.1의 원칙은 비캐시 공유 메모리만 노출하는 통합 GPU에서 관찰한 것이며, 캐시 일관성 GPU를 갖는
+플랫폼에서는 정량적 결론이 달라질 것이다. 측정은 보드 1대(Compute Module 5)에서 했고, NPU 링크는 보드 사양(Gen2) 밖인 Gen3 모드로
+동작시켰다 [R5]. 모델 컴파일러가 x86 전용이라 대상 보드에서 HEF를 다시 만들지 못했으며, 컨텍스트 수 등 HEF 구조는 고정 조건이다. 또한 CPU·지연 헤드라인은 1080p30 영상 1개(앞 900프레임)에서 잰 값이며,
 혼잡 장면(MOT20)은 후처리 정확성과 비용만 확인하였다(§6.8.5).
 
 **(4) 표시 경로에 남은 호스트 비용이 있다.** 표시를 켤 때 파이프라인 호스트 CPU가 프레임당 1.39 ms(실행별 합의 중앙값 차. 성분별 중앙값 차는 응용 +0.74, 컴포지터 +0.48, 커널 스레드 +0.18 ms) 증가하며(표 23, 같은 회차.
@@ -1415,7 +1467,7 @@ NPU 칩은 약 104 °C부터 클럭을 단계적으로 낮추고 약 120 °C에�
 클럭 설정을 함께 기록해야 비교할 수 있다(부록 A.3).
 
 **(6) 디코더 스레드 기본값에는 작은 대가가 있다.** 디코더 스레드를 1개로 줄이면 CPU와 지연이 모두 줄지만, 소스 페이싱
-표시에서는 응용 내부 e2e 지연 p90이 약 1.9 ms 늘었다(glass-to-glass 평균은 같음, §6.2 각주 ³). 원인은 가르지 못했다.
+표시에서는 응용 내부 e2e 지연 p90이 약 1.9 ms 늘었다(응용 기준 표시 지연 평균은 같음, §6.2 각주 ³). 원인은 가르지 못했다.
 
 **(7) 후처리 버퍼 한도는 이 모델에 맞춘 값이다.** GPU 디코드의 후보 버퍼는 프레임당 4,096개이고, 넘치면 앞 4,096개만 남아
 검출을 조용히 잃으며 검증 모드도 이를 잡지 못한다. 이 모델에서는 점수 임계값을 양자화 바닥까지 낮춰도 최대 1,925개라 도달할 수 없어
@@ -1430,13 +1482,15 @@ NPU 칩은 약 104 °C부터 클럭을 단계적으로 낮추고 약 120 °C에�
 소스 페이싱 표시 1.738~1.832 ms였고, 같은 회차 안의 3회는 중앙값 대비 최대 약 11%(기준 경로 2.967~3.419 ms) 흔들렸다. 대기 방식 변경 이전 코드의 값
 (0.908~0.915, 2.059 ms)은 코드가 달라 이 비교에 넣지 않는다. 따라서 본 논문의 CPU 비교는 같은 회차 안의 상대값으로 하고, 감소율은 짝지은 범위와 함께 적는다.
 또한 파이프라인 CPU는 응용·컴포지터·커널 스레드를 계수하지만, 인터럽트 시간 계수가 꺼진 커널이라 CPU가 유휴일 때의 하드웨어 인터럽트 처리 시간은
-포함하지 못하며(하한), 파이프라인과 무관한 사용자 프로세스는 제외하였다(§6.7 표 23 각주).
+포함하지 못하며(하한, 제안 경로에 유리한 방향), 파이프라인과 무관한 사용자 프로세스는 제외하였다(§6.7 표 23 각주).
+측정 시스템은 완전히 유휴 상태가 아니었고(대화형 개발 도구가 실행 중이었다), 호스트 SoC의 주파수 제한·스로틀은 실행 중에 감시하지 않았다.
+헤드라인 회차는 측정 전후 모두 부팅 이후 스로틀 이력이 있는 상태(`get_throttled` = `0xe0000`, 누적 비트)여서 측정 창 안에서 일어났는지 판정할 수 없다.
 
 ---
 
 # 8. 결론
 
-본 논문은 Raspberry Pi 5와 Hailo-8 NPU로 구성된 임베디드 환경에서, 하드웨어 디코더·GPU·NPU·
+본 논문은 Raspberry Pi 5 계열 보드(Compute Module 5)와 Hailo-8 NPU로 구성된 임베디드 환경에서, 하드웨어 디코더·GPU·NPU·
 디스플레이를 dma-buf 기반 제로 카피로 연결하고 전처리·후처리·가시화를 GPU 컴퓨트 셰이더로
 오프로딩한 실시간 객체 검출 파이프라인을 제안하였다.
 
@@ -1444,10 +1498,10 @@ NPU 칩은 약 104 °C부터 클럭을 단계적으로 낮추고 약 120 °C에�
 
 - 응용·컴포지터·커널 스레드를 합친 파이프라인 호스트 CPU를 프레임당 **3.189 ms에서 2.505 ms로 약 21% 감소**시켰다(표시 포함, 같은 회차 실행끼리 짝지으면 17~29%).
   응용 프로세스만은 3.089 → 1.622 ms다. 표시를 제외하면 **1.111 ms**로 65% 감소한다.
-- **응용 기준 표시 지연(glass-to-glass, 슬롯 획득 → 화면 도달) 중앙값 약 97 ms**(3회 범위 90.5~100.1 ms, p90 120.26 ms)로 실시간 표시를 달성하였으며 프레임 드롭은 0이다.
-- 검출 결과는 1,816프레임에서 **9,457개로 기준 경로와 완전히 동일**하다.
+- **응용 기준 표시 지연(슬롯 획득 → 화면 도달) 중앙값 약 97 ms**(3회 범위 90.5~100.1 ms, p90 120.26 ms)로 실시간 표시를 달성하였으며 프레임 드롭은 0이다.
+- 검출 수는 1,816프레임에서 **9,457개로 기준 경로와 같고**, IoU 0.9 기준 매칭 비율이 0.999다.
 - NPU 입력 레이아웃 정합의 효과(17.6 → 3.5 ms)가 전치 연산이 아니라 **비캐시 GPU 메모리의
-  stride 읽기**에서 온다는 것을 대역폭 측정으로 규명하였다.
+  바이트 단위 읽기**에서 온다는 것을 직접 측정으로 확인하였다(같은 전치가 malloc 0.95 ms, GPU 메모리 12.7 ms).
 - 파이프라인 수준에서 지연은 **슬롯 수**와 프레임 주기의 곱으로 예측되고, 처리량은 배치 천장 `B / T(B)`와
   슬롯 제약 중 작은 쪽이며 천장에는 슬롯이 배치의 2배일 때 닿음을 보였다.
 - 입력을 소스 시각에 도착시키면(측정 이후 추가, 표시 없음) 30 fps를 모두 처리하는 배치 2/슬롯 4의 도착 기준 지연은 평균 80.7 ms이고,
@@ -1455,15 +1509,16 @@ NPU 칩은 약 104 °C부터 클럭을 단계적으로 낮추고 약 120 °C에�
   화면까지(Vulkan 합성 표시)는 70.2 ms다. NPU 시간의 고정비 24.8 ms는 컨텍스트마다 배치 단위로 다시 받는 설정 데이터의 전송으로 설명되며,
   최소 지연 운용점이 30 fps를 다 처리하지 못하는 이유가 이 고정비다.
 
-CPU 사용량과 glass-to-glass 지연은 GPU 클럭 1150 MHz·디코더 1스레드·GPU 억제 조건의 2026-10-16 측정값이고(§6.7, 코드 `2f2d3d0`),
+CPU 사용량과 응용 기준 표시 지연은 GPU 클럭 1150 MHz·디코더 1스레드·GPU 억제 조건의 2026-10-16 측정값이고(§6.7, 코드 `2f2d3d0`),
 입력 페이싱 항목은 같은 조건·같은 코드의 2026-10-16 측정값이다(§6.6.3). 나머지 항목은 GPU 클럭 960 MHz·디코더 자동 프레임 스레드·CPU 억제 조건의
 값이며(§6.1), 이후 바뀐 기본 조건에서도 처리량과 검출 수는 같았다.
 
 처리량은 PCIe 대역폭 상한에 의해 개선되지 않았다(34.97 → 34.89 fps). 본 연구의 기여는
-호스트 부하 절감과, 그로 인해 가능해진 실시간 가시화 경로의 확보에 있다.
+호스트 부하 절감과, 표시를 켜고도 기준 경로보다 낮은 호스트 부하로 실시간 가시화 경로를 확보한 데 있다.
 
 측정 이후 추가한 GPU 억제는 검출을 바꾸지 않고 처리량·CPU 회귀가 없었으며(§6.1), HVS 평면 표시 경로는 같은 회차의 스왑체인 경로보다
-지연을 늘리지 않고 호스트 CPU를 프레임당 0.44 ms, GPU 사용을 72% 줄였다(§6.7.1, 2026-10-08 회차, 슬롯 6 필요).
+지연을 늘리지 않고 **응용 프로세스 CPU**를 프레임당 0.44 ms, GPU 사용을 72% 줄였다(§6.7.1, 2026-10-08 회차, 슬롯 6 필요.
+커널 스레드는 이 회차에서 기록하지 않았다).
 이 값은 §6.7 헤드라인과 다른 회차·코드라 직접 빼서 비교하지 않는다.
 
 향후 과제로는 냉각 장치와 중간·최소 지연 운용점의 장시간 열적 안정성 검증, CSI 카메라 입력 경로의 통합과 촬영 시각 기준의 지연 측정,
@@ -1486,7 +1541,7 @@ HVS 평면 표시 경로의 슬롯 1 교착 해소, 컨텍스트 수가 적은 H
 
 [R4] Hailo Technologies, "HailoRT v4.24.0 User Guide." [Online]. Available: https://hailo.ai/developer-zone/documentation/hailort-v4-24-0/ (접근일: 2026-10-13) `[확인 필요: 문서 발행일 — 페이지에 표기 없음]`
 
-[R5] Raspberry Pi Ltd., "Raspberry Pi 5 Product Brief," RP-008348-DS. [Online]. Available: https://pip.raspberrypi.com/documents/RP-008348-DS-raspberry-pi-5-product-brief.pdf (접근일: 2026-10-13) `[확인 필요: 판본·발행일 — 파일명상 개정 8, PDF 본문 미확인]`
+[R5] Raspberry Pi Ltd., "Raspberry Pi Compute Module 5 Datasheet," Release 3, build date 2026-06-08. [Online]. Available: https://datasheets.raspberrypi.com/cm5/cm5-datasheet.pdf (접근일: 2026-10-16)
 
 [R6] The Mesa 3D Graphics Library, "V3D," Mesa documentation. [Online]. Available: https://docs.mesa3d.org/drivers/v3d.html (접근일: 2026-10-13) (사용 버전: Mesa 26.2.2)
 
@@ -1503,6 +1558,8 @@ HVS 평면 표시 경로의 슬롯 1 교착 해소, 컨텍스트 수가 적은 H
 [R12] N. Mammeri and B. Juurlink, "VComputeBench: A Vulkan Benchmark Suite for GPGPU on Mobile and Embedded GPUs," in Proc. IEEE Int. Symp. Workload Characterization (IISWC), 2018, pp. 25–35, doi: 10.1109/IISWC.2018.8573477.
 
 [R13] J. Xie, Y. Yan, A. Saxena, Q. Qiu, J. Chen, H. Sun, R. Chen, and S. S. Bhattacharyya, "ShaderNN: A Lightweight and Efficient Inference Engine for Real-time Applications on Mobile GPUs," Neurocomputing, vol. 611, Art. no. 128628, Jan. 2025, doi: 10.1016/j.neucom.2024.128628.
+
+[R14] S. Bateni, Z. Wang, Y. Zhu, Y. Hu, and C. Liu, "Co-Optimizing Performance and Memory Footprint Via Integrated CPU/GPU Memory Management, an Implementation on Autonomous Driving Platform," in Proc. IEEE Real-Time and Embedded Technology and Applications Symp. (RTAS), 2020, pp. 310–323, doi: 10.1109/RTAS48715.2020.00007.
 
 ---
 
@@ -1552,6 +1609,7 @@ HVS 평면 경로는 슬롯 1에서 교착하므로 이 구성에 쓰지 않는�
 ## A.3 측정 프로토콜 요약
 
 1. 측정 전 PCIe 링크 속도·칩 온도·SoC 클럭(CPU와 GPU)·부트로더 버전·GPU 클럭 설정·디코더 스레드 수를 기록한다.
+   호스트 SoC의 스로틀은 측정 전후의 누적 기록만 남겼고 실행 중에는 감시하지 않았다(§7.4 (9)).
 2. 설정당 3회 반복하며, 반복을 바깥 루프에 두어 열 편향을 설정 간에 분산한다.
 3. 실행 전 칩 온도가 75 °C를 넘으면 65 °C 이하까지 대기한다.
 4. 런타임 로그에 온도·클럭 경고가 1건이라도 있으면 그 실행의 성능 수치를 **신뢰 불가로 표시**한다.
