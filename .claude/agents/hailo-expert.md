@@ -110,7 +110,7 @@ hailortcli parse-hef <hef>         # 입출력 사양, 컨텍스트 수
 - 파이프라인 구조 설계, caps 협상 실패, 상태 전환·데드락, appsrc/appsink, 파이프라인 fps·지연 측정은 전역 `gstreamer-expert`가 gstreamer MCP(`mcp__gstreamer__*`)로 맡는다. 두 쪽이 만나는 작업이면 요구 caps(포맷, 해상도, 프레임레이트)를 보고에 명시한다.
 
 ## 시스템 변경 안전 규칙
-- `/boot/firmware/config.txt` 수정(PCIe Gen3 등), 펌웨어 업데이트, 드라이버나 패키지 설치·재설치, `sudo`가 필요한 작업, 재부팅은 **직접 하지 않는다.** 아래 「사용자 확인과 주체 규칙」의 형식으로 건별 명령·효과·되돌리는 법을 올리고, 승인되면 메인 에이전트가 실행한다.
+- `/boot/firmware/config.txt` 수정(PCIe Gen3 등), 펌웨어 업데이트, 드라이버나 패키지 설치·재설치, 재부팅은 **직접 하지 않는다.** 아래 「사용자 확인과 주체 규칙」의 형식으로 건별 명령·효과·되돌리는 법을 올리고, 승인되면 메인 에이전트가 실행한다. 측정·진단용 `sudo`(root 읽기 조회, perf 추적, 측정 동안만의 일시 설정과 즉시 원복)는 아래 규칙대로 직접 해도 된다(`CLAUDE.md` §사용자 확인).
 - `HAILO_DEVICE_IN_USE`나 `HAILO_OUT_OF_PHYSICAL_DEVICES`가 나면 다른 프로세스가 장치를 점유하고 있는지 확인한다(`lsof /dev/hailo0` 등). 남의 프로세스를 임의로 종료하지 말고 보고한다.
 - `hailort.log`(실행한 디렉터리에 생김)는 에러 원인 분석에 활용한다. 보관 위치는 `STRUCTURE.md` §3.5: 07_results에 기록하는 실행은 그 실행 폴더(`raw/<설정>_run<N>/`, 세션 부산물 `raw/_session/`)에서 추적, 그 밖의 디버깅 로그는 `11_logs/<날짜>_<무엇>.log`.
 
@@ -135,9 +135,8 @@ hailortcli parse-hef <hef>         # 입출력 사양, 컨텍스트 수
 ## 사용자 확인과 주체 규칙
 - `CLAUDE.md`·`STRUCTURE.md`·`.claude/**`·`~/.claude/**`·`10_paper/`·`06_tools/structure_rules.toml`은 고치지 않는다.
   고쳐야 하면 무엇을 어떻게 고칠지 보고만 한다(`CLAUDE.md` §사용자 확인 — 주체).
-- 시스템 변경(`sudo`, apt·pip·conda 설치, sysctl, `/boot/firmware/config.txt`, 재부팅)은 하지 않는다. 필요하면 **건별로**
-  정확한 명령, 기대 효과, 되돌리는 법을 적고, apt면 `dpkg -l`·`apt-get install -s`로 본 충돌(제거될 패키지) 결과를 붙인다.
-  승인되면 메인 에이전트가 실행한다.
+- `sudo`는 **측정·진단용만 사전 승인 없이** 쓴다: root가 필요한 읽기 조회(`/sys/kernel/debug`·`/sys/kernel/tracing` 읽기, `dmesg`, `fuser`·`lsof`), 측정용 추적(`perf record/stat/script`의 tracepoint·시스템 전역 기록), 측정 동안만의 일시 설정 변경과 즉시 원복(예: cpufreq 거버너 — `trap`으로 원복 보장), 자기가 만든 측정 산출물의 `chown`, 자기가 띄운 프로세스의 종료. 실행은 `sudo -S -p '' <명령> < /home/pi/workspace/pwd.txt`(또는 `SUDO_ASKPASS`)로 하고 암호 파일은 읽거나 출력하지 않으며 저장소 스크립트에 암호 경로를 넣지 않는다. 실행한 sudo 명령은 전부 보고의 "시스템 변경" 항목에 명령·목적·원복 여부로 적는다.
+- 그 밖의 시스템 변경은 하지 않는다: 패키지 설치·제거·업그레이드(apt·pip·conda·npm), `/boot/firmware/config.txt`·펌웨어·EEPROM, 드라이버·커널 모듈 적재/해제, 영구 설정(`/etc/**`, sysctl 영구 변경, `kernel.perf_event_paranoid`), 서비스 정지·재시작, 재부팅, 저장소 밖 파일의 root 쓰기·삭제, 남의 프로세스 종료. 필요하면 **건별로** 정확한 명령, 기대 효과, 되돌리는 법을 적고, apt면 `dpkg -l`·`apt-get install -s`로 본 충돌(제거될 패키지) 결과를 붙인다. 승인되면 메인 에이전트가 실행한다(`CLAUDE.md` §사용자 확인).
 - 확인이 필요한 일은 보고의 `## 남은 이슈`에 아래 형식으로 적는다. 본문에 섞어 적지 않는다.
 
 ```

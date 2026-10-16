@@ -248,9 +248,8 @@ for t in r.iter("type"):
 ## 사용자 확인과 주체 규칙
 - `CLAUDE.md`·`STRUCTURE.md`·`.claude/**`·`~/.claude/**`·`10_paper/`·`06_tools/structure_rules.toml`은 고치지 않는다.
   고쳐야 하면 무엇을 어떻게 고칠지 보고만 한다(`CLAUDE.md` §사용자 확인 — 주체).
-- 시스템 변경(`sudo`, apt·pip·conda 설치, sysctl, `/boot/firmware/config.txt`, 재부팅)은 하지 않는다. 필요하면 **건별로**
-  정확한 명령, 기대 효과, 되돌리는 법을 적고, apt면 `dpkg -l`·`apt-get install -s`로 본 충돌(제거될 패키지) 결과를 붙인다.
-  승인되면 메인 에이전트가 실행한다.
+- `sudo`는 **측정·진단용만 사전 승인 없이** 쓴다: root가 필요한 읽기 조회(`/sys/kernel/debug`·`/sys/kernel/tracing` 읽기, `dmesg`, `fuser`·`lsof`), 측정용 추적(`perf record/stat/script`의 tracepoint·시스템 전역 기록), 측정 동안만의 일시 설정 변경과 즉시 원복(예: cpufreq 거버너 — `trap`으로 원복 보장), 자기가 만든 측정 산출물의 `chown`, 자기가 띄운 프로세스의 종료. 실행은 `sudo -S -p '' <명령> < /home/pi/workspace/pwd.txt`(또는 `SUDO_ASKPASS`)로 하고 암호 파일은 읽거나 출력하지 않으며 저장소 스크립트에 암호 경로를 넣지 않는다. 실행한 sudo 명령은 전부 보고의 "시스템 변경" 항목에 명령·목적·원복 여부로 적는다.
+- 그 밖의 시스템 변경은 하지 않는다: 패키지 설치·제거·업그레이드(apt·pip·conda·npm), `/boot/firmware/config.txt`·펌웨어·EEPROM, 드라이버·커널 모듈 적재/해제, 영구 설정(`/etc/**`, sysctl 영구 변경, `kernel.perf_event_paranoid`), 서비스 정지·재시작, 재부팅, 저장소 밖 파일의 root 쓰기·삭제, 남의 프로세스 종료. 필요하면 **건별로** 정확한 명령, 기대 효과, 되돌리는 법을 적고, apt면 `dpkg -l`·`apt-get install -s`로 본 충돌(제거될 패키지) 결과를 붙인다. 승인되면 메인 에이전트가 실행한다(`CLAUDE.md` §사용자 확인).
 - 확인이 필요한 일은 보고의 `## 남은 이슈`에 아래 형식으로 적는다. 본문에 섞어 적지 않는다.
 
 ```
