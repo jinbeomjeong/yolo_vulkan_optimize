@@ -23,7 +23,7 @@
 //      Receive frames A and B back to back into **the same slot buffer** (num_slots=1) and run pass 1 on each.
 //      `--stale-barrier {on,off,both}` turns the FOREIGN_EXT→compute acquire barrier on / off / runs both.
 //      P3-③ (A/B each correct with the barrier) + P3-④ (record whether it goes wrong without the barrier)
-//
+//  --probe stride (**no NPU, no GPU dispatch**) CPU read bandwidth: memcpy / byte / NHWC→NHCW stride-3, per allocation (run_stride)
 // ── Size contract (Appendix A.13) ─────────────────────────────────────────────────────────────
 //   `dma_map_dmabuf(fd, size, D2H)` → **dmabuf_size** (covering the whole buffer is the safe side)
 //   `read_async(fd, size, cb)` / `hailo_dma_buffer_t.size` → **hw_frame_size only**
@@ -182,7 +182,7 @@ struct Options {
 
 void usage() {
     std::puts(
-        "yvo_postproc_probe --probe {fixture|sweep|nms|stages|groups|topk|live|stale|heapimport|gpuab|v3} [options]\n"
+        "yvo_postproc_probe --probe {fixture|sweep|nms|stages|groups|topk|live|stale|heapimport|gpuab|v3|stride} [options]\n"
         "  --fixture-dir DIR      fixture directory (default <repo>/04_data/raw_tensors = YVO_FIXTURE_DIR)\n"
         "  --out-dir DIR          evidence file directory (default <repo>/build/out/yvo_postproc_probe)\n"
         "  --out-file NAME        evidence file name (default p3_<probe>.txt)\n"
@@ -3339,9 +3339,330 @@ int run_topk(const Options& o, const TopkOptions& to, Tee& log) {
 
 } // namespace
 
+// ─────────────────────────────────────────── stride (paper §6.3 table 9: **no NPU, no GPU dispatch**)
+//
+// Measures directly (instead of back-computing it from the ~14 ms HailoRT transform) the CPU read bandwidth of a
+// 640x640x3 NHWC uint8 buffer (1,228,800 B = the NPU input) for 3 allocations x 4 access patterns.
+// Every pattern reads all 1,228,800 source bytes and writes them to a malloc destination.
+//   allocations  v3d    : VkDeviceMemory HOST_VISIBLE|HOST_COHERENT (V3D's only memory type, uncached), vkMapMemory
+//                malloc : aligned_alloc (host reference — stays partly in L2/L3, optimistic like gpuab ③)
+//                heap   : DmaHeapPool cached mmap, imported into Vulkan like gpuab ③ (so the dma-buf has a device
+//                         attachment and DMA_BUF_IOCTL_SYNC really does cache maintenance). START|READ and END|READ
+//                         are **inside** the timed interval; their share is reported separately.
+//   patterns     seq_memcpy   : std::memcpy (= gpuab ③ method)
+//                seq_byte     : scalar 1-byte sequential copy (vectorization and memcpy idiom recognition disabled)
+//                stride3_byte : the NHWC→NHCW transpose, per row: for c, for x: dst[(y*3+c)*640+x] = src[(y*640+x)*3+c]
+//                               compiled scalar (no-tree-vectorize) — 1-byte stride-3 reads, contiguous writes
+//                stride3_auto : the same loop with the build's default optimization (-O3, auto-vectorization allowed)
+// Samples: warm-up 3 full passes, then --rounds x --repeats samples per cell (default 3 x 10 = 30). Inside one
+// sample index all patterns x allocations are interleaved, the allocation order rotating with the sample index.
+// After every sample the destination checksum is compared with the CPU reference (keeps the writes observable).
+#include <sched.h>
+
+namespace {
+
+struct StrideOptions {
+    int cpu = -1;   // --cpu N: pin the measuring thread to core N (sched_setaffinity). -1 = not pinned
+};
+
+void usage_stride() {
+    std::puts(
+        "stride mode (--probe stride: CPU read bandwidth of a 640x640x3 buffer, no NPU, no GPU dispatch):\n"
+        "  allocations v3d (HOST_VISIBLE|HOST_COHERENT) / malloc / heap (cached dma-heap + DMA_BUF_IOCTL_SYNC)\n"
+        "  patterns    seq_memcpy / seq_byte / stride3_byte (scalar NHWC->NHCW) / stride3_auto (compiler default)\n"
+        "  --rounds N x --repeats N samples per cell (warm-up 3), --validation as usual\n"
+        "  --cpu N                pin the measuring thread to CPU core N (default: not pinned)");
+}
+
+constexpr int kStrW = 640;
+constexpr int kStrH = 640;
+constexpr int kStrC = 3;
+constexpr std::size_t kStrBytes = static_cast<std::size_t>(kStrW) * kStrH * kStrC;   // 1,228,800
+
+// Kernels are noipa so they are neither inlined nor cloned (each is one symbol for `objdump -d`).
+__attribute__((noipa)) void stride_seq_memcpy(const std::uint8_t* src, std::uint8_t* dst) {
+    std::memcpy(dst, src, kStrBytes);
+}
+
+__attribute__((noipa, optimize("no-tree-vectorize", "no-tree-slp-vectorize", "no-tree-loop-distribute-patterns",
+                               "no-store-merging")))
+void stride_seq_byte(const std::uint8_t* __restrict src, std::uint8_t* __restrict dst) {
+    for (std::size_t i = 0; i < kStrBytes; ++i) dst[i] = src[i];
+}
+
+__attribute__((noipa, optimize("no-tree-vectorize", "no-tree-slp-vectorize", "no-tree-loop-distribute-patterns",
+                               "no-store-merging")))
+void stride_stride3_byte(const std::uint8_t* __restrict src, std::uint8_t* __restrict dst) {
+    for (int y = 0; y < kStrH; ++y)
+        for (int c = 0; c < kStrC; ++c)
+            for (int x = 0; x < kStrW; ++x) dst[(y * kStrC + c) * kStrW + x] = src[(y * kStrW + x) * kStrC + c];
+}
+
+__attribute__((noipa)) void stride_stride3_auto(const std::uint8_t* __restrict src, std::uint8_t* __restrict dst) {
+    for (int y = 0; y < kStrH; ++y)
+        for (int c = 0; c < kStrC; ++c)
+            for (int x = 0; x < kStrW; ++x) dst[(y * kStrC + c) * kStrW + x] = src[(y * kStrW + x) * kStrC + c];
+}
+
+// Position-dependent checksum over 64-bit words (outside the timed interval).
+std::uint64_t stride_checksum(const std::uint8_t* p) {
+    std::uint64_t h = 1469598103934665603ull;
+    for (std::size_t i = 0; i + 8 <= kStrBytes; i += 8) {
+        std::uint64_t w;
+        std::memcpy(&w, p + i, 8);
+        h = (h ^ w) * 1099511628211ull;
+    }
+    return h;
+}
+
+std::string trim_ws(std::string s) {
+    while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back()))) s.pop_back();
+    return s;
+}
+
+std::string stride_env_line() {
+    return fmt("[env] SoC %s  throttled %s  v3d %s  arm %s  governor(cpu0) %s",
+               trim_ws(run_capture("vcgencmd measure_temp")).c_str(),
+               trim_ws(run_capture("vcgencmd get_throttled")).c_str(),
+               trim_ws(run_capture("vcgencmd measure_clock v3d")).c_str(),
+               trim_ws(run_capture("vcgencmd measure_clock arm")).c_str(),
+               trim_ws(run_capture("cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor")).c_str());
+}
+
+// V3D HOST_VISIBLE|HOST_COHERENT buffer, persistently mapped (same selection as YoloPostproc's Plain path).
+class StrideVkBuffer {
+public:
+    StrideVkBuffer(yvo::vk::VulkanContext& ctx, std::size_t bytes) : dev_(ctx.device()) {
+        VkBufferCreateInfo bci{};
+        bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        bci.size = static_cast<VkDeviceSize>(bytes);
+        bci.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+        bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        YVO_VK_CHECK(vkCreateBuffer(dev_, &bci, nullptr, &buf_));
+        VkMemoryRequirements req{};
+        vkGetBufferMemoryRequirements(dev_, buf_, &req);
+        type_ = ctx.find_memory_type(req.memoryTypeBits,
+                                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        if (type_ == UINT32_MAX) {
+            vkDestroyBuffer(dev_, buf_, nullptr);
+            throw std::runtime_error("stride: no HOST_VISIBLE|HOST_COHERENT memory type");
+        }
+        flags_ = ctx.memory_properties().memoryTypes[type_].propertyFlags;
+        VkMemoryAllocateInfo mai{};
+        mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        mai.allocationSize = req.size;
+        mai.memoryTypeIndex = type_;
+        try {
+            YVO_VK_CHECK(vkAllocateMemory(dev_, &mai, nullptr, &mem_));
+            YVO_VK_CHECK(vkBindBufferMemory(dev_, buf_, mem_, 0));
+            void* p = nullptr;
+            YVO_VK_CHECK(vkMapMemory(dev_, mem_, 0, VK_WHOLE_SIZE, 0, &p));
+            ptr_ = static_cast<std::uint8_t*>(p);
+        } catch (...) {
+            destroy();
+            throw;
+        }
+    }
+    ~StrideVkBuffer() { destroy(); }
+    StrideVkBuffer(const StrideVkBuffer&) = delete;
+    StrideVkBuffer& operator=(const StrideVkBuffer&) = delete;
+    std::uint8_t* ptr() const { return ptr_; }
+    std::uint32_t type() const { return type_; }
+    VkMemoryPropertyFlags flags() const { return flags_; }
+
+private:
+    void destroy() {
+        if (mem_ != VK_NULL_HANDLE) {
+            if (ptr_) vkUnmapMemory(dev_, mem_);
+            vkFreeMemory(dev_, mem_, nullptr);
+        }
+        if (buf_ != VK_NULL_HANDLE) vkDestroyBuffer(dev_, buf_, nullptr);
+        ptr_ = nullptr;
+        mem_ = VK_NULL_HANDLE;
+        buf_ = VK_NULL_HANDLE;
+    }
+    VkDevice dev_;
+    VkBuffer buf_ = VK_NULL_HANDLE;
+    VkDeviceMemory mem_ = VK_NULL_HANDLE;
+    std::uint8_t* ptr_ = nullptr;
+    std::uint32_t type_ = UINT32_MAX;
+    VkMemoryPropertyFlags flags_ = 0;
+};
+
+struct HostFree {
+    void operator()(std::uint8_t* p) const { std::free(p); }
+};
+
+int run_stride(const Options& o, const StrideOptions& so, Tee& log) {
+    using Kernel = void (*)(const std::uint8_t*, std::uint8_t*);
+    struct Pattern {
+        const char* name;
+        Kernel fn;
+        bool transposed;
+    };
+    const std::array<Pattern, 4> pats{{{"seq_memcpy", stride_seq_memcpy, false},
+                                       {"seq_byte", stride_seq_byte, false},
+                                       {"stride3_byte", stride_stride3_byte, true},
+                                       {"stride3_auto", stride_stride3_auto, true}}};
+    if (o.rounds <= 0 || o.repeats <= 0) throw std::runtime_error("--rounds and --repeats must be > 0");
+
+    if (so.cpu >= CPU_SETSIZE) throw std::runtime_error(fmt("--cpu %d: out of range", so.cpu));
+    if (so.cpu >= 0) {
+        cpu_set_t set;
+        CPU_ZERO(&set);
+        CPU_SET(so.cpu, &set);
+        if (::sched_setaffinity(0, sizeof(set), &set) != 0)
+            throw std::runtime_error(fmt("--cpu %d: sched_setaffinity failed: %s", so.cpu, std::strerror(errno)));
+    }
+    log(fmt("[stride] buffer %dx%dx%d NHWC uint8 = %zu B  rounds %d x repeats %d = %d samples/cell  warm-up 3  "
+            "cpu pin %s (running on cpu %d)",
+            kStrW, kStrH, kStrC, kStrBytes, o.rounds, o.repeats, o.rounds * o.repeats,
+            so.cpu >= 0 ? std::to_string(so.cpu).c_str() : "off", ::sched_getcpu()));
+    log(stride_env_line());
+
+    yvo::vk::VulkanContextOptions co;
+    co.enable_validation = o.validation;
+    co.validation_sync = o.sync_validation;
+    co.verbose = o.verbose;
+    yvo::vk::VulkanContext ctx(co);
+    log(fmt("[vk] device=%s", ctx.device_name()));
+    if (std::strstr(ctx.device_name(), "V3D") == nullptr)
+        throw std::runtime_error(std::string("stride: Vulkan device is not V3D: ") + ctx.device_name());
+
+    // ── allocations ─────────────────────────────────────────────────────────────────────────
+    StrideVkBuffer v3d(ctx, kStrBytes);
+
+    yvo::vk::StorageHeadroomQuery hq(ctx.device());
+    yvo::DmaHeapConfig hc;
+    hc.align = yvo::vk::kHailoAsyncAlign;
+    hc.device_headroom = hq.headroom(kStrBytes);
+    hc.map = true;
+    hc.strict_sync = true;
+    hc.zero_init = true;
+    hc.name = "yvo_stride";
+    yvo::DmaHeapPool heap(hc);
+    const yvo::DmaHeapBuf hb = heap.at(heap.allocate(kStrBytes));
+    yvo::vk::DmaBufImportCache import_cache(ctx, 4);
+    import_cache.pin(import_cache.get(hb.fd, hb.dmabuf_size, kStrBytes));   // device attachment, like gpuab ③
+
+    const std::unique_ptr<std::uint8_t, HostFree> mal(static_cast<std::uint8_t*>(std::aligned_alloc(4096, kStrBytes)));
+    const std::unique_ptr<std::uint8_t, HostFree> dst(static_cast<std::uint8_t*>(std::aligned_alloc(4096, kStrBytes)));
+    if (!mal || !dst) throw std::runtime_error("stride: aligned_alloc failed");
+
+    log(fmt("[alloc] v3d    memoryType %u flags 0x%x (HOST_CACHED %s)  ptr %p", v3d.type(),
+            static_cast<unsigned>(v3d.flags()), (v3d.flags() & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) ? "yes" : "no",
+            static_cast<void*>(v3d.ptr())));
+    log(fmt("[alloc] heap   %s  dmabuf %zu B (headroom %zu B)  imported into Vulkan  ptr %p", heap.heap().c_str(),
+            hb.dmabuf_size, hc.device_headroom, static_cast<void*>(hb.ptr)));
+    log(fmt("[alloc] malloc aligned_alloc(4096)  ptr %p  (dst: aligned_alloc(4096) %p)", static_cast<void*>(mal.get()),
+            static_cast<void*>(dst.get())));
+
+    // Same pattern in every source. Reference checksums from a straightforward host transpose.
+    std::vector<std::uint8_t> ref(kStrBytes), ref_t(kStrBytes);
+    for (std::size_t i = 0; i < kStrBytes; ++i)
+        ref[i] = static_cast<std::uint8_t>((static_cast<std::uint32_t>(i) * 2654435761u) >> 24);
+    for (int y = 0; y < kStrH; ++y)
+        for (int c = 0; c < kStrC; ++c)
+            for (int x = 0; x < kStrW; ++x)
+                ref_t[static_cast<std::size_t>((y * kStrC + c) * kStrW + x)] =
+                    ref[static_cast<std::size_t>((y * kStrW + x) * kStrC + c)];
+    const std::uint64_t sum_seq = stride_checksum(ref.data());
+    const std::uint64_t sum_tr = stride_checksum(ref_t.data());
+    std::memcpy(v3d.ptr(), ref.data(), kStrBytes);   // HOST_COHERENT: no flush needed
+    std::memcpy(mal.get(), ref.data(), kStrBytes);
+    {
+        yvo::DmaCpuAccess acc(hb.fd, yvo::DmaSyncDir::Write, true);   // R3: write inside a WRITE section
+        std::memcpy(hb.ptr, ref.data(), kStrBytes);
+        acc.finish();
+    }
+    std::memset(dst.get(), 0, kStrBytes);
+
+    struct Src {
+        const char* name;
+        const std::uint8_t* ptr;
+        int sync_fd;   // >= 0: wrap the read in DMA_BUF_IOCTL_SYNC START|READ .. END|READ
+    };
+    const std::array<Src, 3> srcs{{{"v3d", v3d.ptr(), -1}, {"malloc", mal.get(), -1}, {"heap", hb.ptr, hb.fd}}};
+    constexpr std::size_t kNA = 3, kNP = 4;
+    std::array<std::array<std::vector<double>, kNP>, kNA> ms{};
+    std::array<std::array<std::vector<double>, kNP>, kNA> sync_ms{};
+    std::size_t bad = 0;
+
+    auto sample = [&](std::size_t a, std::size_t p, bool record) {
+        const Src& s = srcs[a];
+        using clk = std::chrono::steady_clock;
+        const auto t0 = clk::now();
+        if (s.sync_fd >= 0) yvo::dma_sync_begin(s.sync_fd, yvo::DmaSyncDir::Read, true);
+        const auto t1 = clk::now();
+        pats[p].fn(s.ptr, dst.get());
+        const auto t2 = clk::now();
+        if (s.sync_fd >= 0) yvo::dma_sync_end(s.sync_fd, yvo::DmaSyncDir::Read, true);
+        const auto t3 = clk::now();
+        const std::uint64_t cs = stride_checksum(dst.get());
+        if (cs != (pats[p].transposed ? sum_tr : sum_seq)) ++bad;
+        if (record) {
+            ms[a][p].push_back(std::chrono::duration<double, std::milli>(t3 - t0).count());
+            sync_ms[a][p].push_back(std::chrono::duration<double, std::milli>((t1 - t0) + (t3 - t2)).count());
+        }
+    };
+    for (int w = 0; w < 3; ++w)
+        for (std::size_t p = 0; p < kNP; ++p)
+            for (std::size_t a = 0; a < kNA; ++a) sample(a, p, false);
+    int k = 0;
+    for (int round = 0; round < o.rounds; ++round)
+        for (int i = 0; i < o.repeats; ++i, ++k)
+            for (std::size_t p = 0; p < kNP; ++p)
+                for (std::size_t j = 0; j < kNA; ++j) sample((j + static_cast<std::size_t>(k)) % kNA, p, true);
+    log(stride_env_line());
+
+    // ── table ──────────────────────────────────────────────────────────────────────────────
+    log("");
+    log(fmt("== CPU read of %zu B (640x640x3 NHWC uint8) into a malloc destination ==", kStrBytes));
+    log("alloc   pattern        median_ms    p90_ms    min_ms  GB/s(median)     n");
+    for (std::size_t a = 0; a < kNA; ++a)
+        for (std::size_t p = 0; p < kNP; ++p) {
+            const auto& v = ms[a][p];
+            const double med = percentile(v, 0.5);
+            log(fmt("%-6s  %-12s  %9.3f  %8.3f  %8.3f  %12.3f  %4zu", srcs[a].name, pats[p].name, med,
+                    percentile(v, 0.9), *std::min_element(v.begin(), v.end()),
+                    static_cast<double>(kStrBytes) / (med * 1e-3) / 1e9, v.size()));
+        }
+    auto med = [&](std::size_t a, std::size_t p) { return percentile(ms[a][p], 0.5); };
+    log("");
+    log("[ratio within an allocation] pattern median / seq_memcpy median");
+    log("alloc   seq_byte  stride3_byte  stride3_auto");
+    for (std::size_t a = 0; a < kNA; ++a)
+        log(fmt("%-6s  %8.2f  %12.2f  %12.2f", srcs[a].name, med(a, 1) / med(a, 0), med(a, 2) / med(a, 0),
+                med(a, 3) / med(a, 0)));
+    log("[ratio within a pattern] allocation median / malloc median");
+    log("pattern        v3d/malloc  heap/malloc  v3d/heap");
+    for (std::size_t p = 0; p < kNP; ++p)
+        log(fmt("%-12s  %10.2f  %11.2f  %8.2f", pats[p].name, med(0, p) / med(1, p), med(2, p) / med(1, p),
+                med(0, p) / med(2, p)));
+    log("[heap sync] median DMA_BUF_IOCTL_SYNC START|READ + END|READ time included in the heap rows:");
+    for (std::size_t p = 0; p < kNP; ++p)
+        log(fmt("  %-12s %.3f ms", pats[p].name, percentile(sync_ms[2][p], 0.5)));
+    log("note: the malloc rows are an optimistic reference (the source partly stays in L2/L3 between samples).");
+    log(fmt("[check] destination checksum vs CPU reference: %s (%zu mismatching samples, seq 0x%016llx, "
+            "transposed 0x%016llx)",
+            bad == 0 ? "PASS" : "FAIL", bad, static_cast<unsigned long long>(sum_seq),
+            static_cast<unsigned long long>(sum_tr)));
+
+    log("");
+    log(fmt("[validation] errors=%llu warnings=%llu", static_cast<unsigned long long>(ctx.validation_errors()),
+            static_cast<unsigned long long>(ctx.validation_warnings())));
+    const bool pass = bad == 0 && ctx.validation_errors() == 0;
+    log(fmt("[RESULT] stride %s", pass ? "PASS" : "FAIL"));
+    return pass ? 0 : 1;
+}
+
+} // namespace
+
 int main(int argc, char** argv) {
     Options o;
     TopkOptions to;
+    StrideOptions so;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         auto next = [&](const char* what) -> std::string {
@@ -3379,6 +3700,7 @@ int main(int argc, char** argv) {
             else if (a == "--nms-score" || a == "--score") o.nms_score = yvo::tool::arg_stof(argv[0], a, next(a.c_str()).c_str());
             else if (a == "--scores") { to.scores = next("--scores"); (void)parse_float_list(to.scores); }
             else if (a == "--ks") { to.ks = next("--ks"); (void)parse_int_list(to.ks); }
+            else if (a == "--cpu") so.cpu = yvo::tool::arg_number<int>(argv[0], a, next("--cpu").c_str());
             else if (a == "--no-headroom") o.no_headroom = true;
             else if (a == "--heapimport") o.probe = "heapimport";
             else if (a == "--validation") o.validation = true;
@@ -3393,6 +3715,7 @@ int main(int argc, char** argv) {
             } else if (a == "-h" || a == "--help") {
                 usage();
                 usage_topk();
+                usage_stride();
                 return 0;
             } else {
                 std::fprintf(stderr, "unknown argument: %s\n", a.c_str());
@@ -3412,13 +3735,15 @@ int main(int argc, char** argv) {
         if (o.out_file.empty())
             o.out_file = o.probe == "heapimport" ? "p0_heapimport.txt" : ("stage_" + o.probe + ".txt");
     }
+    if (o.probe == "stride" && o.out_file.empty()) o.out_file = "stride_read.txt";
     if (o.out_file.empty()) o.out_file = "p3_" + o.probe + ".txt";
     const std::string out_path = o.out_dir.empty() ? std::string() : o.out_dir + "/" + o.out_file;
 
     try {
         Tee log(out_path);
         log(fmt("yvo_postproc_probe --probe %s   (%s)", o.probe.c_str(),
-                o.probe == "heapimport" ? "plan Appendix B step 1 = P0 gate" : "plan §6.2 P3"));
+                o.probe == "heapimport" ? "plan Appendix B step 1 = P0 gate"
+                                        : (o.probe == "stride" ? "paper §6.3 table 9 stride read" : "plan §6.2 P3")));
         if (o.probe == "heapimport") return run_heapimport(o, log);
         if (o.probe == "gpuab") return run_gpuab(o, log);
         if (o.probe == "v3") return run_v3(o, log);
@@ -3428,6 +3753,7 @@ int main(int argc, char** argv) {
         if (o.probe == "stages") return run_stages(o, log);
         if (o.probe == "groups") return run_groups(o, log);
         if (o.probe == "topk") return run_topk(o, to, log);
+        if (o.probe == "stride") return run_stride(o, so, log);
         if (o.probe == "live") return run_live(o, log);
         if (o.probe == "stale") return run_stale(o, log);
         log(fmt("unknown probe: %s", o.probe.c_str()));
