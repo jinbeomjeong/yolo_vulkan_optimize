@@ -93,12 +93,13 @@ File ▸ Export 를 대신 눌러 준다. 사용자 화면을 건드리지 않�
 앱 대 GStreamer 연구 경로 비교는 [`gst_pipeline/summary.md`](../07_results/gst_pipeline/summary.md) 에 있다(다이어그램에는 출처로만 넣었다).
 
 결정: 다이어그램 GPU 구간을 소스 페이싱 실행의 중앙값(논문 §6.7과 같은 정의)으로, CPU를 파이프라인 몫(앱 병기)으로 바꾼다 (사용자 결정, 2026-10-16).
+결정: 다이어그램 수치를 CPU 거버너 performance 고정 재측정 회차(v3d1150_quiet_perfgov_20261016)로 갱신한다 (사용자 결정, 2026-10-16).
 
 | 항목 | 출처 |
 |---|---|
-| GPU 구간별 median `[1150 MHz]` (전처리 1.797 / 후처리 0.442 / 변환 3.600 / 오버레이 0.119 ms, NMS 0.046 포함 5패스 합 6.004 ms = 33.4 ms 주기의 18.0%) — 2026-10-16 재측정, 현재 기본값(1스레드·GPU NMS), 소스 30 fps 페이싱 `disp_source`(실행별 stdout median 의 3회 중앙값) | [`07_results/display_e2e/runs/v3d1150_syscpu_20261016/summary.md`](../07_results/display_e2e/runs/v3d1150_syscpu_20261016/summary.md) 회차. 이 summary 에는 GPU 구간 표가 없어 구간 값의 출처는 `raw/disp_source_run*/stdout.log`(예: [`run1`](../07_results/display_e2e/runs/v3d1150_syscpu_20261016/raw/disp_source_run1/stdout.log))와 `10_paper/paper_ko.md` §6.7 표 24다 |
+| GPU 구간별 median `[1150 MHz]` (전처리 1.788 / 후처리 0.439 / 변환 3.598 / 오버레이 0.115 ms, NMS 0.046 포함 5패스 합 5.986 ms = 33.4 ms 주기의 17.9%) — 2026-10-16 재측정(CPU 거버너 performance 고정), 현재 기본값(1스레드·GPU NMS), 소스 30 fps 페이싱 `disp_source`(실행별 stdout median 의 5회 중앙값) | [`07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md`](../07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md) §2.3. 원시 출력은 `raw/disp_source_run*/stdout.log`(예: [`run1`](../07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/raw/disp_source_run1/stdout.log)), 같은 값이 `10_paper/paper_ko.md` §6.7 표 24에 있다 |
 | (이전 값) ⓒ GPU 4패스 구간별 median (전처리 2.088 / 후처리 0.626 / 변환 4.153 / 오버레이 0.128 ms, 합 6.995 ms) — V3D 960 MHz. 노드 `d5` 에 "이전 값"으로만 남는다 | [`07_results/display_e2e/summary.md`](../07_results/display_e2e/summary.md) §3.1 |
-| `n_note_perf` glass-to-glass 96.66 ms(median) · p90 120.26 ms, FPS · 파이프라인 CPU ms/f(앱 병기; 파이프라인 = 앱 + 컴포지터 + 커널 스레드 증가분) · 검출 3369 · dropped 0 · held_frames_max · GPU 5패스 합(위 행과 같은 출처) — 2026-10-16 회차 `[1150 MHz]` | [`07_results/display_e2e/runs/v3d1150_syscpu_20261016/summary.md`](../07_results/display_e2e/runs/v3d1150_syscpu_20261016/summary.md) §2.1·§2.4 |
+| `n_note_perf` glass-to-glass 89.86 ms(median) · p90 119.55 ms, FPS · 파이프라인 CPU ms/f(앱 병기; 파이프라인 = 앱 + 컴포지터 + 커널 스레드 증가분) · 검출 3369 · dropped 0 · held_frames_max · GPU 5패스 합(위 행과 같은 출처) — 2026-10-16 회차 `[1150 MHz]`, CPU 거버너 performance 고정 | [`07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md`](../07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md) §2.1·§2.3·§2.4 |
 | (이전 값) ⓒ glass-to-glass 101.20 ms(median) · p90 118.36 ms, FPS · CPU ms/f — V3D 960 MHz | [`07_results/display_e2e/summary.md`](../07_results/display_e2e/summary.md) §3·§3.2 |
 | ⓝ GPU NMS median b2s4 0.0486 / p90 0.0578 ms · b8s16 0.0500 / 0.0595 ms · fallback 0 · 검출 9457 바이트 동일 · CSD 잡 4 → 5 · 표시 off 기준선 b2s4 34.99 fps / CPU 0.908 ms/f, b8s16 51.50 / 0.869 | [`07_results/gpu_nms_e2e/summary.md`](../07_results/gpu_nms_e2e/summary.md) §2·§3·§5 |
 | ⓝ 평면 표시 b2/s4 — CPU vk 2.059 → wlp 1.569 / kms 1.576 ms/f · V3D 10.19 → 2.89 / 2.86 ms/f(TFU 3.72) · 평면 slot wait 28~30 ms · 박스 그리기+지우기 평균 0.336 / 0.330 ms · vk_source convert 평균 3.234 / overlay 0.111 ms | [`07_results/display_planes_e2e/summary.md`](../07_results/display_planes_e2e/summary.md) §2·§3 |
@@ -142,8 +143,8 @@ id 로 찾으면 된다 (`grep -n 'id="n_pre"' pipeline_overview.graphml`).
   (`FFmpeg 프레임 스레드 기본 1 (YVO_DEC_THREADS) · 측정 당시 자동 5`), 두 노드와 detail `n0` 의 `d5`.
   기본값의 정본은 `01_src/pipeline/main.cpp:196`, 환경변수를 읽는 곳은 `:348` 이다.
 - **V3D 클럭** — overview `n_pre`·`n_post`·`n_conv`·`n_ovl` 라벨의 `[1150 MHz]`와 `d5`, `n_note_perf` 의 GPU 합 줄, detail `n0::n5`·`n0::n7` 의 `d5`.
-  2026-10-16 에 GPU 구간을 현재 기본값으로 다시 재서([`display_e2e/runs/v3d1150_syscpu_20261016`](../07_results/display_e2e/runs/v3d1150_syscpu_20261016/summary.md)) 모든 셰이더 노드가 `[1150 MHz]` 가 됐다.
-  라벨 값은 소스 30 fps 페이싱 실행(`disp_source`)의 중앙값이다(실행별 stdout median 의 3회 중앙값, 논문 §6.7 표 24와 같은 정의).
+  2026-10-16 에 GPU 구간을 현재 기본값으로 다시 재서(CPU 거버너 performance 고정 회차 [`display_e2e/runs/v3d1150_quiet_perfgov_20261016`](../07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md) §2.3) 모든 셰이더 노드가 `[1150 MHz]` 가 됐다.
+  라벨 값은 소스 30 fps 페이싱 실행(`disp_source`)의 중앙값이다(실행별 stdout median 의 5회 중앙값, 논문 §6.7 표 24와 같은 정의).
   `[MHz]` 꼬리표는 **측정 당시 V3D 클럭**이다 — V3D 클럭은 GPU 전체에 하나뿐이고(부트로더 펌웨어 기본값) 셰이더마다 다르지 않다.
 - **공통 요약** — overview `n_note_perf` 라벨의 측정 조건 3줄과 `d5`, detail `n_src_note` 의 `측정 조건 :` 줄과 출처 3줄.
 - **ⓝ 현재 조건 값(2026-10-08)** — 라벨: overview `n_nms` 3행·`n_note_perf` 마지막 줄·`n_note_planes` 6~8행·`n_ovlp` 4행·`n_hvs` 5행,
@@ -162,7 +163,7 @@ id 로 찾으면 된다 (`grep -n 'id="n_pre"' pipeline_overview.graphml`).
 | `n_conv` | 표시 변환 `display_convert.comp` median (`d5` 에 ⓝ vk_source 평균 3.234 ms · TFU 3.72 ms/f) |
 | `n_ovl` | 오버레이 `overlay_boxes.comp` median (`d5` 에 ⓝ vk_source 평균 0.111 ms) |
 | `n_pres` | present 간격 median |
-| `n_note_perf` | FPS · 파이프라인 CPU(앱 병기) · glass-to-glass · GPU 5패스 합(`[1150 MHz]`, `display_e2e/runs/v3d1150_syscpu_20261016` — GPU 는 소스 페이싱 실행 `disp_source` 의 중앙값) (**요약 수치는 전부 여기**). 마지막 줄은 같은 회차의 표시 off b2s4 (`gpu_nms_e2e` 기준선은 `d5`) |
+| `n_note_perf` | FPS · 파이프라인 CPU(앱 병기) · glass-to-glass · GPU 5패스 합(`[1150 MHz]`, `display_e2e/runs/v3d1150_quiet_perfgov_20261016` — GPU 는 소스 페이싱 실행 `disp_source` 의 중앙값) (**요약 수치는 전부 여기**). 마지막 줄은 같은 회차의 표시 off b2s4 (`gpu_nms_e2e` 기준선은 `d5`) |
 | `n_note_cmd` | 최종 실행 커맨드 (`op_point/summary.md` §8.3 과 한 글자도 다르면 안 된다) |
 | `n_note_planes` | 대안 표시 경로 요약·상태와 ⓝ 정식 측정 요약(6~8행: CPU · V3D · 지연 · `--slots 6` 필요). b2/s4·b2/s6 전문과 늦은 프레임은 `d5` |
 | `n_ovlp` | `overlay_boxes_buf.spv`(overlay_boxes.comp 의 storage-buffer 변형) + 지우기의 V3D 평균 — ⓝ wlp 0.336 / kms 0.330 ms(b2/s4). Vulkan 합성의 `overlay_boxes.comp` 값과 이름만 같다 |

@@ -98,7 +98,7 @@ GPU 메모리를 CPU로 읽는 설계를 무심코 넣거나, 오염된 조건�
 처리량은 거의 변하지 않았다(34.97 → 34.89 FPS). **원래 그럴 예정이었다** —
 병목이 NPU로 가는 PCIe 통로이고, 이 프로젝트가 건드린 것은 그 앞뒤이기 때문이다.
 
-얻은 것은 **CPU 여유**(프레임당 3.19 → 2.50 ms, 표시를 켠 채로 −21%. 앱 + 컴포지터 + 커널 스레드 기준, [`v3d1150_syscpu_20261016`](../07_results/display_e2e/runs/v3d1150_syscpu_20261016/summary.md) §2.1)와
+얻은 것은 **CPU 여유**(프레임당 2.44 → 2.04 ms, 표시를 켠 채로 −16%. 앱 + 컴포지터 + 커널 스레드 기준, CPU 2.4 GHz 고정, [`v3d1150_quiet_perfgov_20261016`](../07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md) §2.1)와
 **CPU 비용 거의 없이 도는 실시간 화면 표시**다.
 근거: [`07_results/op_point/summary.md`](../07_results/op_point/summary.md) §8.4
 

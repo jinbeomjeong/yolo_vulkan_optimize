@@ -4,7 +4,7 @@ Raspberry Pi CM5 + Hailo-8 NPU 에서 YOLOv11m 추론을 돌리되, 파이프라
 Vulkan(V3D GPU)으로 밀어낸** 프로젝트다. 디코드·전처리·추론·후처리·가시화가 **하나의 실행 파일**
 (`yvo_pipeline`)로 통합돼 있고 전 구간 CPU 복사가 0회다.
 
-실측(1080p30 HEVC, PCIe Gen3 x1, 운용점 `b2/s4 --postproc gpu`, 표시 on, 900프레임 ×3회 중앙값,
+실측(1080p30 HEVC, PCIe Gen3 x1, 운용점 `b2/s4 --postproc gpu`, 표시 on, 900프레임 ×5회 중앙값,
 2026-10-16 · **V3D 1150 MHz · 디코더 1스레드 · `--nms gpu`** · 코드 `2f2d3d0` · **CPU 거버너 performance 고정**, 5회 중앙값):
 
 | `--display-pace` | FPS | glass-to-glass | 파이프라인 CPU ms/frame (앱 + 컴포지터 + 커널 스레드) | 드롭 |
@@ -231,7 +231,7 @@ loginctl activate <데스크톱 세션 id>    # (또는 sudo chvt 7) 데스크�
 | `--display-connector NAME` | 첫 연결 HDMI-A | `kms` 의 출력 커넥터(다른 백엔드에서는 경고 후 무시) |
 | `--display-fullscreen` | 꺼짐 | **반드시 켠다.** 창 모드는 에러·경고 없이 표시 변환이 **2.6배**(4.22 → 10.92 ms, V3D 960 MHz 측정) 느려진다. 평면 백엔드는 자동으로 전체화면이다 |
 | `--display-sync matched\|latest` | `matched` | `matched` 는 프레임과 그 검출을 정확히 맞춘다. `latest` 는 화면을 즉시 띄우고 박스만 뒤처진다 |
-| `--display-pace source\|asap` | 표시 on 이면 `source` | 소스 fps 로 페이싱. `asap` 이면 큐가 꽉 차 glass 96.66 → 128.00 ms (둘 다 median, 1150 MHz · 1스레드 · GPU NMS) |
+| `--display-pace source\|asap` | 표시 on 이면 `source` | 소스 fps 로 페이싱. `asap` 이면 큐가 꽉 차 glass 89.86 → 128.04 ms (둘 다 median, 1150 MHz · 1스레드 · GPU NMS · CPU 2.4 GHz 고정) |
 | `--postproc-alloc export\|heap` | `export` | **`heap` 은 쓰지 마라** — 3자 일관성(PCIe DMA ↔ CPU 캐시 ↔ V3D)이 미검증이다 |
 | `--score T` | HEF 값 0.2 | 검출 점수 임계값 |
 | `--frames N` / `--quiet` / `--csv-label L` | | 측정용 |

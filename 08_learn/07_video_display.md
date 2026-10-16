@@ -599,11 +599,12 @@ Vulkan 확장 두 개가 이것을 푼다.
 그래서 이 프로젝트는 **glass-to-glass 지연을 실측한다** —
 "디코더가 프레임을 돌려준 시각 → `vkWaitForPresentKHR` 가 돌아온 시각".
 
-> 측정값: `--display-pace source` 에서 **median 96.66 ms** (mean 99.81, p90 120.26, 3회 범위 90.5~100.1)
-> ([`v3d1150_syscpu_20261016`](../07_results/display_e2e/runs/v3d1150_syscpu_20261016/summary.md) §2.4, 2026-10-16 · V3D 1150 MHz · 디코더 1스레드 · GPU NMS.
+> 측정값: `--display-pace source` 에서 **median 89.86 ms** (mean 97.87, p90 119.55, 5회 범위 89.4~98.1)
+> ([`v3d1150_quiet_perfgov_20261016`](../07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md) §2.4, 2026-10-16 · V3D 1150 MHz · 디코더 1스레드 · GPU NMS · CPU 2.4 GHz 고정.
+> 중앙값은 수직동기 양자화로 회차마다 갈린다 — 거버너를 고정하지 않은 같은 날 회차는 96.66 ms였다.
 > 이전 측정 — 960 MHz · 자동 5스레드 · CPU NMS — 은 median 101.20, [`display_e2e/summary.md`](../07_results/display_e2e/summary.md) §3.2).
 > **계획 단계의 추정치는 217 ms였다. 실측이 그 절반 이하였다.**
-> 같은 실행의 e2e(디코드 끝 → 후처리 완료) 평균이 78.6 ms이므로 **표시 경로가 더하는 지연은 평균으로 약 21 ms**
+> 같은 실행의 e2e(디코드 끝 → 후처리 완료) 평균이 78.6 ms이므로 **표시 경로가 더하는 지연은 평균으로 약 19 ms**
 > (GPU 변환 3.6 ms + present 대기)다. 중앙값끼리 빼면 vsync 양자화 때문에 흔들려 쓰지 않는다(논문 §6.7).
 
 Wayland에도 같은 목적의 `wp_presentation` 프로토콜이 있지만, **스왑체인 경로에서는 일부러 쓰지 않는다** —
