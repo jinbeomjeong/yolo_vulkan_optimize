@@ -1,0 +1,547 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:y="http://www.yworks.com/xml/graphml" xmlns:yed="http://www.yworks.com/xml/yed/3" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://www.yworks.com/xml/schema/graphml/1.1/ygraphml.xsd">
+  <key for="graphml" id="d0" yfiles.type="resources"/>
+  <key for="port" id="d1" yfiles.type="portgraphics"/>
+  <key for="port" id="d2" yfiles.type="portgeometry"/>
+  <key for="port" id="d3" yfiles.type="portuserdata"/>
+  <key attr.name="url" attr.type="string" for="node" id="d4"/>
+  <key attr.name="description" attr.type="string" for="node" id="d5"/>
+  <key for="node" id="d6" yfiles.type="nodegraphics"/>
+  <key attr.name="url" attr.type="string" for="edge" id="d7"/>
+  <key attr.name="description" attr.type="string" for="edge" id="d8"/>
+  <key for="edge" id="d9" yfiles.type="edgegraphics"/>
+  <graph edgedefault="directed" id="G">
+    <node id="n_in">
+      <data key="d5">짧은 논문(10_paper/brief_cpu_offload_ko.md) 그림 1용 거시 구조도. 세부 구현은 09_diagrams/pipeline_paper.graphml 와 pipeline_overview.graphml 를 본다. 영상 입력(HEVC 파일, 기본 04_data/videos/video_h265.mp4). CPU 가 디먹스한 압축 패킷을 디코더에 넣는다 — 크기가 작은 압축 데이터라 가는 실선으로 그렸다.</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.start1">
+          <y:Geometry height="72.0" width="110.0" x="0.0" y="60.0"/>
+          <y:Fill color="#E0E0E0" color2="#E0E0E0" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="custom" textColor="#000000" visible="true">영상 입력<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n_dec">
+      <data key="d5">짧은 논문(10_paper/brief_cpu_offload_ko.md) 그림 1용 거시 구조도. 세부 구현은 09_diagrams/pipeline_paper.graphml 와 pipeline_overview.graphml 를 본다. ① 하드웨어 HEVC 디코더(libavcodec V4L2 stateless, DRM_PRIME). 출력 프레임은 dma-buf 로 GPU 에 그대로 넘긴다(01_src/decode/ffmpeg_drm_decoder.hpp).</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="72.0" width="110.0" x="134.0" y="60.0"/>
+          <y:Fill color="#B39DDB" color2="#B39DDB" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="custom" textColor="#000000" visible="true">하드웨어
+디코더<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n_pre">
+      <data key="d5">짧은 논문(10_paper/brief_cpu_offload_ko.md) 그림 1용 거시 구조도. 세부 구현은 09_diagrams/pipeline_paper.graphml 와 pipeline_overview.graphml 를 본다. ② GPU 전처리(02_shaders/sand_letterbox.comp)가 NPU 입력 형식 NHCW 를 직접 써서 HailoRT 의 CPU 형식 변환을 없앤다(01_src/core/frame_types.hpp PreprocOutput).</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="72.0" width="110.0" x="268.0" y="60.0"/>
+          <y:Fill color="#99CC00" color2="#99CC00" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="custom" textColor="#000000" visible="true">GPU 전처리
+NPU 형식(NHCW)
+직접 생성<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n_npu">
+      <data key="d5">짧은 논문(10_paper/brief_cpu_offload_ko.md) 그림 1용 거시 구조도. 세부 구현은 09_diagrams/pipeline_paper.graphml 와 pipeline_overview.graphml 를 본다. Hailo-8 NPU, YOLOv11m(03_models/yolov11m.hef) 원시 6텐서 출력. 입력·출력 모두 dma-buf(01_src/hailo/hailo_raw_runner.hpp).</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.predefinedProcess">
+          <y:Geometry height="72.0" width="110.0" x="402.0" y="60.0"/>
+          <y:Fill color="#FFCC00" color2="#FFCC00" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="custom" textColor="#000000" visible="true">NPU
+(YOLO 추론)<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n_post">
+      <data key="d5">짧은 논문(10_paper/brief_cpu_offload_ko.md) 그림 1용 거시 구조도. 세부 구현은 09_diagrams/pipeline_paper.graphml 와 pipeline_overview.graphml 를 본다. ③ GPU 후처리: 02_shaders/yolo_decode.comp(결과 해석) + 02_shaders/efficient_nms.comp(NMS), 한 커맨드 버퍼(01_src/vulkan/yolo_postproc.hpp).</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="72.0" width="110.0" x="536.0" y="60.0"/>
+          <y:Fill color="#99CC00" color2="#99CC00" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="custom" textColor="#000000" visible="true">GPU 후처리
+(결과 해석·NMS)<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n_out">
+      <data key="d5">짧은 논문(10_paper/brief_cpu_offload_ko.md) 그림 1용 거시 구조도. 세부 구현은 09_diagrams/pipeline_paper.graphml 와 pipeline_overview.graphml 를 본다. 검출 결과(프레임당 수 KB)와 화면 표시. 표시 경로의 영상 프레임은 디코더 dma-buf 를 다시 import 한다.</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="72.0" width="110.0" x="670.0" y="60.0"/>
+          <y:Fill color="#4DB6E2" color2="#4DB6E2" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="custom" textColor="#000000" visible="true">검출 결과
+/ 화면<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n_cpu">
+      <data key="d5">짧은 논문(10_paper/brief_cpu_offload_ko.md) 그림 1용 거시 구조도. 세부 구현은 09_diagrams/pipeline_paper.graphml 와 pipeline_overview.graphml 를 본다. ⑤ CPU 는 데이터를 만지지 않고 작업 제출과 완료 이벤트 대기만 한다(01_src/pipeline/main.cpp 머리 주석).</data>
+      <data key="d6">
+        <y:GenericNode configuration="com.yworks.flowchart.process">
+          <y:Geometry height="44.0" width="512.0" x="134.0" y="204.0"/>
+          <y:Fill color="#E8EEF7" color2="#E8EEF7" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="14" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="custom" textColor="#000000" visible="true">CPU — 거의 지휘만 (작업 제출 · 완료 이벤트 대기)<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+        </y:GenericNode>
+      </data>
+    </node>
+    <node id="n_band4">
+      <data key="d5">짧은 논문(10_paper/brief_cpu_offload_ko.md) 그림 1용 거시 구조도. 세부 구현은 09_diagrams/pipeline_paper.graphml 와 pipeline_overview.graphml 를 본다. ④ 최저 지연 운용: 배치 1 · 슬롯 1 · 입력 페이싱 · 입력 큐 1(영상 입력 ~ NPU 구간).</data>
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="26.0" width="512.0" x="0.0" y="0.0"/>
+          <y:Fill color="#F4F4F4" transparent="false"/>
+          <y:BorderStyle color="#808080" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="custom" textColor="#000000" visible="true">최저 지연 운용 — 배치 1 · 슬롯 1 · 입력 페이싱 · 큐 1<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+          <y:Shape type="roundrectangle"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+    <node id="n_dmabuf">
+      <data key="d5">짧은 논문(10_paper/brief_cpu_offload_ko.md) 그림 1용 거시 구조도. 세부 구현은 09_diagrams/pipeline_paper.graphml 와 pipeline_overview.graphml 를 본다. 디코더 → GPU 전처리 화살표(첫 dma-buf 전달)의 설명. 같은 굵은 실선은 모두 같은 뜻(범례).</data>
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="20.0" width="128.0" x="192.0" y="33.0"/>
+          <y:Fill hasColor="false" transparent="false"/>
+          <y:BorderStyle hasColor="false" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="custom" textColor="#000000" visible="true">dma-buf · 복사 없음<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+          <y:Shape type="rectangle"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+    <node id="n_b1">
+      <data key="d5">짧은 논문(10_paper/brief_cpu_offload_ko.md) 그림 1용 거시 구조도. 세부 구현은 09_diagrams/pipeline_paper.graphml 와 pipeline_overview.graphml 를 본다. 기술 번호 배지 1: 하드웨어 디코더 + 제로 카피(dma-buf)</data>
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="22.0" width="22.0" x="171.0" y="32.0"/>
+          <y:Fill color="#333333" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" modelName="custom" textColor="#FFFFFF" visible="true">1<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+          <y:Shape type="ellipse"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+    <node id="n_b2">
+      <data key="d5">짧은 논문(10_paper/brief_cpu_offload_ko.md) 그림 1용 거시 구조도. 세부 구현은 09_diagrams/pipeline_paper.graphml 와 pipeline_overview.graphml 를 본다. 기술 번호 배지 2: NPU 형식을 GPU 가 직접 생성</data>
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="22.0" width="22.0" x="367.0" y="49.0"/>
+          <y:Fill color="#333333" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" modelName="custom" textColor="#FFFFFF" visible="true">2<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+          <y:Shape type="ellipse"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+    <node id="n_b3">
+      <data key="d5">짧은 논문(10_paper/brief_cpu_offload_ko.md) 그림 1용 거시 구조도. 세부 구현은 09_diagrams/pipeline_paper.graphml 와 pipeline_overview.graphml 를 본다. 기술 번호 배지 3: 결과 해석도 GPU 에서</data>
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="22.0" width="22.0" x="635.0" y="49.0"/>
+          <y:Fill color="#333333" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" modelName="custom" textColor="#FFFFFF" visible="true">3<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+          <y:Shape type="ellipse"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+    <node id="n_b4">
+      <data key="d5">짧은 논문(10_paper/brief_cpu_offload_ko.md) 그림 1용 거시 구조도. 세부 구현은 09_diagrams/pipeline_paper.graphml 와 pipeline_overview.graphml 를 본다. 기술 번호 배지 4: 최저 지연 운용(배치 1 · 슬롯 1 · 입력 페이싱 · 큐 1)</data>
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="22.0" width="22.0" x="-11.0" y="2.0"/>
+          <y:Fill color="#333333" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" modelName="custom" textColor="#FFFFFF" visible="true">4<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+          <y:Shape type="ellipse"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+    <node id="n_b5">
+      <data key="d5">짧은 논문(10_paper/brief_cpu_offload_ko.md) 그림 1용 거시 구조도. 세부 구현은 09_diagrams/pipeline_paper.graphml 와 pipeline_overview.graphml 를 본다. 기술 번호 배지 5: CPU 는 지휘만(이벤트 대기)</data>
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="22.0" width="22.0" x="123.0" y="193.0"/>
+          <y:Fill color="#333333" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" modelName="custom" textColor="#FFFFFF" visible="true">5<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+          <y:Shape type="ellipse"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+    <node id="n_lg_data_a">
+      <data key="d5">범례 선 견본 시작점(보이지 않음)</data>
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="1.0" width="1.0" x="0.0" y="279.5"/>
+          <y:Fill hasColor="false" transparent="false"/>
+          <y:BorderStyle hasColor="false" type="line" width="1.0"/>
+          
+          <y:Shape type="rectangle"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+    <node id="n_lg_data_b">
+      <data key="d5">범례 선 견본 끝점(보이지 않음)</data>
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="1.0" width="1.0" x="44.0" y="279.5"/>
+          <y:Fill hasColor="false" transparent="false"/>
+          <y:BorderStyle hasColor="false" type="line" width="1.0"/>
+          
+          <y:Shape type="rectangle"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+    <node id="n_lg_data_t">
+      <data key="d5">범례 문구</data>
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="20.0" width="250.0" x="52.0" y="270.0"/>
+          <y:Fill hasColor="false" transparent="false"/>
+          <y:BorderStyle hasColor="false" type="line" width="1.0"/>
+          <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="custom" textColor="#000000" visible="true">데이터 (dma-buf · 복사 없음)<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="-0.5" labelRatioY="0.0" nodeRatioX="-0.5" nodeRatioY="0.0" offsetX="6.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+          <y:Shape type="rectangle"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+    <node id="n_lg_small_a">
+      <data key="d5">범례 선 견본 시작점(보이지 않음)</data>
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="1.0" width="1.0" x="0.0" y="301.5"/>
+          <y:Fill hasColor="false" transparent="false"/>
+          <y:BorderStyle hasColor="false" type="line" width="1.0"/>
+          
+          <y:Shape type="rectangle"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+    <node id="n_lg_small_b">
+      <data key="d5">범례 선 견본 끝점(보이지 않음)</data>
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="1.0" width="1.0" x="44.0" y="301.5"/>
+          <y:Fill hasColor="false" transparent="false"/>
+          <y:BorderStyle hasColor="false" type="line" width="1.0"/>
+          
+          <y:Shape type="rectangle"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+    <node id="n_lg_small_t">
+      <data key="d5">범례 문구</data>
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="20.0" width="250.0" x="52.0" y="292.0"/>
+          <y:Fill hasColor="false" transparent="false"/>
+          <y:BorderStyle hasColor="false" type="line" width="1.0"/>
+          <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="custom" textColor="#000000" visible="true">작은 데이터 (압축 영상 · 검출 결과)<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="-0.5" labelRatioY="0.0" nodeRatioX="-0.5" nodeRatioY="0.0" offsetX="6.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+          <y:Shape type="rectangle"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+    <node id="n_lg_ctrl_a">
+      <data key="d5">범례 선 견본 시작점(보이지 않음)</data>
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="1.0" width="1.0" x="0.0" y="323.5"/>
+          <y:Fill hasColor="false" transparent="false"/>
+          <y:BorderStyle hasColor="false" type="line" width="1.0"/>
+          
+          <y:Shape type="rectangle"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+    <node id="n_lg_ctrl_b">
+      <data key="d5">범례 선 견본 끝점(보이지 않음)</data>
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="1.0" width="1.0" x="44.0" y="323.5"/>
+          <y:Fill hasColor="false" transparent="false"/>
+          <y:BorderStyle hasColor="false" type="line" width="1.0"/>
+          
+          <y:Shape type="rectangle"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+    <node id="n_lg_ctrl_t">
+      <data key="d5">범례 문구</data>
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="20.0" width="250.0" x="52.0" y="314.0"/>
+          <y:Fill hasColor="false" transparent="false"/>
+          <y:BorderStyle hasColor="false" type="line" width="1.0"/>
+          <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="custom" textColor="#000000" visible="true">제어 (CPU)<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="-0.5" labelRatioY="0.0" nodeRatioX="-0.5" nodeRatioY="0.0" offsetX="6.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+          <y:Shape type="rectangle"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+    <node id="n_sum">
+      <data key="d5">짧은 논문(10_paper/brief_cpu_offload_ko.md) 그림 1용 거시 구조도. 세부 구현은 09_diagrams/pipeline_paper.graphml 와 pipeline_overview.graphml 를 본다. 요약 수치. 응용 CPU(배치 1)는 측정 조건이 둘이라 두 줄로 나눈다. ② 구 조건: 출발점 17.6(07_results/pipeline_ffmpeg_vulkan_hailo/results.csv ptr_b1, dma-buf 만 쓴 dmabuf_b1 은 17.39) → NHCW 직접 생성 3.3 ms/프레임(같은 파일 nhcw_b1). ③ 신 조건: CPU 후처리 3.25 → GPU 후처리 0.94 ms/프레임(07_results/op_point/runs/latency_b1s1_20261012). 최저 지연: 배치 1/슬롯 1 + 입력 페이싱 큐 1, 도착 → 결과 평균 58.4 ms, 입력 18.6% 버림(07_results/input_pacing/runs/code_2f2d3d0). 수치는 위임자(메인 에이전트)가 확정해 넘긴 값이다.</data>
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="72.0" width="330.0" x="450.0" y="270.0"/>
+          <y:Fill color="#FFFFFF" transparent="false"/>
+          <y:BorderStyle color="#808080" type="line" width="1.0"/>
+          <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="custom" textColor="#000000" visible="true">응용 CPU (배치 1): 17.6 → 3.3 ms/프레임 (② 구 조건)
+3.25 → 0.94 ms/프레임 (③ 신 조건)
+최저 지연: 도착 → 결과 58.4 ms (입력 18.6% 버림)<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="-0.5" labelRatioY="0.0" nodeRatioX="-0.5" nodeRatioY="0.0" offsetX="6.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+          <y:Shape type="rectangle"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+    <edge id="e_in" source="n_in" target="n_dec">
+      <data key="d8">압축 HEVC 패킷(CPU 디먹스). 작은 데이터라 가는 실선.</data>
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="55.0" sy="0.0" tx="-55.0" ty="0.0"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e_d1" source="n_dec" target="n_pre">
+      <data key="d8">디코더 프레임 dma-buf(NV12 SAND128), 복사 없음.</data>
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="55.0" sy="0.0" tx="-55.0" ty="0.0"/>
+          <y:LineStyle color="#000000" type="line" width="3.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e_d2" source="n_pre" target="n_npu">
+      <data key="d8">전처리 출력 NHCW dma-buf → NPU DMA 읽기, 복사 없음.</data>
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="55.0" sy="0.0" tx="-55.0" ty="0.0"/>
+          <y:LineStyle color="#000000" type="line" width="3.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e_d3" source="n_npu" target="n_post">
+      <data key="d8">NPU 원시 출력 6텐서 dma-buf → GPU 후처리, 복사 없음.</data>
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="55.0" sy="0.0" tx="-55.0" ty="0.0"/>
+          <y:LineStyle color="#000000" type="line" width="3.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e_out" source="n_post" target="n_out">
+      <data key="d8">최종 검출 몇 개(수 KB)만 CPU 가 받아 넘긴다. 작은 데이터라 가는 실선.</data>
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="55.0" sy="0.0" tx="-55.0" ty="0.0"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e_c1" source="n_cpu" target="n_dec">
+      <data key="d8">제어: 작업 제출 · 완료 이벤트 대기(데이터는 지나지 않는다).</data>
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="-201.0" sy="-22.0" tx="0.0" ty="36.0"/>
+          <y:LineStyle color="#404040" type="dashed" width="1.5"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e_c2" source="n_cpu" target="n_pre">
+      <data key="d8">제어: 작업 제출 · 완료 이벤트 대기(데이터는 지나지 않는다).</data>
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="-67.0" sy="-22.0" tx="0.0" ty="36.0"/>
+          <y:LineStyle color="#404040" type="dashed" width="1.5"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e_c3" source="n_cpu" target="n_npu">
+      <data key="d8">제어: 작업 제출 · 완료 이벤트 대기(데이터는 지나지 않는다).</data>
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="67.0" sy="-22.0" tx="0.0" ty="36.0"/>
+          <y:LineStyle color="#404040" type="dashed" width="1.5"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e_c4" source="n_cpu" target="n_post">
+      <data key="d8">제어: 작업 제출 · 완료 이벤트 대기(데이터는 지나지 않는다).</data>
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="201.0" sy="-22.0" tx="0.0" ty="36.0"/>
+          <y:LineStyle color="#404040" type="dashed" width="1.5"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e_lg_data" source="n_lg_data_a" target="n_lg_data_b">
+      <data key="d8">범례 선 견본</data>
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
+          <y:LineStyle color="#000000" type="line" width="3.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e_lg_small" source="n_lg_small_a" target="n_lg_small_b">
+      <data key="d8">범례 선 견본</data>
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e_lg_ctrl" source="n_lg_ctrl_a" target="n_lg_ctrl_b">
+      <data key="d8">범례 선 견본</data>
+      <data key="d9">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
+          <y:LineStyle color="#404040" type="dashed" width="1.5"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+  </graph>
+  <data key="d0">
+    <y:Resources/>
+  </data>
+</graphml>

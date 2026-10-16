@@ -18,6 +18,7 @@
 | 7 | `fig07_arrival_to_present.{svg,png}` | `06_tools/python/paper/fig07_arrival_to_present.py` | `07_results/input_pacing/runs/code_2f2d3d0_display_on/raw/dvk_{b1s1,b2s4}_run*/frame_log.csv`, `07_results/input_pacing/runs/code_2f2d3d0_display_on/results_raw.csv` | 신, 코드 `2f2d3d0`(2026-10-16), 표시 on(스왑체인 경로) 1080p60, 페이싱 큐 1, 900 도착 × 3 | §6.6.3 (6) |
 | 8 | `fig08_display_paths.{svg,png}` | `06_tools/python/paper/fig08_display_paths.py` | `07_results/display_planes_e2e/runs/slots6/results.csv` | 신, 표시 on 1080p60, b2/s6, `--display-pace source`, 900f × 3 | §6.7.1 (2) |
 | 9 | `fig09_thermal_soak.{svg,png}` | `06_tools/python/paper/fig09_thermal_soak.py` | `07_results/thermal_soak/evidence/soak_{b2s4,b8s16}.csv`, `07_results/thermal_soak/evidence/soak_{b2s4,b8s16}_events.txt` | 신, 표시 off, MOT20-05 반복, 추가 냉각 없음, 40분 × 1회 | §7.4 (1) |
+| 10 | `fig10_brief_cpu_offload.{svg,png}` | `09_diagrams/brief_cpu_offload.graphml`(yEd 내보내기) | `07_results/pipeline_ffmpeg_vulkan_hailo/results.csv`(ptr_b1·nhcw_b1 행), `07_results/op_point/runs/latency_b1s1_20261012/summary.md`, `07_results/input_pacing/runs/code_2f2d3d0/results.csv` | 구조도(수치는 요약 상자 세 줄: 배치 1 응용 CPU 17.6 → 3.3 ms/f(② 구 조건) · 3.25 → 0.94 ms/f(③ 신 조건) / 최저 지연 도착 → 결과 58.4 ms, 입력 18.6% 버림(신 조건)) | 단편 원고 `10_paper/brief_cpu_offload_ko.md` 그림 1 |
 
 ### 예정 (번호만 비워 둠)
 
