@@ -1,0 +1,12 @@
+Events disabled
+Events enabled
+Events disabled
+[ perf record: Woken up 122 times to write data ]
+[ perf record: Captured and wrote 30.251 MB /home/pi/workspace/yolo_vulkan_optimize/07_results/display_e2e/runs/v3d1150_irqtime_20261016/raw/disp_source_run2/irq.perf.data (387488 samples) ]
+'trace' not valid for hardware events. Ignoring.
+'trace' not valid for software events. Ignoring.
+'trace' not valid for hardware-cache events. Ignoring.
+'trace' not valid for raw events. Ignoring.
+'trace' not valid for breakpoint events. Ignoring.
+'trace' not valid for unknown events. Ignoring.
+'trace' not valid for unknown events. Ignoring.

@@ -50,7 +50,7 @@
 #   $SUDO perf script -F cpu,pid,tid,comm,time,event,trace > irq_script.txt, $SUDO chown to the bench user,
 #   06_tools/python/irq_time_window.py --script irq_script.txt --frames <RESULT_CSV frames> --out irq.json, and
 #   gzip -> irq_script.txt.gz. irq.perf.data is removed unless IRQ_KEEP_DATA=1. One row per run is appended to
-#   OUT_DIR/irq_results_raw.csv (label,run + the parser's CSV columns; nan when the parser is missing or fails, and
+#   OUT_DIR/results_raw_irq.csv (label,run + the parser's CSV columns; nan when the parser is missing or fails, and
 #   the bench goes on); the console summary ends with the per-config uncounted_ms_per_frame median.
 #   ⚠ The tracepoints add CPU work to every interrupt, so all CPU ms of an IRQ_TRACE run (app, labwc, FPS too) carry
 #   that overhead: use the run for interrupt accounting only, never for headline CPU figures.
@@ -66,7 +66,7 @@
 #   Output: OUT_DIR (default 07_results/display_e2e) / {env_bench.txt, results_raw.csv (70 columns), results.csv,
 #           raw/<id>_run<N>/{stdout.log, hailort.log, labwc_stat_{pre,post}.txt, syscpu{,_idle}.{json,csv},
 #           syscpu_ready[, syscpu.err]}, raw/m5a_run1/, raw/_session/}
-#   IRQ_TRACE=1: + irq_results_raw.csv; per run irq_perf.log, irq_script.txt.gz, irq.json[, irq.perf.data, irq_parse.err]
+#   IRQ_TRACE=1: + results_raw_irq.csv; per run irq_perf.log, irq_script.txt.gz, irq.json[, irq.perf.data, irq_parse.err]
 #           instead of the syscpu* files
 set -euo pipefail
 
@@ -97,7 +97,7 @@ IRQ_MAX_S="${IRQ_MAX_S:-600}"                           # perf's workload is "sl
 IRQ_EVENTS="irq:irq_handler_entry,irq:irq_handler_exit,irq:softirq_entry,irq:softirq_exit"
 IRQ_COLS="irq_window_s,hardirq_count,hardirq_ms,hardirq_idle_ms,softirq_count,softirq_ms,softirq_idle_ms,unmatched,uncounted_ms_per_frame"
 IRQ_NCOLS=9                                             # fields in IRQ_COLS = fields of the parser's CSV line
-IRQ_RAW="$OUT_DIR/irq_results_raw.csv"
+IRQ_RAW="$OUT_DIR/results_raw_irq.csv"
 IRQ_PID=""; IRQ_SUDO_PID=""; IRQ_READY=0; IRQ_OK=0
 if [[ -n "${SUDO_ASKPASS:-}" ]]; then SUDO=(sudo -A); else SUDO=(sudo -n); fi   # never handles a password itself
 
@@ -135,7 +135,7 @@ done
 if [[ "$IRQ_TRACE" == "1" ]]; then
   [[ "$IRQ_MAX_S" =~ ^[1-9][0-9]*$ ]] || { echo "IRQ_MAX_S must be a positive integer: '$IRQ_MAX_S'" >&2; exit 1; }
   { command -v perf && command -v gzip; } > /dev/null || { echo "IRQ_TRACE=1 needs perf and gzip in PATH" >&2; exit 1; }
-  IRQ_PY_STATE="missing: irq_results_raw.csv rows will be nan (irq_script.txt.gz can be parsed later)"
+  IRQ_PY_STATE="missing: results_raw_irq.csv rows will be nan (irq_script.txt.gz can be parsed later)"
   if [[ -f "$IRQ_PY" ]]; then
     _h=$(/usr/bin/python3 "$IRQ_PY" --csv-header 2>/dev/null | head -1 || true)
     if [[ "$_h" == "$IRQ_COLS" ]]; then IRQ_PY_STATE="present, --csv-header matches"
@@ -648,7 +648,7 @@ for lab in order:
     f = (lambda y: f"{y:.4f}") if v else (lambda y: "nan")
     out.append([lab, str(len(groups[lab])), str(len(v)), f(statistics.median(v) if v else 0),
                 f(min(v) if v else 0), f(max(v) if v else 0)])
-print("\nIRQ_TRACE (irq_results_raw.csv; CPU numbers of these runs include tracepoint overhead)")
+print("\nIRQ_TRACE (results_raw_irq.csv; CPU numbers of these runs include tracepoint overhead)")
 wid = [max(len(r[i]) for r in out) for i in range(len(out[0]))]
 for k, r in enumerate(out):
     print(" | ".join(c.ljust(w) for c, w in zip(r, wid)))
