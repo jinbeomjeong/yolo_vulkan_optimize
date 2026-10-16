@@ -404,9 +404,9 @@ Vulkan에서 GPU에게 메모리 타입 목록을 물어보면(`vkGetPhysicalDev
 근거: [`pipeline_ffmpeg_vulkan_hailo/summary.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/summary.md) "주의와 남은 일".
 
 왜 그런가? §6.3의 캐시 라인 그림이다. 캐시가 있으면 stride-3도 한 번 가져온 라인에서
-21번을 쓸 수 있다. **캐시가 없으면 3바이트마다 매번 메모리까지 간다.**
+21번을 쓸 수 있다. **캐시가 없으면 바이트 load마다 매번 메모리까지 간다**(그래서 순차 바이트 읽기도 같은 값이다).
 
-그리고 결정적인 대조군이 있다. **같은 stride-3 연산을 평범한 `malloc` 버퍼에서 하면 약 1.2 ms다**
+그리고 결정적인 대조군이 있다. **같은 stride-3 연산을 평범한 `malloc` 버퍼에서 하면 약 1.2 ms다**(2026-10-16 직접 측정 0.95 ms)
 ([REPORT.md §4.3](../07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md)).
 malloc 메모리는 캐시되니까.
 
@@ -786,7 +786,7 @@ V3D가 노출하는 Vulkan 메모리 타입이 `DEVICE_LOCAL｜HOST_VISIBLE｜HO
 **`HOST_CACHED` 가 없다.** 즉 CPU 쪽에서 캐시되지 않는 매핑이다.
 캐시가 없으면 **읽기는 매번 메모리까지 가서 기다려야** 한다 —
 같은 1.22 MB를 순차 memcpy로 읽으면 1.479 GB/s인데 바이트 단위로 읽으면(순차든 stride-3이든) 약 **0.097 GB/s**,
-16배 차이다([`pipeline_ffmpeg_vulkan_hailo/summary.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/summary.md), 직접 측정 [`stride_read`](../07_results/gpu_postprocess/runs/stride_read/summary.md)).
+약 15배 차이다(같은 프로브의 `memcpy` 0.784 ms 기준이면 16배, [`pipeline_ffmpeg_vulkan_hailo/summary.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/summary.md), 직접 측정 [`stride_read`](../07_results/gpu_postprocess/runs/stride_read/summary.md)).
 **반대 방향(CPU→GPU 쓰기)은 싸다** — 쓰기는 버퍼에 던지고 바로 다음 일을 하기 때문이다.
 
 **Q3. `dmabuf_import.cpp` 는 왜 `dup(fd)` 를 해서 넘기는가?**

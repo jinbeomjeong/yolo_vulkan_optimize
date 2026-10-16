@@ -74,7 +74,7 @@ build/bin/yvo_pipeline \
    | **`yvo_preproc_bench`** (파이프라인 버퍼) | 1,228,800 B | 0.85~0.87 ms = **약 1.41 GB/s** | [`pipeline_ffmpeg_vulkan_hailo/summary.md`](pipeline_ffmpeg_vulkan_hailo/summary.md) §주의 |
 
    **할당처 간 비교에는 P2(1.479)** 를 쓴다 — 반복 횟수가 많고 malloc·dma-heap 대조군이 있다.
-   stride-3 읽기는 같은 양에 약 14 ms = **0.088 GB/s** 이고, 16~17배 차이가 이 설계의 근거다.
+   stride-3 읽기는 같은 양에 약 14 ms = **0.088 GB/s**(역산값)이고, 16~17배 차이가 이 설계의 근거다. 직접 측정([`gpu_postprocess/runs/stride_read`](gpu_postprocess/runs/stride_read/summary.md), 1,228,800 B)으로는 스칼라 stride-3 전치 12.69 ms = **0.097 GB/s**, 1바이트 순차도 12.82 ms라 비용은 **바이트 단위 읽기** 자체다(같은 프로브의 `memcpy` 0.784 ms 대비 16배).
 
    > 2026-09-21 정정: 이 색인이 한때 1.48(= P2 반올림)로 적었다가 1.41(= preproc_bench)로 "고쳤는데",
    > **둘은 애초에 다른 측정이었다.** 하나로 합치려 한 것이 실수였다.
