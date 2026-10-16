@@ -1,0 +1,13 @@
+date: 2026-10-16T11:34:43+09:00
+git HEAD: bc87e17f4682ef973d8a8dcbb4933b14b0f7a554 (tracked changes)
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_postproc_probe md5 7c53c271f053a1a822ab38f27c2f8826 mtime 2026-10-16 11:27:59.138341215 +0900
+model: Raspberry Pi Compute Module 5 Rev 1.0
+kernel: 6.18.50+rpt-rpi-2712
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+mesa-vulkan-drivers: 26.2.2-1~bpo13+0~rpt1
+hailort: 4.24.0
+soc: temp=66.4'C throttled=0xe0000
+clock arm: frequency(0)=2400033792  v3d: frequency(0)=1150011520  v3d_freq(config): v3d_freq=1150
+governor cpu3: ondemand
+command: yvo_postproc_probe --probe stride --rounds 3 --repeats 10 --cpu 3 (x3 runs), then --probe gpuab (x1)
+soc after: temp=67.0'C throttled=0xe0000

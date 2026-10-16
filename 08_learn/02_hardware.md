@@ -437,7 +437,7 @@ V3D 드라이버가 내놓는 Vulkan 메모리 타입은 **`DEVICE_LOCAL | HOST_
 | GPU가 쓴 메모리를 CPU가 **순차로** 읽기 | **1.479 GB/s** (0.826 ms / 1,221,120 B) | [`gpu_postprocess/summary.md`](../07_results/gpu_postprocess/summary.md) P2 ⑥ |
 | 같은 양을 **캐시 매핑 dma-heap**에서 읽기 | 3.084 GB/s (0.396 ms) | 〃 |
 | 같은 양을 **평범한 malloc**에서 읽기 | 5.001 GB/s (0.244 ms) | 〃 |
-| GPU가 쓴 메모리를 CPU가 **stride-3으로** 읽기 | **약 0.088 GB/s** (약 14 ms) | [`pipeline_ffmpeg_vulkan_hailo/REPORT.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md) §4.3 |
+| GPU가 쓴 메모리를 CPU가 **바이트 단위로**(stride-3 전치) 읽기 | **약 0.097 GB/s** (12.69 ms / 1,228,800 B, 1바이트 순차도 같음) | [`stride_read`](../07_results/gpu_postprocess/runs/stride_read/summary.md) (이전 역산값 0.088, [`REPORT.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/REPORT.md) §4.3) |
 | 반대 방향(CPU → GPU 쓰기) | **싸다** | [`07_results/README.md`](../07_results/README.md) 2번 |
 
 > ⚠ **순차 읽기에는 서로 다른 두 측정이 있다.** 위 표의 1.479는 할당처 세 가지를 나란히 잰
@@ -644,7 +644,7 @@ GStreamer `v4l2slh265dec`(rpt3)로 쓰면 **32.7 FPS / CPU 30.6 ms/frame**으로
 같은 DRAM이어도 **매핑 방식**이 다르기 때문이다. V3D가 내놓는 Vulkan 메모리 타입에는
 **`HOST_CACHED`가 없다** — CPU가 그 영역을 캐시된 상태로 읽을 방법이 드라이버에 없다.
 write-combine 매핑은 **쓰기는 모아서 빠르지만 읽기는 매번 DRAM까지 간다**(방향 비대칭).
-실측으로 순차 읽기 약 1.41 GB/s, stride-3 읽기 **약 0.088 GB/s**이고, 1.2 MB memcpy가
+실측으로 순차 읽기 약 1.41 GB/s, 바이트 단위 읽기(stride-3 전치) **약 0.097 GB/s**([`stride_read`](../07_results/gpu_postprocess/runs/stride_read/summary.md))이고, 1.2 MB memcpy가
 캐시 매핑 dma-heap 0.229 ms 대 V3D 메모리 1.045 ms로 **4.6배**다. 그래서 이 프로젝트는
 "GPU가 쓴 버퍼를 CPU로 훑는 일"을 설계에서 없앴고, 그게 CPU 17.6 → 3.5 ms/frame의 본질이다.
 → [`paper_ko.md`](../10_paper/paper_ko.md) §3.3 제약 1, [`07_results/README.md`](../07_results/README.md) 2번,

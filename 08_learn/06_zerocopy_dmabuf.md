@@ -396,9 +396,11 @@ Vulkan에서 GPU에게 메모리 타입 목록을 물어보면(`vkGetPhysicalDev
 | 접근 패턴 | 시간 | 대역폭 |
 |---|---:|---:|
 | **순차** memcpy (V3D 버퍼) | 0.826 ms (P2) / 0.85~0.87 ms (preproc_bench) | **1.479** / 약 1.41 GB/s |
-| **stride-3** 바이트 읽기 (V3D 버퍼) | 약 14 ms | 약 **0.088 GB/s** |
+| **stride-3** 바이트 읽기 (V3D 버퍼) | 약 14 ms(역산) / 12.69 ms(직접 측정, [`stride_read`](../07_results/gpu_postprocess/runs/stride_read/summary.md)) | 약 **0.088 / 0.097 GB/s** |
+| 1바이트 **순차** 읽기 (V3D 버퍼) | 12.82 ms(직접 측정) | 0.096 GB/s |
 
-**같은 메모리, 같은 양인데 16배 차이다.**
+**같은 메모리, 같은 양인데 16배 차이다.** 그리고 직접 재 보니 바이트 단위 읽기는 순차든 stride-3이든 같았다 —
+간격이 아니라 **읽기 단위(바이트 load 하나하나)** 가 비용을 정한다.
 근거: [`pipeline_ffmpeg_vulkan_hailo/summary.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/summary.md) "주의와 남은 일".
 
 왜 그런가? §6.3의 캐시 라인 그림이다. 캐시가 있으면 stride-3도 한 번 가져온 라인에서
@@ -428,9 +430,9 @@ G 640개, B 640개)인데 우리 셰이더가 **NHWC**(RGB RGB RGB …)로 내�
 **첫 번째 가설**: "전치 연산이 비싸구나. 없애자."
 → 셰이더가 NHCW로 직접 쓰게 바꿨다. CPU가 **17.6 → 3.5 ms/frame** 이 됐다.
 
-**그런데 가설이 틀렸다.** 검증해 보니 **전치 연산 자체는 약 1.2 ms** 였다(malloc 버퍼 기준).
+**그런데 가설이 틀렸다.** 검증해 보니 **전치 연산 자체는 약 1.2 ms** 였다(malloc 버퍼 기준. 2026-10-16 직접 측정에서는 0.95 ms).
 파이프라인에서는 14 ms였다. **진짜 원인**은 그 전치 루프가 **1바이트씩 stride 3으로 V3D 메모리를
-읽고 있었다**는 것이다. 비싼 것은 전치가 아니라 **"CPU가 V3D 메모리를 최악의 패턴으로 읽는 것"** 이었다.
+읽고 있었다**는 것이다. 비싼 것은 전치가 아니라 **"CPU가 V3D 메모리를 바이트 단위로 읽는 것"** 이었다(1바이트 순차 읽기도 같은 값이다).
 
 > "즉 NHCW의 이득은 '전치를 없앤 것'보다 **'GPU가 쓴 메모리를 CPU가 읽는 일을 없앤 것'** 이 본질이다."
 > — REPORT.md §4.3 근거 4
@@ -783,8 +785,8 @@ zero-copy는 **소비자가 그 메모리를 CPU로 건드리지 않을 때** �
 V3D가 노출하는 Vulkan 메모리 타입이 `DEVICE_LOCAL｜HOST_VISIBLE｜HOST_COHERENT` **하나뿐**이고
 **`HOST_CACHED` 가 없다.** 즉 CPU 쪽에서 캐시되지 않는 매핑이다.
 캐시가 없으면 **읽기는 매번 메모리까지 가서 기다려야** 한다 —
-같은 1.22 MB를 순차로 읽으면 1.479 GB/s인데 stride-3으로 읽으면 약 **0.088 GB/s**,
-16배 차이다([`pipeline_ffmpeg_vulkan_hailo/summary.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/summary.md)).
+같은 1.22 MB를 순차 memcpy로 읽으면 1.479 GB/s인데 바이트 단위로 읽으면(순차든 stride-3이든) 약 **0.097 GB/s**,
+16배 차이다([`pipeline_ffmpeg_vulkan_hailo/summary.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/summary.md), 직접 측정 [`stride_read`](../07_results/gpu_postprocess/runs/stride_read/summary.md)).
 **반대 방향(CPU→GPU 쓰기)은 싸다** — 쓰기는 버퍼에 던지고 바로 다음 일을 하기 때문이다.
 
 **Q3. `dmabuf_import.cpp` 는 왜 `dup(fd)` 를 해서 넘기는가?**

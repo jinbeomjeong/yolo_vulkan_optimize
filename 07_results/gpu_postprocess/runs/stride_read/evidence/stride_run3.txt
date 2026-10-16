@@ -1,0 +1,45 @@
+yvo_postproc_probe --probe stride   (paper §6.3 table 9 stride read)
+[stride] buffer 640x640x3 NHWC uint8 = 1228800 B  rounds 3 x repeats 10 = 30 samples/cell  warm-up 3  cpu pin 3 (running on cpu 3)
+[env] SoC temp=65.9'C  throttled throttled=0xe0000  v3d frequency(0)=500007584  arm frequency(0)=1500016128  governor(cpu0) ondemand
+[vk] device=V3D 7.1.10.2
+[alloc] v3d    memoryType 0 flags 0x7 (HOST_CACHED no)  ptr 0x7fff9c204000
+[alloc] heap   /dev/dma_heap/vidbuf_cached  dmabuf 1245184 B (headroom 256 B)  imported into Vulkan  ptr 0x7fff9c0d0000
+[alloc] malloc aligned_alloc(4096)  ptr 0x7fff9bfa1000  (dst: aligned_alloc(4096) 0x7fff9be71000)
+[env] SoC temp=68.1'C  throttled throttled=0xe0000  v3d frequency(0)=1150014720  arm frequency(0)=2400020480  governor(cpu0) ondemand
+
+== CPU read of 1228800 B (640x640x3 NHWC uint8) into a malloc destination ==
+alloc   pattern        median_ms    p90_ms    min_ms  GB/s(median)     n
+v3d     seq_memcpy        0.784     0.791     0.772         1.568    30
+v3d     seq_byte         12.820    13.818    12.790         0.096    30
+v3d     stride3_byte     12.688    13.767    12.664         0.097    30
+v3d     stride3_auto      8.167     8.947     8.140         0.150    30
+malloc  seq_memcpy        0.077     0.103     0.070        15.966    30
+malloc  seq_byte          0.827     0.831     0.825         1.486    30
+malloc  stride3_byte      0.948     0.957     0.942         1.296    30
+malloc  stride3_auto      0.196     0.214     0.188         6.274    30
+heap    seq_memcpy        0.133     0.178     0.130         9.214    30
+heap    seq_byte          0.869     0.871     0.865         1.415    30
+heap    stride3_byte      0.993     0.997     0.985         1.238    30
+heap    stride3_auto      0.243     0.261     0.238         5.066    30
+
+[ratio within an allocation] pattern median / seq_memcpy median
+alloc   seq_byte  stride3_byte  stride3_auto
+v3d        16.36         16.19         10.42
+malloc     10.74         12.32          2.54
+heap        6.51          7.44          1.82
+[ratio within a pattern] allocation median / malloc median
+pattern        v3d/malloc  heap/malloc  v3d/heap
+seq_memcpy         10.18         1.73      5.88
+seq_byte           15.51         1.05     14.76
+stride3_byte       13.39         1.05     12.78
+stride3_auto       41.70         1.24     33.67
+[heap sync] median DMA_BUF_IOCTL_SYNC START|READ + END|READ time included in the heap rows:
+  seq_memcpy   0.042 ms
+  seq_byte     0.041 ms
+  stride3_byte 0.044 ms
+  stride3_auto 0.044 ms
+note: the malloc rows are an optimistic reference (the source partly stays in L2/L3 between samples).
+[check] destination checksum vs CPU reference: PASS (0 mismatching samples, seq 0xcf68d440ab4f1b33, transposed 0x4ca7def77e3e8abf)
+
+[validation] errors=0 warnings=1
+[RESULT] stride PASS
