@@ -37,11 +37,11 @@ build/bin/yvo_pipeline \
 ```
 
 위 커맨드(`--display-pace source`)의 실측(2026-10-16, V3D 1150 MHz · 디코더 1스레드 · GPU NMS, 코드 `2f2d3d0`):
-**29.92 FPS(소스 30 fps 추종) · glass-to-glass median 98.32 ms(p90 119.01, 3회 범위 97.1~100.1) · CPU 2.246 ms/frame(앱 1.768 + 컴포지터 0.478) ·
+**29.90 FPS(소스 30 fps 추종) · glass-to-glass median 96.66 ms(p90 120.26, 3회 범위 90.5~100.1) · 파이프라인 CPU 2.567 ms/frame(앱 1.744 + 컴포지터 0.467 + 커널 스레드 0.367) ·
 프레임 드롭 0 · 검출 3369(변화 없음)**.
-`--display-pace asap` 으로 바꾸면 **34.88 FPS · glass 127.92 ms · CPU 2.067 ms/frame(앱 1.589 + 컴포지터 0.489)** 이다.
-근거는 [`display_e2e/runs/v3d1150_labwc_20261016/summary.md`](display_e2e/runs/v3d1150_labwc_20261016/summary.md) §2(운용점 확정은 [`op_point/summary.md`](op_point/summary.md) §8).
-같은 날 컴포지터 없이 잰 회차 [`v3d1150_20261016`](display_e2e/runs/v3d1150_20261016/summary.md)은 앱 CPU 1.832 / 1.626, glass 100.10 ms 로 3회 범위가 겹친다.
+`--display-pace asap` 으로 바꾸면 **34.89 FPS · glass 128.00 ms · 파이프라인 CPU 2.505 ms/frame(앱 1.622 + 컴포지터 0.500 + 커널 스레드 0.389)** 이다.
+근거는 [`display_e2e/runs/v3d1150_syscpu_20261016/summary.md`](display_e2e/runs/v3d1150_syscpu_20261016/summary.md) §2(운용점 확정은 [`op_point/summary.md`](op_point/summary.md) §8). 파이프라인 CPU 합은 실행별 합의 3회 중앙값이라 괄호 안 성분별 중앙값의 합과 조금 다르다. CPU 는 앱의 측정 창에 맞춘 시스템 전체 CPU 에서 무관한 백그라운드를 뺀 값(idle 중 hardirq 미계수, 하한).
+같은 날 같은 코드의 다른 회차 [`v3d1150_labwc_20261016`](display_e2e/runs/v3d1150_labwc_20261016/summary.md)(앱 + 컴포지터), [`v3d1150_20261016`](display_e2e/runs/v3d1150_20261016/summary.md)(앱만)는 회차 간 흔들림 범위 안이다.
 ⚠ 두 페이싱은 **다른 실행**이다. FPS·CPU·glass 를 섞어 인용하지 마라.
 이전 측정(2026-09-20, 960 MHz · 자동 5스레드 · CPU NMS, [`display_e2e/summary.md`](display_e2e/summary.md) §3·§3.2)은 `source` glass 101.20 ms(p90 118.36) · CPU 2.18,
 `asap` 130.75 ms · CPU 1.84 였다. 그 사이 클럭·디코더 스레드·억제 위치·메인 스레드 대기 코드가 함께 바뀌었다 — 차이를 한 요인으로 돌리지 않는다.
