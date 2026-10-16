@@ -17,10 +17,10 @@ NPU(신경망 처리 장치)가 YOLO 추론을 맡아도 영상 디코드, 입�
 
 ## 1. 문제
 
-추론 하나만 빠르면 실시간 검출이 되는 것은 아니다. 스마트폰과 서버에서도 추론 바깥의 전·후처리와 데이터 이동이 종단간 성능을 좌우한다고 보고되었다 [1], [2].
+추론 하나만 빠르면 실시간 검출이 되는 것은 아니다. 스마트폰과 서버에서도 추론 바깥의 전·후처리와 데이터 이동이 종단간 성능을 좌우한다고 보고되었다 \[1\][^r1], \[2\][^r2].
 한 프레임은 디코드 → 크기·색·형식 변환 → 추론 → 결과 해석(박스 복원과 중복 제거, NMS) → 표시를 거친다.
 이 중 추론만 NPU가 맡고 나머지를 CPU가 하면, CPU가 프레임마다 수 MB의 데이터를 읽고 쓴다.
-대상은 Raspberry Pi Compute Module 5 [3]에 PCIe로 Hailo-8을 붙이고 HailoRT 4.24.0 [4]으로 YOLO11m [5]을 돌리는 구성이다(같은 계열 구성의 선행 사례 [6], [7]).
+대상은 Raspberry Pi Compute Module 5 \[3\][^r3]에 PCIe로 Hailo-8을 붙이고 HailoRT 4.24.0 \[4\][^r4]으로 YOLO11m \[5\][^r5]을 돌리는 구성이다(같은 계열 구성의 선행 사례 \[6\][^r6], \[7\][^r7]).
 본 연구의 출발점에서는 배치 1로 처리할 때 응용의 CPU 시간이 프레임당 17.6 ms였다. 한 코어를 40% 넘게 쓰는 양이다.
 목표는 이 CPU 개입을 최소화하되, 지연이 가장 짧은 운용 방식에서 그렇게 하는 것이다.
 
@@ -28,20 +28,20 @@ NPU(신경망 처리 장치)가 YOLO 추론을 맡아도 영상 디코드, 입�
 
 그림 1은 다섯 기술이 파이프라인의 어디에 작용하는지 보여 준다. 핵심 원칙은 **데이터는 전용 하드웨어끼리 직접 주고받고, CPU는 거의 지휘만 한다**는 것이다.
 
-![그림 1. CPU 최소화 기술의 전체 구조](figures/fig10_brief_cpu_offload.svg)
-
-**그림 1.** CPU 최소화 기술의 전체 구조. 굵은 실선은 dma-buf로 복사 없이 넘기는 데이터, 가는 실선은 CPU를 거치는 작은 데이터(압축 영상, 최종 검출),
-점선은 CPU의 제어다. ①~⑤는 본문의 기술 번호다.
-
 **① 하드웨어 디코더와 제로 카피.** 영상은 SoC의 HEVC 하드웨어 디코더가 푼다. 디코드된 프레임은 CPU 메모리로 복사하지 않고,
-리눅스의 버퍼 공유 방식인 dma-buf(장치끼리 같은 메모리를 파일 기술자로 넘기는 방식) [8]로 GPU에 바로 넘긴다. 디코더는 FFmpeg [9]의 하드웨어 경로로 부른다.
+리눅스의 버퍼 공유 방식인 dma-buf(장치끼리 같은 메모리를 파일 기술자로 넘기는 방식) \[8\][^r8]로 GPU에 바로 넘긴다. 디코더는 FFmpeg \[9\][^r9]의 하드웨어 경로로 부른다.
 소프트웨어 디코드는 프레임당 CPU 시간 약 32 ms를 쓰지만, 하드웨어 디코더의 출력을 dma-buf로 그대로 받으면 0.23~0.28 ms다.
 출력을 CPU 메모리로 내려받기만 해도 약 3.6배 비싸진다(명령행 도구 기준 2.0 대 0.55 ms).
 
 **② NPU가 원하는 형식을 GPU가 바로 만든다.** NPU는 칩 내부용 입력 배치(NHCW, 행마다 채널을 나눠 늘어놓는 형식)를 쓴다.
-일반적인 영상 배치(NHWC)로 넘기면 NPU 런타임이 CPU에서 내부적으로 형식을 바꾼다. 그래서 GPU(V3D [11])의 Vulkan [10] 전처리 셰이더가 처음부터 NHCW로 쓰게 했다.
+일반적인 영상 배치(NHWC)로 넘기면 NPU 런타임이 CPU에서 내부적으로 형식을 바꾼다. 그래서 Vulkan \[10\][^r10] 전처리 셰이더가 GPU(V3D \[11\][^r11])에서 처음부터 NHCW로 쓰게 했다.
 비용의 원인은 바꾸는 연산이 아니라, CPU가 캐시되지 않는 GPU 메모리를 한 바이트씩 읽는 데 있었다. 같은 형태의 전치 루프를 단독으로 재면 일반 메모리에서 0.95 ms, GPU 메모리에서 12.7 ms였다.
 이 기술 하나로 배치 1의 응용 CPU가 프레임당 17.6 ms(dma-buf 입력이면 17.4 ms)에서 3.3 ms로 줄었다.
+
+![그림 1. CPU 최소화 기술의 전체 구조](figures/fig10_brief_cpu_offload.svg)
+
+**그림 1.** CPU 최소화 기술의 전체 구조. 굵은 실선은 dma-buf로 복사 없이 넘기는 데이터, 가는 실선은 CPU를 거치는 작은 데이터(압축 영상, 최종 검출),
+점선은 CPU의 제어다. ①~⑤는 본문의 기술 번호다.
 
 **③ 결과 해석도 GPU에서.** NPU 런타임이 CPU에서 하던 결과 해석(원시 출력의 박스 복원과 NMS)을 GPU 셰이더로 옮겼다.
 NPU의 원시 출력도 dma-buf로 GPU에 바로 넘기고, CPU는 최종 검출 몇 개만 받는다. GPU의 NMS는 CPU 기준 구현과 같은 결과를 내도록 맞췄고,
@@ -67,11 +67,11 @@ NPU 런타임의 NMS와는 비트까지 같지는 않지만 검출이 거의 같
 | ③ 결과 해석(NMS 포함)을 GPU로 | 0.94 (직전 3.25) | 79.2 ms (디코드 끝 기준) |
 | ④⑤ 최저 지연 운용(입력 페이싱 + 대기열 1) | 약 1.0 | **58.4 ms (도착 기준)**, 화면까지 70.2 ms |
 
-> 출처 [13]. 1~2행은 GPU 960 MHz·디코더 자동 스레드·배치 1/슬롯 2(1,816프레임 3회 중앙값), 3~4행은 GPU 1150 MHz·디코더 1스레드·배치 1/슬롯 1(900프레임 3회 중앙값) 조건이다. 3행의 "직전"은 같은 조건에서 NMS를 CPU에 둔 값이다.
+> 출처 \[12\][^r12]. 1~2행은 GPU 960 MHz·디코더 자동 스레드·배치 1/슬롯 2(1,816프레임 3회 중앙값), 3~4행은 GPU 1150 MHz·디코더 1스레드·배치 1/슬롯 1(900프레임 3회 중앙값) 조건이다. 3행의 "직전"은 같은 조건에서 NMS를 CPU에 둔 값이다.
 > 4행의 CPU는 처리한 프레임 기준이라 다른 행과 직접 비교하지 않고, 3·4행의 지연은 기점이 달라(디코드 끝 대 소스 도착) 서로 빼지 않는다.
-> 4행의 58.4 ms와 CPU는 표시 없이 입력 18.6%를 버린 실행이고, 70.2 ms는 화면 표시를 켠 별도 실행(스왑체인 경로, 버림 19.1%)이다. 처리량은 NPU가 정하므로 다루지 않는다.
+> 4행의 58.4 ms와 CPU는 표시 없이 입력 18.6%를 버린 실행이고, 70.2 ms는 화면 표시를 켠 별도 실행(스왑체인 경로, 버림 19.1%)이다.
 
-검출 결과는 기준 경로와 검출 수가 같았다(1,816프레임에서 9,457개). 측정 조건과 분석의 자세한 내용은 [12]에 있다.
+검출 결과는 기준 경로와 검출 수가 같았다(1,816프레임에서 9,457개). 측정 조건과 분석의 자세한 내용은 \[13\][^r13]에 있다.
 
 ## 4. 맺음말
 
@@ -103,6 +103,20 @@ NPU 추론에서 CPU를 줄이는 열쇠는 연산을 빠르게 하는 것이 �
 
 [11] The Mesa 3D Graphics Library, "V3D," Mesa documentation. [Online]. Available: https://docs.mesa3d.org/drivers/v3d.html (접근일: 2026-10-13) (사용 버전: Mesa 26.2.2)
 
-[12] `[작성 필요: 저자]`, "제로 카피 버퍼 공유와 GPU 오프로딩을 통한 임베디드 객체 검출 파이프라인의 호스트 부하 절감," 미발표 원고, 2026. (본 연구 저장소 `10_paper/paper_ko.md`)
+[12] 본 연구 측정 자료, 저장소 `[작성 필요: 공개 저장소 주소]`의 `07_results/` 아래 `decode_benchmark/`(`runs/ffmpeg_outfmt/` 포함), `pipeline_ffmpeg_vulkan_hailo/`, `gpu_postprocess/runs/stride_read/`, `gpu_postproc_e2e/`, `gpu_nms_e2e/`, `op_point/runs/latency_b1s1_20261012/`, `input_pacing/runs/`의 `code_2f2d3d0/`·`code_2f2d3d0_display_on/`·`frame_log/`.
 
-[13] 본 연구 측정 자료, 저장소 `[작성 필요: 공개 저장소 주소]`의 `07_results/` — 디코드 `decode_benchmark/`(출력 형식 `runs/ffmpeg_outfmt/`)·`pipeline_ffmpeg_vulkan_hailo/`(REPORT §4.1, `results.csv`), 메모리 읽기 비용 `gpu_postprocess/runs/stride_read/`, GPU 후처리·NMS `gpu_postproc_e2e/`·`gpu_nms_e2e/`·`op_point/runs/latency_b1s1_20261012/`, 최저 지연 운용점 `input_pacing/runs/{code_2f2d3d0, code_2f2d3d0_display_on, frame_log}/`.
+[13] `[작성 필요: 저자]`, "제로 카피 버퍼 공유와 GPU 오프로딩을 통한 임베디드 객체 검출 파이프라인의 호스트 부하 절감," 미발표 원고, 2026. (본 연구 저장소 `10_paper/paper_ko.md`)
+
+[^r1]: [1] M. Buch 외, "AI Tax in Mobile SoCs," ISPASS 2021.
+[^r2]: [2] A. F. AbouElhamayed 외, "Beyond Inference," DAC 2024.
+[^r3]: [3] Raspberry Pi Ltd., "Raspberry Pi Compute Module 5 Datasheet," 2026.
+[^r4]: [4] Hailo Technologies, "HailoRT v4.24.0 User Guide."
+[^r5]: [5] G. Jocher and J. Qiu, "Ultralytics YOLO11," 2024.
+[^r6]: [6] B. Vergara 외, "A Hailo-Accelerated System for Precision Agriculture," CHILECON 2025.
+[^r7]: [7] 정필성, "실시간 객체탐지를 위한 저비용 엣지 AI 가속기," 한국컴퓨터정보학회논문지, 2026.
+[^r8]: [8] Linux Kernel Documentation, "Buffer Sharing and Synchronization (dma-buf)," Linux 6.18.
+[^r9]: [9] FFmpeg Developers, "FFmpeg," version 7.1.5.
+[^r10]: [10] Khronos Vulkan Working Group, "Vulkan 1.4.365 Specification," 2026.
+[^r11]: [11] Mesa 3D Graphics Library, "V3D," Mesa 26.2.2 문서.
+[^r12]: [12] 본 연구 측정 자료, 저장소 `07_results/`(폴더 목록은 참고문헌 [12]).
+[^r13]: [13] 본 연구 논문 초고(미발표), 2026.
