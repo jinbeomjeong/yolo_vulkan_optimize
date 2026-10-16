@@ -21,16 +21,19 @@ via Zero-Copy Buffer Sharing and GPU Offloading
 하드웨어 비디오 디코더·GPU(VideoCore VII)·NPU·디스플레이를 **dma-buf 기반 제로 카피 버퍼 공유**로
 연결하고(단계 사이의 CPU 복사를 없애며, 스왑체인 표시에는 드라이버가 수행하는 GPU 측 작업이 남는다),
 전처리·후처리·가시화를 **GPU 컴퓨트 셰이더로 오프로딩**하여 호스트 부하를 줄인
-실시간 객체 검출 파이프라인을 제안한다.
+실시간 객체 검출 파이프라인을 구현하고 평가한다.
 
-제안 기법의 핵심은 세 가지다. 첫째, GPU 전처리가 NPU의 **장치 입력 레이아웃(NHCW)을 직접 생성**하여
-런타임의 호스트 측 레이아웃 변환을 제거한다. 이 과정에서 변환 비용의 실체가 전치(transpose) 연산이 아니라
-**CPU가 비캐시 GPU 메모리를 바이트 단위로 읽는 비용**임을 직접 측정으로 확인하였다
+이 구성(전처리가 NPU의 입력 레이아웃으로 직접 쓰고, 단계 사이를 dma-buf로 잇고, 후처리·가시화를 GPU에 두는 구조)은
+통합 NPU를 갖는 SoC의 벤더 SDK에 이미 있는 패턴을 따른다(§2.2). 본 논문이 보태는 것은 세 가지다.
+첫째, PCIe로 연결된 외장 NPU의 런타임이 기본 입력 경로에서 GPU가 쓴 비캐시 메모리를 **바이트 단위로 숨겨 읽는** 호스트 변환이
+CPU 사이클의 82.8%를 차지함을 진단하고, 그 비용을 읽기 단위·메모리 종류별로 직접 측정하였다
 (같은 전치가 malloc 버퍼에서 0.95 ms, GPU 메모리에서 12.7 ms이며, GPU 메모리를 넓은 load로 순차 복사하면 0.78 ms다).
-둘째, NPU의 원시 출력 텐서를 GPU 버퍼로 직접 수신하여 호스트 NMS(Non-Maximum Suppression)를 GPU 디코드로 대체한다.
-억제는 처음에 CPU에서 수행하였고(§6.5), 이후 CPU 기준 구현과 비트 단위로 일치하는 GPU 셰이더로 옮겼다
-(일치를 보장할 수 없는 경계 프레임만 CPU가 처리한다). 표시 통합 수치(§6.7)는 후자의 구성에서 잰 값이다.
-셋째, 디코더가 생성한 프레임을 CPU 복사 없이 표시 경로가 재사용하여 가시화를 GPU 안에서 완결한다.
+GPU 전처리가 장치 입력 레이아웃(NHCW)을 직접 생성하게 하여 이 변환을 없애자 응용 프로세스의 프레임당 CPU 시간이 17.6 ms에서 3.5 ms로 줄었다.
+둘째, `HOST_CACHED` 메모리와 64비트 정수·형식 없는 이미지 쓰기가 없는 GPU(V3D)에서 Vulkan 1.3 core 컴퓨트 셰이더만으로
+전처리, 원시 출력 텐서의 GPU 디코드(호스트 NMS(Non-Maximum Suppression) 대체), CPU 기준 구현과 비트 단위로 일치하는 억제
+(일치를 보장할 수 없는 경계 프레임만 CPU가 처리), 디코더 프레임을 CPU 복사 없이 재사용하는 가시화를 구현하였다.
+억제는 처음에 CPU에서 수행하였고(§6.5), 표시 통합 수치(§6.7)는 GPU 억제 구성에서 잰 값이다.
+셋째, 대상 NPU 런타임에서 입력과 출력을 **동시에** dma-buf로 쓰는 추론 경로를 실증하였다(벤더 문서에서 명시된 사례를 확인하지 못한 구성).
 
 1920×1080 30 fps HEVC 입력과 YOLOv11m 모델에서, 후처리와 가시화까지 GPU로 옮긴 제안 파이프라인은 표시를 켜고도
 파이프라인 호스트 CPU(응용·컴포지터·커널 스레드의 합)를 프레임당 **3.189 ms에서 2.505 ms로 약 21% 줄였다**.
@@ -43,7 +46,7 @@ via Zero-Copy Buffer Sharing and GPU Offloading
 §6.1 조건의 측정 이후 추가한 입력 페이싱(프레임이 소스 시각에 도착)에서는 배치 1/슬롯 1과 크기 1의 입력 큐가 도착 기준 평균 **58.4 ms**의
 최저 지연을 내며, 처리하지 못하는 약 19%의 프레임을 버린다(표시 없음, §6.6.3).
 검출 수는 1,816프레임에서 기준 경로와 같은 9,457개이고 IoU(Intersection over Union) 0.9 기준 매칭 비율이 0.999로, 기준 경로 대비 검출 손실이 없음을 확인하였다.
-처리량은 PCIe 대역폭에 의해 제한되므로 개선되지 않았으며(최대속도 페이싱 34.97 → 34.89 fps), 본 연구의 기여는
+처리량은 PCIe 대역폭에 의해 제한되므로 개선되지 않았으며(최대속도 페이싱 34.97 → 34.89 fps), 본 연구의 성과는
 처리량이 아니라 호스트 부하 절감과 실시간 가시화 경로의 확보에 있다.
 
 **주제어**: 임베디드 추론, 이기종 컴퓨팅, 제로 카피, dma-buf, GPU 컴퓨트 셰이더, NPU, 실시간 객체 검출, 엣지 AI
@@ -54,21 +57,24 @@ via Zero-Copy Buffer Sharing and GPU Offloading
 
 While NPUs have substantially reduced the cost of inference itself in edge object detection,
 preprocessing, postprocessing, and visualization remain on the host CPU and become the pipeline bottleneck.
-This paper presents a real-time object detection pipeline on a single board comprising a Raspberry Pi 5-class
+This paper implements and evaluates a real-time object detection pipeline on a single board comprising a Raspberry Pi 5-class
 board (Compute Module 5, BCM2712) and a Hailo-8 NPU, in which the hardware video decoder, the GPU (VideoCore VII), the NPU, and
 the display are connected through **dma-buf based zero-copy buffer sharing**, and preprocessing,
 postprocessing, and visualization are **offloaded to GPU compute shaders**.
 
-Three contributions are central. First, GPU preprocessing directly produces the **device input layout (NHCW)**
-of the NPU, eliminating host-side layout conversion at runtime; we further identify that the dominant cost of
-this conversion is not the transpose operation but the **CPU reading uncached GPU memory one byte at a time**,
-measured directly (the same transpose takes 0.95 ms on a malloc buffer and 12.7 ms on GPU memory, whereas a wide sequential
-copy of the GPU memory takes 0.78 ms). Second, raw output tensors of the NPU are received
-directly into GPU buffers, replacing host NMS with GPU decoding; suppression, first done on the CPU (Section 6.5),
-was later moved to a GPU shader that matches the CPU reference bit for bit, with only boundary frames falling back
-to the CPU. The display-integrated figures (Section 6.7) were measured with the latter.
-Third, decoder-produced frames are reused by the display path without additional copies, keeping
-visualization entirely within the GPU.
+This configuration (preprocessing writing directly in the NPU's input layout, dma-buf between stages, and postprocessing
+and visualization on the GPU) follows patterns already found in vendor SDKs for SoCs with integrated NPUs (Section 2.2).
+This paper adds three things. First, we diagnose that the runtime of the PCIe-attached NPU, on its default input path,
+**silently reads GPU-written uncached memory one byte at a time** in a host-side conversion that accounts for 82.8% of the
+CPU cycles, and we measure that cost directly by access width and memory type (the same transpose takes 0.95 ms on a
+malloc buffer and 12.7 ms on GPU memory, whereas a wide sequential copy of the GPU memory takes 0.78 ms). Letting GPU
+preprocessing produce the device input layout (NHCW) removes the conversion and cuts the application's CPU time from
+17.6 ms to 3.5 ms per frame. Second, on a GPU (V3D) without `HOST_CACHED` memory, 64-bit integers, or format-less image
+writes, we implement preprocessing, GPU decoding of the raw output tensors (replacing host NMS), suppression that matches the
+CPU reference bit for bit (only boundary frames fall back to the CPU), and visualization that reuses decoder frames without
+CPU copies, using only Vulkan 1.3 core compute shaders. Suppression was first done on the CPU (Section 6.5); the
+display-integrated figures (Section 6.7) use GPU suppression. Third, we demonstrate an inference path in which the NPU
+runtime uses dma-buf for input and output **at the same time**, a configuration we could not find documented by the vendor.
 
 For 1920×1080 30 fps HEVC input with YOLOv11m, the proposed pipeline, which also moves postprocessing and visualization
 to the GPU, reduces the pipeline's host CPU time (the application, the compositor, and kernel threads) from **3.189 ms to
@@ -84,7 +90,7 @@ the original Section 6.1 measurements (frames arrive at their source times; no d
 one-frame input queue reaches the lowest latency of **58.4 ms mean from frame arrival** while dropping the ~19% of frames it
 cannot process (Section 6.6.3). Detections match the reference path in count (9,457 over 1,816 frames) with a matching ratio
 of 0.999 at an intersection over union (IoU) of 0.9, showing no detection loss relative to the reference path. Throughput is bounded by PCIe bandwidth and
-therefore does not improve (34.97 → 34.89 fps); the contribution of this work lies in host overhead and in securing a
+therefore does not improve (34.97 → 34.89 fps); the gain of this work lies in host overhead and in securing a
 real-time visualization path, not in throughput.
 
 **Keywords**: embedded inference, heterogeneous computing, zero-copy, dma-buf, GPU compute shader, NPU,
@@ -129,20 +135,23 @@ CPU 여유가 줄고, CPU가 약한 보드에서는 처리량과 지연까지 CP
 
 본 논문의 기여는 다음과 같다.
 
-1. **HW 디코더·GPU·NPU·디스플레이를 잇는 dma-buf 기반 제로 카피 체인을 설계하고 구현하였다.**
-   파이프라인 단계 사이에서 CPU 메모리 복사가 발생하지 않으며(스왑체인 표시 경로에는 드라이버가 수행하는 GPU 측 작업이
-   남는다, §6.7.1), 입력과 출력 모두를 dma-buf로 사용하는
-   NPU 추론 경로가 실제로 동작함을 실증하였다(§4.2, §6.5).
+1. **외장 NPU 런타임 안에 숨은 비캐시 메모리 읽기를 진단·정량화하고 제거하였다.**
+   런타임이 기본 입력 경로에서 GPU 전처리 출력(비캐시 GPU 메모리)을 장치 레이아웃으로 바꾸며 바이트 단위로 읽는 일이
+   CPU 사이클의 82.8%를 차지함을 프로파일로 찾고(§6.4), 그 비용이 전치 연산이 아니라 **CPU가 비캐시 GPU 메모리를 바이트 단위로
+   읽는 것**임을 직접 측정으로 보였다(§6.3). GPU 전처리가 장치 입력 레이아웃을 직접 생성하게 하여 응용 프로세스의 프레임당
+   CPU 시간을 17.6 ms에서 3.5 ms로 줄였다. "비캐시 메모리를 CPU가 읽지 말라"는 원칙 자체는 기존 지침과 같으며(§2.3),
+   본 연구는 그 위반이 벤더 런타임 안에 숨어 호스트 CPU의 대부분을 차지할 수 있음을 보였다.
 
-2. **GPU 전처리가 NPU의 장치 입력 레이아웃을 직접 생성하도록 하여 런타임 호스트 변환을 제거하였다.**
-   이로써 프레임당 CPU 시간이 17.6 ms에서 3.5 ms로 감소하였다. 나아가 이 비용의 실체가 전치 연산이
-   아니라 **CPU가 비캐시 GPU 메모리를 바이트 단위로 읽는 것**임을 직접 측정으로 보였다(§6.3, §6.4).
-   이 관찰은 캐시를 우회하는 공유 메모리만 노출하는 통합 GPU 플랫폼에서 버퍼의 소비자를 정하는 설계 지침으로 이어진다.
-
-3. **전처리·후처리·가시화를 모두 GPU 컴퓨트 셰이더로 오프로딩하였다**(억제의 경계 프레임 제외).
+2. **`HOST_CACHED`·64비트 정수·형식 없는 이미지 쓰기가 없는 GPU(V3D)에서 Vulkan 1.3 core만으로 전처리·후처리·가시화를 구현하였다**(억제의 경계 프레임 제외).
+   후처리는 원시 출력 텐서를 GPU 버퍼로 직접 받아 디코드하고, 억제는 CPU 기준 구현과 비트 단위로 일치하며, 가시화는 디코더 프레임을
+   CPU 복사 없이 재사용한다(스왑체인 표시 경로에는 드라이버가 수행하는 GPU 측 작업이 남는다, §6.7.1).
    표시를 포함한 상태에서도 응용·컴포지터·커널 스레드를 합친 파이프라인 호스트 CPU가 프레임당 3.189 ms에서 2.505 ms로 약 21%(같은 회차 실행끼리
    짝지으면 17~29%) 감소하였다. 응용 프로세스만은 3.089 → 1.622 ms다. 기준은 GPU 전처리를 적용한 호스트 NMS 경로(표시 없음)이고, 조건은 §6.7(GPU 1150 MHz·디코더 1스레드·GPU 억제)이다.
    측정 빌드에서는 두 경로 모두 추론 완료 이벤트로 슬롯 대기를 끝낸다(§4.6.3).
+
+3. **대상 NPU 런타임에서 입력과 출력을 모두 dma-buf로 쓰는 추론 경로가 동작함을 실증하였다**(§4.2, §6.5).
+   벤더 문서에서 명시된 사례를 확인하지 못한 구성으로, 출력 바이트 일치와 파일 디스크립터 누수 0을 검증하였다.
+   디코더·GPU·NPU·디스플레이를 dma-buf로 잇는 구성 자체는 벤더 SDK의 기존 패턴을 따른다(§2.2).
 
 4. **기준 경로와 검출이 동등함을 검증하였다.** 1,816프레임(영상 1개)에 대해 검출 총수가
    기준 경로와 같으며(9,457개), IoU 0.9 기준 매칭 비율이 0.9990이다(§6.8). 정답 대비 정확도(mAP)는 재지 않았다.
@@ -152,7 +161,7 @@ CPU 여유가 줄고, CPU가 약한 보드에서는 처리량과 지연까지 CP
    입력 큐를 키우면 지연만 늘고 30 fps 추종 설정에서는 효과가 없음도 확인하였다(§6.6.3).
 
 본 논문은 아울러 **처리량이 개선되지 않았음을 명시한다.** 대상 플랫폼의 처리량 상한은 PCIe Gen3 x1
-대역폭이 결정하며, 제안 기법은 이 상한을 바꾸지 못한다. 기여는 호스트 부하 절감과, 표시를 켜고도 기준 경로보다
+대역폭이 결정하며, 제안 기법은 이 상한을 바꾸지 못한다. 성과는 호스트 부하 절감과, 표시를 켜고도 기준 경로보다
 낮은 호스트 부하로 실시간 가시화 경로를 확보한 데 있다.
 
 ## 1.4 용어
@@ -191,6 +200,8 @@ Linux 커널의 dma-buf 프레임워크는 서로 다른 디바이스 드라이�
 기법이고¹, 모바일 GPU 추론에서도 텍스처를 입출력으로 직접 써서 복사를 없애는 엔진이 있다 [R13].
 통합 메모리 SoC에서는 디코더·추론·화면 합성을 공유 버퍼로 잇는 프레임워크가 이미 있다(예: Jetson의 DeepStream 계열²).
 신경망 가속기 런타임 중에도 입출력 텐서를 외부에서 할당한 메모리로 지정하는 인터페이스를 제공하는 것이 있다(예: Rockchip RKNN³).
+통합 NPU를 갖는 SoC의 벤더 SDK에는 전처리가 NPU의 하드웨어 레이아웃으로 직접 쓰고 dma-buf로 넘기는 경로⁵와,
+GPU 전처리·NPU 추론·GPU 오버레이를 dma-buf로 잇는 파이프라인⁶도 이미 있다.
 본 연구는 **PCIe로 연결된 외장 NPU**와 `HOST_CACHED` 메모리가 없는 통합 GPU 사이를 dma-buf로 잇는다는 점이 다르다.
 대상 NPU 런타임에서 입력과 출력을 **동시에** dma-buf로 쓰는 구성은 벤더 문서에서 확인하지 못해 별도로 검증하였다(§6.5).
 
@@ -208,17 +219,28 @@ https://github.com/airockchip/rknn-toolkit2 (접근일: 2026-10-16)
 ⁴ NVIDIA, "TensorRT — efficientNMSPlugin," NVIDIA/TensorRT, GitHub (10.12부터 INMSLayer로 대체 예정).
 https://github.com/NVIDIA/TensorRT/tree/main/plugin/efficientNMSPlugin (접근일: 2026-10-16)
 
+⁵ AMD, "Zero-Copy Inference," Vitis AI documentation (Versal AI Edge Series Gen 2).
+https://vitisai.docs.amd.com/projects/gen2/en/latest/docs/advanced_concepts/zero_copy.html (접근일: 2026-10-16)
+
+⁶ Qualcomm, "QIM SDK Introduction" (`qtimlvconverter`, `qtivoverlay`), Qualcomm Dragonwing documentation.
+https://dragonwingdocs.qualcomm.com/Key-Documents/AI-Developer-Workflow/topic/develop-your-own-application-im-sdk (접근일: 2026-10-16)
+
+⁷ T. Lottes, "Using Vulkan® Device Memory," AMD GPUOpen, 2016-07-21.
+https://gpuopen.com/learn/vulkan-device-memory/ (접근일: 2026-10-16)
+
 ## 2.3 GPU 컴퓨트 오프로딩
 
 모바일·임베디드 GPU를 범용 연산에 쓰는 연구는 Vulkan 컴퓨트 벤치마크 [R12], 모바일 GPU 신경망 추론 엔진 [R11],
 셰이더 기반 경량 추론 엔진 [R13] 등으로 이어져 왔다. 본 연구의 셰이더는 Vulkan 1.3 core 기능만 사용한다 [R2].
 오프로딩의 범위 자체는 새롭지 않다. Jetson 계열의 DeepStream은 공유 버퍼 위에서 검출 결과의 오버레이 그리기를 GPU에서 수행할 수 있고²,
-TensorRT는 GPU NMS 플러그인을 제공한다⁴. 본 연구의 차별점은 `HOST_CACHED` 메모리와 64비트 정수·형식 없는 이미지 쓰기가 없는
-통합 GPU(V3D)에서, PCIe로 연결된 외장 NPU와 dma-buf로 맞물린 전처리·후처리·가시화를 Vulkan 1.3 core 컴퓨트 셰이더만으로
-구현하였다는 점, 그리고 그 플랫폼에서 오프로딩의 이득을 정하는 것이 연산량이 아니라 **CPU가 GPU 메모리를 읽는 방식**임을
-실측으로 보인 점이다.
-통합 CPU/GPU 플랫폼에서 캐시를 우회하는 공유(zero-copy, 원문의 host-pinned) 메모리의 접근 비용이 크다는 점은 Jetson 계열에서 이미 보고되었다 [R14].
-본 연구는 이를 Vulkan 메모리 타입이 `HOST_CACHED`를 제공하지 않는 V3D와 외장 NPU 사이의 입력 레이아웃 변환에 적용해 정량화하였다.
+TensorRT는 GPU NMS 플러그인을 제공하며⁴, Qualcomm의 SDK는 전처리와 오버레이를 GPU에서 수행한다⁶.
+메모리 쪽도 마찬가지다. `HOST_CACHED`가 없는 메모리 타입은 CPU 읽기가 캐시되지 않으므로 CPU로 회수할 데이터에는 `HOST_CACHED` 타입을
+쓰라는 점은 Vulkan 메모리 사용 지침에 있고⁷, 통합 CPU/GPU 플랫폼에서 캐시를 우회하는 공유(zero-copy, 원문의 host-pinned) 메모리의
+접근 비용이 크다는 점도 Jetson 계열에서 보고되었다 [R14].
+본 연구가 보탠 것은 세 가지다. (1) PCIe로 연결된 외장 NPU의 런타임이 기본 입력 경로에서 이러한 읽기를 바이트 단위로 숨겨 수행하며
+그것이 호스트 CPU 사이클의 82.8%를 차지함을 진단하고, 읽기 단위·메모리 종류별 비용을 이 플랫폼에서 정량화하였다(§6.3, §6.4).
+(2) `HOST_CACHED` 메모리와 64비트 정수·형식 없는 이미지 쓰기가 없는 V3D에서 전처리·후처리·가시화를 Vulkan 1.3 core 컴퓨트 셰이더만으로
+구현하였다. (3) 입력과 출력을 동시에 dma-buf로 쓰는 NPU 추론 경로를 실증하였다(§2.2, §6.5).
 
 > **참고문헌 정책**: 본 절의 인용 `[R*]`은 §참고문헌에 대응한다. 서지사항은 2026-10-13에 DOI·Crossref·발행처 페이지로
 > 확인하였고, 확인하지 못한 필드는 `[확인 필요]`로 표시하였다. 비학술 자료는 각주로 단다.
@@ -453,11 +475,13 @@ NHCW에서는 채널마다 4픽셀이 하나의 32비트 워드에 정렬되어 
 (런타임 내부 루프는 심볼이 없어 측정 루프와 같은지 확인하지 못했다).
 
 따라서 이 최적화의 본질은 **"전치를 없앤 것"이 아니라 "GPU가 쓴 메모리를 CPU가 읽는 일을 없앤 것"**
-이다. 이 해석은 다음의 일반화된 설계 원칙으로 이어진다.
+이다. 이 해석은 다음 원칙으로 정리된다.
 
 > **원칙**: 통합 GPU가 비캐시 메모리만 노출하는 본 플랫폼에서, GPU가 생산한 버퍼를 CPU가 읽는 비용은 읽기 단위에
 > 크게 좌우되었다. 넓은 순차 복사는 캐시 dma-heap 대비 약 6배, 바이트 단위 읽기는 malloc·캐시 dma-heap 대비 약 13~16배
 > 비쌌다(표 9). 따라서 그러한 버퍼는 GPU나 DMA가 소비하도록 두고, CPU가 꼭 읽어야 하면 넓은 순차 복사로 한 번에 가져오는 편이 유리하다.
+>
+> 이 원칙 자체는 기존 Vulkan 메모리 지침과 같다(§2.3). 본 연구가 보탠 것은 그 위반이 벤더 런타임 안에 숨어 있었다는 점이다.
 
 ## 4.4 GPU 후처리와 억제
 
@@ -699,24 +723,24 @@ while (빈 슬롯 없음) {
 |---|---:|---:|
 | SW H.264 (자동 스레드) | 164.6 | 20.2 |
 | SW H.265 (자동 스레드) | 109.1 | 31.8 |
-| **HW HEVC (범용 프레임워크 경유)**⁵ | **32.7** | **30.6** |
-| **HW HEVC (libavcodec DRM_PRIME 직접)**⁶ | **398.5** | **0.23~0.28** |
+| **HW HEVC (범용 프레임워크 경유)**⁸ | **32.7** | **30.6** |
+| **HW HEVC (libavcodec DRM_PRIME 직접)**⁹ | **398.5** | **0.23~0.28** |
 
 **하드웨어 디코더를 사용하고도 느릴 수 있다.** 측정 당시 배포판 패키지의
 범용 멀티미디어 프레임워크 경로는 디코더 출력의 잘라내기 창 처리 결함 때문에 제로 카피 대신 프레임 복사로
 빠졌고, 그 결과 CPU 1코어가 포화되어 소프트웨어 디코드와 비슷한 비용이 되었다. 이는 프레임워크 자체의 속성이
-아니라 해당 패키지 버전의 결함이다(각주 ⁵).
+아니라 해당 패키지 버전의 결함이다(각주 ⁸).
 
 측정 당시 패키지의 복사 경로와 비교하면 dma-buf 기술자를 직접 수신할 때 CPU 시간이 약 110~130배 줄지만, 이 배율의 대부분은
 패키지 결함에서 온다. 결함이 없는 경우에도 프레임을 CPU로 내려받는 경로(2.0 ms) 대비 dma-buf 기술자를 유지하는 경로(0.55 ms)는
-약 3.6배 싸다(각주 ⁵. 0.55 ms는 명령행 도구 자체의 고정 비용을 포함하므로, 응용 안의 DRM_PRIME 경로(0.23~0.28 ms) 기준으로는 이 배율이 하한이다). 즉 비용은 디코더의 성능이 아니라 **출력을 어떻게 수신하는가**에서 온다. 본 연구가 제로 카피를 설계 전제로 삼은 첫 번째 근거다.
+약 3.6배 싸다(각주 ⁸. 0.55 ms는 명령행 도구 자체의 고정 비용을 포함하므로, 응용 안의 DRM_PRIME 경로(0.23~0.28 ms) 기준으로는 이 배율이 하한이다). 즉 비용은 디코더의 성능이 아니라 **출력을 어떻게 수신하는가**에서 온다. 본 연구가 제로 카피를 설계 전제로 삼은 첫 번째 근거다.
 
 측정 이후 두 가지를 추가로 확인하였다. 첫째, 결함이 고쳐진 패키지에서 같은 프레임워크의 dma-buf 출력을 자체 요소로 받아
 동일한 GPU 전처리·추론 코드에 연결하면, 검출 결과가 본 파이프라인과 **바이트 단위로 같고** 처리량도 같다(배치 1·4·8,
 1,816프레임). 이때 남은 CPU 차이(약 0.2 ms/frame, 6%)는 프레임워크가 아니라 libavcodec의 **프레임 스레딩** 비용이었다.
 디코더 스레드를 1개로 줄이면 차이의 74%가 사라졌다. 둘째, 하드웨어 디코더의 처리량이 NPU 상한보다 훨씬 높은 이 파이프라인에서
 프레임 스레딩은 이득 없이 CPU와 지연만 늘린다. 스레드가 적을수록 CPU와 지연이 모두 줄었고 처리량과 검출은 같았다
-(§6.1의 "측정 이후 바뀐 조건". 예외는 각주 ⁷). 따라서 디코드 비용을 정하는 것은 프레임워크의 선택이 아니라 **복사의 유무와 스레딩**이다.
+(§6.1의 "측정 이후 바뀐 조건". 예외는 각주 ¹⁰). 따라서 디코드 비용을 정하는 것은 프레임워크의 선택이 아니라 **복사의 유무와 스레딩**이다.
 
 GPU로 디코드하는 선택지는 없다. 이 GPU의 Vulkan 드라이버에는 Vulkan Video 확장이 없고, 전용 비디오 엔진 없이
 컴퓨트 셰이더만으로 디코드하는 범용 프레임워크의 코덱(FFv1·ProRes·DPX)은 64비트 정수, 형식 없는 이미지 쓰기,
@@ -726,15 +750,15 @@ GPU로 디코드하는 선택지는 없다. 이 GPU의 Vulkan 드라이버에는
 
 표 8의 SW H.264 행은 별도의 H.264 입력 영상(1,834프레임)을 범용 프레임워크의 소프트웨어 디코더(`avdec_h264`)로 디코드한 값이다.
 
-⁵ 배포판 패키지(gst-plugins-bad 1.26.2 rpt3) 기준이다. 이 복사는 상류 1.26.4에서 고쳐진 결함이었고,
+⁸ 배포판 패키지(gst-plugins-bad 1.26.2 rpt3) 기준이다. 이 복사는 상류 1.26.4에서 고쳐진 결함이었고,
 수정이 들어간 패키지(rpt4, 2026-09-25 배포, 측정 장비에는 2026-09-29 설치)에서는 같은 경로가 381.5 fps / 0.24 ms로 복사 없는 경로와 같아졌다.
 출력 형식을 지정하지 않은 ffmpeg 명령행 도구도 프레임을 CPU로 내려받아 2.0 ms를 쓰며, DRM PRIME 형식을 유지하면 0.55 ms다.
 어느 경우든 비용을 정한 것은 디코더가 아니라 복사의 유무라는 결론은 같다.
 
-⁶ 디코더 프레임 스레드 자동(5개) 조건이다. 디코더 1스레드에서도 파이프라인 처리량과 검출 수는 자동 스레드와 같았다
+⁹ 디코더 프레임 스레드 자동(5개) 조건이다. 디코더 1스레드에서도 파이프라인 처리량과 검출 수는 자동 스레드와 같았다
 (§6.1의 "측정 이후 바뀐 조건").
 
-⁷ 소스 페이싱 표시에서 디코더 자동 스레드와 1스레드를 교대로 잰 비정식 A/B(GPU 1150 MHz, GPU 억제, 900프레임 × 3회)에서
+¹⁰ 소스 페이싱 표시에서 디코더 자동 스레드와 1스레드를 교대로 잰 비정식 A/B(GPU 1150 MHz, GPU 억제, 900프레임 × 3회)에서
 CPU는 2.073 → 1.778 ms/frame로 줄었고 응용 기준 표시 지연 평균은 99.48 → 99.52 ms로 같았으나, 응용 내부 e2e 지연 p90은 3회 모두
 1스레드가 약 1.9 ms 높았다(98.67 → 100.55 ms).
 
@@ -1404,8 +1428,8 @@ GPU 억제에는 두 경계가 있다. 후보가 1,024개를 넘으면 공유 �
 
 ## 7.1 메모리 특성이 설계를 지배한다
 
-본 연구의 가장 이전 가능한 교훈은 §4.3.2의 원칙이다. 통합 GPU가 비캐시 메모리만 노출하는
-플랫폼에서는, **어떤 데이터를 누가 소비하는가가 연산량보다 중요하다.**
+§4.3.2의 원칙 자체는 기존 지침과 같으나(§2.3), 본 연구는 그 위반이 벤더 런타임 안에 숨어 있을 수 있고 그 비용이 호스트 CPU의
+대부분일 수 있음을 보였다. 통합 GPU가 비캐시 메모리만 노출하는 플랫폼에서는 **어떤 데이터를 누가 소비하는가가 연산량보다 중요하다.**
 
 이 원칙은 본 파이프라인의 설계 결정 여러 곳을 일관되게 설명한다.
 
@@ -1491,7 +1515,7 @@ NPU 칩은 약 104 °C부터 클럭을 단계적으로 낮추고 약 120 °C에�
 클럭 설정을 함께 기록해야 비교할 수 있다(부록 A.3).
 
 **(6) 디코더 스레드 기본값에는 작은 대가가 있다.** 디코더 스레드를 1개로 줄이면 CPU와 지연이 모두 줄지만, 소스 페이싱
-표시에서는 응용 내부 e2e 지연 p90이 약 1.9 ms 늘었다(응용 기준 표시 지연 평균은 같음, §6.2 각주 ⁷). 원인은 가르지 못했다.
+표시에서는 응용 내부 e2e 지연 p90이 약 1.9 ms 늘었다(응용 기준 표시 지연 평균은 같음, §6.2 각주 ¹⁰). 원인은 가르지 못했다.
 
 **(7) 후처리 버퍼 한도는 이 모델에 맞춘 값이다.** GPU 디코드의 후보 버퍼는 프레임당 4,096개이고, 넘치면 앞 4,096개만 남아
 검출을 조용히 잃으며 검증 모드도 이를 잡지 못한다. 이 모델에서는 점수 임계값을 양자화 바닥까지 낮춰도 최대 1,925개라 도달할 수 없어
@@ -1519,7 +1543,8 @@ PCIe 오류(AER, Advanced Error Reporting) 계수도 감시하지 않았다. 반
 
 본 논문은 Raspberry Pi 5 계열 보드(Compute Module 5)와 Hailo-8 NPU로 구성된 임베디드 환경에서, 하드웨어 디코더·GPU·NPU·
 디스플레이를 dma-buf 기반 제로 카피로 연결하고 전처리·후처리·가시화를 GPU 컴퓨트 셰이더로
-오프로딩한 실시간 객체 검출 파이프라인을 제안하였다.
+오프로딩한 실시간 객체 검출 파이프라인을 구현하고 평가하였다. 구성은 벤더 SDK의 기존 패턴을 따르며, 본 연구가 보탠 것은
+외장 NPU 런타임 안에 숨은 비캐시 메모리 읽기의 진단·정량화, V3D 제약 아래 Vulkan 1.3 core 구현, 입출력 동시 dma-buf 경로의 실증이다.
 
 주요 결과는 다음과 같다.
 
@@ -1542,7 +1567,7 @@ PCIe 오류(AER, Advanced Error Reporting) 계수도 감시하지 않았다. 반
 레이아웃 정합 항목 중 바이트 단위 읽기 비용(malloc 0.95 대 GPU 메모리 12.7 ms)은 NPU·디코더를 쓰지 않는 단독 측정(2026-10-16, GPU 1150 MHz, 코드 `bc87e17`, §6.3)이고,
 17.6 → 3.5 ms와 나머지 항목은 GPU 클럭 960 MHz·디코더 자동 프레임 스레드·CPU 억제 조건의 값이며(§6.1), 이후 바뀐 기본 조건에서도 처리량과 검출 수는 같았다.
 
-처리량은 PCIe 대역폭 상한에 의해 개선되지 않았다(34.97 → 34.89 fps). 본 연구의 기여는
+처리량은 PCIe 대역폭 상한에 의해 개선되지 않았다(34.97 → 34.89 fps). 본 연구의 성과는
 호스트 부하 절감과, 표시를 켜고도 기준 경로보다 낮은 호스트 부하로 실시간 가시화 경로를 확보한 데 있다.
 
 측정 이후 추가한 GPU 억제는 검출을 바꾸지 않고 처리량·CPU 회귀가 없었으며(§6.1), HVS 평면 표시 경로는 같은 회차의 스왑체인 경로보다
