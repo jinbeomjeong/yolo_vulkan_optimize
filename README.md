@@ -5,21 +5,21 @@ Vulkan(V3D GPU)으로 밀어낸** 프로젝트다. 디코드·전처리·추론�
 (`yvo_pipeline`)로 통합돼 있고 전 구간 CPU 복사가 0회다.
 
 실측(1080p30 HEVC, PCIe Gen3 x1, 운용점 `b2/s4 --postproc gpu`, 표시 on, 900프레임 ×3회 중앙값,
-2026-10-16 · **V3D 1150 MHz · 디코더 1스레드 · `--nms gpu`** · 코드 `2f2d3d0`):
+2026-10-16 · **V3D 1150 MHz · 디코더 1스레드 · `--nms gpu`** · 코드 `2f2d3d0` · **CPU 거버너 performance 고정**, 5회 중앙값):
 
 | `--display-pace` | FPS | glass-to-glass | 파이프라인 CPU ms/frame (앱 + 컴포지터 + 커널 스레드) | 드롭 |
 |---|---:|---:|---:|---:|
-| **`source`** (기본·최종 운용) | **29.90** (소스 30 fps 추종) | **96.66 ms** (3회 90.5~100.1) | **2.567** (1.744 + 0.467 + 0.367) | 0 |
-| `asap` | 34.89 | 128.00 ms | 2.505 (1.622 + 0.500 + 0.389) | 0 |
+| **`source`** (기본·최종 운용) | **29.90** (소스 30 fps 추종) | **89.86 ms** (5회 89.4~98.1, 평균 97.87) | **2.122** (1.456 + 0.389 + 0.289) | 0 |
+| `asap` | 34.89 | 128.04 ms | 2.044 (1.356 + 0.378 + 0.316) | 0 |
 
-검출 수는 표시 off/on, 두 페이싱 전부 **3369 로 동일**하다. 비교 기준(호스트 NMS, 표시 off)은 3.189 ms/frame(앱 3.089)이라 `asap` 은 약 −21%(같은 회차 짝 −17~−29%)다.
-파이프라인 CPU 합은 실행별 합의 3회 중앙값이라 괄호 안 성분별 중앙값의 합과 조금 다르다. CPU 는 앱의 측정 창에 맞춰 잰 시스템 전체 CPU 에서 무관한 백그라운드를 뺀 값이고, idle 중 hardirq 는 커널 설정상 잡히지 않는다(하한).
-근거: [`07_results/display_e2e/runs/v3d1150_syscpu_20261016/summary.md`](07_results/display_e2e/runs/v3d1150_syscpu_20261016/summary.md) §2.
-같은 날 같은 코드의 다른 회차: [`v3d1150_labwc_20261016`](07_results/display_e2e/runs/v3d1150_labwc_20261016/summary.md)(앱 + 컴포지터), [`v3d1150_20261016`](07_results/display_e2e/runs/v3d1150_20261016/summary.md)(앱만).
+검출 수는 표시 off/on, 두 페이싱 전부 **3369 로 동일**하다. 비교 기준(호스트 NMS, 표시 off)은 2.444 ms/frame(앱 2.378)이라 `asap` 은 약 −16%(같은 회차 짝 −14~−24%)다. 표시를 끄면 0.933(−62%)이다.
+파이프라인 CPU 합은 실행별 합의 5회 중앙값이라 괄호 안 성분별 중앙값의 합과 조금 다르다. CPU 는 앱의 측정 창에 맞춰 잰 시스템 전체 CPU 에서 무관한 백그라운드를 뺀 값이고, idle 중 hardirq 는 커널 설정상 잡히지 않는다(하한).
+근거: [`07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md`](07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md) §2.
+같은 날 같은 코드의 ondemand 거버너 회차: [`v3d1150_syscpu_20261016`](07_results/display_e2e/runs/v3d1150_syscpu_20261016/summary.md)(3.189 → 2.505, −21%), [`v3d1150_labwc_20261016`](07_results/display_e2e/runs/v3d1150_labwc_20261016/summary.md)(앱 + 컴포지터), [`v3d1150_20261016`](07_results/display_e2e/runs/v3d1150_20261016/summary.md)(앱만) — 거버너가 달라 CPU 는 직접 비교하지 않는다.
 > **이전 측정(2026-09-20): V3D 960 MHz · FFmpeg 디코더 자동 5스레드 · 억제 CPU**(지금의 `--nms cpu`)에서는
 > `source` 29.91 FPS · glass 101.20 ms · CPU 2.18, `asap` 34.87 · 130.75 ms · 1.84 였다([`display_e2e/summary.md`](07_results/display_e2e/summary.md) §3·§3.2).
 > 그 사이 클럭·디코더 스레드·억제 위치·메인 스레드 대기 코드가 함께 바뀌어 차이를 한 요인으로 돌리지 않는다.
-> `source` glass 의 차이(101.20 대 96.66)는 두 회차의 실행별 범위가 겹쳐 판정하지 않는다. 옛 조건을 재현하려면 `--nms cpu` 와 `YVO_DEC_THREADS=0` 을 준다
+> `source` glass 의 차이(101.20 대 89.86)는 두 회차의 실행별 범위가 겹쳐 판정하지 않는다. 옛 조건을 재현하려면 `--nms cpu` 와 `YVO_DEC_THREADS=0` 을 준다
 > (V3D 클럭은 펌웨어가 정한다).
 > - V3D 클럭이 바뀌어도 FPS·CPU 는 그대로이고 GPU 전처리만 약 14% 빨라졌다([`bootloader_20260925`](07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)).
 > - 현재 기본값의 **표시 off 정식 기준선**(2026-10-08): b8s16 51.50 fps · CPU 0.869 ms/frame, GPU NMS 는 CPU NMS 대비 회귀 없음·검출 바이트 동일([`gpu_nms_e2e/`](07_results/gpu_nms_e2e/summary.md)). 표시 on 정식 측정은 [`display_planes_e2e/`](07_results/display_planes_e2e/summary.md)에 있다 — Vulkan 합성 소스 페이싱 b2/s4 CPU 2.059 ms/frame, 평면 경로는 CPU −0.44 ms/f·V3D −72%·지연 같음(`--slots 6` 필요). 위 표와는 회차·코드(메인 스레드 대기 변경 이전)가 달라 섞지 않는다.
@@ -61,7 +61,7 @@ dma-buf 세 그룹(디코더 SAND / 전처리 NHCW / 원시 텐서)이 전부 ze
 
 > **구간별 지연 수치는 여기 적지 않는다.** 같은 값이 세 곳에 복제돼 있다가 한 번 어긋난 적이 있어
 > (`09_diagrams/README.md` 의 정렬 기록), 2026-09-21 에 이 도식에서는 **흐름만** 남겼다.
-> 구간 median 은 [`display_e2e/runs/v3d1150_syscpu_20261016`](07_results/display_e2e/runs/v3d1150_syscpu_20261016/summary.md)의 `raw/disp_source_run*/stdout.log` 3회 중앙값(소스 페이싱, V3D 1150 MHz · 현재 기본값, 논문 §6.7 표 24)이 정본이고
+> 구간 median 은 [`display_e2e/runs/v3d1150_quiet_perfgov_20261016`](07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md) §2.3(`raw/disp_source_run*/stdout.log` 5회 중앙값)(소스 페이싱, V3D 1150 MHz · 현재 기본값, 논문 §6.7 표 24)이 정본이고
 > (960 MHz 당시 값은 [`display_e2e/summary.md`](07_results/display_e2e/summary.md) §3.1), 같은 값을 붙인 그림이 [`09_diagrams/pipeline_overview.graphml`](09_diagrams/pipeline_overview.graphml) 에 있다.
 
 ---
@@ -119,7 +119,7 @@ build/bin/yvo_pipeline \
 
 | 목적 | 인자 | 결과 |
 |---|---|---|
-| **실시간 표시** (권장) | `--batch 2 --slots 4` | 표시 off 34.97 FPS / 표시 on `pace source` **29.90 FPS, glass 97 ms**(median 96.66, 2026-10-16, [`v3d1150_syscpu_20261016`](07_results/display_e2e/runs/v3d1150_syscpu_20261016/summary.md)). 입력 페이싱(표시 off)이면 도착 기준 평균 80.7 · p90 100 ms, 버림 0([`code_2f2d3d0`](07_results/input_pacing/runs/code_2f2d3d0/summary.md)). 40분 연속 운용에서도 칩이 데워진 평형 상태로 34.25~34.75 FPS 를 유지한다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
+| **실시간 표시** (권장) | `--batch 2 --slots 4` | 표시 off 34.98 FPS / 표시 on `pace source` **29.90 FPS, glass median 90 ms·평균 98 ms**(2026-10-16, 거버너 performance, [`v3d1150_quiet_perfgov_20261016`](07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md)). 입력 페이싱(표시 off)이면 도착 기준 평균 80.7 · p90 100 ms, 버림 0([`code_2f2d3d0`](07_results/input_pacing/runs/code_2f2d3d0/summary.md)). 40분 연속 운용에서도 칩이 데워진 평형 상태로 34.25~34.75 FPS 를 유지한다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
 | 최대 처리량 (**단시간만**) | `--batch 8 --slots 16` | 51.5 FPS, e2e 325 ms. ⚠ **추가 냉각 없이는 약 5분 만에 Hailo 칩이 red zone(약 120 °C)에 닿아 칩이 추론을 멈춘다** — 51.5 FPS 는 칩이 식어 있는 처음 약 2분의 값이다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
 | **최소 지연** (O2, 2026-10-12 확정) | `--batch 1 --slots 1 --input-pace source --input-queue 1` | **도착 기준 평균 58.4 · p90 71.7 · max 75.0 ms**(표시 off). 화면까지는 `--display on --display-fullscreen`(Vulkan 합성)으로 **도착 → 화면 평균 70.2 · p90 78.6 ms**, 버림 19.1%(2026-10-16 · 코드 `2f2d3d0` 재측정, [`code_2f2d3d0`](07_results/input_pacing/runs/code_2f2d3d0/summary.md) · [`code_2f2d3d0_display_on`](07_results/input_pacing/runs/code_2f2d3d0_display_on/summary.md) — HVS 평면 백엔드는 slots 1 에서 교착하므로 쓰지 않는다). 처리 24.4 FPS 라 30 fps 입력의 **18.6% 를 버린다**(가장 오래된 프레임부터, 연속 버림 최대 1). 페이싱 없는 `--batch 1 --slots 1` 은 디코드 끝 기준 79.2 ms 지만 그중 약 42 ms 가 파일을 앞서 읽어 생긴 슬롯 대기다([`input_pacing/`](07_results/input_pacing/summary.md)) |
 | 영상만 저지연 표시 | 위에 `--display-sync latest` 추가 | 화면 glass 28 ms, 박스만 뒤처진다 |

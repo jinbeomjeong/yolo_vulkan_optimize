@@ -1,0 +1,212 @@
+{
+  "tool": "sys_cpu_window",
+  "mode": "window",
+  "status": "ok",
+  "clk_tck": 100,
+  "ncpu": 4,
+  "app_comm": "yvo_pipeline",
+  "frames": null,
+  "window_ms": 25735.505,
+  "snapshot_ms": {
+    "a": 3.991,
+    "b": 3.858
+  },
+  "sys_busy_ms": 1050.0,
+  "user_ms": 530.0,
+  "nice_ms": 0.0,
+  "system_ms": 520.0,
+  "idle_ms": 101530.0,
+  "iowait_ms": 30.0,
+  "irq_ms": 0.0,
+  "softirq_ms": 0.0,
+  "steal_ms": 0.0,
+  "guest_ms": 0.0,
+  "guest_nice_ms": 0.0,
+  "per_cpu_busy_ms": [
+    380.0,
+    170.0,
+    300.0,
+    230.0
+  ],
+  "ctxt_switches": 115597,
+  "softirq_counts": {
+    "total": 22054,
+    "hi": 101,
+    "timer": 1918,
+    "net_tx": 56,
+    "net_rx": 482,
+    "block": 80,
+    "irq_poll": 0,
+    "tasklet": 0,
+    "sched": 9667,
+    "hrtimer": 0,
+    "rcu": 9750
+  },
+  "schedstat_version": 17,
+  "sched_run_ms": 1196.907,
+  "app_ms": 690.0,
+  "labwc_ms": 10.0,
+  "kthread_ms": 140.0,
+  "other_ms": 310.0,
+  "unattributed_ms": -100.0,
+  "reaped_children_ms": 40.0,
+  "procs": {
+    "app_comm": "yvo_pipeline",
+    "app_pids": [
+      {
+        "pid": 2110452,
+        "comm": "yvo_pipeline",
+        "ms": 690.0
+      }
+    ],
+    "kthread_groups": {
+      "kworker_ms": 130.0,
+      "ksoftirqd_ms": 0.0,
+      "irq_thread_ms": 0.0,
+      "v3d_ms": 0.0,
+      "hailo_ms": 0.0,
+      "other_ms": 10.0
+    },
+    "kthread_top": [
+      {
+        "pid": 2110265,
+        "comm": "kworker/u16:5-v3d_csd",
+        "ms": 50.0
+      },
+      {
+        "pid": 2106846,
+        "comm": "kworker/u16:3-v3d_cpu",
+        "ms": 40.0
+      },
+      {
+        "pid": 2107867,
+        "comm": "kworker/u16:1-v3d_cache_clean",
+        "ms": 40.0
+      },
+      {
+        "pid": 48,
+        "comm": "kcompactd0",
+        "ms": 10.0
+      }
+    ],
+    "other_top": [
+      {
+        "pid": 1750873,
+        "comm": "claude",
+        "ms": 290.0
+      },
+      {
+        "pid": 1287,
+        "comm": "wf-panel-pi",
+        "ms": 10.0
+      },
+      {
+        "pid": 2110438,
+        "comm": "python3",
+        "ms": 10.0
+      }
+    ],
+    "sampler_self_ms": 10.0,
+    "new_proc_count": 0,
+    "new_procs": [],
+    "lost_proc_count": 0,
+    "lost_procs": [],
+    "count_a": 205,
+    "count_b": 205
+  },
+  "interrupts": {
+    "total": 84704,
+    "top": [
+      {
+        "irq": "IPI1",
+        "desc": "Function call interrupts",
+        "count": 36056
+      },
+      {
+        "irq": "13",
+        "desc": "GICv2 26 Level arch_timer",
+        "count": 34278
+      },
+      {
+        "irq": "185",
+        "desc": "MIP-MSI-PCI-MSI-0001:01:00.0 0 Edge hailo",
+        "count": 6303
+      },
+      {
+        "irq": "165",
+        "desc": "GICv2 281 Level v3d_core0",
+        "count": 4502
+      },
+      {
+        "irq": "184",
+        "desc": "GICv2 130 Level 1000800000.codec",
+        "count": 1802
+      },
+      {
+        "irq": "IPI5",
+        "desc": "IRQ work interrupts",
+        "count": 1202
+      },
+      {
+        "irq": "106",
+        "desc": "rp1_irq_chip 6 Level eth0",
+        "count": 241
+      },
+      {
+        "irq": "161",
+        "desc": "GICv2 305 Level mmc0",
+        "count": 105
+      },
+      {
+        "irq": "136",
+        "desc": "rp1_irq_chip 36 Edge xhci-hcd:usb4",
+        "count": 101
+      },
+      {
+        "irq": "14",
+        "desc": "GICv2 65 Level 107c013880.mailbox",
+        "count": 76
+      },
+      {
+        "irq": "IPI0",
+        "desc": "Rescheduling interrupts",
+        "count": 32
+      },
+      {
+        "irq": "167",
+        "desc": "interrupt-controller@7c502000 2 Level 107c580000.hvs",
+        "count": 4
+      },
+      {
+        "irq": "180",
+        "desc": "GICv2 133 Level vc4 crtc",
+        "count": 2
+      }
+    ]
+  },
+  "irq_count": 84704,
+  "cpufreq": {
+    "policy0": {
+      "governor_a": "performance",
+      "governor_b": "performance",
+      "cur_khz_a": 2400000,
+      "cur_khz_b": 2400000,
+      "avg_mhz": 2400.0,
+      "time_in_state_delta": {
+        "1500000": 0.0,
+        "1600000": 0.0,
+        "1700000": 0.0,
+        "1800000": 0.0,
+        "1900000": 0.0,
+        "2000000": 0.0,
+        "2100000": 0.0,
+        "2200000": 0.0,
+        "2300000": 0.0,
+        "2400000": 25730.0
+      }
+    }
+  },
+  "cpufreq_avg_mhz": 2400.0,
+  "cpufreq_governor": "performance",
+  "cpufreq_error": null
+}

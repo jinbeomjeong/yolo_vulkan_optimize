@@ -1,0 +1,208 @@
+{
+  "tool": "sys_cpu_window",
+  "mode": "window",
+  "status": "ok",
+  "clk_tck": 100,
+  "ncpu": 4,
+  "app_comm": "yvo_pipeline",
+  "frames": null,
+  "window_ms": 25739.441,
+  "snapshot_ms": {
+    "a": 4.004,
+    "b": 3.736
+  },
+  "sys_busy_ms": 2660.0,
+  "user_ms": 2150.0,
+  "nice_ms": 0.0,
+  "system_ms": 510.0,
+  "idle_ms": 100060.0,
+  "iowait_ms": 0.0,
+  "irq_ms": 0.0,
+  "softirq_ms": 0.0,
+  "steal_ms": 0.0,
+  "guest_ms": 0.0,
+  "guest_nice_ms": 0.0,
+  "per_cpu_busy_ms": [
+    600.0,
+    370.0,
+    800.0,
+    910.0
+  ],
+  "ctxt_switches": 82643,
+  "softirq_counts": {
+    "total": 21736,
+    "hi": 100,
+    "timer": 1861,
+    "net_tx": 33,
+    "net_rx": 246,
+    "block": 32,
+    "irq_poll": 0,
+    "tasklet": 0,
+    "sched": 10351,
+    "hrtimer": 0,
+    "rcu": 9113
+  },
+  "schedstat_version": 17,
+  "sched_run_ms": 2723.025,
+  "app_ms": 2120.0,
+  "labwc_ms": 0.0,
+  "kthread_ms": 60.0,
+  "other_ms": 530.0,
+  "unattributed_ms": -50.0,
+  "reaped_children_ms": 0.0,
+  "procs": {
+    "app_comm": "yvo_pipeline",
+    "app_pids": [
+      {
+        "pid": 2110912,
+        "comm": "yvo_pipeline",
+        "ms": 2120.0
+      }
+    ],
+    "kthread_groups": {
+      "kworker_ms": 60.0,
+      "ksoftirqd_ms": 0.0,
+      "irq_thread_ms": 0.0,
+      "v3d_ms": 0.0,
+      "hailo_ms": 0.0,
+      "other_ms": 0.0
+    },
+    "kthread_top": [
+      {
+        "pid": 2100095,
+        "comm": "kworker/u16:2-v3d_cache_clean",
+        "ms": 20.0
+      },
+      {
+        "pid": 2107867,
+        "comm": "kworker/u16:1-v3d_cpu",
+        "ms": 20.0
+      },
+      {
+        "pid": 2110265,
+        "comm": "kworker/u16:5-v3d_cache_clean",
+        "ms": 20.0
+      }
+    ],
+    "other_top": [
+      {
+        "pid": 1750873,
+        "comm": "claude",
+        "ms": 520.0
+      },
+      {
+        "pid": 1287,
+        "comm": "wf-panel-pi",
+        "ms": 10.0
+      }
+    ],
+    "sampler_self_ms": 0.0,
+    "new_proc_count": 0,
+    "new_procs": [],
+    "lost_proc_count": 1,
+    "lost_procs": [
+      {
+        "pid": 2102972,
+        "comm": "kworker/3:2-events",
+        "ppid": 2
+      }
+    ],
+    "count_a": 204,
+    "count_b": 203
+  },
+  "interrupts": {
+    "total": 63860,
+    "top": [
+      {
+        "irq": "13",
+        "desc": "GICv2 26 Level arch_timer",
+        "count": 31546
+      },
+      {
+        "irq": "IPI1",
+        "desc": "Function call interrupts",
+        "count": 22609
+      },
+      {
+        "irq": "185",
+        "desc": "MIP-MSI-PCI-MSI-0001:01:00.0 0 Edge hailo",
+        "count": 6303
+      },
+      {
+        "irq": "184",
+        "desc": "GICv2 130 Level 1000800000.codec",
+        "count": 1801
+      },
+      {
+        "irq": "165",
+        "desc": "GICv2 281 Level v3d_core0",
+        "count": 902
+      },
+      {
+        "irq": "IPI5",
+        "desc": "IRQ work interrupts",
+        "count": 304
+      },
+      {
+        "irq": "106",
+        "desc": "rp1_irq_chip 6 Level eth0",
+        "count": 123
+      },
+      {
+        "irq": "136",
+        "desc": "rp1_irq_chip 36 Edge xhci-hcd:usb4",
+        "count": 100
+      },
+      {
+        "irq": "14",
+        "desc": "GICv2 65 Level 107c013880.mailbox",
+        "count": 74
+      },
+      {
+        "irq": "161",
+        "desc": "GICv2 305 Level mmc0",
+        "count": 57
+      },
+      {
+        "irq": "IPI0",
+        "desc": "Rescheduling interrupts",
+        "count": 35
+      },
+      {
+        "irq": "167",
+        "desc": "interrupt-controller@7c502000 2 Level 107c580000.hvs",
+        "count": 4
+      },
+      {
+        "irq": "180",
+        "desc": "GICv2 133 Level vc4 crtc",
+        "count": 2
+      }
+    ]
+  },
+  "irq_count": 63860,
+  "cpufreq": {
+    "policy0": {
+      "governor_a": "performance",
+      "governor_b": "performance",
+      "cur_khz_a": 2400000,
+      "cur_khz_b": 2400000,
+      "avg_mhz": 2400.0,
+      "time_in_state_delta": {
+        "1500000": 0.0,
+        "1600000": 0.0,
+        "1700000": 0.0,
+        "1800000": 0.0,
+        "1900000": 0.0,
+        "2000000": 0.0,
+        "2100000": 0.0,
+        "2200000": 0.0,
+        "2300000": 0.0,
+        "2400000": 25740.0
+      }
+    }
+  },
+  "cpufreq_avg_mhz": 2400.0,
+  "cpufreq_governor": "performance",
+  "cpufreq_error": null
+}

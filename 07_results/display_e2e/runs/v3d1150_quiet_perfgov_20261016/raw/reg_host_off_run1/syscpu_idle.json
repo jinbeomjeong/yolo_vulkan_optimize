@@ -1,0 +1,165 @@
+{
+  "tool": "sys_cpu_window",
+  "mode": "duration",
+  "status": "ok; warning: no process with comm 'yvo_pipeline' in snapshot B",
+  "clk_tck": 100,
+  "ncpu": 4,
+  "app_comm": "yvo_pipeline",
+  "frames": null,
+  "window_ms": 10003.942,
+  "snapshot_ms": {
+    "a": 3.866,
+    "b": 3.786
+  },
+  "sys_busy_ms": 210.0,
+  "user_ms": 200.0,
+  "nice_ms": 0.0,
+  "system_ms": 10.0,
+  "idle_ms": 39760.0,
+  "iowait_ms": 0.0,
+  "irq_ms": 0.0,
+  "softirq_ms": 0.0,
+  "steal_ms": 0.0,
+  "guest_ms": 0.0,
+  "guest_nice_ms": 0.0,
+  "per_cpu_busy_ms": [
+    70.0,
+    60.0,
+    80.0,
+    10.0
+  ],
+  "ctxt_switches": 2351,
+  "softirq_counts": {
+    "total": 1469,
+    "hi": 40,
+    "timer": 301,
+    "net_tx": 37,
+    "net_rx": 178,
+    "block": 47,
+    "irq_poll": 0,
+    "tasklet": 9,
+    "sched": 767,
+    "hrtimer": 0,
+    "rcu": 90
+  },
+  "schedstat_version": 17,
+  "sched_run_ms": 270.468,
+  "app_ms": 0.0,
+  "labwc_ms": 0.0,
+  "kthread_ms": 0.0,
+  "other_ms": 240.0,
+  "unattributed_ms": -30.0,
+  "reaped_children_ms": 0.0,
+  "procs": {
+    "app_comm": "yvo_pipeline",
+    "app_pids": [],
+    "kthread_groups": {
+      "kworker_ms": 0.0,
+      "ksoftirqd_ms": 0.0,
+      "irq_thread_ms": 0.0,
+      "v3d_ms": 0.0,
+      "hailo_ms": 0.0,
+      "other_ms": 0.0
+    },
+    "kthread_top": [],
+    "other_top": [
+      {
+        "pid": 1750873,
+        "comm": "claude",
+        "ms": 220.0
+      },
+      {
+        "pid": 1287,
+        "comm": "wf-panel-pi",
+        "ms": 10.0
+      },
+      {
+        "pid": 1265568,
+        "comm": "x-terminal-emul",
+        "ms": 10.0
+      }
+    ],
+    "sampler_self_ms": 0.0,
+    "new_proc_count": 0,
+    "new_procs": [],
+    "lost_proc_count": 0,
+    "lost_procs": [],
+    "count_a": 204,
+    "count_b": 204
+  },
+  "interrupts": {
+    "total": 2292,
+    "top": [
+      {
+        "irq": "13",
+        "desc": "GICv2 26 Level arch_timer",
+        "count": 1370
+      },
+      {
+        "irq": "IPI1",
+        "desc": "Function call interrupts",
+        "count": 719
+      },
+      {
+        "irq": "106",
+        "desc": "rp1_irq_chip 6 Level eth0",
+        "count": 89
+      },
+      {
+        "irq": "161",
+        "desc": "GICv2 305 Level mmc0",
+        "count": 57
+      },
+      {
+        "irq": "136",
+        "desc": "rp1_irq_chip 36 Edge xhci-hcd:usb4",
+        "count": 40
+      },
+      {
+        "irq": "14",
+        "desc": "GICv2 65 Level 107c013880.mailbox",
+        "count": 9
+      },
+      {
+        "irq": "167",
+        "desc": "interrupt-controller@7c502000 2 Level 107c580000.hvs",
+        "count": 4
+      },
+      {
+        "irq": "165",
+        "desc": "GICv2 281 Level v3d_core0",
+        "count": 2
+      },
+      {
+        "irq": "180",
+        "desc": "GICv2 133 Level vc4 crtc",
+        "count": 2
+      }
+    ]
+  },
+  "irq_count": 2292,
+  "cpufreq": {
+    "policy0": {
+      "governor_a": "performance",
+      "governor_b": "performance",
+      "cur_khz_a": 2400000,
+      "cur_khz_b": 2400000,
+      "avg_mhz": 2400.0,
+      "time_in_state_delta": {
+        "1500000": 0.0,
+        "1600000": 0.0,
+        "1700000": 0.0,
+        "1800000": 0.0,
+        "1900000": 0.0,
+        "2000000": 0.0,
+        "2100000": 0.0,
+        "2200000": 0.0,
+        "2300000": 0.0,
+        "2400000": 10000.0
+      }
+    }
+  },
+  "cpufreq_avg_mhz": 2400.0,
+  "cpufreq_governor": "performance",
+  "cpufreq_error": null
+}
