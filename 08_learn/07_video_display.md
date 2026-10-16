@@ -599,9 +599,9 @@ Vulkan 확장 두 개가 이것을 푼다.
 그래서 이 프로젝트는 **glass-to-glass 지연을 실측한다** —
 "디코더가 프레임을 돌려준 시각 → `vkWaitForPresentKHR` 가 돌아온 시각".
 
-> 측정값: `--display-pace source` 에서 **median 89.86 ms** (mean 97.87, p90 119.55, 5회 범위 89.4~98.1)
+> 측정값: `--display-pace source` 에서 **평균 97.87 ms** (5회 범위 97.5~100.6, median 89.86, p90 119.55)
 > ([`v3d1150_quiet_perfgov_20261016`](../07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md) §2.4, 2026-10-16 · V3D 1150 MHz · 디코더 1스레드 · GPU NMS · CPU 2.4 GHz 고정.
-> 중앙값은 수직동기 양자화로 회차마다 갈린다 — 거버너를 고정하지 않은 같은 날 회차는 96.66 ms였다.
+> 중앙값은 수직동기 양자화로 실행마다 89~98 ms로 갈려 평균을 쓴다 — 거버너를 고정하지 않은 같은 날 회차의 평균은 99.81 ms였다.
 > 이전 측정 — 960 MHz · 자동 5스레드 · CPU NMS — 은 median 101.20, [`display_e2e/summary.md`](../07_results/display_e2e/summary.md) §3.2).
 > **계획 단계의 추정치는 217 ms였다. 실측이 그 절반 이하였다.**
 > 같은 실행의 e2e(디코드 끝 → 후처리 완료) 평균이 78.6 ms이므로 **표시 경로가 더하는 지연은 평균으로 약 19 ms**

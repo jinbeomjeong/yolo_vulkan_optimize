@@ -69,8 +69,8 @@
 - **glass-to-glass 지연** — **카메라 유리(glass)에 비친 장면이 모니터 유리에 나타날 때까지.**
   사람이 체감하는 진짜 지연이다. 화면에 실제로 픽셀이 찍힌 시점까지 포함한다.
 
-이 프로젝트의 최종 수치 **약 90 ms**(median 89.86, 5회 범위 89.4~98.1, 평균 97.9) 는 glass-to-glass 다
-([`display_e2e/runs/v3d1150_quiet_perfgov_20261016`](../07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md) §2.4). 표시 시각이 수직동기(16.7 ms) 단위로 끊겨 중앙값은 회차마다 수 ms씩 갈린다.
+이 프로젝트의 최종 수치 **약 98 ms**(평균 97.87, 5회 범위 97.5~100.6; median 89.86) 는 glass-to-glass 다
+([`display_e2e/runs/v3d1150_quiet_perfgov_20261016`](../07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md) §2.4). 표시 시각이 수직동기(16.7 ms) 단위로 끊겨 중앙값은 실행마다 89~98 ms로 갈리므로, 회차 사이에서 안정적인 평균을 쓴다.
 
 ### (5) 병목 (bottleneck)
 
@@ -276,7 +276,7 @@ slots 4 → 16 일 때 FPS는 34.97 → 51.49로 오르지만 지연은 142 → 
 
 e2e는 프로그램 안에서 프레임이 들어와 결과가 나올 때까지고, glass-to-glass는
 **화면에 실제로 픽셀이 찍힐 때까지**다. 사람이 체감하는 건 후자다.
-이 프로젝트 최종 운용점에서 glass-to-glass는 약 90 ms(median 89.86, 평균 97.9) 다.
+이 프로젝트 최종 운용점에서 glass-to-glass는 평균 약 98 ms(97.87, median 89.86) 다.
 
 **Q5. 이 프로젝트가 FPS를 올리지 못한 것은 실패인가?**
 
