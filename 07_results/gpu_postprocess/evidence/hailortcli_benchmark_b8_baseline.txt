@@ -1,6 +1,0 @@
-# hailortcli benchmark 기준선 (같은 날, 같은 칩, 냉각 후 64.7 C 출발)
-# hailortcli benchmark --batch-size 8 -t 10 03_models/yolov11m.hef
-# PCIe 8.0 GT/s PCIe x1 (Gen3)
-FPS (hw_only)   = 51.0023
-FPS (streaming) = 51.0340
-Latency (hw)    = 126.303 ms

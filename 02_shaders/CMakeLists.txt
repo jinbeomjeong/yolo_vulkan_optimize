@@ -1,6 +1,6 @@
 # GLSL compute shaders → SPIR-V(build/02_shaders/*.spv) → embedded headers(build/02_shaders/generated/*_spv.h)
 # Usage: target_link_libraries(<target> PRIVATE yvo_shaders), then #include "sand_letterbox_spv.h"
-# 5 main pipeline shaders (+ 1 buffer variant of overlay_boxes). Diagnostic-only shaders live in diag/ (yvo_shaders_diag, linked only by tools).
+# 5 main pipeline shaders (+ 1 buffer variant of overlay_boxes).
 yvo_add_shaders(yvo_shaders
   sand_letterbox.comp
   display_convert.comp
@@ -10,5 +10,3 @@ yvo_add_shaders(yvo_shaders
   yolo_decode.comp
   efficient_nms.comp
 )
-
-add_subdirectory(diag)

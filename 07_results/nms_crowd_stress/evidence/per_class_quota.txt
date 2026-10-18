@@ -1,5 +1,0 @@
-# per-class quota check on --nms gpu b2s4 detections.jsonl (900 frames each); quota = 100 per class (HEF)
-# command: python3 inline counter over runs/<v>/samples/gpu_b2s4/detections.jsonl (key 'class')
-mot20_02 frames 900 max_per_class_in_a_frame 29 frames_at_quota 0 person_per_frame median 21 max 29 top_classes [(0, 18854), (26, 1842), (24, 368), (62, 171)]
-mot20_05 frames 900 max_per_class_in_a_frame 36 frames_at_quota 0 person_per_frame median 26 max 36 top_classes [(0, 23340), (26, 388), (24, 300), (56, 20)]
-# MOT20 annotated density (people/frame): mot20_02 72.7, mot20_05 226.6 — detections are far below, so the quota is not the limit

@@ -1,3 +1,0 @@
-[hevc @ 0x55562f409ad0] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
-[decode-only] frames=1756 (of 1816, warmup 60) wall=4.477 s fps=392.25 cpu=0.243 ms/frame (total 426 ms)
-RESULT_CSV,decode_only,decode_only,none,4,1756,4.477,392.25,0.243,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0,1

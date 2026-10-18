@@ -1,5 +1,0 @@
-yvo_postproc_probe --probe nms   (plan §6.2 P3)
-[fixture] dir=/home/pi/workspace/yolo_vulkan_optimize/build/out/crowd_fixtures/mot20_05 frames=10  score_thr=0.0000 (HEF 0.20)
-[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
-[vk] device=V3D 7.1.10.2  timestamps=1 period=1.000 ns valid_bits=64
-[fatal] YoloPostproc: score_thr must be > 0

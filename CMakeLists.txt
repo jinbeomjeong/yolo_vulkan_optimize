@@ -25,7 +25,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # All executables are collected in <build>/bin (2026-09-22). Moving source folders does not break the binary paths
-# (build/bin/yvo_*) used by benches, skills and docs. Tests' WORKING_DIRECTORY stays build/05_tests.
+# (build/bin/yvo_*).
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Release if no build type is given (single-config generators only)
@@ -34,23 +34,12 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release RelWithDebInfo MinSizeRel)
 endif()
 
-option(YVO_BUILD_TESTS "Build GoogleTest-based tests" ON)
-# The Google Benchmark option was removed (2026-09-21). 06_tools/bench/ (then 06_bench/) was an empty folder with only a .gitkeep, yet
-# find_package(benchmark REQUIRED) was a hard configure dependency — a dependency with zero consumers.
-# If micro-benchmarks are actually needed, revive them under 05_tests/bench/.
-
 # Required dependencies
 find_package(HailoRT REQUIRED)   # HailoRT::libhailort
 find_package(Vulkan REQUIRED)    # Vulkan::Vulkan
 find_package(OpenCV)             # ${OpenCV_LIBS}; warning only if missing
 if(NOT OpenCV_FOUND)
   message(WARNING "OpenCV not found. Targets that use OpenCV may not be built.")
-endif()
-
-# Optional dependencies: searched only when the option is on
-if(YVO_BUILD_TESTS)
-  find_package(GTest REQUIRED)   # GTest::gtest_main
-  enable_testing()
 endif()
 
 # Shared targets and helpers: yvo_warnings, YVO_CPU_FLAGS, yvo_target_defaults(), yvo_opencv, yvo_add_tool()
@@ -62,7 +51,3 @@ include(${PROJECT_SOURCE_DIR}/cmake/YvoShaders.cmake)
 # (the old yvo_add_subdirectory_if_exists silently skipped missing folders).
 add_subdirectory(01_src)
 add_subdirectory(02_shaders)
-
-if(YVO_BUILD_TESTS)
-  add_subdirectory(05_tests)
-endif()

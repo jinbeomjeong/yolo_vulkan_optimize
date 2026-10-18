@@ -1,6 +1,0 @@
-# ./build/hvs_psnr grim_full_ref_f60.ppm grim_full_grim_f60.ppm
-roi 0,0 1920x1080  pixels 2073600
-PSNR 27.71 dB  (MSE 110.125)  max|d| 29
-  R: PSNR 26.85 dB  mean(test-ref) +10.918  mean ref 34.94 test 45.86  std ref 27.61 test 23.77
-  G: PSNR 27.62 dB  mean(test-ref) +10.007  mean ref 42.72 test 52.73  std ref 24.71 test 21.24
-  B: PSNR 28.90 dB  mean(test-ref) +7.710  mean ref 61.58 test 69.29  std ref 35.85 test 30.95

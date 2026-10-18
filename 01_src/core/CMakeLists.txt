@@ -1,4 +1,4 @@
-# Shared contract types and OS glue (header-only): frame_types, coco_labels, dma_heap_alloc, dmabuf_map, hailo_align.
+# Shared contract types and OS glue (header-only): frame_types, coco_labels, dma_heap_alloc, hailo_align.
 # **The include root (${PROJECT_SOURCE_DIR}/01_src) is set here and nowhere else.** Every target goes through yvo_core
 # and includes with the "folder/file.hpp" form.
 # The old name yvo_common / 01_src/common/ was split into core, ref and toolkit on 2026-09-22

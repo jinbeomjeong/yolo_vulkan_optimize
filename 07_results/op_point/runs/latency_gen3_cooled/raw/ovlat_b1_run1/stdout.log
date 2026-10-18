@@ -1,21 +1,0 @@
-Running streaming inference (/home/pi/workspace/yolo_vulkan_optimize/03_models/yolov11m.hef):
-  Transform data: true
-    Type:      auto
-    Quantized: true
-Network yolov11m/yolov11m: 10% | 24 | HW Latency: 32.45 ms | ETA: 00:00:09
-[F[2KNetwork yolov11m/yolov11m: 20% | 49 | HW Latency: 32.49 ms | ETA: 00:00:08
-[F[2KNetwork yolov11m/yolov11m: 30% | 73 | HW Latency: 32.50 ms | ETA: 00:00:07
-[F[2KNetwork yolov11m/yolov11m: 40% | 98 | HW Latency: 32.50 ms | ETA: 00:00:06
-[F[2KNetwork yolov11m/yolov11m: 50% | 122 | HW Latency: 32.51 ms | ETA: 00:00:05
-[F[2KNetwork yolov11m/yolov11m: 60% | 146 | HW Latency: 32.51 ms | ETA: 00:00:04
-[F[2KNetwork yolov11m/yolov11m: 70% | 171 | HW Latency: 32.51 ms | ETA: 00:00:03
-[F[2KNetwork yolov11m/yolov11m: 80% | 195 | HW Latency: 32.52 ms | ETA: 00:00:02
-[F[2KNetwork yolov11m/yolov11m: 90% | 220 | HW Latency: 32.52 ms | ETA: 00:00:01
-[F[2KNetwork yolov11m/yolov11m: 100% | 244 | HW Latency: 32.52 ms | ETA: 00:00:00
-> Writing inference results to 'm.csv'... done.
-[2K> Inference result:
- Network group: yolov11m
-    Frames count: 244
-    HW Latency: 32.52 ms
-    Overall Latency: 40.90 ms
-

@@ -1,1 +1,0 @@
-wall_s 25.993883654 clk_tck 100 labwc_pid 1080

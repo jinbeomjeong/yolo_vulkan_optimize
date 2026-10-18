@@ -1,9 +1,0 @@
-# nms_host_cost 측정 환경  2026-09-20
-kernel: 6.18.50+rpt-rpi-2712
-pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
-hailortcli: HailoRT-CLI version 4.24.0
-soc temp: temp=67.5'C
-throttled=0x80000
-arm clock: frequency(0)=1900026112
-측정: hailortcli run2 -t 15 --batch-size 8 --scheduling-algorithm round_robin, 모드 교대 3회
-냉각: 각 실행 전 칩 온도 65 C 이하까지 대기

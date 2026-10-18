@@ -1,9 +1,0 @@
-# 이 실험은 단계별로 환경을 여러 번 찍어 env/ 아래에 나눠 두었다.
-# 2026-09-21 폴더 표준화에서 최상위에 흩어져 있던 파일 5개를 env/ 로 모으고 이 안내를 남긴다.
-# 새로 측정하는 실험은 env_bench.txt 하나에 스냅샷을 쓴다 (.claude/skills/measure/SKILL.md §5).
-
-env/env_before.txt          1부 측정 전
-env/env_after.txt           1부 측정 후
-env/env_before_part2.txt    2부(ffmpeg 단독 Cref) 측정 전
-env/env_before_ffpipe.txt   3부(ffmpeg -> 파이프 -> GStreamer) 측정 전
-env/env_after_ffpipe.txt    3부 측정 후

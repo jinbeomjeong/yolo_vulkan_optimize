@@ -1,27 +1,0 @@
-Running streaming inference (/home/pi/workspace/yolo_vulkan_optimize/yolov11m.hef):
-  Transform data: true
-    Type:      auto
-    Quantized: true
-[HailoRT] [warning] HEF was compiled assuming clock rate of 400 MHz, while the device clock rate is 250 MHz. FPS calculations might not be accurate.
-[HailoRT] [warning] HEF was compiled assuming clock rate of 400 MHz, while the device clock rate is 250 MHz. FPS calculations might not be accurate.
-Network yolov11m/yolov11m: 6% | 48 | HW Latency: 133.47 ms | ETA: 00:00:14
-[F[2KNetwork yolov11m/yolov11m: 13% | 96 | HW Latency: 133.38 ms | ETA: 00:00:13
-[F[2KNetwork yolov11m/yolov11m: 20% | 144 | HW Latency: 133.36 ms | ETA: 00:00:12
-[F[2KNetwork yolov11m/yolov11m: 26% | 192 | HW Latency: 133.38 ms | ETA: 00:00:11
-[F[2KNetwork yolov11m/yolov11m: 33% | 240 | HW Latency: 133.36 ms | ETA: 00:00:10
-[F[2KNetwork yolov11m/yolov11m: 40% | 288 | HW Latency: 133.38 ms | ETA: 00:00:09
-[F[2KNetwork yolov11m/yolov11m: 46% | 336 | HW Latency: 133.37 ms | ETA: 00:00:08
-[F[2KNetwork yolov11m/yolov11m: 53% | 381 | HW Latency: 133.38 ms | ETA: 00:00:07
-[F[2KNetwork yolov11m/yolov11m: 60% | 424 | HW Latency: 133.37 ms | ETA: 00:00:06
-[F[2KNetwork yolov11m/yolov11m: 66% | 472 | HW Latency: 133.35 ms | ETA: 00:00:05
-[F[2KNetwork yolov11m/yolov11m: 73% | 520 | HW Latency: 133.35 ms | ETA: 00:00:04
-[F[2KNetwork yolov11m/yolov11m: 80% | 568 | HW Latency: 133.35 ms | ETA: 00:00:03
-[F[2KNetwork yolov11m/yolov11m: 86% | 616 | HW Latency: 133.36 ms | ETA: 00:00:02
-[F[2KNetwork yolov11m/yolov11m: 93% | 664 | HW Latency: 133.34 ms | ETA: 00:00:01
-[F[2KNetwork yolov11m/yolov11m: 100% | 712 | HW Latency: 133.35 ms | ETA: 00:00:00
-[2K> Inference result:
- Network group: yolov11m
-    Frames count: 712
-    HW Latency: 133.35 ms
-    Overall Latency: 155.75 ms
-

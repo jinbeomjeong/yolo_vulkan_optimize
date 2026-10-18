@@ -1,5 +1,0 @@
-display path            : 1920x1080 1:1 / compute -> swapchain storage image, images=4
-on-screen shader ms     : median=4.226 p90=4.296 max=5.548 (n=299)
-present_wait 간격 ms    : median=16.662 p90=16.737 (n=294)
-on-screen overlay ms    : median=0.196 p90=0.212 max=0.674 (n=299)  → 변환+오버레이 median=4.423
-presented=300 display_dropped=0 (NOT_READY 0, 인플라이트 0) recreates=1

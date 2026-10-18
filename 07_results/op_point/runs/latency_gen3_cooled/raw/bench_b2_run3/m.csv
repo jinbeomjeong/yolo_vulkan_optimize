@@ -1,2 +1,0 @@
-net_name,fps,hw_only_fps,num_of_frames,num_of_frames_hw_only,hw_latency,overall_latency,min_power,average_power,max_power
-yolov11m,34.8588,34.8583,524,524,46.1935,,,,

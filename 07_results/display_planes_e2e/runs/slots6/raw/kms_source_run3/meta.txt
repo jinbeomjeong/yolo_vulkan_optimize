@@ -1,9 +1,0 @@
-wall_script_s 30.819
-clk_tck 100
-labwc_pid 1073
-labwc_pid_post 1073
-yvo_pid 429521
-session tty:3
-mid_snap_s 18
-slots 6
-cmd timeout -s KILL 90 env -u YVO_DEC_THREADS /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_pipeline --video /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 --hef /home/pi/workspace/yolo_vulkan_optimize/03_models/yolov11m.hef --mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --nms gpu --gpu-depth 3 --batch 2 --slots 6 --display on --display-fullscreen --display-sync matched --display-warmup 30 --display-backend kms --display-connector HDMI-A-1 --display-color-range auto --display-pace source --frames 900 --quiet --csv-label kms_source 

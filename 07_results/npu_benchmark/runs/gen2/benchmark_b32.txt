@@ -1,62 +1,0 @@
-Starting Measurements...
-Measuring FPS in HW-only mode
-[HailoRT] [warning] Desc page size value (2048) is not optimal for performance.
-Network yolov11m/yolov11m: 6% | 18 | FPS: 17.98 | ETA: 00:00:14
-[F[2KNetwork yolov11m/yolov11m: 13% | 32 | FPS: 15.98 | ETA: 00:00:13
-[F[2KNetwork yolov11m/yolov11m: 20% | 64 | FPS: 21.31 | ETA: 00:00:12
-[F[2KNetwork yolov11m/yolov11m: 26% | 96 | FPS: 23.98 | ETA: 00:00:11
-[F[2KNetwork yolov11m/yolov11m: 33% | 119 | FPS: 23.78 | ETA: 00:00:10
-[F[2KNetwork yolov11m/yolov11m: 40% | 131 | FPS: 21.81 | ETA: 00:00:09
-[F[2KNetwork yolov11m/yolov11m: 46% | 160 | FPS: 22.83 | ETA: 00:00:08
-[F[2KNetwork yolov11m/yolov11m: 53% | 192 | FPS: 23.98 | ETA: 00:00:07
-[F[2KNetwork yolov11m/yolov11m: 60% | 220 | FPS: 24.42 | ETA: 00:00:06
-[F[2KNetwork yolov11m/yolov11m: 66% | 232 | FPS: 23.18 | ETA: 00:00:05
-[F[2KNetwork yolov11m/yolov11m: 73% | 256 | FPS: 23.25 | ETA: 00:00:04
-[F[2KNetwork yolov11m/yolov11m: 80% | 288 | FPS: 23.98 | ETA: 00:00:03
-[F[2KNetwork yolov11m/yolov11m: 86% | 320 | FPS: 24.59 | ETA: 00:00:02
-[F[2KNetwork yolov11m/yolov11m: 93% | 333 | FPS: 23.76 | ETA: 00:00:01
-[F[2KNetwork yolov11m/yolov11m: 100% | 352 | FPS: 23.44 | ETA: 00:00:00
-[F[2KNetwork yolov11m/yolov11m: 100% | 352 | FPS: 23.17 | ETA: 00:00:00
-Measuring FPS (and Power on supported platforms) in streaming mode
-[HailoRT] [warning] Desc page size value (2048) is not optimal for performance.
-Network yolov11m/yolov11m: 6% | 0 | FPS: 0.00 | ETA: 00:00:14
-[F[2KNetwork yolov11m/yolov11m: 13% | 32 | FPS: 15.98 | ETA: 00:00:13
-[F[2KNetwork yolov11m/yolov11m: 20% | 64 | FPS: 21.31 | ETA: 00:00:12
-[F[2KNetwork yolov11m/yolov11m: 26% | 96 | FPS: 23.98 | ETA: 00:00:11
-[F[2KNetwork yolov11m/yolov11m: 33% | 96 | FPS: 19.18 | ETA: 00:00:10
-[F[2KNetwork yolov11m/yolov11m: 40% | 128 | FPS: 21.31 | ETA: 00:00:09
-[F[2KNetwork yolov11m/yolov11m: 46% | 160 | FPS: 22.83 | ETA: 00:00:08
-[F[2KNetwork yolov11m/yolov11m: 53% | 192 | FPS: 23.97 | ETA: 00:00:07
-[F[2KNetwork yolov11m/yolov11m: 60% | 192 | FPS: 21.31 | ETA: 00:00:06
-[F[2KNetwork yolov11m/yolov11m: 66% | 224 | FPS: 22.38 | ETA: 00:00:05
-[F[2KNetwork yolov11m/yolov11m: 73% | 256 | FPS: 23.25 | ETA: 00:00:04
-[F[2KNetwork yolov11m/yolov11m: 80% | 288 | FPS: 23.97 | ETA: 00:00:03
-[F[2KNetwork yolov11m/yolov11m: 86% | 290 | FPS: 22.28 | ETA: 00:00:02
-[F[2KNetwork yolov11m/yolov11m: 93% | 320 | FPS: 22.83 | ETA: 00:00:01
-[F[2KNetwork yolov11m/yolov11m: 100% | 352 | FPS: 23.44 | ETA: 00:00:00
-[F[2KNetwork yolov11m/yolov11m: 100% | 352 | FPS: 23.17 | ETA: 00:00:00
-Measuring HW Latency
-[HailoRT] [warning] Desc page size value (2048) is not optimal for performance.
-Network yolov11m/yolov11m: 6% | 0 | HW Latency: NaN | ETA: 00:00:14
-[F[2KNetwork yolov11m/yolov11m: 13% | 32 | HW Latency: 1047.30 ms | ETA: 00:00:13
-[F[2KNetwork yolov11m/yolov11m: 20% | 64 | HW Latency: 1047.82 ms | ETA: 00:00:12
-[F[2KNetwork yolov11m/yolov11m: 26% | 96 | HW Latency: 1047.55 ms | ETA: 00:00:11
-[F[2KNetwork yolov11m/yolov11m: 33% | 96 | HW Latency: 1047.55 ms | ETA: 00:00:10
-[F[2KNetwork yolov11m/yolov11m: 40% | 128 | HW Latency: 1047.48 ms | ETA: 00:00:09
-[F[2KNetwork yolov11m/yolov11m: 46% | 160 | HW Latency: 1047.35 ms | ETA: 00:00:08
-[F[2KNetwork yolov11m/yolov11m: 53% | 192 | HW Latency: 1047.37 ms | ETA: 00:00:07
-[F[2KNetwork yolov11m/yolov11m: 60% | 192 | HW Latency: 1047.37 ms | ETA: 00:00:06
-[F[2KNetwork yolov11m/yolov11m: 66% | 224 | HW Latency: 1047.21 ms | ETA: 00:00:05
-[F[2KNetwork yolov11m/yolov11m: 73% | 256 | HW Latency: 1046.87 ms | ETA: 00:00:04
-[F[2KNetwork yolov11m/yolov11m: 80% | 288 | HW Latency: 1046.60 ms | ETA: 00:00:03
-[F[2KNetwork yolov11m/yolov11m: 86% | 289 | HW Latency: 1047.77 ms | ETA: 00:00:02
-[F[2KNetwork yolov11m/yolov11m: 93% | 320 | HW Latency: 1046.44 ms | ETA: 00:00:01
-[F[2KNetwork yolov11m/yolov11m: 100% | 352 | HW Latency: 1046.29 ms | ETA: 00:00:00
-[F[2KNetwork yolov11m/yolov11m: 100% | 352 | HW Latency: 1046.29 ms | ETA: 00:00:00
-
-=======
-Summary
-=======
-FPS     (hw_only)                 = 23.1663
-        (streaming)               = 23.1668
-Latency (hw)                      = 1046.29 ms

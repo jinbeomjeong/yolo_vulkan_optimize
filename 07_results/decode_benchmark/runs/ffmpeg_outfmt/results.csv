@@ -1,5 +1,0 @@
-combo,runs,expected_frames,frames_all_ok,fps_median,fps_min,fps_max,fps_spread_pct,avg_cores_median,cpu_pct_4core_median,max_rss_mb_median,wall_s_median
-h265_Cref_ffmpeg_drm_S1,3,1816,1,334.34,321.42,334.61,3.9,0.677,16.9,92.9,5.432
-h265_Cref_ffmpeg_outfmt_drmprime_S1,3,1816,1,386.85,385.88,387.83,0.5,0.212,5.3,84.8,4.694
-h265_Cref_ffmpeg_outfmt_dl_nv12_S1,3,1816,1,336.51,336.21,336.55,0.1,0.721,18.0,91.3,5.397
-h265_Cref_ffmpeg_outfmt_dl_yuv420p_S1,3,1816,1,332.76,332.12,333.97,0.6,0.735,18.4,91.3,5.457

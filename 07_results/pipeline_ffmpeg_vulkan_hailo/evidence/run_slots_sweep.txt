@@ -1,6 +1,0 @@
-[stream] batch=4 slots=4 frames=300 fps=34.80 latency(ms) median=114.13 p90=114.22 max=115.54 errors=0 chip_temp=71.5C
-[info] chip temp end 71.5 C
-[stream] batch=8 slots=8 frames=300 fps=47.64 latency(ms) median=126.32 p90=236.23 max=251.93 errors=0 chip_temp=74.5C
-[info] chip temp end 74.5 C
-[stream] batch=1 slots=2 frames=300 fps=24.35 latency(ms) median=81.83 p90=81.99 max=82.96 errors=0 chip_temp=75.1C
-[info] chip temp end 75.1 C

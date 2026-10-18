@@ -1,8 +1,0 @@
-[2026-10-12 12:33:30.592] [1389100] [HailoRT] [info] [vdevice.cpp:535] [create] Creating vdevice with params: device_count: 1, scheduling_algorithm: ROUND_ROBIN, multi_process_service: false
-[2026-10-12 12:33:30.604] [1389100] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
-[2026-10-12 12:33:30.605] [1389100] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
-[2026-10-12 12:33:30.605] [1389100] [HailoRT] [info] [vdevice.cpp:682] [create] VDevice Infos: 0001:01:00.0
-[2026-10-12 12:33:30.613] [1389100] [HailoRT] [info] [internal_buffer_manager.cpp:77] [print_execution_results] Planned internal buffer memory: CMA=0 CMA-Desc=983040 Pinned=13570048. memory to edge layer usage factor is 0.8803268
-[2026-10-12 12:33:30.613] [1389100] [HailoRT] [info] [internal_buffer_manager.cpp:86] [print_execution_results] Default Internal buffer planner executed successfully
-[2026-10-12 12:33:30.647] [1389100] [HailoRT] [info] [device_internal.cpp:57] [configure] Configuring HEF took 42.390776 milliseconds
-[2026-10-12 12:33:30.647] [1389100] [HailoRT] [info] [vdevice.cpp:780] [configure] Configuring HEF on VDevice took 42.653499 milliseconds
