@@ -1,5 +1,5 @@
 #version 450
-// A **compute rasterizer that writes box outlines + class labels + one HUD line directly into the display RGBA storage image**.
+// A **compute rasterizer that writes box outlines + class labels + one HUD line directly into the box-plane RGBA buffer**.
 //
 // ── Why compute (plan §5.4) ───────────────────────────────────────────────────────────────
 // **No graphics pipeline is used.** V3D is tile-based, so opening a render pass with LOAD_OP_LOAD on an image
@@ -55,8 +55,16 @@ struct DetGpu {
     uint keep;
 };
 
-// Output target: rgba8 storage image (the swapchain composition path).
-layout(rgba8, set = 0, binding = 0) uniform writeonly image2D dst_image;
+// ── Output target: packed RGBA8 storage buffer. It is the dma-buf for the HVS overlay plane (OverlayPlane).
+//     V3D does not give STORAGE_IMAGE to LINEAR-tiled RGBA8 (no bit in linearTilingFeatures), so
+//     a LINEAR image cannot be exported → write directly into a buffer with a pitch (in pixels). Memory byte order is
+//     R,G,B,A (x of packUnorm4x8 is the least significant byte) = DRM_FORMAT_ABGR8888 (AB24).
+//     A buffer lacks imageStore's "out-of-range writes are discarded" guarantee, so store_px checks bounds itself.
+//     dst_pitch and erase follow the push constants: if erase != 0, (0,0,0,0) is written to the same set of pixels
+//     (a pass that erases only the previous boxes when a ring entry is reused — see overlay_plane.hpp).
+layout(std430, set = 0, binding = 0) writeonly buffer DstBuf {
+    uint dst_px[];
+};
 
 // std430: dispatch 0..11 / count 12 / overflow 16 / text_bytes 20 / text[32] 24..151 / dets 152..
 // Kept in agreement with the host OverlayDetBufHeader (152 B) via static_assert.
@@ -81,7 +89,14 @@ layout(push_constant, std430) uniform Params {
     int dst_w, dst_h;
     int line_width;         // R3
     uint max_dets;          // dets[] cap (count is clamped to this value)
+    int dst_pitch;          // row pitch (in pixels = uint words). byte pitch / 4
+    uint erase;             // 1 = write (0,0,0,0) instead of the color
 } pc;
+
+void store_px(ivec2 p, vec4 c) {
+    if (uint(p.x) >= uint(pc.dst_w) || uint(p.y) >= uint(pc.dst_h)) return;
+    dst_px[p.y * pc.dst_pitch + p.x] = (pc.erase != 0u) ? 0u : packUnorm4x8(c);
+}
 
 // R1
 int rnd(float v) { return int(floor(clamp(v, -32768.0, 32767.0) + 0.5)); }
@@ -106,7 +121,7 @@ void band_h(int x0, int y0, int x1, int y1, vec4 c) {
     y1 = min(y1, pc.dst_h - 1);
     const int step = int(gl_WorkGroupSize.x);
     for (int y = y0; y <= y1; ++y)
-        for (int x = x0 + int(gl_LocalInvocationID.x); x <= x1; x += step) imageStore(dst_image, ivec2(x, y), c);
+        for (int x = x0 + int(gl_LocalInvocationID.x); x <= x1; x += step) store_px(ivec2(x, y), c);
 }
 
 // Vertically long bands (left/right sides, width = line_width): distribute rows across invocations.
@@ -117,7 +132,7 @@ void band_v(int x0, int y0, int x1, int y1, vec4 c) {
     y1 = min(y1, pc.dst_h - 1);
     const int step = int(gl_WorkGroupSize.x);
     for (int y = y0 + int(gl_LocalInvocationID.x); y <= y1; y += step)
-        for (int x = x0; x <= x1; ++x) imageStore(dst_image, ivec2(x, y), c);
+        for (int x = x0; x <= x1; ++x) store_px(ivec2(x, y), c);
 }
 
 // ── Character generation ───────────────────────────────────────────────────────────────────────────────
@@ -166,10 +181,9 @@ void draw_text_run(int x0, int y0, uint nchars, vec4 c, bool hud, uint name_o, u
             for (int col = 0; col < 8; ++col) {
                 if (((bits >> uint(7 - col)) & 1u) == 0u) continue; // convention 5): off pixels are left untouched
                 const int cx = px0 + col * s;
-                // No horizontal bounds check: Vulkan guarantees out-of-range imageStore is discarded, so
-                // the result equals the CPU reference's clipping (R5), and the per-pixel branch disappears
-                // (same basis as store_px() in display_convert.comp).
-                for (int i = 0; i < s; ++i) imageStore(dst_image, ivec2(cx + i, py), c);
+                // No horizontal bounds check here: store_px() discards out-of-range writes, so
+                // the result equals the CPU reference's clipping (R5).
+                for (int i = 0; i < s; ++i) store_px(ivec2(cx + i, py), c);
             }
         }
     }

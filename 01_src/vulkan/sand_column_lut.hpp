@@ -1,5 +1,5 @@
-// Column LUT for the SAND128 bilinear shaders (sand_letterbox.comp, display_convert.comp uniform-scale path).
-// Header-only. Shared by SandLetterbox (vulkan/) and DisplayConvert (display/) so the host-side LUT exists in one copy.
+// Column LUT for the SAND128 bilinear shader (sand_letterbox.comp).
+// Header-only. Used by SandLetterbox (vulkan/).
 //
 // Per output column dx the host precomputes the horizontal sample positions and weights with the same float operations
 // as cpu_letterbox_nv12_bt709() (ref/cpu_letterbox.hpp: letterbox_src_coord + bilinear_tap), so the shader only adds
@@ -29,7 +29,7 @@ struct SandColumnLutKey {
     bool operator==(const SandColumnLutKey&) const = default;
 };
 
-// Writes cols entries (cols * kSandLutWordsPerColumn words) to lut. cols may exceed k.dst_w (DisplayConvert rounds it
+// Writes cols entries (cols * kSandLutWordsPerColumn words) to lut. cols may exceed k.dst_w (a caller may round it
 // up to a multiple of 4 so the last 4-pixel group reads valid entries); such columns are padding columns.
 inline void build_sand_column_lut(const SandColumnLutKey& k, int cols, std::uint32_t* lut) {
     const int new_w = static_cast<int>(static_cast<float>(k.src_w) * k.scale + 0.5f);

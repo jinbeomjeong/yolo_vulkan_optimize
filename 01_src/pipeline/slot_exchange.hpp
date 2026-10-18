@@ -142,11 +142,20 @@ private:
 // The decoder **stalls without an error** when more than about 13 frames are held at once; we block at 10 for a margin.
 inline constexpr int kMaxDecoderFramesHeld = 10;
 
+// Decoder frames held at once with --display on (PlaneDisplay, both sync modes — "matched-detach": the slot comes back
+// right after show(), and the display keeps the frame outside the slots until the compositor releases it):
+//   slots (one retained frame per slot: SandLetterbox / display retain) + 1 (one decoded frame awaiting a slot)
+//   + extra_held_beyond_slots (PlaneDisplay::kExtraHeldBeyondSlots: pending + committed, unreleased)
+//   + input_queue (frames waiting in --input-pace source's leaky queue, 0 with asap).
+// Shared by validate_slot_budget() and yvo_pipeline's extra_hw_frames. long long so absurd --slots values cannot overflow int.
+inline long long plane_frames_held(int slots, int extra_held_beyond_slots, int input_queue = 0) {
+    return static_cast<long long>(slots) + 1 + extra_held_beyond_slots + input_queue;
+}
+
 // Startup gate, called by yvo_pipeline parse() only when --display is on. Returns "" when the budget fits,
-// otherwise the complete stderr message (same text as the check that used to be inline in parse()).
-// Vulkan composition (DisplayPipeline) holds slots + gpu_depth decoder frames.
-// input_queue = --input-queue N with --input-pace source (0 with asap): the queued decoded frames are held on top of
-// the asap count. 0 keeps the asap message byte for byte.
-std::string validate_slot_budget(int slots, int gpu_depth, int input_queue = 0);
+// otherwise the complete stderr message.
+// extra_held_beyond_slots is PlaneDisplay::kExtraHeldBeyondSlots, passed in so pipeline/ does not need display/ here.
+// input_queue = --input-queue N with --input-pace source (0 with asap).
+std::string validate_slot_budget(int slots, int extra_held_beyond_slots, int input_queue = 0);
 
 } // namespace yvo::pipeline

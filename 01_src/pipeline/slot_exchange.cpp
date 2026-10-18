@@ -27,22 +27,15 @@ namespace {
 
 } // namespace
 
-std::string validate_slot_budget(int slots, int gpu_depth, int input_queue) {
-    // Sums are taken in long long so absurd --slots/--gpu-depth values cannot overflow int (identical result otherwise).
-    if (input_queue > 0) {
-        const long long sum = static_cast<long long>(slots) + gpu_depth + input_queue;
-        if (sum > kMaxDecoderFramesHeld)
-            return format("--display on --input-pace source requires slots + gpu_depth + input_queue <= %d (now %d + %d + %d = %lld).\n"
-                          "The decoder stalls without an error when more than about 13 frames are held at once. "
-                          "Reduce --slots, --gpu-depth or --input-queue.\n",
-                          kMaxDecoderFramesHeld, slots, gpu_depth, input_queue, sum);
-        return {};
-    }
-    const long long sum = static_cast<long long>(slots) + gpu_depth;
-    if (sum > kMaxDecoderFramesHeld) {
-        return format("--display on requires slots + gpu_depth <= %d (now %d + %d = %lld).\n"
-                      "The decoder stalls without an error when more than about 13 frames are held at once. Reduce --slots or --gpu-depth.\n",
-                      kMaxDecoderFramesHeld, slots, gpu_depth, sum);
+std::string validate_slot_budget(int slots, int extra_held_beyond_slots, int input_queue) {
+    const long long hold = plane_frames_held(slots, extra_held_beyond_slots, input_queue);
+    if (hold > kMaxDecoderFramesHeld) {
+        const std::string queued = input_queue > 0 ? format(" + %d in the input queue", input_queue) : "";
+        return format("--display on: decoder frames held would be %lld, exceeding %d "
+                      "(slots %d + 1 awaiting decode + %d held by display%s).\nThe decoder stalls without an error when more than about 13 frames are held at once. "
+                      "Reduce --slots%s.\n",
+                      hold, kMaxDecoderFramesHeld, slots, extra_held_beyond_slots, queued.c_str(),
+                      input_queue > 0 ? " or --input-queue" : "");
     }
     return {};
 }

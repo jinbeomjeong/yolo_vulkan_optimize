@@ -14,12 +14,6 @@ namespace {
 
 constexpr const char* kValidationLayer = "VK_LAYER_KHRONOS_validation";
 
-// Including vulkan_wayland.h also drags in <wayland-client.h>, making yvo_vulkan depend on Wayland headers.
-// All that is needed is the extension name string and one function pointer type, so they are declared directly.
-// wl_display* is handled as an opaque pointer (void*) — the ABI is identical.
-constexpr const char* kWaylandSurfaceExt = "VK_KHR_wayland_surface";
-using PFN_yvoWaylandPresentationSupport = VkBool32(VKAPI_PTR*)(VkPhysicalDevice, std::uint32_t, void*);
-
 bool env_contains(const char* name, const char* needle) {
     const char* v = std::getenv(name);
     return v != nullptr && std::strstr(v, needle) != nullptr;
@@ -123,40 +117,6 @@ VulkanContext::VulkanContext(const VulkanContextOptions& opt) {
         std::vector<const char*> exts;
         const bool debug_utils = has_ext(inst_exts, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         if (debug_utils) exts.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-
-        // ---- present: instance extensions (only when enable_present. When off, the list ends with the one line above) ----
-        auto present_off = [&](std::string why) {
-            if (present_reason_.empty()) present_reason_ = std::move(why);
-            if (opt.require_present)
-                throw std::runtime_error("VulkanContext: present required but unavailable: " + present_reason_);
-        };
-        bool want_present = opt.enable_present;
-        if (want_present && opt.wayland_display == nullptr) {
-            want_present = false;
-            present_off("wayland_display is null (WaylandWindow must be opened first)");
-        }
-        if (want_present) {
-            for (const char* req : {VK_KHR_SURFACE_EXTENSION_NAME, kWaylandSurfaceExt}) {
-                if (!has_ext(inst_exts, req)) {
-                    want_present = false;
-                    present_off(std::string("missing instance extension: ") + req);
-                }
-            }
-        }
-        if (want_present) {
-            exts.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-            exts.push_back(kWaylandSurfaceExt);
-            // VK_EXT_surface_maintenance1 provides the per-present-mode minImageCount query (FIFO 3 / MAILBOX 4).
-            // Dependency: VK_KHR_get_surface_capabilities2 (instance). Enabled only when both are present.
-            // ⚠ The device extension VK_EXT_swapchain_maintenance1 **presupposes this instance extension.**
-            //   If it cannot be enabled here, the device extension below is not enabled either.
-            if (has_ext(inst_exts, VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME) &&
-                has_ext(inst_exts, VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME)) {
-                exts.push_back(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
-                exts.push_back(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
-                surface_maintenance1_ = true;
-            }
-        }
         for (const char* e : exts) enabled_inst_exts_.emplace_back(e);
 
         VkApplicationInfo app{};
@@ -230,66 +190,28 @@ VulkanContext::VulkanContext(const VulkanContextOptions& opt) {
             throw std::runtime_error(std::string("VulkanContext: device ") + props_.deviceName +
                                      " does not support Vulkan 1.3");
 
-        // ---- present: presentation support query function (the only path that needs no surface) ----
-        PFN_yvoWaylandPresentationSupport wl_present_support = nullptr;
-        if (want_present) {
-            wl_present_support = reinterpret_cast<PFN_yvoWaylandPresentationSupport>(
-                vkGetInstanceProcAddr(instance_, "vkGetPhysicalDeviceWaylandPresentationSupportKHR"));
-            if (!wl_present_support) {
-                want_present = false;
-                present_off("could not obtain the vkGetPhysicalDeviceWaylandPresentationSupportKHR entry point");
-            }
-        }
-
-        // ---- Compute queue (done before deciding extensions, since present affects the choice) ----
+        // ---- Compute queue ----
         std::uint32_t qn = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(phys_, &qn, nullptr);
         std::vector<VkQueueFamilyProperties> qfs(qn);
         vkGetPhysicalDeviceQueueFamilyProperties(phys_, &qn, qfs.data());
-        // Score-based selection. **When present == false it always gives the same result as the previous 2-pass loop**:
-        //   families without compute are excluded → +2 for those without GRAPHICS → on a tie, the smaller index
-        //   = identical to "prefer a compute-only family, otherwise the first family that supports compute".
-        // When present == true, +4 for present support (effectively mandatory), +1 for GRAPHICS (room for a graphics fallback).
-        // V3D has a single queue family, so both pick family 0 — zero regression risk on this hardware.
-        bool present_qf_found = false;
-        auto select_queue_family = [&](bool present) {
-            bool found = false;
-            int best_score = -1;
-            present_qf_found = false;
-            for (std::uint32_t i = 0; i < qn; ++i) {
-                if ((qfs[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0) continue;
-                const bool graphics = (qfs[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0;
-                int score = 0;
-                if (present) {
-                    if (wl_present_support(phys_, i, opt.wayland_display) == VK_TRUE) {
-                        score += 4;
-                        present_qf_found = true;
-                    }
-                    if (graphics) score += 1;
-                } else if (!graphics) {
-                    score += 2;
-                }
-                if (score > best_score) {  // on a tie, keep the one seen first (= the smaller index)
-                    best_score = score;
-                    queue_family_ = i;
-                    graphics_supported_ = graphics;
-                    found = true;
-                }
+        // Score-based selection: families without compute are excluded → +2 for those without GRAPHICS → on a tie,
+        // the smaller index = "prefer a compute-only family, otherwise the first family that supports compute".
+        // V3D has a single queue family, so it picks family 0.
+        bool found = false;
+        int best_score = -1;
+        for (std::uint32_t i = 0; i < qn; ++i) {
+            if ((qfs[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0) continue;
+            const int score = (qfs[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0 ? 2 : 0;
+            if (score > best_score) {  // on a tie, keep the one seen first (= the smaller index)
+                best_score = score;
+                queue_family_ = i;
+                found = true;
             }
-            return found;
-        };
-        bool found = select_queue_family(want_present);
-        if (found && want_present && !present_qf_found) {
-            want_present = false;
-            present_off("no compute queue family supports present "
-                        "(vkGetPhysicalDeviceWaylandPresentationSupportKHR == VK_FALSE)");
-            found = select_queue_family(false);  // re-select with the baseline rule without present
         }
         if (!found) throw std::runtime_error("VulkanContext: no compute queue family");
 
         // ---- Extensions ----
-        // Optional present extensions are activated only if they pass both "is the extension available" and "can the feature be enabled".
-        bool sm1_avail = false, pid_avail = false, pwait_avail = false;
         const auto dexts = device_extensions(phys_);
         std::vector<const char*> dev_exts;
         for (const char* req : {VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME, VK_EXT_EXTERNAL_MEMORY_DMA_BUF_EXTENSION_NAME}) {
@@ -300,23 +222,6 @@ VulkanContext::VulkanContext(const VulkanContextOptions& opt) {
         if (has_ext(dexts, VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME)) {
             dev_exts.push_back(VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME);
             external_qf_ = VK_QUEUE_FAMILY_FOREIGN_EXT;
-        }
-        // ---- present: device extensions (only while present is alive. When off, it ends with the 3 above) ----
-        if (want_present && !has_ext(dexts, VK_KHR_SWAPCHAIN_EXTENSION_NAME)) {
-            want_present = false;
-            present_off(std::string("missing device extension: ") + VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-        }
-        if (want_present) {
-            dev_exts.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-            // ⚠ VK_EXT_swapchain_maintenance1 **presupposes** the instance extension VK_EXT_surface_maintenance1
-            //   (the per-mode minImageCount query and VkSwapchainPresentModesCreateInfoEXT are a pair).
-            //   If surface_maintenance1_ is false, it is not enabled here either. Plan §5.2 safeguard 3.
-            //   (The driver also advertises the promoted VK_KHR_swapchain_maintenance1, but the installed Vulkan headers 1.4.309
-            //    lack the KHR feature struct and the instance counterpart is EXT only, so the EXT version is used.)
-            sm1_avail = surface_maintenance1_ && has_ext(dexts, VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
-            // present_wait presupposes present_id (it waits for a submitted presentId).
-            pid_avail = has_ext(dexts, VK_KHR_PRESENT_ID_EXTENSION_NAME);
-            pwait_avail = pid_avail && has_ext(dexts, VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
         }
 
         const VkExternalMemoryFeatureFlags f = dmabuf_buffer_features(phys_);
@@ -348,52 +253,6 @@ VulkanContext::VulkanContext(const VulkanContextOptions& opt) {
         en2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
         en2.pNext = &en13;
 
-        // ---- Optional present features: enable extension and feature together only if the extension is advertised and the feature is supported ----
-        // (Enabling only the extension without the feature makes the validation layer report "feature not enabled", and enabling only the feature makes
-        //  vkCreateDevice return VK_ERROR_FEATURE_NOT_PRESENT. The two are always handled as a pair.)
-        VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT sm1_q{}, sm1_en{};
-        sm1_q.sType = sm1_en.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT;
-        VkPhysicalDevicePresentIdFeaturesKHR pid_q{}, pid_en{};
-        pid_q.sType = pid_en.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;
-        VkPhysicalDevicePresentWaitFeaturesKHR pwait_q{}, pwait_en{};
-        pwait_q.sType = pwait_en.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR;
-        if (sm1_avail || pid_avail || pwait_avail) {
-            VkPhysicalDeviceFeatures2 q2{};
-            q2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-            void** qtail = &q2.pNext;
-            if (sm1_avail) { *qtail = &sm1_q; qtail = &sm1_q.pNext; }
-            if (pid_avail) { *qtail = &pid_q; qtail = &pid_q.pNext; }
-            if (pwait_avail) { *qtail = &pwait_q; qtail = &pwait_q.pNext; }
-            vkGetPhysicalDeviceFeatures2(phys_, &q2);
-
-            void** etail = &en13.pNext;
-            if (sm1_avail && sm1_q.swapchainMaintenance1) {
-                swapchain_maintenance1_ = true;
-                dev_exts.push_back(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
-                sm1_en.swapchainMaintenance1 = VK_TRUE;
-                *etail = &sm1_en;
-                etail = &sm1_en.pNext;
-            }
-            if (pid_avail && pid_q.presentId) {
-                present_id_ = true;
-                dev_exts.push_back(VK_KHR_PRESENT_ID_EXTENSION_NAME);
-                pid_en.presentId = VK_TRUE;
-                *etail = &pid_en;
-                etail = &pid_en.pNext;
-            }
-            // present_wait is meaningful only when present_id was actually enabled.
-            if (present_id_ && pwait_avail && pwait_q.presentWait) {
-                present_wait_ = true;
-                dev_exts.push_back(VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
-                pwait_en.presentWait = VK_TRUE;
-                *etail = &pwait_en;
-                etail = &pwait_en.pNext;
-            }
-            (void)etail;
-        }
-        present_enabled_ = want_present;
-        if (opt.enable_present && !present_enabled_ && opt.require_present)
-            throw std::runtime_error("VulkanContext: present required but unavailable: " + present_reason_);
         for (const char* e : dev_exts) enabled_dev_exts_.emplace_back(e);
 
         const float prio = 1.0f;
@@ -429,15 +288,6 @@ VulkanContext::VulkanContext(const VulkanContextOptions& opt) {
                         dmabuf_export_, dmabuf_import_dedicated_only_,
                         external_qf_ == VK_QUEUE_FAMILY_FOREIGN_EXT ? "FOREIGN_EXT" : "EXTERNAL",
                         validation_layer_active_ ? "on" : "off", want_sync ? " +sync" : "");
-            if (opt.enable_present) {
-                if (present_enabled_)
-                    std::printf("[vulkan] present: on (graphics=%d, surface_maintenance1=%d, "
-                                "swapchain_maintenance1=%d, present_id=%d, present_wait=%d)\n",
-                                graphics_supported_, surface_maintenance1_, swapchain_maintenance1_, present_id_,
-                                present_wait_);
-                else
-                    std::printf("[vulkan] present: off (%s)\n", present_reason_.c_str());
-            }
         }
     } catch (...) {
         destroy();

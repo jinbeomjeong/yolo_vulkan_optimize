@@ -1,14 +1,11 @@
-// OverlayRenderer: compute pass that draws detection boxes, labels, and HUD into the display RGBA storage image
-//                  (02_shaders/overlay_boxes.comp). Plan §5.4.
+// OverlayRenderer: compute pass that draws detection boxes, labels, and HUD into a packed RGBA8 storage buffer
+//                  (02_shaders/overlay_boxes.comp) — the AB24 dma-buf of the HVS box plane. Plan §5.4.
 //
 // ── What this class does not do ──────────────────────────────────────────────────────────────────
-// **It does not create or submit command buffers.** It **continues recording into the same command buffer**
-// created by `DisplayConvert` (recommendation of the display track stage 2 report). So there is still 1 submit per present.
-//   DisplayConvert::begin(slot) → [swapchain acquire transition] → DisplayConvert::record(...)
-//     → OverlayRenderer::record(slot, cb, ...)        ← here
-//     → [swapchain present transition] → DisplayConvert::end_and_submit(...) → finish(slot)
-//     → OverlayRenderer::collect(slot)                 ← read timestamp after the fence completes
-// It uses the same slot number as `DisplayConvert` (= `SwapchainFrame::sync_index`).
+// **It does not create or submit command buffers.** It **continues recording into the command buffer of its owner**
+// (`OverlayPlane`: one clear + overlay command buffer per ring entry, 1 submit + fence):
+//     OverlayPlane::draw → [clear / erase pass] → OverlayRenderer::record_buffer(slot, cb, ...)   ← here
+//       → [release to the external queue] → submit → fence → OverlayRenderer::collect(slot)       ← read timestamp
 //
 // ── Detection upload: no staging and no transfer queue ────────────────────────────────────────────────
 // 80 detections x 32 B + 152 B header ≈ 2.7 KB, and a CPU→GPU **write** takes 5 µs (plan §5.4 —
@@ -16,24 +13,20 @@
 // allocated as `HOST_VISIBLE|HOST_COHERENT|DEVICE_LOCAL` and **persistently mapped**; the CPU writes it directly and
 // only a single `HOST_WRITE → SHADER_READ | INDIRECT_COMMAND_READ` barrier is inserted.
 //
-// ── Barrier between the two dispatches (is it needed? → yes) ────────────────────────────────────────────
-// `display_convert.comp` and `overlay_boxes.comp` **write the same pixels of the same image** (WAW).
-// Two consecutive dispatches in the same command buffer may overlap without a barrier, so
-// the overlay could be drawn before the conversion → insert a `SHADER_STORAGE_WRITE → SHADER_STORAGE_WRITE`
-// image memory barrier (layout stays GENERAL). The overlay **does not read** the image, so
-// READ is not put in dstAccessMask (no alpha blending — R7 always writes alpha as 255).
-// This barrier is recorded by `record(..., barrier_prior_compute_write = true)`. Tests and probes that run the overlay alone
-// (without a preceding compute write) pass false.
+// ── Barrier against a preceding compute write (optional) ────────────────────────────────────────────
+// `record_buffer(..., barrier_prior_compute_write = true)` adds a global `SHADER_STORAGE_WRITE → SHADER_STORAGE_WRITE`
+// barrier (WAW) for when another dispatch in the same command buffer wrote the same pixels just before. The overlay
+// **does not read** the target, so READ is not put in dstAccessMask (no alpha blending — R7 always writes alpha as 255).
 //
 // ── Descriptors and dispatch ───────────────────────────────────────────────────────────────────────
-// set 0 = {0: swapchain storage image(rgba8), 1: per-slot DetBuf, 2: glyph+name SSBO}
-//   → comfortably within V3D limits (storage buffers 8, storage images 4, descriptorIndexing=false).
+// set 0 = {0: target storage buffer (packed RGBA8, pitch in pixels), 1: per-slot DetBuf, 2: glyph+name SSBO}
+//   → comfortably within V3D limits (storage buffers 8, descriptorIndexing=false).
 // **One workgroup per detection**, and `vkCmdDispatchIndirect(cb, det_buf, 0)` reads the uvec3 at the front
 // of the DetBuf. It works the same whether the CPU filled it or, later, a GPU NMS shader filled it.
 //
 // ── Boundary conventions ─────────────────────────────────────────────────────────────────────────────────
-// R0~R8 at the top of `overlay_reference.hpp` are the sole reference. The shader and the CPU reference implementation follow the same conventions and
-// `05_tests/test_overlay.cpp` judges with **max error 0**. Known tolerated limitation:
+// R0~R8 at the top of `overlay_reference.hpp` are the sole reference. The shader and the CPU reference implementation follow the same conventions.
+// Known tolerated limitation:
 // **the color of intersecting pixels of overlapping boxes is order-dependent** (workgroup execution order is undefined).
 #pragma once
 
@@ -54,7 +47,7 @@ class VulkanContext;
 namespace yvo::display {
 
 struct OverlayConfig {
-    int num_slots = 3;            // in-flight count (= swapchain image count, same as DisplayConvert)
+    int num_slots = 3;            // DetBuf slots in flight (OverlayPlane uses 2 per ring entry)
     int max_dets = 80;            // upper bound of DetBuf dets[] (plan §5.4)
     // Workgroup size (spec constant). One workgroup per detection, so only x is used.
     // Measured basis (yvo_display_probe --probe overlay --overlay-local N, 1920x1080 offscreen, 200 consecutive frames,
@@ -69,7 +62,7 @@ struct OverlayConfig {
     bool timestamps = true;
 };
 
-// Shader push constant (std430, same order and size as Params in overlay_boxes.comp)
+// Shader push constant, common front part (std430, same order as Params in overlay_boxes.comp)
 struct OverlayPush {
     float sx, sy, tx, ty;
     std::int32_t dst_w, dst_h;
@@ -77,6 +70,15 @@ struct OverlayPush {
     std::uint32_t max_dets;
 };
 static_assert(sizeof(OverlayPush) == 32, "push constant layout must match shader");
+
+// Full shader push constant: two buffer-target fields are appended after OverlayPush.
+struct OverlayPushBuf {
+    OverlayPush base;
+    std::int32_t dst_pitch;       // row stride (in pixels = uint32 words)
+    std::uint32_t erase;          // 1 = write (0,0,0,0) over the same pixel set
+};
+static_assert(sizeof(OverlayPushBuf) == 40, "push constant layout must match shader");
+static_assert(offsetof(OverlayPushBuf, dst_pitch) == 32, "dst_pitch offset must match shader");
 
 // DetBuf header (std430). Must match the front of the shader's DetBuf byte for byte.
 //   dispatch 0..11 / count 12 / overflow 16 / text_bytes 20 / text[32] 24..151 / dets[] 152..
@@ -114,14 +116,19 @@ public:
     OverlayRenderer(const OverlayRenderer&) = delete;
     OverlayRenderer& operator=(const OverlayRenderer&) = delete;
 
-    // Fills the slot's DetBuf directly from the host (no staging). Call before record().
+    // Fills the slot's DetBuf directly from the host (no staging). Call before record_buffer().
     // If dets exceeds max_dets, only the first max_dets are written and overflow is set to 1.
     // hud is truncated to 128 B. Return value = number of detections actually recorded.
     int set_frame(int slot, const std::vector<Detection>& dets, std::string_view hud = {});
 
-    // Continues recording into the same command buffer. affine is the result of make_overlay_affine(src, dst).
-    void record(int slot, VkCommandBuffer cb, VkImageView dst_view, VkExtent2D dst_extent,
-                const OverlayAffine& affine, bool barrier_prior_compute_write = true);
+    // Continues recording into the same command buffer: draws into a packed RGBA8 buffer. pitch_px = byte pitch / 4.
+    // affine is the result of make_overlay_affine(src, dst).
+    // dst_offset must be a multiple of minStorageBufferOffsetAlignment. If erase = true, writes (0,0,0,0) over the pixel set that
+    // this slot's **current DetBuf content** would draw — with the same input and same affine the pixel set is deterministic, so it is cleared exactly.
+    // barrier_prior_compute_write = a global barrier that breaks WAW with a preceding compute write.
+    void record_buffer(int slot, VkCommandBuffer cb, VkBuffer dst, VkDeviceSize dst_offset, VkDeviceSize dst_range,
+                       VkExtent2D dst_extent, std::uint32_t pitch_px, const OverlayAffine& affine,
+                       bool barrier_prior_compute_write, bool erase = false);
 
     // Call after the submit fence completes — reads the timestamp (does not wait).
     void collect(int slot);

@@ -1,7 +1,7 @@
-# HDMI display path: Vulkan compositing (Wayland xdg-shell window + swapchain).
-# It is a **separate library** from yvo_vulkan to isolate regressions
+# HDMI display path: HVS plane scanout through labwc (Wayland xdg-shell fullscreen window + linux-dmabuf; boxes drawn
+# with Vulkan into an AB24 dma-buf). It is a **separate library** from yvo_vulkan to isolate regressions
 # (plan §5.2 safeguard 4): the link graph of test_preproc / yvo_preproc_bench does not change.
-option(YVO_BUILD_DISPLAY "Build the Vulkan HDMI display path" ON)
+option(YVO_BUILD_DISPLAY "Build the HDMI display path (HVS planes via Wayland)" ON)
 if(NOT YVO_BUILD_DISPLAY)
   message(STATUS "yvo_display: YVO_BUILD_DISPLAY=OFF — skipping")
   return()
@@ -32,7 +32,27 @@ file(TO_CMAKE_PATH "${YVO_WL_PROTO_DIR}" YVO_WL_PROTO_DIR)
 # Generate client stubs with wayland-scanner (same pattern as yvo_add_shaders() running glslc via add_custom_command).
 # To add a protocol, add just one line "<name>=<xml relative path>" to the list below.
 set(yvo_wl_protocols
-  "xdg-shell=stable/xdg-shell/xdg-shell.xml")                  # window (required)
+  "xdg-shell=stable/xdg-shell/xdg-shell.xml"                   # window (required)
+  "linux-dmabuf=stable/linux-dmabuf/linux-dmabuf-v1.xml"       # wayland-planes: decoder SAND dma-buf → wl_buffer
+  "presentation-time=stable/presentation-time/presentation-time.xml"  # wayland-planes: presentation time (glass-to-glass)
+  "viewporter=stable/viewporter/viewporter.xml")               # wayland-planes: HVS scaling when output ≠ source size
+# Optional protocols: yvo_display builds even without the XML. If present, define YVO_HAVE_<macro>=1.
+#   color-representation-v1 is in staging, so it may be missing depending on the wayland-protocols version (1.44+).
+set(yvo_wl_optional_protocols
+  "color-representation=staging/color-representation/color-representation-v1.xml=YVO_HAVE_COLOR_REPRESENTATION")
+set(yvo_wl_defines "")
+foreach(entry IN LISTS yvo_wl_optional_protocols)
+  string(REPLACE "=" ";" parts "${entry}")
+  list(GET parts 0 name)
+  list(GET parts 1 rel)
+  list(GET parts 2 macro)
+  if(EXISTS "${YVO_WL_PROTO_DIR}/${rel}")
+    list(APPEND yvo_wl_protocols "${name}=${rel}")
+    list(APPEND yvo_wl_defines "${macro}=1")
+  else()
+    message(STATUS "yvo_display: optional protocol ${rel} not found — building without ${macro}")
+  endif()
+endforeach()
 
 # Headers go in generated/display/: new sources include them as "display/<name>-client-protocol.h" to follow the include hierarchy rule
 # (STRUCTURE.md §2.2, check_structure C4 "<layer>/<file>"). The existing xdg-shell is used without a prefix as before
@@ -80,12 +100,16 @@ add_custom_target(yvo_wayland_protocols_headers DEPENDS ${yvo_wl_headers})
 add_dependencies(yvo_wayland_protocols yvo_wayland_protocols_headers)
 
 add_library(yvo_display STATIC
+  display_config.cpp
   wayland_window.cpp
-  vk_swapchain.cpp
-  display_convert.cpp
+  drm_state.cpp
+  plane_display.cpp
+  wayland_plane_scanout.cpp
   overlay_renderer.cpp
-  display_pipeline.cpp)
+  overlay_plane.cpp)
 target_link_libraries(yvo_display
   PUBLIC yvo_vulkan yvo_ref
   PRIVATE PkgConfig::YVO_WAYLAND yvo_wayland_protocols yvo_shaders)
 yvo_target_defaults(yvo_display)
+# Optional protocol macros are used only inside this library's sources (public headers do not depend on the macros).
+target_compile_definitions(yvo_display PRIVATE ${yvo_wl_defines})

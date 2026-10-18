@@ -59,11 +59,11 @@ OverlayStyle OverlayRenderer::style() const {
 void OverlayRenderer::create_pipeline() {
     VkDevice dev = ctx_.device();
 
-    // 0: output storage image, 1: DetBuf, 2: font+names SSBO
+    // 0: output storage buffer (packed RGBA8), 1: DetBuf, 2: font+names SSBO
     set_layout_ = yvo::vk::create_compute_set_layout(
-        dev, {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER});
+        dev, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER});
     pipeline_layout_ =
-        yvo::vk::create_compute_pipeline_layout(dev, set_layout_, static_cast<std::uint32_t>(sizeof(OverlayPush)));
+        yvo::vk::create_compute_pipeline_layout(dev, set_layout_, static_cast<std::uint32_t>(sizeof(OverlayPushBuf)));
 
     // spec 0 = local_size_x, 1 = kDrawText (SPIR-V bool is 32bit), 2 = kTextScale
     const std::array<std::uint32_t, 3> spec_data{cfg_.local_size_x, cfg_.draw_text ? VK_TRUE : VK_FALSE,
@@ -72,8 +72,7 @@ void OverlayRenderer::create_pipeline() {
                                                  spec_data);
 
     const auto n = static_cast<std::uint32_t>(cfg_.num_slots);
-    const std::array<VkDescriptorPoolSize, 2> ps{{{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2 * n},
-                                                  {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, n}}};
+    const std::array<VkDescriptorPoolSize, 1> ps{{{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 * n}}};
     VkDescriptorPoolCreateInfo dp{};
     dp.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     dp.maxSets = n;
@@ -266,34 +265,37 @@ int OverlayRenderer::set_frame(int slot, const std::vector<Detection>& in, std::
     return static_cast<int>(m);
 }
 
-void OverlayRenderer::record(int slot, VkCommandBuffer cb, VkImageView dst_view, VkExtent2D dst_extent,
-                             const OverlayAffine& affine, bool barrier_prior_compute_write) {
-    if (cb == VK_NULL_HANDLE) throw std::invalid_argument("OverlayRenderer::record: null command buffer");
+void OverlayRenderer::record_buffer(int slot, VkCommandBuffer cb, VkBuffer dst, VkDeviceSize dst_offset,
+                                    VkDeviceSize dst_range, VkExtent2D dst_extent, std::uint32_t pitch_px,
+                                    const OverlayAffine& affine, bool barrier_prior_compute_write, bool erase) {
+    if (cb == VK_NULL_HANDLE) throw std::invalid_argument("OverlayRenderer::record_buffer: null command buffer");
+    if (pitch_px < dst_extent.width)
+        throw std::invalid_argument("OverlayRenderer::record_buffer: pitch_px < width");
+    if (static_cast<VkDeviceSize>(pitch_px) * dst_extent.height * 4u > dst_range)
+        throw std::invalid_argument("OverlayRenderer::record_buffer: buffer range too small for pitch*height");
     Slot& s = slots_.at(static_cast<std::size_t>(slot));
 
-    // Updates binding 0 only. Calling this only when no GPU work uses this slot is the caller's responsibility
-    // (same as DisplayConvert's slot convention — begin() cannot be called on a pending slot).
-    VkDescriptorImageInfo ii{};
-    ii.imageView = dst_view;
-    ii.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    VkDescriptorBufferInfo bi{dst, dst_offset, dst_range};
     VkWriteDescriptorSet w{};
     w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     w.dstSet = s.set;
     w.dstBinding = 0;
     w.descriptorCount = 1;
-    w.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    w.pImageInfo = &ii;
+    w.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    w.pBufferInfo = &bi;
     vkUpdateDescriptorSets(ctx_.device(), 1, &w, 0, nullptr);
 
-    OverlayPush pc{};
-    pc.sx = affine.sx;
-    pc.sy = affine.sy;
-    pc.tx = affine.tx;
-    pc.ty = affine.ty;
-    pc.dst_w = static_cast<std::int32_t>(dst_extent.width);
-    pc.dst_h = static_cast<std::int32_t>(dst_extent.height);
-    pc.line_width = cfg_.line_width;
-    pc.max_dets = static_cast<std::uint32_t>(cfg_.max_dets);
+    OverlayPushBuf pc{};
+    pc.base.sx = affine.sx;
+    pc.base.sy = affine.sy;
+    pc.base.tx = affine.tx;
+    pc.base.ty = affine.ty;
+    pc.base.dst_w = static_cast<std::int32_t>(dst_extent.width);
+    pc.base.dst_h = static_cast<std::int32_t>(dst_extent.height);
+    pc.base.line_width = cfg_.line_width;
+    pc.base.max_dets = static_cast<std::uint32_t>(cfg_.max_dets);
+    pc.dst_pitch = static_cast<std::int32_t>(pitch_px);
+    pc.erase = erase ? 1u : 0u;
     record_dispatch(slot, cb, &pc, sizeof(pc), barrier_prior_compute_write);
 }
 
@@ -314,10 +316,9 @@ void OverlayRenderer::record_dispatch(int slot, VkCommandBuffer cb, const void* 
     bb.offset = 0;
     bb.size = VK_WHOLE_SIZE;
 
-    // ② Break the WAW hazard with the image writes of the preceding compute (display_convert).
-    // There is no layout transition (stays GENERAL) and record() receives only the view, not the VkImage, so
-    // we use a **global memory barrier** (a superset of an image barrier, and for compute→compute dependencies on the same
-    // queue the V3D cost is the same). The overlay does not read the image, so READ is not put in dst.
+    // ② Break the WAW hazard with the writes of a preceding compute dispatch to the same target.
+    // A **global memory barrier** (for compute→compute dependencies on the same queue the V3D cost is the same as a
+    // buffer barrier). The overlay does not read the target, so READ is not put in dst.
     VkMemoryBarrier2 mb{};
     mb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
     mb.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;

@@ -1,5 +1,5 @@
-// BT.709 limited range YUV → gamma-encoded RGB 0~255. Shared include of sand_letterbox.comp and display_convert.comp
-// (#include "bt709.glsl"), so the preprocessing and display paths compile the same formula.
+// BT.709 limited range YUV → gamma-encoded RGB 0~255. Included by sand_letterbox.comp (#include "bt709.glsl").
+// (The display path no longer converts YUV on the GPU: the HVS does it during plane scanout.)
 //
 // Reference implementation: 01_src/ref/cpu_letterbox.hpp formula 5) (cpu_letterbox_nv12_bt709).
 //   Y' = (Y - 16) * 255/219,  U' = (U - 128) * 255/224,  V' = (V - 128) * 255/224

@@ -52,7 +52,7 @@ layout(push_constant, std430) uniform Params {
 
 float byte_at(uint w, uint sh) { return float((w >> sh) & 0xffu); }
 
-// to_u8() + bt709_to_rgb(): BT.709 limited → RGB, shared with display_convert.comp
+// to_u8() + bt709_to_rgb(): BT.709 limited → RGB (bt709.glsl)
 #extension GL_GOOGLE_include_directive : require
 #include "bt709.glsl"
 

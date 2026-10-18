@@ -1,5 +1,5 @@
 // Compute pipeline creation helpers shared by the library classes (SandLetterbox, YoloPostproc, EfficientNms,
-// display::DisplayConvert, display::OverlayRenderer).
+// display::OverlayRenderer).
 //
 // Every class used the same fixed shape, so it lives here once:
 //   - one descriptor set: binding i = types[i], descriptorCount 1, compute stage

@@ -7,10 +7,11 @@
 // Slot contract (slot numbers shared by GPU, NPU and display, 0..slots-1) — **there are two return conditions**
 //   free → [GPU submit] → gpu queue → [SandLetterbox::wait: fence complete, AVFrame keepalive released]
 //        → [HailoRunner::submit] → [HailoRT completion callback = compute_done]
-//        → [display complete = display_done: DisplayPipeline's submit fence]  → free once both are set
+//        → [display_done: set right after PlaneDisplay::show() took the frame over]  → free once both are set
+//   ("matched-detach": the display holds the decoder frame itself until the compositor releases it, outside the slots.)
 //   With --display off there is no display condition at all (SlotExchange(need_display=false)) → exactly the same as before.
-//   ⚠ The one who sets display_done is **the main thread itself**. So blocking while waiting for a free slot
-//     deadlocks — the slot acquisition loop below runs only on acquire_poll + pump (it does not use acquire_wait).
+//   ⚠ The one who sets display_done is **the main thread itself** (matched: in flush_results). So blocking while waiting
+//     for a free slot deadlocks — the slot acquisition loop below runs only on acquire_poll + pump (it does not use acquire_wait).
 //   Frames simultaneously in flight on the GPU are at most --gpu-depth (default 3). If the decoder has about 13+ frames held, it
 //   **stalls silently without an error** → at startup we check slots+gpu_depth <= 10, and at runtime the actual held count
 //   (held_frames_max) is measured and emitted to the CSV. This is the only means of detection.
@@ -19,9 +20,10 @@
 //   dmabuf : (default) at init, export per-slot output memory as dma-buf fds → pre-map with HailoRunner::map_dmabuf
 //            → set_dma_buffer with PreprocOutput.dmabuf_fd
 // Display (--display, conditionally compiled with YVO_HAVE_DISPLAY)
-//   off  : the path up to today. Does not even create a DisplayPipeline (default).
-//   on   : decoder SAND dma-buf → display_convert.comp → overlay_boxes.comp → swapchain present on a Wayland window.
-//          Strict: if the window or Vulkan present is unavailable, it exits with an error (no headless fallback).
+//   off  : the path up to today. Does not even create a display (default).
+//   on   : HVS plane scanout through labwc (backend name wayland-planes): the decoder NV12 SAND dma-buf goes onto the HVS
+//          video plane without V3D conversion, and the GPU-drawn boxes (AB24 dma-buf) go onto the plane above it
+//          (PlaneDisplay + WaylandPlaneScanout). Always fullscreen; strict (exits on failure, no fallback).
 //          matched = shown together with that frame's detections (show in flush_results),
 //          latest  = shown as soon as preprocessing finishes, with the most recent detections overlaid (show in finish_gpu).
 // Post-processing (--postproc)
@@ -37,10 +39,11 @@
 //            (full → drop the oldest, take the oldest: GStreamer queue leaky=downstream). Single-threaded paced loop.
 //            --display on: same display calls as asap minus the display pace gate (pace_deadline) — input is already paced.
 // Shutdown order: InferStage::drain → flush_results → display drain → SandLetterbox::clear_import_cache
-//            (display drain = DisplayPipeline::drain: remaining display fences → release retained frames → clear import cache)
-//            → decoder close → stage release (runner does dma-buf unmap) → display release (swapchain/surface)
+//            (display drain = PlaneDisplay::drain: remaining pending commits → scanout shutdown (taken off screen)
+//             → force remaining releases → clear video buffer cache)
+//            → decoder close → stage release (runner does dma-buf unmap) → display release (transport/box ring)
 //            → export fd close → VulkanContext → WaylandWindow
-//            (the window must die later than the context, so it is declared before the context)
+//            (the window must die later than the display's wl_buffers, so it is declared before the context)
 // Signals: SIGINT/SIGTERM are received via sigaction(SA_RESTART) and **only set an atomic flag**.
 //         The main loop, display pacing loop and slot acquisition loop check this flag every iteration, break out and
 //         follow the **shutdown order above as is** → the stats summary comes out in the same format as a normal exit.
@@ -95,8 +98,11 @@
 #include "vulkan/vulkan_context.hpp"
 
 #ifdef YVO_HAVE_DISPLAY
-#include "display/display_pipeline.hpp"
+#include "display/display_config.hpp"
 #include "display/display_sink.hpp"
+#include "display/plane_display.hpp"
+#include "display/wayland_plane_scanout.hpp"
+#include "display/wayland_window.hpp"
 #endif
 
 namespace {
@@ -195,7 +201,7 @@ struct Args {
     // ── Display (all defaults are "off": running without arguments takes the same path as before) ──
     bool display = false;
 #ifdef YVO_HAVE_DISPLAY
-    yvo::display::DisplayPipelineConfig disp;
+    yvo::display::DisplayConfig disp;
     bool pace_explicit = false;   // did the user pass --display-pace explicitly
 #endif
 };
@@ -225,19 +231,18 @@ void usage(const char* a0) {
                  "               paced cpu ms/frame and FPS are per processed frame: not comparable to asap\n"
                  "  --frame-log PATH  one CSV row per frame at the end (ms since start; dropped 1 = queue drop, 2 = abandoned)\n"
 #ifdef YVO_HAVE_DISPLAY
-                 "  --display {off,on}                       real-time HDMI display (default off). on = Vulkan composition +\n"
-                 "               swapchain on a Wayland window; exits with an error if the window or present is unavailable\n"
+                 "  --display {off,on}                       real-time HDMI display (default off). on = HVS two-plane scanout\n"
+                 "               through labwc (video NV12 SAND plane + box AB24 plane, no V3D conversion, no Vulkan present).\n"
+                 "               always fullscreen (windowed, labwc would composite with GL). strict (exits on failure)\n"
+                 "  --display-color-range {auto,full,limited}   requested COLOR_RANGE (default auto = request full:\n"
+                 "               labwc 0.20.1~0.20.2 / wlroots 0.20.2+rpt3~+rpt4 invert it and program limited; judged via debugfs)\n"
                  "  --display-sync {matched,latest}          default matched (shown together with that frame's detections)\n"
                  "  --display-pace {source,asap}             default source when display is on. asap = no pacing\n"
-                 "  --display-fullscreen | --display-size WxH | --display-every K\n"
+                 "  --display-fullscreen (always on, accepted) | --display-size WxH | --display-every K\n"
                  "  --display-warmup N                       leave the first N presentations out of glass / decode-to-screen /\n"
-                 "               present-interval stats (default 0 = keep all)\n"
-                 "  --present-mode {fifo,mailbox,immediate}  default fifo\n"
-                 "  --display-blit                           force the blit fallback even if STORAGE is available\n"
+                 "               present-interval / late-frame stats (default 0 = keep all)\n"
                  "  --overlay-line-width N | --overlay-text-scale N   default 2 / 2\n"
                  "  Esc/q/Ctrl+C in the display window also stops it (same [interrupted] exit as terminal Ctrl+C, code 130)\n"
-                 "  ⚠ Always measure with --display-fullscreen. Windowed mode falls onto the uniform-scale path and\n"
-                 "    display conversion becomes 2.6x slower (4.25 → 10.9 ms) with no error or warning\n"
 #endif
                  ,
                  a0);
@@ -302,27 +307,28 @@ bool parse(int argc, char** argv, Args& a) {
             if (d == "on") a.display = true;
             else if (d == "off") a.display = false;
             else return false;
-        } else if (s == "--display-backend" || s == "--display-connector" || s == "--display-color-range") {
+        } else if (s == "--display-backend" || s == "--display-connector" || s == "--present-mode" ||
+                   s == "--display-blit") {
             // Removed with the other display backends: say so instead of the bare usage text.
-            std::fprintf(stderr, "%s was removed: --display on always uses Vulkan composition on a Wayland window "
+            std::fprintf(stderr, "%s was removed: --display on always uses HVS plane scanout through labwc "
                                  "(the only display backend left)\n", s.c_str());
             return false;
+        } else if (s == "--display-color-range" && (v = next())) {
+            if (!yvo::display::parse_color_range(v, &a.disp.color_range)) return false;
         } else if (s == "--display-sync" && (v = next())) {
             if (!yvo::display::parse_display_sync(v, &a.disp.sync)) return false;
         } else if (s == "--display-pace" && (v = next())) {
             if (!yvo::display::parse_display_pace(v, &a.disp.pace)) return false;
             a.pace_explicit = true;
-        } else if (s == "--display-fullscreen") a.disp.fullscreen = true;
-        else if (s == "--display-size" && (v = next())) {
+        } else if (s == "--display-fullscreen") {
+            // always fullscreen; accepted so existing command lines keep working
+        } else if (s == "--display-size" && (v = next())) {
             int w = 0, h = 0;
             if (!yvo::tool::parse_size(v, w, h)) return false;
             a.disp.width = w;
             a.disp.height = h;
         } else if (s == "--display-every" && (v = next())) a.disp.every = arg_number<int>(argv[0], s, v);
         else if (s == "--display-warmup" && (v = next())) a.disp.warmup = arg_number<int>(argv[0], s, v);
-        else if (s == "--present-mode" && (v = next())) {
-            if (!yvo::display::parse_present_mode(v, &a.disp.present_mode)) return false;
-        } else if (s == "--display-blit") a.disp.force_blit = true;
         else if (s == "--overlay-line-width" && (v = next())) a.disp.overlay_line_width = arg_number<int>(argv[0], s, v);
         else if (s == "--overlay-text-scale" && (v = next())) a.disp.overlay_text_scale = arg_number<int>(argv[0], s, v);
 #endif
@@ -342,7 +348,7 @@ bool parse(int argc, char** argv, Args& a) {
         return false;
     }
     if (a.input_pace == InputPace::Source) {
-        // With --display on the display pace gate is skipped (run_paced).
+        // With --display on the display pace gate is skipped (run_paced) and plane late frames allow for queue drops.
         const std::string err = yvo::pipeline::validate_input_queue(a.input_queue, a.gpu_depth);
         if (!err.empty()) {
             std::fputs(err.c_str(), stderr);
@@ -356,11 +362,15 @@ bool parse(int argc, char** argv, Args& a) {
         a.disp.pace = a.display ? yvo::display::DisplayPace::Source : yvo::display::DisplayPace::None;
     a.disp.num_slots = a.slots;
     // ⚠ Decoder 13-frame constraint: holding more than about 13 frames at once makes the decoder **stall without an error.**
-    //   Vulkan composition path: matched holds slots + gpu_depth, latest holds gpu_depth + image_count.
+    //   PlaneDisplay holds frames **until the compositor does wl_buffer.release**, but outside the slots (matched-detach:
+    //   both sync modes return the slot right after show): pending 2 + committed (unreleased) 3
+    //   (PlaneDisplay::kExtraHeldBeyondSlots = on screen 1 + waiting for the next vblank 1 + release delay 1 + pending 2).
+    //   → at most slots + 1 (one just-decoded frame waiting for a slot) + 5 (+ the input queue when paced).
     //   We block at 10 to leave a margin. The actual maximum is measured as held_frames_max.
     if (a.display) {
         const std::string err = yvo::pipeline::validate_slot_budget(
-            a.slots, a.gpu_depth, a.input_pace == InputPace::Source ? a.input_queue : 0);
+            a.slots, yvo::display::PlaneDisplay::kExtraHeldBeyondSlots,
+            a.input_pace == InputPace::Source ? a.input_queue : 0);
         if (!err.empty()) {
             std::fputs(err.c_str(), stderr);
             return false;
@@ -488,18 +498,27 @@ GpuPostSnapshot snapshot_gpu_post(const yvo::pipeline::GpuPostprocStage* gpu_sta
 
 // Display stats, snapshotted before the display is released. Defaults are the --display off values.
 struct DisplaySnapshot {
-    Stats sdc, sdo, sdi, sdg, sdd;   // convert, overlay, present interval, glass, decode-to-screen
-    unsigned long long presented = 0, disp_dropped = 0, recreates = 0, ov_overflow = 0;
+    // convert (always empty: the HVS converts during scanout; kept for the CSV column), overlay, present interval,
+    // glass, decode-to-screen
+    Stats sdc, sdo, sdi, sdg, sdd;
+    unsigned long long presented = 0, disp_dropped = 0, recreates = 0, ov_overflow = 0;   // recreates: always 0 (CSV column)
     const char* disp_backend = "off";
-    // RESULT_CSV3: warmup cut (--display-warmup)
+    // Plane scanout verdict ("-" with --display off)
+    std::string sc_zero_copy = "-", sc_color_ok = "-", sc_underrun = "-", sc_ov_skipped = "-", sc_cb_timeouts = "-",
+                sc_zc_feedback = "-";
+    std::vector<std::string> sc_lines;
+    unsigned long long sc_busy_reuse = 0, sc_feedback = 0;
+    // RESULT_CSV3: warmup cut (--display-warmup) and late frames. "-" with --display off
     std::size_t disp_warmup = 0, glass_raw_n = 0;
+    std::string sc_late = "-", sc_late_gap = "-", sc_gap_max = "-", sc_gaps = "-", sc_discarded = "-", sc_refresh = "-",
+                sc_late_rule = "-", sc_breaks = "-";
+    unsigned long long sc_upstream = 0;   // source frames that never reached show() (paced queue drops)
     Stats sda;                            // --input-pace source: scheduled arrival → reaches screen (same warmup cut)
 };
 
 #ifdef YVO_HAVE_DISPLAY
-DisplaySnapshot snapshot_display(const yvo::display::DisplaySink& display, const Args& a) {
+DisplaySnapshot snapshot_display(const yvo::display::DisplaySink& display, const Args& a, double src_fps) {
     DisplaySnapshot d;
-    d.sdc = stats(display.convert_ms());
     d.sdo = stats(display.overlay_ms());
     // The same first-N cut for every series: interval j ends at presentation j+1, so dropping N of each series
     // removes every sample that touches the first N presentations.
@@ -513,22 +532,48 @@ DisplaySnapshot snapshot_display(const yvo::display::DisplaySink& display, const
     d.sdd = stats(cut(display.decode_to_screen_ms()));   // pairs with glass_ms (same screen time), so the same cut
     d.presented = display.presented();
     d.disp_dropped = display.display_dropped();
-    d.recreates = display.recreates();
     d.ov_overflow = display.overlay_overflows();
     d.disp_backend = display.backend_name();
+    const yvo::display::DisplaySink::ScanoutReport rep = display.scanout_report();
+    {
+        d.sc_zero_copy = rep.zero_copy;
+        d.sc_color_ok = rep.color_ok;
+        d.sc_underrun = rep.underrun_delta >= 0 ? std::to_string(rep.underrun_delta) : std::string("unverified");
+        d.sc_ov_skipped = std::to_string(rep.overlay_skipped);
+        d.sc_cb_timeouts = std::to_string(rep.frame_cb_timeouts);
+        d.sc_zc_feedback = std::to_string(rep.zero_copy_feedback);
+        d.sc_lines = rep.lines;
+        d.sc_busy_reuse = rep.busy_reuse;
+        d.sc_feedback = rep.feedback_presented;
+        d.sc_late = rep.late_frames >= 0 ? std::to_string(rep.late_frames) : std::string("unverified");
+        d.sc_late_gap = rep.late_expected_gap > 0 ? std::to_string(rep.late_expected_gap) : std::string("unverified");
+        d.sc_gap_max = std::to_string(rep.seq_gap_max);
+        d.sc_gaps = std::to_string(rep.seq_gaps);
+        d.sc_breaks = std::to_string(rep.seq_breaks);
+        d.sc_discarded = std::to_string(rep.discarded);
+        d.sc_upstream = rep.upstream_missing;
+        char hz[160];
+        std::snprintf(hz, sizeof(hz), "%.3f", rep.refresh_hz);
+        d.sc_refresh = rep.refresh_hz > 0.0 ? std::string(hz) : std::string("unverified");
+        if (a.input_pace == InputPace::Source)   // per gap: queue-dropped source frames lengthen the normal cadence
+            std::snprintf(hz, sizeof(hz), "gap > max(1, ceil((every %d + queue drops in the gap) x %.3f Hz / %.3f fps - 0.01)), "
+                          "%d without drops", a.disp.every, rep.refresh_hz, src_fps, rep.late_expected_gap);
+        else
+            std::snprintf(hz, sizeof(hz), "gap > %d = max(1, ceil(every %d x %.3f Hz / %.3f fps - 0.01))",
+                          rep.late_expected_gap, a.disp.every, rep.refresh_hz, src_fps);
+        d.sc_late_rule = rep.late_expected_gap > 0 ? std::string(hz) : std::string("gap rule unverified: refresh unknown");
+    }
     return d;
 }
 #endif
 
 #ifdef YVO_HAVE_DISPLAY
-// The [display] start line (after [cfg]): the swapchain setup.
+// The [display] start line (after [cfg]): the plane scanout describes itself.
 void print_display_config(const Args& a, const yvo::display::DisplaySink& display, double src_fps, int hw_frames) {
-    std::printf("[display] backend=%s %ux%u %s / %s images=%u sync=%s pace=%s@%.2f every=%d hw_frames=%d\n",
-                display.backend_name(), display.extent().width,
-                display.extent().height, display.uniform_scale() ? "uniform-scale(bilinear)" : "1:1",
-                display.blit_mode() ? "blit fallback" : "compute -> storage image", display.image_count(),
-                yvo::display::sync_name(a.disp.sync), yvo::display::pace_name(a.disp.pace), src_fps, a.disp.every,
-                hw_frames);
+    std::printf("[display] backend=%s %s | sync=%s pace=%s@%.2f every=%d hw_frames=%d color_range=%s\n",
+                display.backend_name(), display.describe().c_str(), yvo::display::sync_name(a.disp.sync),
+                yvo::display::pace_name(a.disp.pace), src_fps, a.disp.every, hw_frames,
+                yvo::display::color_range_name(a.disp.color_range));
 }
 #endif
 
@@ -633,10 +678,9 @@ void print_summary(const Args& a, const RunTotals& t, const GpuPostSnapshot& g, 
                     sh.mean, sh.median, sh.p90, sh.max);
     }
     if (a.display) {
-        std::printf("disp convert ms mean %.3f  median %.3f  p90 %.3f  (display_convert.comp)\n", sdc.mean,
-                    sdc.median, sdc.p90);
-        std::printf("disp overlay ms mean %.3f  median %.3f  p90 %.3f  (overlay_boxes.comp)\n", sdo.mean, sdo.median,
-                    sdo.p90);
+        std::printf("disp convert ms -  (%s: YUV→RGB conversion is done by the HVS during scanout, V3D 0)\n", d.disp_backend);
+        std::printf("disp overlay ms mean %.3f  median %.3f  p90 %.3f  (overlay_boxes.comp + clear, box plane)\n",
+                    sdo.mean, sdo.median, sdo.p90);
     }
     if (a.display) {
         std::printf("present interval ms median %.3f  p90 %.3f  (n=%zu)\n", sdi.median, sdi.p90, sdi.n);
@@ -649,8 +693,23 @@ void print_summary(const Args& a, const RunTotals& t, const GpuPostSnapshot& g, 
                         d.sda.mean, d.sda.median, d.sda.p90, d.sda.max, d.sda.n);
         std::printf("display         presented %llu, dropped %llu, recreates %llu, overlay overflow %llu\n",
                     d.presented, d.disp_dropped, d.recreates, d.ov_overflow);
-        std::printf("display warmup  %zu presentations excluded from glass / decode-to-screen / present interval "
+        std::printf("display warmup  %zu presentations excluded from glass / decode-to-screen / present interval / late frames "
                     "(glass n %zu of %zu, glass median %s)\n", d.disp_warmup, sdg.n, d.glass_raw_n, glass_med_s.c_str());
+        {
+            std::printf("scanout         zero_copy %s, color_ok %s, hvs_underrun delta %s (debugfs verdict)\n",
+                        d.sc_zero_copy.c_str(), d.sc_color_ok.c_str(), d.sc_underrun.c_str());
+            for (const auto& l : d.sc_lines) std::printf("  debugfs %s\n", l.c_str());
+            std::printf("scanout         overlay skipped %s, frame-callback timeouts %s, busy reuse %llu, "
+                        "presentation ZERO_COPY %s/%llu\n",
+                        d.sc_ov_skipped.c_str(), d.sc_cb_timeouts.c_str(), d.sc_busy_reuse, d.sc_zc_feedback.c_str(),
+                        d.sc_feedback);
+            std::printf("scanout         late frames %s (vblank seq %s; gaps %s, max gap %s, chain breaks %s), discarded %s\n",
+                        d.sc_late.c_str(), d.sc_late_rule.c_str(), d.sc_gaps.c_str(), d.sc_gap_max.c_str(),
+                        d.sc_breaks.c_str(), d.sc_discarded.c_str());
+            if (t.paced)
+                std::printf("scanout         %llu source frames never reached the display (queue drops: not late)\n",
+                            d.sc_upstream);
+        }
     }
     std::printf("held frames max %ld (decoder limit about 13), slot timeout %ld\n", t.held_frames_max, t.slot_timeout_count);
     std::printf("detections      %ld total, %.2f / frame\n", total_dets,
@@ -678,6 +737,10 @@ void print_summary(const Args& a, const RunTotals& t, const GpuPostSnapshot& g, 
         //   display,sync,pace,disp_convert_mean,disp_convert_p90,disp_overlay_mean,present_interval_median,
         //   e2e_glass_mean,e2e_glass_p90,presented,display_dropped,recreates,held_frames_max,slot_timeout_count
         // + GPU NMS metrics are also appended **only at the end**: nms,gpu_nms_mean,gpu_nms_p90,nms_fallback,nms_verify_mismatch
+        //   (disp_convert_* and recreates are always 0: no V3D conversion and no swapchain — the columns stay for the format)
+        // + plane scanout metrics are also appended **only at the end** (all "-" with --display off):
+        //   scanout_zero_copy,plane_color_ok,hvs_underrun_delta,overlay_skipped,frame_cb_timeouts,zero_copy_feedback
+        //   (scanout_zero_copy/plane_color_ok = 1/0/unverified — judged from debugfs state; hvs_underrun_delta is unverified if it cannot be read)
         const char* sync_s = "-";
         const char* pace_s = "-";
 #ifdef YVO_HAVE_DISPLAY
@@ -688,20 +751,28 @@ void print_summary(const Args& a, const RunTotals& t, const GpuPostSnapshot& g, 
 #endif
         std::printf("RESULT_CSV2,%s,%s,%s,%.4f,%.4f,%.3f,%.2f,%.0f,%ld,%d"
                     ",%s,%s,%s,%.4f,%.4f,%.4f,%.3f,%.2f,%.2f,%llu,%llu,%llu,%ld,%ld"
-                    ",%s,%.4f,%.4f,%ld,%ld\n",
+                    ",%s,%.4f,%.4f,%ld,%ld"
+                    ",%s,%s,%s,%s,%s,%s\n",
                     a.csv_label.c_str(), a.postproc == Postproc::Gpu ? "gpu" : "host",
                     a.postproc == Postproc::Gpu ? a.postproc_alloc.c_str() : "-", sp.mean, sp.p90, sq.mean, sc.mean,
                     sc.max, g.cand_overflow, fail ? 0 : 1,
                     d.disp_backend, sync_s, pace_s, sdc.mean, sdc.p90, sdo.mean, sdi.median, sdg.mean, sdg.p90,
                     d.presented, d.disp_dropped, d.recreates, t.held_frames_max, t.slot_timeout_count,
-                    a.postproc == Postproc::Gpu ? nms_name(a.nms) : "-", sgn.mean, sgn.p90, g.nms_fb, g.nms_mismatch);
-        // Third line. label first, ok at field 7 (d2s_* follow it):
-        //   label,display_warmup,glass_median,glass_n,present_interval_p90,present_interval_n,ok,d2s_mean,d2s_median,d2s_p90,d2s_n
-        // glass_* / present_interval_* / d2s_* use the same --display-warmup cut as RESULT_CSV2's e2e_glass_* /
-        // present_interval_median (nan when nothing is left after the cut).
-        std::printf("RESULT_CSV3,%s,%zu,%s,%zu,%s,%zu,%d,%s,%s,%s,%zu\n", a.csv_label.c_str(), d.disp_warmup,
-                    glass_med_s.c_str(), sdg.n, pres_p90_s.c_str(), sdi.n, fail ? 0 : 1, d2s_mean_s.c_str(),
-                    d2s_med_s.c_str(), d2s_p90_s.c_str(), sdd.n);
+                    a.postproc == Postproc::Gpu ? nms_name(a.nms) : "-", sgn.mean, sgn.p90, g.nms_fb, g.nms_mismatch,
+                    d.sc_zero_copy.c_str(), d.sc_color_ok.c_str(), d.sc_underrun.c_str(), d.sc_ov_skipped.c_str(),
+                    d.sc_cb_timeouts.c_str(), d.sc_zc_feedback.c_str());
+        // Third line (RESULT_CSV/RESULT_CSV2 keep their field counts: display_bench.sh 59, dec_threads_bench.sh 65 and
+        // nms_bench.sh 77 columns check them). label first, ok at field 14 (d2s_* follow it):
+        //   label,display_warmup,glass_median,glass_n,present_interval_p90,present_interval_n,late_frames,late_expected_gap,
+        //   seq_gap_max,seq_gaps,seq_breaks,discarded,refresh_hz,ok,d2s_mean,d2s_median,d2s_p90,d2s_n
+        // d2s_* (decode-to-screen) are appended **after ok** (fields 1..14 keep their positions; same cut as glass_*).
+        // glass_* / present_interval_* use the same --display-warmup cut as RESULT_CSV2's e2e_glass_* / present_interval_median
+        // (nan when nothing is left after the cut). late_frames .. refresh_hz are "-" with --display off;
+        // late_frames / late_expected_gap / refresh_hz are "unverified" when there is no vblank seq, refresh or gap to judge.
+        std::printf("RESULT_CSV3,%s,%zu,%s,%zu,%s,%zu,%s,%s,%s,%s,%s,%s,%s,%d,%s,%s,%s,%zu\n", a.csv_label.c_str(), d.disp_warmup,
+                    glass_med_s.c_str(), sdg.n, pres_p90_s.c_str(), sdi.n, d.sc_late.c_str(), d.sc_late_gap.c_str(),
+                    d.sc_gap_max.c_str(), d.sc_gaps.c_str(), d.sc_breaks.c_str(), d.sc_discarded.c_str(), d.sc_refresh.c_str(),
+                    fail ? 0 : 1, d2s_mean_s.c_str(), d2s_med_s.c_str(), d2s_p90_s.c_str(), sdd.n);
         // Fourth line, --input-pace source only (field list: toolkit/result_csv.hpp).
         if (t.paced) {
             const PacedTotals& p = *t.paced;
@@ -744,21 +815,28 @@ int run(const Args& a) {
         }
     }
 
-    // ── Init order: WaylandWindow → VulkanContext → SandLetterbox → InferStage → DisplayPipeline → decoder ──
-    // ⚠ The window comes before the context: vkGetPhysicalDeviceWaylandPresentationSupportKHR requires a
-    //   wl_display* (see the chicken-and-egg note in vulkan_context.hpp). And the window must be destroyed **later**
-    //   than the context, so it is declared here (reverse destruction).
+    // ── Init order: WaylandWindow → VulkanContext → SandLetterbox → InferStage → PlaneDisplay → decoder ──
+    // The window is opened first so a missing compositor fails before the NPU/GPU are opened, and it must be destroyed
+    // **later** than the display (its wl_buffers / subsurface live on this connection), so it is declared here
+    // (reverse destruction).
     yvo::vk::VulkanContextOptions copt;
 #ifdef YVO_HAVE_DISPLAY
     yvo::display::WaylandWindow win;
     if (a.display) {
-        if (!yvo::display::DisplayPipeline::open_window(win, a.disp)) {
+        // Fullscreen window + linux-dmabuf/presentation/viewporter/color-representation globals. No Vulkan present —
+        // video is the decoder dma-buf, boxes are the OverlayPlane dma-buf.
+        yvo::display::WaylandWindowOptions wo;
+        wo.width = a.disp.width;
+        wo.height = a.disp.height;
+        wo.fullscreen = true;   // in windowed mode labwc composites with GL → the planes would not be used
+        wo.plane_globals = true;
+        wo.title = a.disp.title;
+        wo.app_id = a.disp.app_id;
+        wo.verbose = a.disp.verbose;
+        if (!win.open(wo)) {
             std::fprintf(stderr, "--display on: could not open window — %s\n", win.error().c_str());
             return 1;
         }
-        copt.enable_present = true;
-        copt.wayland_display = win.native_display();
-        copt.require_present = true;   // strict: no silent fallback (VulkanContext throws if present is unavailable)
     }
 #endif
     yvo::vk::VulkanContext ctx(copt);
@@ -806,12 +884,18 @@ int run(const Args& a) {
         }
     }
 
-    // Display path. Created **before** the decoder — extra_hw_frames depends on image_count().
+    // Display path. Created **before** the decoder (a compositor that rejects the box buffers fails before decoding).
     // The source size and fps are passed with set_source_size()/set_source_fps() after the decoder is opened.
 #ifdef YVO_HAVE_DISPLAY
-    // The pipeline holds only the DisplaySink interface (implementation: DisplayPipeline = V3D composition + swapchain).
+    // The pipeline holds only the DisplaySink interface (implementation: PlaneDisplay + WaylandPlaneScanout).
     std::unique_ptr<yvo::display::DisplaySink> display;
-    if (a.display) display = std::make_unique<yvo::display::DisplayPipeline>(ctx, win, a.disp);
+    if (a.display) {
+        yvo::display::WaylandPlaneScanoutOptions so;
+        so.color_range = a.disp.color_range;
+        so.verbose = a.disp.verbose;
+        display = std::make_unique<yvo::display::PlaneDisplay>(
+            ctx, std::make_unique<yvo::display::WaylandPlaneScanout>(win, so), a.disp);
+    }
 #endif
 
     yvo::FfmpegDrmDecoder dec;
@@ -823,12 +907,11 @@ int run(const Args& a) {
     if (paced) dopt.extra_hw_frames = std::max(8, a.gpu_depth + a.input_queue + 4);
 #ifdef YVO_HAVE_DISPLAY
     if (display) {
-        // The display holds frames longer. matched holds one per slot (= slots), latest holds one per swapchain
-        // image (= image_count) until the GPU has read it all. Plus gpu_depth and a margin of 4.
-        const int need = (a.disp.sync == yvo::display::DisplaySync::Matched
-                              ? a.slots + a.gpu_depth + 4
-                              : a.gpu_depth + static_cast<int>(display->image_count()) + 4) + (paced ? a.input_queue : 0);
-        dopt.extra_hw_frames = std::max(8, need);
+        // Margin of 4 on top of parse()'s holding count (slots + 1 + PlaneDisplay::kExtraHeldBeyondSlots + input queue).
+        // parse() already capped it at kMaxDecoderFramesHeld, so the int conversion cannot overflow.
+        const int hold = static_cast<int>(yvo::pipeline::plane_frames_held(
+            a.slots, yvo::display::PlaneDisplay::kExtraHeldBeyondSlots, paced ? a.input_queue : 0));
+        dopt.extra_hw_frames = std::max(8, hold + 4);
     }
 #endif
     if (!dec.open(a.video, dopt)) {
@@ -879,11 +962,8 @@ int run(const Args& a) {
 #ifdef YVO_HAVE_DISPLAY
     need_display_ack = display != nullptr;
 #endif
+    // Display hand-over (display_done right after show(): matched-detach) is the second slot return condition. Main thread.
     SlotExchange ex(a.slots, need_display_ack);
-#ifdef YVO_HAVE_DISPLAY
-    // Display completion (= DisplayConvert's submit fence) is the second slot return condition. Called on the main thread.
-    if (display) display->set_display_done_callback([&ex](int s) { ex.display_done(s); });
-#endif
     std::deque<int> gpu_q;  // slots in flight on the GPU (submit order)
     std::vector<double> decode_ms, gpu_ms, npu_ms, e2e_ms, wait_block_ms;
     std::unordered_map<std::int64_t, Clock::time_point> t_decoded;  // pts → decode return time
@@ -912,7 +992,7 @@ int run(const Args& a) {
     if (frame_log_on && a.frames > 0) frame_times.reserve(static_cast<std::size_t>(a.frames));
 
     // Decoder 13-frame constraint measurement: count the AVFrames we actually hold using weak_ptr.
-    // (SandLetterbox's keepalive and DisplayPipeline's retained share the same shared_ptr, so
+    // (SandLetterbox's keepalive and PlaneDisplay's retained / pending / committed frames share the same shared_ptr, so
     //  nothing is counted twice. This is the only means of detecting the "silent stall" failure mode.)
     std::deque<std::weak_ptr<void>> live_frames;
     long held_frames_max = 0, slot_timeout_count = 0;
@@ -979,8 +1059,11 @@ int run(const Args& a) {
                 char hud[64];
                 std::snprintf(hud, sizeof(hud), "FPS %4.1f DET %d NPU %3.0fms", fps_now,
                               static_cast<int>(r.detections.size()), r.latency_ms);
-                // If show() returns false the frame does not reach the screen → the slot must be returned **immediately**.
-                if (!display->show(r.slot, r.detections, hud)) ex.display_done(r.slot);
+                // matched-detach: show() takes the frame over (the display holds it until wl_buffer.release, outside
+                // the slots), so the slot is returned right away whether or not it is shown — holding it until the
+                // release deadlocks with one slot.
+                display->show(r.slot, r.detections, hud);
+                ex.display_done(r.slot);
             }
 #endif
             reorder.erase(reorder.begin());
@@ -1003,7 +1086,7 @@ int run(const Args& a) {
         ++submitted_npu;
 #ifdef YVO_HAVE_DISPLAY
         // latest: without waiting for detections, put it on screen **as soon as preprocessing finishes** (overlaying the most recent detections).
-        // Set display_done right here so the display does not extend the slot lifetime.
+        // Set display_done right here so the display does not extend the slot lifetime (same hand-over as matched).
         if (display && a.disp.sync == yvo::display::DisplaySync::Latest) {
             char hud[64];
             std::snprintf(hud, sizeof(hud), "FPS %4.1f DET %d", fps_now, static_cast<int>(latest_dets.size()));
@@ -1053,7 +1136,7 @@ int run(const Args& a) {
 #endif
     };
     // ⚠ Before the frame's keepalive is dropped. Glass-to-glass starts here (slot acquired); decode-to-screen at
-    // t_dec = decode return (includes the slot wait); src tags the presentation (present_log).
+    // t_dec = decode return (includes the slot wait); src tags the presentation (present_log, plane late frames).
     const auto retain_display = [&]([[maybe_unused]] int slot, [[maybe_unused]] const yvo::DrmFrame& f,
                                     [[maybe_unused]] Clock::time_point t_dec, [[maybe_unused]] std::int64_t src) {
 #ifdef YVO_HAVE_DISPLAY
@@ -1231,7 +1314,7 @@ int run(const Args& a) {
             //     finish_gpu()   pushes preprocessing results to the NPU so slots move to the next stage
             //     flush_results() **this is where display is issued** (matched). Omit it and only compute_done gets set,
             //                    display_done never arrives and it times out after 5 s (this actually happened)
-            //     display->pump() reclaims display fences → display_done
+            //     display->pump() compositor events (buffer releases, frame callbacks) and the next commit
             //   With --display off && --postproc host, both pumps are no-ops and flush_results was originally called every
             //   frame anyway, so it is equivalent to before.
             if (!slot) {
@@ -1307,7 +1390,7 @@ int run(const Args& a) {
     stage->drain();
     flush_results();   // the last shows of matched go out here
 #ifdef YVO_HAVE_DISPLAY
-    if (display) display->drain();   // wait for all display fences and release decoder frames / import pins
+    if (display) display->drain();   // remaining commits, take off screen, release decoder frames (bounded wait)
 #endif
     // Whether it was interrupted is decided only after the drain finishes (a signal received during the drain also counts as a stop).
     int stop_signal = 0;
@@ -1331,7 +1414,7 @@ int run(const Args& a) {
     DisplaySnapshot disp;
 #ifdef YVO_HAVE_DISPLAY
     if (display) {
-        disp = snapshot_display(*display, a);
+        disp = snapshot_display(*display, a, src_fps);
         // present_log pairs with glass_ms: the same --display-warmup cut for arrival → present; --frame-log takes all.
         std::vector<double> a2p_ms;
         const auto& plog = display->present_log();
@@ -1346,7 +1429,7 @@ int run(const Args& a) {
     }
 #endif
     // Shutdown order: drain (above) → clear import cache → decoder close → runner release (dma-buf unmap)
-    //            → display release (swapchain/window) → export fd close (FdCloser) → ctx → window
+    //            → display release (plane transport/box ring) → export fd close (FdCloser) → ctx → window
     pre.clear_import_cache();
     dec.close();
     release_stages();   // runner release → display release (release_on_exit is a no-op after this)

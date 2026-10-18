@@ -7,18 +7,8 @@
 // - Validation layer: if options.enable_validation or env var YVO_VK_VALIDATION=1, VK_LAYER_KHRONOS_validation is
 //   enabled explicitly. Even when enabled via VK_LOADER_LAYERS_ENABLE/VK_INSTANCE_LAYERS, if VK_EXT_debug_utils is visible,
 //   a messenger is registered to count errors and warnings (validation_errors()).
-//
-// ── present (display) options ──────────────────────────────────────────────────────────────────
-// With enable_present == false (default), **behavior is exactly the same as up to today**: the only instance extension is VK_EXT_debug_utils,
-// and the device extensions and queue family selection are unchanged too. Regression is judged by
-// yvo_display_probe --probe context-regression.
-//
-// Solution to the chicken-and-egg problem: vkGetPhysicalDeviceSurfaceSupportKHR requires a VkSurfaceKHR, and a surface requires a wl_display.
-// However, vkGetPhysicalDeviceWaylandPresentationSupportKHR(pd, qf, wl_display) **does not need a
-// surface.** So WaylandWindow is created before VulkanContext, and only wl_display* is passed as an opaque pointer.
-// **VulkanContext never knows about VkSurfaceKHR** — surface creation is the job of VulkanSwapchain (01_src/display).
-// For the same reason this header does not include <wayland-client.h> or vulkan_wayland.h (to avoid adding
-// dependencies to yvo_vulkan).
+// - No surface/swapchain (present) extensions: nothing presents through Vulkan. The display path puts dma-bufs on HVS
+//   planes through the compositor (01_src/display), and its boxes are drawn by a compute dispatch into an exported buffer.
 #pragma once
 
 #include <atomic>
@@ -35,13 +25,6 @@ struct VulkanContextOptions {
     bool validation_sync = false;     // synchronization validation (only with enable_validation)
     std::string device_name_hint = "V3D";
     bool verbose = false;             // print selected device info
-
-    // Requires surface/swapchain extensions + a present-capable queue. If false, the two fields below are ignored.
-    bool enable_present = false;
-    // struct wl_display* (opaque). Required when enable_present. Ownership stays with the caller (WaylandWindow).
-    void* wayland_display = nullptr;
-    // If true, throw when present cannot be enabled. If false, silently continue without present (present_enabled()==false).
-    bool require_present = false;
 };
 
 class VulkanContext {
@@ -62,23 +45,7 @@ public:
     // Queue family used for ownership transfer of external (dma-buf) resources (FOREIGN_EXT or EXTERNAL)
     std::uint32_t external_queue_family() const { return external_qf_; }
 
-    // ── present-related ──
-    // Whether present was actually enabled (enable_present was set and all required extensions and queues were available)
-    bool present_enabled() const { return present_enabled_; }
-    // Reason present could not be enabled (empty string if present_enabled()==true)
-    const std::string& present_unavailable_reason() const { return present_reason_; }
-    // Whether the selected queue family supports GRAPHICS (for deciding the graphics fallback path)
-    bool graphics_supported() const { return graphics_supported_; }
-    // VK_EXT_swapchain_maintenance1 (device). Presupposes the instance extension VK_EXT_surface_maintenance1.
-    bool has_swapchain_maintenance1() const { return swapchain_maintenance1_; }
-    // VK_EXT_surface_maintenance1 (instance). Used for the per-present-mode minImageCount query.
-    bool has_surface_maintenance1() const { return surface_maintenance1_; }
-    // VK_KHR_present_id (prerequisite of present_wait)
-    bool has_present_id() const { return present_id_; }
-    // VK_KHR_present_wait. The means to measure glass-to-glass latency rather than guess it.
-    bool has_present_wait() const { return present_wait_; }
-
-    // List of extensions actually enabled. The regression check (yvo_display_probe) prints this list as is.
+    // List of extensions actually enabled.
     const std::vector<std::string>& enabled_instance_extensions() const { return enabled_inst_exts_; }
     const std::vector<std::string>& enabled_device_extensions() const { return enabled_dev_exts_; }
 
@@ -131,13 +98,6 @@ private:
     bool dmabuf_import_dedicated_only_ = false;
     bool dmabuf_export_dedicated_only_ = false;
     bool validation_layer_active_ = false;
-    bool present_enabled_ = false;
-    bool graphics_supported_ = false;
-    bool surface_maintenance1_ = false;
-    bool swapchain_maintenance1_ = false;
-    bool present_id_ = false;
-    bool present_wait_ = false;
-    std::string present_reason_;
     std::vector<std::string> enabled_inst_exts_;
     std::vector<std::string> enabled_dev_exts_;
     std::atomic<std::uint64_t> errors_{0};
