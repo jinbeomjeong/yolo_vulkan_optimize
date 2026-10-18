@@ -1,9 +1,7 @@
-# Shared target settings: warnings, CPU flags, OpenCV, tool registration helper.
-# The root CMakeLists.txt includes this **after** find_package(OpenCV) (yvo_opencv checks OpenCV_FOUND).
+# Shared target settings: warnings, CPU flags, asset paths.
 #
 # Why consolidate in one place (2026-09-22):
 #   -mcpu=cortex-a76 was repeated 20 times via target_compile_options, and was missing from yvo_decoder and yvo_drm_dump.
-#   The 3-line OpenCV link/include/YVO_HAVE_OPENCV block was also duplicated per target.
 
 # ── Warnings ─────────────────────────────────────────────────────────────────────
 # Each target uses it via target_link_libraries(... PRIVATE yvo_warnings) (yvo_target_defaults attaches it).
@@ -36,63 +34,17 @@ function(yvo_target_defaults tgt)
   target_compile_options(${tgt} PRIVATE ${_yvo_cpu_flags})
 endfunction()
 
-# ── OpenCV ───────────────────────────────────────────────────────────────────
-# Defined only when OpenCV is present → consumers branch with if(TARGET yvo_opencv).
-# YVO_HAVE_OPENCV is not defined here: only targets that use OpenCV optionally receive that macro
-# (attaching it to targets that require OpenCV would change the #ifdef path in tool_image.hpp and thus the code).
-if(OpenCV_FOUND)
-  add_library(yvo_opencv INTERFACE)
-  target_link_libraries(yvo_opencv INTERFACE ${OpenCV_LIBS})
-  target_include_directories(yvo_opencv INTERFACE ${OpenCV_INCLUDE_DIRS})
-endif()
-
 # ── Asset paths ─────────────────────────────────────────────────────────────────
 # Gives tools/apps/tests their default input/output paths as **absolute-path compile definitions** (2026-09-22).
 # Previously CWD-relative string literals like 04_data/videos/video_h265.mp4 existed in 14 places, so they only worked when run from the repo root.
 #   YVO_REPO_ROOT      repository root (= PROJECT_SOURCE_DIR). Default tool output is YVO_REPO_ROOT "/build/out/<tool>"
 #   YVO_DEFAULT_HEF    default model
 #   YVO_DEFAULT_VIDEO  default input video
-#   YVO_FIXTURE_DIR    GPU postprocessing fixture (raw tensor) folder
 # **Libraries do not link it** — libraries do not know asset paths; the caller passes them (e.g. HailoRunnerConfig::hef_path).
 set(YVO_DEFAULT_HEF "${PROJECT_SOURCE_DIR}/03_models/yolov11m.hef" CACHE FILEPATH "Default HEF for tools/apps/tests")
 set(YVO_DEFAULT_VIDEO "${PROJECT_SOURCE_DIR}/04_data/videos/video_h265.mp4" CACHE FILEPATH "Default input video for tools/apps/tests")
-set(YVO_FIXTURE_DIR "${PROJECT_SOURCE_DIR}/04_data/raw_tensors" CACHE PATH "GPU postprocessing fixture (raw tensor) folder")
 add_library(yvo_assets INTERFACE)
 target_compile_definitions(yvo_assets INTERFACE
   YVO_REPO_ROOT="${PROJECT_SOURCE_DIR}"
   YVO_DEFAULT_HEF="${YVO_DEFAULT_HEF}"
-  YVO_DEFAULT_VIDEO="${YVO_DEFAULT_VIDEO}"
-  YVO_FIXTURE_DIR="${YVO_FIXTURE_DIR}")
-
-# ── Tool registration ─────────────────────────────────────────────────────────────────
-# yvo_add_tool(<name> <src>
-#   [REQUIRES <target>...]        if any of these is missing, the tool is not built (STATUS message only)
-#   [LIBS <lib>...]               PRIVATE link (order preserved)
-#   [DEFINES <def>...]            PRIVATE compile definitions
-#   [OPTIONAL <target>=<MACRO>...] if the target exists, link it and define <MACRO>=1 (linked after LIBS)
-# )
-# Every tool gets yvo_target_defaults and yvo_assets.
-function(yvo_add_tool name src)
-  cmake_parse_arguments(PARSE_ARGV 2 T "" "" "REQUIRES;LIBS;DEFINES;OPTIONAL")
-  foreach(req IN LISTS T_REQUIRES)
-    if(NOT TARGET ${req})
-      message(STATUS "${name}: ${req} not found — skipping")
-      return()
-    endif()
-  endforeach()
-  add_executable(${name} ${src})
-  target_link_libraries(${name} PRIVATE ${T_LIBS} yvo_assets)
-  yvo_target_defaults(${name})
-  if(T_DEFINES)
-    target_compile_definitions(${name} PRIVATE ${T_DEFINES})
-  endif()
-  foreach(opt IN LISTS T_OPTIONAL)
-    string(REPLACE "=" ";" kv "${opt}")
-    list(GET kv 0 opt_tgt)
-    list(GET kv 1 opt_macro)
-    if(TARGET ${opt_tgt})
-      target_link_libraries(${name} PRIVATE ${opt_tgt})
-      target_compile_definitions(${name} PRIVATE ${opt_macro}=1)
-    endif()
-  endforeach()
-endfunction()
+  YVO_DEFAULT_VIDEO="${YVO_DEFAULT_VIDEO}")

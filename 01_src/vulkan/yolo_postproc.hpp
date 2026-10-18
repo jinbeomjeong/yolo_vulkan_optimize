@@ -18,7 +18,8 @@
 //   class tensor = `yolo_cls_tensor(s)` = 2s,  box (DFL) tensor = `yolo_box_tensor(s)` = 2s+1.
 // This number is the tensor argument of `raw_dmabuf_fd(slot, tensor)` / `raw_host_ptr(slot, tensor)`.
 // The mapping between HailoRT stream names ↔ these numbers is decided **by the caller** when filling `YoloTensorLayout`
-// (the `scale_id`/`role` in `04_data/raw_tensors/fixtures.json` dumped by P1 carries that information).
+// (in this repository `HailoRawRunner` derives each HEF stream's scale/role from its stride and feature count and stores it
+// in `RawModelInfo::t[6]` by this numbering; `layout_from_runner()` in 01_src/pipeline/gpu_postproc_stage.cpp reads it).
 //
 // ── Descriptors (plan §4.3) ──────────────────────────────────────────────────────────────────
 // A single dispatch sees **only 3** SSBOs, `{cls_i, box_i, det}` (`maxPerStageDescriptorStorageBuffers = 8`).

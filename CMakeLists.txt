@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.25)
 project(yolo_vulkan_optimize LANGUAGES CXX)
 
 # Compiler cache: used automatically if present (silently skipped otherwise).
-#   Because of HailoRT/Vulkan/OpenCV headers, one TU expands to 70k-130k lines after preprocessing, so compiling takes 2-5 s.
+#   Because of HailoRT/Vulkan headers, one TU expands to 70k-130k lines after preprocessing, so compiling takes 2-5 s.
 #   The verify skill requires 2 full builds per stage (--clean-first + a separate build-asan/), while
 #   only 1-3 files have actually changed. ccache makes the rest take 0 s (measured 4.1 s -> 0.0 s).
 #   Even with separate build directories (build-display/ etc.) the cache is shared, so parallel work does not double the cost.
@@ -37,12 +37,8 @@ endif()
 # Required dependencies
 find_package(HailoRT REQUIRED)   # HailoRT::libhailort
 find_package(Vulkan REQUIRED)    # Vulkan::Vulkan
-find_package(OpenCV)             # ${OpenCV_LIBS}; warning only if missing
-if(NOT OpenCV_FOUND)
-  message(WARNING "OpenCV not found. Targets that use OpenCV may not be built.")
-endif()
 
-# Shared targets and helpers: yvo_warnings, YVO_CPU_FLAGS, yvo_target_defaults(), yvo_opencv, yvo_add_tool()
+# Shared targets and helpers: yvo_warnings, YVO_CPU_FLAGS, yvo_target_defaults(), yvo_assets
 include(${PROJECT_SOURCE_DIR}/cmake/YvoTargets.cmake)
 # Shader compile helper: yvo_add_shaders(<target> <shader>...)
 include(${PROJECT_SOURCE_DIR}/cmake/YvoShaders.cmake)

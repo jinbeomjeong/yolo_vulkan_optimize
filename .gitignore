@@ -16,8 +16,6 @@ __pycache__/
 # 대용량 자산 — 저장소 밖에서 관리한다
 04_data/videos/*.mp4
 03_models/*.hef
-# P1 원시 텐서 픽스처 (raw probe 도구가 생성, 약 6 MB)
-04_data/raw_tensors/
 
 # perf 원시 바이너리 덤프 (약 3.9 MB). 어느 문서도 인용하지 않는다 —
 # 분석 결과는 같은 폴더의 perf_*.txt 로 남는다.

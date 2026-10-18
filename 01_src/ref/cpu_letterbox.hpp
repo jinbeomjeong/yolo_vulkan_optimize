@@ -121,19 +121,4 @@ inline void rgb_packed_to_nhcw(const std::uint8_t* src, int w, int h, std::uint8
     }
 }
 
-// NHCW → packed RGB888 (inverse transform for visualization, e.g. saving PNGs)
-inline void nhcw_to_rgb_packed(const std::uint8_t* src, int w, int h, std::uint8_t* dst) {
-    for (int y = 0; y < h; ++y) {
-        const std::uint8_t* r = src + static_cast<std::size_t>(y) * 3 * w;
-        const std::uint8_t* g = r + w;
-        const std::uint8_t* b = g + w;
-        std::uint8_t* row = dst + static_cast<std::size_t>(y) * w * 3;
-        for (int x = 0; x < w; ++x) {
-            row[x * 3 + 0] = r[x];
-            row[x * 3 + 1] = g[x];
-            row[x * 3 + 2] = b[x];
-        }
-    }
-}
-
 } // namespace yvo

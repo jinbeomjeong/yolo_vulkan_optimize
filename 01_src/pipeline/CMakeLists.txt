@@ -1,6 +1,6 @@
 # yvo_decoder moved to 01_src/decode/ (2026-09-22).
 
-# Inference stage (InferStage implementation). **Does not depend on OpenCV** — so that 05_tests can link it.
+# Inference stage (InferStage implementation), kept as a library so that 05_tests can link it.
 #   infer_stage.hpp   : header-only (includes HostNmsStage)
 #   gpu_postproc_stage: HailoRawRunner + YoloPostproc + cpu_nms glue
 # It used to be compiled only into the yvo_pipeline executable, so tests could not link this glue.
@@ -14,9 +14,9 @@ if(TARGET yvo_vulkan AND TARGET yvo_hailo)
 endif()
 
 # Integrated app: HW decode → Vulkan letterbox → HailoRT inference (ptr/dmabuf mode)
-if(TARGET yvo_stages AND TARGET yvo_opencv)
+if(TARGET yvo_stages)
   add_executable(yvo_pipeline main.cpp)
-  target_link_libraries(yvo_pipeline PRIVATE yvo_decoder yvo_stages yvo_opencv yvo_toolkit yvo_assets)
+  target_link_libraries(yvo_pipeline PRIVATE yvo_decoder yvo_stages yvo_toolkit yvo_assets)
   yvo_target_defaults(yvo_pipeline)
   # HDMI display is a **conditional link**. yvo_display stays a separate library so that
   # wayland is not dragged into the link graph of test_preproc / yvo_preproc_bench.

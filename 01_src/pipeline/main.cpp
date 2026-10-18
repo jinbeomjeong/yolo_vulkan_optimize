@@ -3,7 +3,7 @@
 // Thread structure
 //   - Main thread: decode → acquire free slot → GPU submit → (fence-completed slot) wait → HailoRT submit.
 //   - HailoRT callback thread: pushes the result into the completion queue and returns the slot to the free list (mutex + condvar).
-//   - Result recording (JSON Lines, PNG, stats) is done by the main thread in pts order.
+//   - Result recording (stats, --frame-log times) is done by the main thread in pts order.
 // Slot contract (slot numbers shared by GPU, NPU and display, 0..slots-1) — **there are two return conditions**
 //   free → [GPU submit] → gpu queue → [SandLetterbox::wait: fence complete, AVFrame keepalive released]
 //        → [HailoRunner::submit] → [HailoRT completion callback = compute_done]
@@ -64,7 +64,6 @@
 #include <cstring>
 #include <deque>
 #include <exception>
-#include <filesystem>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -77,12 +76,6 @@
 #include <sys/resource.h>
 #include <unistd.h>
 
-#include <opencv2/core.hpp>
-#include <opencv2/imgcodecs.hpp>
-#include <opencv2/imgproc.hpp>
-
-#include "core/coco_labels.hpp"
-#include "ref/cpu_letterbox.hpp"
 #include "hailo/hailo_runner.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
 #include "pipeline/gpu_postproc_stage.hpp"
@@ -155,9 +148,6 @@ bool install_stop_handlers() {
     return ok;
 }
 
-// COCO labels and class colors are gathered in one place, core/coco_labels.hpp (shared with the GPU overlay).
-using yvo::class_name;
-
 enum class Mode { Ptr, Dmabuf };
 
 // Who does the post-processing.
@@ -187,8 +177,6 @@ struct Args {
     // Where --postproc gpu does suppression. Default gpu (efficient_nms.comp).
     yvo::pipeline::NmsBackend nms = yvo::pipeline::NmsBackend::Gpu;
     bool nms_explicit = false, layout_explicit = false, postproc_explicit = false;   // given on the command line
-    std::string dump_dir;
-    int dump_every = 100;
     bool quiet = false;
     std::string csv_label;  // if set, print one CSV line (RESULT_CSV,...) at the end
     // Decoder frame threads: 1 (07_results/dec_threads). Research knob YVO_DEC_THREADS (environment); 0 -> FFmpeg auto.
@@ -210,7 +198,7 @@ void usage(const char* a0) {
     std::fprintf(stderr,
                  "usage: %s [--video PATH] [--hef PATH] [--frames N] [--mode ptr|dmabuf] [--layout nhwc|nhcw]\n"
                  "          [--batch N] [--slots N] [--postproc host|gpu] [--postproc-alloc export|heap]\n"
-                 "          [--nms gpu|cpu|verify] [--gpu-depth N] [--score T] [--dump-dir DIR] [--dump-every K]\n"
+                 "          [--nms gpu|cpu|verify] [--gpu-depth N] [--score T]\n"
                  "          [--quiet] [--csv-label L] [--input-pace asap|source] [--input-queue N] [--frame-log PATH]\n"
                  "  --layout     preprocessing output / NPU input tensor layout (default nhcw with the default --mode dmabuf; nhwc under --mode ptr)\n"
                  "               nhcw removes HailoRT's CPU input conversion (about 14 ms/frame). --mode dmabuf only\n"
@@ -223,10 +211,8 @@ void usage(const char* a0) {
                  "  --nms        suppression location for gpu post-processing (default gpu = efficient_nms.comp, only guard frames fall back to CPU)\n"
                  "               cpu = cpu_nms_greedy_by_class, verify = run both and compare bit-exactly (output is the CPU side)\n"
                  "               --postproc gpu only\n"
-                 "  --dump-dir   detections.jsonl (one line per frame) + box PNG every K frames (on the letterbox input)\n"
                  "  --input-pace asap = decode as fast as slots free up (default). source = frames arrive at the stream\n"
-                 "               frame rate into a leaky queue (full: drop the oldest). --frames counts\n"
-                 "               arrived frames; dropped frames get no jsonl line / PNG (\"frame\" stays the source index)\n"
+                 "               frame rate into a leaky queue (full: drop the oldest). --frames counts arrived frames\n"
                  "  --input-queue N  leaky queue size for --input-pace source, 1..3 (default 1)\n"
                  "               paced cpu ms/frame and FPS are per processed frame: not comparable to asap\n"
                  "  --frame-log PATH  one CSV row per frame at the end (ms since start; dropped 1 = queue drop, 2 = abandoned)\n"
@@ -287,8 +273,11 @@ bool parse(int argc, char** argv, Args& a) {
             a.nms_explicit = true;
         }
         else if (s == "--score" && (v = next())) a.score = arg_number<float>(argv[0], s, v);
-        else if (s == "--dump-dir" && (v = next())) a.dump_dir = v;
-        else if (s == "--dump-every" && (v = next())) a.dump_every = arg_number<int>(argv[0], s, v);
+        else if (s == "--dump-dir" || s == "--dump-every") {
+            // Removed with the PNG dump (and its OpenCV dependency): say so instead of the bare usage text.
+            std::fprintf(stderr, "%s was removed: yvo_pipeline no longer writes detections.jsonl or box PNGs\n", s.c_str());
+            return false;
+        }
         else if (s == "--csv-label" && (v = next())) a.csv_label = v;
         else if (s == "--frame-log" && (v = next())) a.frame_log = v;
         else if (s == "--quiet") a.quiet = true;
@@ -341,7 +330,7 @@ bool parse(int argc, char** argv, Args& a) {
     if (lay_dn || pp_dn) std::fprintf(stderr, "note: default lowered to%s%s (nhcw needs --mode dmabuf, --postproc gpu needs dmabuf + nhcw)\n", lay_dn ? " --layout nhwc" : "", pp_dn ? " --postproc host" : "");
     a.layout = lay_dn ? yvo::TensorLayout::Nhwc : a.layout;  a.postproc = pp_dn ? Postproc::Host : a.postproc;
     if (a.slots <= 0) a.slots = std::max(4, a.batch * 2);
-    if (a.batch < 1 || a.batch > 64 || a.gpu_depth < 1 || a.dump_every < 1) return false;
+    if (a.batch < 1 || a.batch > 64 || a.gpu_depth < 1) return false;
     a.gpu_depth = std::min(a.gpu_depth, a.slots);
     if (a.input_pace == InputPace::Asap && a.input_queue_explicit) {
         std::fprintf(stderr, "--input-queue is only for --input-pace source.\n");
@@ -384,28 +373,6 @@ bool parse(int argc, char** argv, Args& a) {
 using yvo::pipeline::Completion;
 using yvo::pipeline::SlotExchange;
 
-void draw_and_save(const std::string& path, const std::vector<std::uint8_t>& rgb, const yvo::LetterboxParams& lb,
-                   const std::vector<yvo::Detection>& dets) {
-    cv::Mat m(lb.dst_h, lb.dst_w, CV_8UC3, const_cast<std::uint8_t*>(rgb.data()));
-    cv::Mat bgr;
-    cv::cvtColor(m, bgr, cv::COLOR_RGB2BGR);
-    for (const auto& d : dets) {
-        // source coordinates → letterbox coordinates
-        const int x1 = static_cast<int>(std::lround(d.x1 * lb.scale + static_cast<float>(lb.pad_x)));
-        const int y1 = static_cast<int>(std::lround(d.y1 * lb.scale + static_cast<float>(lb.pad_y)));
-        const int x2 = static_cast<int>(std::lround(d.x2 * lb.scale + static_cast<float>(lb.pad_x)));
-        const int y2 = static_cast<int>(std::lround(d.y2 * lb.scale + static_cast<float>(lb.pad_y)));
-        // class_color() returns RGB, so flip it for OpenCV (BGR). Colors are defined only in coco_labels.hpp.
-        const auto rgb_col = yvo::class_color(d.class_id);
-        const cv::Scalar color(rgb_col[2], rgb_col[1], rgb_col[0]);
-        cv::rectangle(bgr, cv::Point(x1, y1), cv::Point(x2, y2), color, 1);
-        char label[64];
-        std::snprintf(label, sizeof(label), "%s %.2f", class_name(d.class_id), static_cast<double>(d.score));
-        cv::putText(bgr, label, cv::Point(x1, std::max(10, y1 - 3)), cv::FONT_HERSHEY_SIMPLEX, 0.35, color, 1);
-    }
-    if (!cv::imwrite(path, bgr)) std::fprintf(stderr, "[warn] failed to save PNG: %s\n", path.c_str());
-}
-
 struct FdCloser {
     std::vector<int> fds;
     ~FdCloser() {
@@ -422,29 +389,6 @@ const char* nms_name(yvo::pipeline::NmsBackend b) {
         case yvo::pipeline::NmsBackend::Verify: return "verify";
     }
     return "?";
-}
-
-// detections.jsonl: one line per frame (yvo_gst_pipeline's yvohailosink writes the same line format).
-// frame = source frame index (= r.pts with --input-pace asap; with source, dropped frames leave gaps).
-void write_jsonl_line(std::FILE* fp, std::int64_t frame, const yvo::InferResult& r) {
-    std::fprintf(fp, "{\"frame\":%lld,\"detections\":[", static_cast<long long>(frame));
-    for (std::size_t i = 0; i < r.detections.size(); ++i) {
-        const auto& d = r.detections[i];
-        std::fprintf(fp, "%s{\"class\":%d,\"name\":\"%s\",\"score\":%.4f,\"box\":[%.1f,%.1f,%.1f,%.1f]}",
-                     i ? "," : "", d.class_id, class_name(d.class_id), static_cast<double>(d.score),
-                     static_cast<double>(d.x1), static_cast<double>(d.y1), static_cast<double>(d.x2),
-                     static_cast<double>(d.y2));
-    }
-    std::fprintf(fp, "]}\n");
-}
-
-// Letterbox input of a frame to dump as PNG. draw_and_save() expects packed RGB, so NHCW output is converted back.
-void copy_letterbox_rgb(const yvo::PreprocOutput& out, std::vector<std::uint8_t>& buf) {
-    buf.resize(out.size);
-    if (out.layout == yvo::TensorLayout::Nhcw)
-        yvo::nhcw_to_rgb_packed(out.host_ptr, out.lb.dst_w, out.lb.dst_h, buf.data());
-    else
-        std::memcpy(buf.data(), out.host_ptr, out.size);
 }
 
 // Option combinations parse() accepts but run() cannot serve. Returns the exit code (2), or 0 when the combination is fine.
@@ -931,17 +875,6 @@ int run(const Args& a) {
     if (display) { display->set_source_size(src_w, src_h); display->set_source_fps(src_fps); }
 #endif
 
-    std::unique_ptr<std::FILE, decltype([](std::FILE* fp) { std::fclose(fp); })> jsonl;  // closed on every exit path
-    if (!a.dump_dir.empty()) {
-        std::filesystem::create_directories(a.dump_dir);
-        const std::string p = a.dump_dir + "/detections.jsonl";
-        jsonl.reset(std::fopen(p.c_str(), "w"));
-        if (!jsonl) {
-            std::fprintf(stderr, "cannot open %s\n", p.c_str());
-            return 1;
-        }
-    }
-
     const float hailo_t0 = stage->chip_temperature();
     if (!a.quiet) {
         const std::string pp_desc = gpu_stage ? std::string("gpu/") + gpu_stage->alloc_name() : std::string("host");
@@ -968,12 +901,10 @@ int run(const Args& a) {
     std::vector<double> decode_ms, gpu_ms, npu_ms, e2e_ms, wait_block_ms;
     std::unordered_map<std::int64_t, Clock::time_point> t_decoded;  // pts → decode return time
     std::map<std::int64_t, Completion> reorder;                      // for recording in pts order
-    std::unordered_map<std::int64_t, std::vector<std::uint8_t>> png_src;  // letterbox copies of frames to dump
-    std::unordered_map<std::int64_t, yvo::LetterboxParams> png_lb;
     std::int64_t next_pts = 0;
     long submitted_npu = 0, completed = 0, total_dets = 0, errors = 0;
     // Internal pts stays the submit sequence (flush_results needs it contiguous). seq_src maps it to the source frame
-    // index for the jsonl "frame", PNG names and --dump-every. Empty with asap → identity (output unchanged).
+    // index for the --frame-log rows. Empty with asap → identity (output unchanged).
     std::vector<std::int64_t> seq_src;
     std::vector<Clock::time_point> seq_arrival;                // paced: source arrival time per submit sequence
     const auto src_of = [&seq_src](std::int64_t seq) {
@@ -1044,14 +975,6 @@ int run(const Args& a) {
                 ft.complete = c.t_done;
             }
             total_dets += static_cast<long>(r.detections.size());
-            if (jsonl) write_jsonl_line(jsonl.get(), src_of(r.pts), r);
-            if (auto it = png_src.find(r.pts); it != png_src.end()) {
-                char name[64];
-                std::snprintf(name, sizeof(name), "/frame%05lld.png", static_cast<long long>(src_of(r.pts)));
-                draw_and_save(a.dump_dir + name, it->second, png_lb[r.pts], r.detections);
-                png_src.erase(it);
-                png_lb.erase(r.pts);
-            }
 #ifdef YVO_HAVE_DISPLAY
             // Display happens after all recording is done (end of drain). In matched this is the only show point.
             if (display && a.disp.sync == yvo::display::DisplaySync::Latest) latest_dets = r.detections;
@@ -1077,10 +1000,6 @@ int run(const Args& a) {
         gpu_q.pop_front();
         yvo::PreprocOutput out = pre.wait(slot);
         if (pre.last_gpu_ms() >= 0) gpu_ms.push_back(pre.last_gpu_ms());
-        if (jsonl && src_of(out.pts) % a.dump_every == 0) {
-            copy_letterbox_rgb(out, png_src[out.pts]);
-            png_lb[out.pts] = out.lb;
-        }
         if (dmabuf) out.dmabuf_fd = slot_fd[static_cast<std::size_t>(slot)];
         stage->submit(out, on_result);
         ++submitted_npu;
@@ -1433,7 +1352,6 @@ int run(const Args& a) {
     pre.clear_import_cache();
     dec.close();
     release_stages();   // runner release → display release (release_on_exit is a no-op after this)
-    jsonl.reset();   // fclose: same flush point as before
     const double soc_t1 = soc_temperature();
 
     if (static_cast<long>(completed) != n || static_cast<long>(completed) != submitted_npu) {

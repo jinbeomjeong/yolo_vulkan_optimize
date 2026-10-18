@@ -38,7 +38,7 @@ std::size_t dmabuf_size(int fd) {
 }
 
 // Metadata the runner read from the HEF → geometry and quantization parameters used by the shader.
-// Both sides use the same tensor numbering: cls(s) = 2s, box(s) = 2s+1.  **Does not read fixtures.json.**
+// Both sides use the same tensor numbering: cls(s) = 2s, box(s) = 2s+1.
 yvo::vk::YoloTensorLayout layout_from_runner(const yvo::RawModelInfo& info) {
     yvo::vk::YoloTensorLayout L;
     L.num_classes = info.num_classes;
