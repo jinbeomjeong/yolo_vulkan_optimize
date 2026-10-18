@@ -16,46 +16,6 @@ double ms_between(Clock::time_point a, Clock::time_point b) {
     return std::chrono::duration<double, std::milli>(b - a).count();
 }
 
-// Adapts VulkanSwapchain to the DisplayBackend interface. All logic lives in VulkanSwapchain;
-// this only forwards the names (if wayland is absent at build time, this file itself is not built).
-class SwapchainBackend final : public DisplayBackend {
-public:
-    SwapchainBackend(yvo::vk::VulkanContext& ctx, const SwapchainOptions& opt) : sc_(ctx, opt) {}
-
-    void create(int w, int h) { sc_.create(w, h); }
-
-    bool acquire(SwapchainFrame* out) override { return sc_.acquire(out); }
-    void record_acquire_transition(VkCommandBuffer cb, const SwapchainFrame& f) const override {
-        sc_.record_acquire_transition(cb, f);
-    }
-    void record_present_transition(VkCommandBuffer cb, const SwapchainFrame& f) const override {
-        sc_.record_present_transition(cb, f);
-    }
-    void present(const SwapchainFrame& f) override { (void)sc_.present(f); }
-
-    bool needs_recreate() const override { return sc_.needs_recreate(); }
-    void request_recreate(int w, int h) override { sc_.request_recreate(w, h); }
-    void recreate(int w, int h) override { sc_.create(w, h); }
-    void collect_retired() override { sc_.collect_retired(); }
-
-    VkExtent2D extent() const override { return sc_.extent(); }
-    std::uint32_t image_count() const override { return sc_.image_count(); }
-    bool blit_mode() const override { return sc_.blit_mode(); }
-
-    bool present_wait_available() const override { return sc_.present_wait_available(); }
-    bool wait_present(std::uint64_t id, std::uint64_t timeout_ns) override {
-        return sc_.wait_present(id, timeout_ns);
-    }
-
-    std::uint64_t presented() const override { return sc_.presented(); }
-    std::uint64_t display_dropped() const override { return sc_.display_dropped(); }
-    std::uint64_t recreates() const override { return sc_.swapchain_recreates(); }
-    const char* name() const override { return "wayland"; }
-
-private:
-    VulkanSwapchain sc_;
-};
-
 } // namespace
 
 const char* sync_name(DisplaySync s) { return s == DisplaySync::Latest ? "latest" : "matched"; }
@@ -64,29 +24,6 @@ const char* pace_name(DisplayPace p) {
     case DisplayPace::Source: return "source";
     case DisplayPace::Asap: return "asap";
     default: return "none";
-    }
-}
-bool parse_backend_kind(const std::string& s, DisplayBackendKind* out) {
-    if (s == "auto") *out = DisplayBackendKind::Auto;
-    else if (s == "wayland") *out = DisplayBackendKind::Wayland;
-    else if (s == "offscreen") *out = DisplayBackendKind::Offscreen;
-    else if (s == "wayland-planes") *out = DisplayBackendKind::WaylandPlanes;
-    else if (s == "kms") *out = DisplayBackendKind::Kms;
-    else return false;
-    return true;
-}
-bool parse_color_range(const std::string& s, ColorRangeRequest* out) {
-    if (s == "auto") *out = ColorRangeRequest::Auto;
-    else if (s == "full") *out = ColorRangeRequest::Full;
-    else if (s == "limited") *out = ColorRangeRequest::Limited;
-    else return false;
-    return true;
-}
-const char* color_range_name(ColorRangeRequest r) {
-    switch (r) {
-    case ColorRangeRequest::Full: return "full";
-    case ColorRangeRequest::Limited: return "limited";
-    default: return "auto";
     }
 }
 bool parse_display_sync(const std::string& s, DisplaySync* out) {
@@ -104,7 +41,6 @@ bool parse_display_pace(const std::string& s, DisplayPace* out) {
 }
 
 bool DisplayPipeline::open_window(WaylandWindow& win, const DisplayPipelineConfig& cfg) {
-    if (cfg.backend == DisplayBackendKind::Offscreen) return false;
     WaylandWindowOptions wo;
     wo.width = cfg.width;
     wo.height = cfg.height;
@@ -115,40 +51,26 @@ bool DisplayPipeline::open_window(WaylandWindow& win, const DisplayPipelineConfi
     return win.open(wo);
 }
 
-DisplayPipeline::DisplayPipeline(yvo::vk::VulkanContext& ctx, WaylandWindow* win,
+DisplayPipeline::DisplayPipeline(yvo::vk::VulkanContext& ctx, WaylandWindow& win,
                                  const DisplayPipelineConfig& cfg)
     : ctx_(ctx), cfg_(cfg) {
-    if (cfg_.backend == DisplayBackendKind::WaylandPlanes || cfg_.backend == DisplayBackendKind::Kms)
-        throw std::logic_error("DisplayPipeline: wayland-planes / kms are handled by PlaneDisplay (plane_display.hpp)");
-    const bool want_wayland = cfg_.backend != DisplayBackendKind::Offscreen;
-    const bool can_wayland = want_wayland && win != nullptr && win->is_open() && ctx_.present_enabled();
-    if (cfg_.backend == DisplayBackendKind::Wayland && !can_wayland) {
+    if (!win.is_open() || !ctx_.present_enabled()) {
         // strict: silent fallback is forbidden (the only way to keep measurements from quietly leaking onto another path).
-        std::string why = win == nullptr || !win->is_open() ? "could not open the Wayland window"
-                                                            : ctx_.present_unavailable_reason();
-        throw std::runtime_error("--display-backend wayland: " + (why.empty() ? std::string("present unavailable") : why));
+        std::string why = !win.is_open() ? "could not open the Wayland window" : ctx_.present_unavailable_reason();
+        throw std::runtime_error("--display on: " + (why.empty() ? std::string("present unavailable") : why));
     }
 
-    if (can_wayland) {
-        win_ = win;
-        SwapchainOptions so;
-        so.wayland_display = win_->native_display();
-        so.wayland_surface = win_->native_surface();
-        so.width = win_->width();
-        so.height = win_->height();
-        so.present_mode = cfg_.present_mode;
-        so.force_blit = cfg_.force_blit;
-        so.verbose = cfg_.verbose;
-        auto sb = std::make_unique<SwapchainBackend>(ctx_, so);
-        sb->create(win_->width(), win_->height());
-        backend_ = std::move(sb);
-    } else {
-        offscreen_ = true;
-        // Offscreen has no window, so the requested size is used as-is. fullscreen means 1920x1080.
-        const int w = cfg_.fullscreen ? cfg_.src_w : cfg_.width;
-        const int h = cfg_.fullscreen ? cfg_.src_h : cfg_.height;
-        backend_ = std::make_unique<OffscreenBackend>(ctx_, w, h, 3);
-    }
+    win_ = &win;
+    SwapchainOptions so;
+    so.wayland_display = win_->native_display();
+    so.wayland_surface = win_->native_surface();
+    so.width = win_->width();
+    so.height = win_->height();
+    so.present_mode = cfg_.present_mode;
+    so.force_blit = cfg_.force_blit;
+    so.verbose = cfg_.verbose;
+    swapchain_ = std::make_unique<VulkanSwapchain>(ctx_, so);
+    swapchain_->create(win_->width(), win_->height());
 
     retained_.resize(static_cast<std::size_t>(std::max(cfg_.num_slots, 1)));
     pace_blocking_ok_ = cfg_.pace != DisplayPace::Asap;
@@ -163,22 +85,22 @@ DisplayPipeline::~DisplayPipeline() {
     }
     conv_.reset();
     ov_.reset();
-    backend_.reset();
+    swapchain_.reset();
 }
 
 void DisplayPipeline::build_passes() {
-    const VkExtent2D ext = backend_->extent();
+    const VkExtent2D ext = swapchain_->extent();
     uniform_scale_ = !(static_cast<int>(ext.width) == cfg_.src_w && static_cast<int>(ext.height) == cfg_.src_h &&
                        (cfg_.src_w % 4) == 0);
 
     DisplayConvertConfig cc;
-    cc.num_slots = static_cast<int>(backend_->image_count());
+    cc.num_slots = static_cast<int>(swapchain_->image_count());
     cc.uniform_scale = uniform_scale_;
     cc.max_dst_w = std::max<int>(static_cast<int>(ext.width), 1920);
     conv_ = std::make_unique<DisplayConvert>(ctx_, cc);
 
     OverlayConfig oc;
-    oc.num_slots = static_cast<int>(backend_->image_count());
+    oc.num_slots = static_cast<int>(swapchain_->image_count());
     oc.max_dets = cfg_.max_dets;
     oc.line_width = cfg_.overlay_line_width;
     oc.text_scale = cfg_.overlay_text_scale;
@@ -186,11 +108,11 @@ void DisplayPipeline::build_passes() {
 }
 
 void DisplayPipeline::apply_extent() {
-    const VkExtent2D ext = backend_->extent();
+    const VkExtent2D ext = swapchain_->extent();
     const bool us = !(static_cast<int>(ext.width) == cfg_.src_w && static_cast<int>(ext.height) == cfg_.src_h &&
                       (cfg_.src_w % 4) == 0);
     // If the image count grew or the window grew beyond the LUT upper bound, rebuild the passes (in-flight is already empty).
-    const bool rebuild = static_cast<int>(backend_->image_count()) > conv_->num_slots() ||
+    const bool rebuild = static_cast<int>(swapchain_->image_count()) > conv_->num_slots() ||
                          static_cast<int>(ext.width) > conv_->config().max_dst_w;
     if (rebuild) {
         conv_.reset();
@@ -235,17 +157,16 @@ std::optional<Clock::time_point> DisplayPipeline::pace_deadline(std::int64_t fra
 }
 
 bool DisplayPipeline::poll_window() {
-    if (!win_) return true;
     const bool ok = win_->poll();
     int nw = 0, nh = 0;
-    if (win_->take_pending_size(&nw, &nh)) backend_->request_recreate(nw, nh);
+    if (win_->take_pending_size(&nw, &nh)) swapchain_->request_recreate(nw, nh);
     return ok && !win_->should_close() && !win_->quit_requested();
 }
 
-bool DisplayPipeline::quit_requested() const { return win_ && win_->quit_requested(); }
+bool DisplayPipeline::quit_requested() const { return win_->quit_requested(); }
 
 void DisplayPipeline::recreate_if_needed() {
-    if (!backend_->needs_recreate()) return;
+    if (!swapchain_->needs_recreate()) return;
     // No submission referencing the old swapchain's images/semaphores may remain → finish everything (blocking).
     while (!inflight_.empty()) {
         const Pending p = inflight_.front();
@@ -254,9 +175,7 @@ void DisplayPipeline::recreate_if_needed() {
     }
     present_ids_.clear();
     have_last_present_ = false;
-    const int w = win_ ? win_->width() : static_cast<int>(backend_->extent().width);
-    const int h = win_ ? win_->height() : static_cast<int>(backend_->extent().height);
-    backend_->recreate(w, h);
+    swapchain_->create(win_->width(), win_->height());
     apply_extent();
 }
 
@@ -279,32 +198,31 @@ bool DisplayPipeline::show(int slot, const std::vector<Detection>& dets, std::st
     }
 
     // ⚠ Collect finished display slots **before acquire()**.
-    //   The backend's acquire() does `vkResetFences` on that slot's submit fence before handing the slot out
-    //   (VulkanSwapchain::acquire / OffscreenBackend::acquire). But `DisplayConvert::finish` waits
-    //   indefinitely on that **same fence** → finishing after acquire waits forever on an already-reset fence.
-    //   (It actually deadlocked on the offscreen backend. The swapchain path had the same risk in principle.)
-    //   The backend hands out the **oldest** slot round-robin and inflight_ is also in submit order, so if
+    //   VulkanSwapchain::acquire() does `vkResetFences` on that slot's submit fence before handing the slot out.
+    //   But `DisplayConvert::finish` waits indefinitely on that **same fence** → finishing after acquire waits
+    //   forever on an already-reset fence (it actually deadlocked on a former headless backend that shared this loop).
+    //   The swapchain hands out the **oldest** slot round-robin and inflight_ is also in submit order, so if
     //   finished entries are cleared from the front, the slot acquire hands out is guaranteed to be free.
     while (!inflight_.empty() && conv_->ready(inflight_.front().disp)) {
         const Pending p = inflight_.front();
         inflight_.pop_front();
         collect(p);
     }
-    if (inflight_.size() >= backend_->image_count()) {
+    if (inflight_.size() >= swapchain_->image_count()) {
         // All display slots are still tied up on the GPU. **Drop without waiting** — display must not block the pipeline.
         ++busy_dropped_;
         return false;
     }
 
     SwapchainFrame fr;
-    if (!backend_->acquire(&fr)) return false;   // ★ dropping the display does not block the pipeline
+    if (!swapchain_->acquire(&fr)) return false;   // ★ dropping the display does not block the pipeline
     const int d = static_cast<int>(fr.sync_index);
     if (conv_->pending(d))
         throw std::logic_error("DisplayPipeline::show: acquire handed out a display slot that is still being submitted "
                                "(the invariant above is broken — stop here rather than deadlock silently)");
 
     VkCommandBuffer cb = conv_->begin(d);
-    backend_->record_acquire_transition(cb, fr);
+    swapchain_->record_acquire_transition(cb, fr);
     conv_->record(d, frame, fr.target_view, fr.extent);
     if (ov_) {
         ov_->set_frame(d, dets, hud);
@@ -314,9 +232,9 @@ bool DisplayPipeline::show(int slot, const std::vector<Detection>& dets, std::st
                                         static_cast<int>(fr.extent.height)),
                     true);
     }
-    backend_->record_present_transition(cb, fr);
+    swapchain_->record_present_transition(cb, fr);
     conv_->end_and_submit(d, fr.wait_semaphore, fr.signal_semaphore, fr.submit_fence);
-    backend_->present(fr);
+    (void)swapchain_->present(fr);
 
     Pending p;
     p.disp = d;
@@ -341,7 +259,7 @@ void DisplayPipeline::collect(const Pending& p) {
 }
 
 void DisplayPipeline::drain_present_waits(bool blocking) {
-    if (!backend_ || !backend_->present_wait_available()) {
+    if (!swapchain_ || !swapchain_->present_wait_available()) {
         present_ids_.clear();
         return;
     }
@@ -349,13 +267,13 @@ void DisplayPipeline::drain_present_waits(bool blocking) {
         // Non-blocking is the default. Waiting via present_wait with pace=asap **ties the throughput measurement to vsync.**
         // With pace=source (or drain) it blocks only when the queue reaches the same length as the probe, to give the same numbers
         // (same as the image_count-1 rule at display_probe.cpp:1201).
-        const bool deep = present_ids_.size() >= std::max<std::size_t>(backend_->image_count() - 1, 1);
+        const bool deep = present_ids_.size() >= std::max<std::size_t>(swapchain_->image_count() - 1, 1);
         const bool block = blocking || (pace_blocking_ok_ && deep);
         const std::uint64_t timeout = block ? 1000ull * 1000 * 1000 : 0;
         const PresentWait w = present_ids_.front();
-        if (!backend_->wait_present(w.id, timeout)) {
+        if (!swapchain_->wait_present(w.id, timeout)) {
             // If non-blocking polling keeps failing while the queue only grows (drops/recreation), give up measuring and drop.
-            if (!block && present_ids_.size() > backend_->image_count() + 4) {
+            if (!block && present_ids_.size() > swapchain_->image_count() + 4) {
                 present_ids_.pop_front();
                 continue;
             }
@@ -375,18 +293,18 @@ void DisplayPipeline::drain_present_waits(bool blocking) {
 }
 
 void DisplayPipeline::pump() {
-    if (!conv_ || !backend_) return;
+    if (!conv_ || !swapchain_) return;
     while (!inflight_.empty() && conv_->ready(inflight_.front().disp)) {
         const Pending p = inflight_.front();
         inflight_.pop_front();
         collect(p);
     }
     drain_present_waits(false);
-    backend_->collect_retired();
+    swapchain_->collect_retired();
 }
 
 void DisplayPipeline::drain() {
-    if (!conv_ || !backend_) return;
+    if (!conv_ || !swapchain_) return;
     while (!inflight_.empty()) {
         const Pending p = inflight_.front();
         inflight_.pop_front();
@@ -396,7 +314,7 @@ void DisplayPipeline::drain() {
     // Release frames that were held without being displayed yet (the caller has already reclaimed the slots).
     for (Retained& r : retained_) r = Retained{};
     conv_->clear_import_cache();
-    backend_->collect_retired();
+    swapchain_->collect_retired();
 }
 
 int DisplayPipeline::frames_held() const {

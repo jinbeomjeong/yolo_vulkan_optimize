@@ -53,13 +53,7 @@ class VulkanContext;
 
 namespace yvo::display {
 
-// Output target. Image = rgba8 storage image (overlay_boxes.spv, composited path). Buffer = packed RGBA8 storage
-// buffer (overlay_boxes_buf.spv, dma-buf for the HVS overlay plane — because V3D does not support LINEAR RGBA8 storage images;
-// see overlay_plane.hpp). One OverlayRenderer uses only one kind of target (pipeline and layout differ).
-enum class OverlayTarget { Image, Buffer };
-
 struct OverlayConfig {
-    OverlayTarget target = OverlayTarget::Image;
     int num_slots = 3;            // in-flight count (= swapchain image count, same as DisplayConvert)
     int max_dets = 80;            // upper bound of DetBuf dets[] (plan §5.4)
     // Workgroup size (spec constant). One workgroup per detection, so only x is used.
@@ -83,15 +77,6 @@ struct OverlayPush {
     std::uint32_t max_dets;
 };
 static_assert(sizeof(OverlayPush) == 32, "push constant layout must match shader");
-
-// push constant of the buffer variant (YVO_OVERLAY_BUFFER): two fields are appended after OverlayPush.
-struct OverlayPushBuf {
-    OverlayPush base;
-    std::int32_t dst_pitch;       // row stride (in pixels = uint32 words)
-    std::uint32_t erase;          // 1 = write (0,0,0,0) over the same pixel set
-};
-static_assert(sizeof(OverlayPushBuf) == 40, "buffer-variant push constant layout must match shader");
-static_assert(offsetof(OverlayPushBuf, dst_pitch) == 32, "dst_pitch offset must match shader");
 
 // DetBuf header (std430). Must match the front of the shader's DetBuf byte for byte.
 //   dispatch 0..11 / count 12 / overflow 16 / text_bytes 20 / text[32] 24..151 / dets[] 152..
@@ -135,17 +120,8 @@ public:
     int set_frame(int slot, const std::vector<Detection>& dets, std::string_view hud = {});
 
     // Continues recording into the same command buffer. affine is the result of make_overlay_affine(src, dst).
-    // (target == Image only)
     void record(int slot, VkCommandBuffer cb, VkImageView dst_view, VkExtent2D dst_extent,
                 const OverlayAffine& affine, bool barrier_prior_compute_write = true);
-
-    // (target == Buffer only) Draws into a packed RGBA8 buffer. pitch_px = byte pitch / 4.
-    // dst_offset must be a multiple of minStorageBufferOffsetAlignment. If erase = true, writes (0,0,0,0) over the pixel set that
-    // this slot's **current DetBuf content** would draw — with the same input and same affine the pixel set is deterministic, so it is cleared exactly.
-    // barrier_prior_compute_write is the same as record() (a global barrier that breaks WAW with a preceding compute write).
-    void record_buffer(int slot, VkCommandBuffer cb, VkBuffer dst, VkDeviceSize dst_offset, VkDeviceSize dst_range,
-                       VkExtent2D dst_extent, std::uint32_t pitch_px, const OverlayAffine& affine,
-                       bool barrier_prior_compute_write, bool erase = false);
 
     // Call after the submit fence completes — reads the timestamp (does not wait).
     void collect(int slot);
@@ -169,7 +145,7 @@ private:
     };
 
     void create_pipeline();
-    // common to record/record_buffer: DetBuf barrier (+ optional WAW barrier) → bind → push → timestamp → dispatch
+    // DetBuf barrier (+ optional WAW barrier) → bind → push → timestamp → dispatch
     void record_dispatch(int slot, VkCommandBuffer cb, const void* push, std::uint32_t push_size,
                          bool barrier_prior_compute_write);
     void create_font_buffer();

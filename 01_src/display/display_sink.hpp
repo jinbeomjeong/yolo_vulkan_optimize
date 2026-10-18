@@ -1,12 +1,7 @@
 // DisplaySink: public API of the display layer as seen by the pipeline (pure virtual interface).
 //
-// The pipeline (main.cpp) holds only this interface. Two implementations are intended.
-//   · `DisplayPipeline` — V3D composition (display_convert.comp + overlay_boxes.comp) → Vulkan swapchain/offscreen.
-//   · `PlaneDisplay` (plane_display.hpp) — plane scanout. Puts the decoder NV12 SAND dma-buf on the HVS video plane and the GPU-drawn
-//     boxes (OverlayPlane, AB24 dma-buf) on the HVS overlay plane (transport: WaylandPlaneScanout = Wayland linux-dmabuf, KmsScanout = KMS atomic).
-//
-// `DisplayBackend` (offscreen_backend.hpp) is an interface one level lower that "hands out the VkImage to draw into", so plane
-// scanout does not fit it. Hence the polymorphism seam is placed at the `show()` level.
+// The pipeline (main.cpp) holds only this interface. The one implementation is
+//   · `DisplayPipeline` — V3D composition (display_convert.comp + overlay_boxes.comp) → Vulkan swapchain on a Wayland window.
 //
 // ── Contract (what implementations must honor) ─────────────────────────────────────────────────
 //   · All slot arguments are **pipeline slots** (0..num_slots-1). Do not mix them with the implementation's internal display slots.
@@ -21,7 +16,6 @@
 #include <cstdint>
 #include <functional>
 #include <optional>
-#include <string>
 #include <string_view>
 #include <vector>
 
@@ -53,9 +47,7 @@ public:
     virtual void retain(int slot, const DrmFrame& f, Clock::time_point t_decoded) = 0;
 
     // Optional, right after retain(): the source frame index of the frame retained in this slot. It tags the
-    // presentation in present_log(), and on the plane paths it tells source frames that never reached show() (dropped
-    // upstream by --input-pace source's leaky queue) apart from late frames. Not called = -1 (unknown: no tag, and the
-    // late-frame rule treats the frames as consecutive — the rule before this existed).
+    // presentation in present_log(). Not called = -1 (unknown: no tag).
     virtual void set_source_index(int slot, std::int64_t src_index) = 0;
 
     // Presents one frame. false = display drop (caller calls display_done immediately).
@@ -101,40 +93,10 @@ public:
     // ── Statistics (Vulkan composition path only — default 0/empty) ──
     virtual std::uint64_t recreates() const { return 0; }
     virtual std::uint32_t image_count() const { return 0; }
-    virtual bool offscreen() const { return false; }
     virtual bool uniform_scale() const { return false; }
     virtual bool blit_mode() const { return false; }
     virtual const std::vector<double>& convert_ms() const { return empty_series(); }
     virtual const std::vector<double>& convert_total_ms() const { return empty_series(); }
-
-    // ── Plane scanout only (default: not applicable) ──
-    // Description appended after the start line `[display] backend=...`. If empty, the caller prints it in the Vulkan path format.
-    virtual std::string describe() const { return {}; }
-    struct ScanoutReport {
-        bool applicable = false;           // false = not applicable to this path ("-" in CSV)
-        std::string zero_copy = "-";       // debugfs judgement: "1" / "0" / "unverified"
-        std::string color_ok = "-";        // video plane COLOR_ENCODING BT.709 && COLOR_RANGE limited
-        long long underrun_delta = -1;     // hvs_underrun end - start (-1 = unreadable)
-        std::uint64_t overlay_skipped = 0; // number of box updates skipped because the box ring was empty (all held by GPU/compositor)
-        std::uint64_t frame_cb_timeouts = 0; // number of times waiting for the wl_surface.frame callback timed out and we committed anyway
-        std::uint64_t zero_copy_feedback = 0; // number of presentations with the wp_presentation ZERO_COPY flag set
-        std::uint64_t feedback_presented = 0; // number of presented feedbacks
-        std::uint64_t busy_reuse = 0;      // number of attempts to re-attach a buffer still held by the compositor (must be 0)
-        std::vector<std::string> lines;    // judgement lines printed verbatim in the summary (debugfs excerpt)
-        std::vector<std::string> transport_lines;   // transport-specific lines (kms: flip_timeouts·master_lost·restore result at exit)
-        std::string fatal;                 // unrecoverable transport error ("" = none) — the run is treated as failed
-        // Late frames from the vblank counter (kms page-flip seq / wp_presentation seq). Gaps touching the first
-        // DisplayPipelineConfig::warmup presentations are skipped (same rule as the glass / present-interval series).
-        std::uint64_t discarded = 0;       // wp_presentation.discarded count (replaced before reaching the screen; kms 0)
-        // seq gaps > the gap's threshold = late_gap_threshold(every, source frames dropped upstream inside that gap, …)
-        // (-1 = no seq / refresh / gap left: unverified). Without upstream drops every threshold is late_expected_gap.
-        long long late_frames = -1;
-        std::uint64_t upstream_missing = 0;   // source frames that never reached show() (set_source_index gaps)
-        std::uint64_t seq_gaps = 0, seq_gap_max = 0, seq_breaks = 0;   // evaluated gaps / largest (vblanks) / chain breaks
-        int late_expected_gap = 0;         // largest normal gap = max(1, ceil(every*refresh_hz/source_fps - 0.01)); 0 = unknown
-        double refresh_hz = 0.0;           // output refresh reported by the transport (0 = unknown)
-    };
-    virtual ScanoutReport scanout_report() const { return {}; }
 
 protected:
     static const std::vector<double>& empty_series() {

@@ -6,7 +6,7 @@
 #     (array name: k<CamelName>Spv, e.g. sand_letterbox.comp -> kSandLetterboxSpv)
 #   - <target> is an INTERFACE library. Linking it adds generated/ to the include path and guarantees build order.
 #   - variants: writing "<src>.comp@<out_name>@<DEF1>[,<DEF2>...]" compiles the same source once more with -D<DEF>
-#     and produces <out_name>.spv / <out_name>_spv.h (e.g. overlay_boxes.comp@overlay_boxes_buf@YVO_OVERLAY_BUFFER).
+#     and produces <out_name>.spv / <out_name>_spv.h (e.g. foo.comp@foo_alt@YVO_FOO_ALT). No entry uses it at present.
 #     Definitions whose value contains a comma (FOO=a,b) cannot be expressed.
 find_program(YVO_GLSLC glslc REQUIRED)
 find_program(YVO_SPIRV_VAL spirv-val REQUIRED)

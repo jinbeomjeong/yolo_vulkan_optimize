@@ -142,36 +142,11 @@ private:
 // The decoder **stalls without an error** when more than about 13 frames are held at once; we block at 10 for a margin.
 inline constexpr int kMaxDecoderFramesHeld = 10;
 
-// Which display path decides how long decoder frames are held.
-enum class SlotBudgetPath {
-    Composite,       // Vulkan composition (DisplayPipeline): slots + gpu_depth
-    WaylandPlanes,   // PlaneDisplay over Wayland linux-dmabuf: slots + 1 (+ extra_held_beyond_slots when latest)
-    Kms,             // PlaneDisplay over KMS atomic: same rule as WaylandPlanes
-};
-
-// Decoder frames held at once on the plane paths (WaylandPlanes / Kms): slots + 1 (one decoded frame awaiting a slot),
-// plus extra_held_beyond_slots with latest_sync, plus input_queue frames waiting in --input-pace source's leaky queue
-// (0 with asap). Shared by validate_slot_budget() and yvo_pipeline's extra_hw_frames.
-// long long so absurd --slots values cannot overflow int.
-inline long long plane_frames_held(bool latest_sync, int slots, int extra_held_beyond_slots, int input_queue = 0) {
-    return static_cast<long long>(slots) + 1 + (latest_sync ? extra_held_beyond_slots : 0) + input_queue;
-}
-
-// Lower bound on the plane paths with matched sync. The frame on screen keeps its slot until the transport releases
-// it, and that happens only once a newer frame has been committed (KMS: on the next flip, kms_scanout.cpp handle_flip;
-// Wayland: wl_buffer.release after the next buffer replaces it). That newer frame needs a slot of its own, so with
-// one slot nothing ever releases it (slot wait timeout after 5 s). Two always progress: the on-screen frame's release
-// needs only one more commit. latest returns the slot right after show(); Composite on the submit fence → 1 is fine.
-inline constexpr int kMinPlaneMatchedSlots = 2;
-
 // Startup gate, called by yvo_pipeline parse() only when --display is on. Returns "" when the budget fits,
 // otherwise the complete stderr message (same text as the check that used to be inline in parse()).
-// extra_held_beyond_slots is PlaneDisplay::kExtraHeldBeyondSlots, passed in so pipeline/ does not need display/ here.
-// gpu_depth is used only by Composite; extra_held_beyond_slots only by the plane paths with latest_sync.
+// Vulkan composition (DisplayPipeline) holds slots + gpu_depth decoder frames.
 // input_queue = --input-queue N with --input-pace source (0 with asap): the queued decoded frames are held on top of
-// the asap count on every path. 0 keeps the asap messages byte for byte.
-// Plane paths with matched sync also need slots >= kMinPlaneMatchedSlots (checked before the upper bound).
-std::string validate_slot_budget(SlotBudgetPath path, bool latest_sync, int slots, int gpu_depth,
-                                 int extra_held_beyond_slots, int input_queue = 0);
+// the asap count. 0 keeps the asap message byte for byte.
+std::string validate_slot_budget(int slots, int gpu_depth, int input_queue = 0);
 
 } // namespace yvo::pipeline
