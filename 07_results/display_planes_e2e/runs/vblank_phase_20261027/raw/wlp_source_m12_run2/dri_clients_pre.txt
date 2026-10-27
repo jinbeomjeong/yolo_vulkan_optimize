@@ -1,0 +1,8 @@
+             command  tgid dev master a   uid      magic                                                             name                   id
+      systemd-logind   731   1   y    y     0          0                                                          <unset>                    9
+               labwc  1172   1   n    n  1000          0                                                          <unset>                   10
+               labwc  1172   1   y    y  1000          0                                                          <unset>                   15
+            Xwayland  1462   1   n    n  1000          1                                                          <unset>                   19
+            Xwayland  1462   1   n    n  1000          0                                                          <unset>                   22
+            ibus-x11  1450   1   n    n  1000          2                                                          <unset>                   23
+        ibus-ui-gtk3  1445   1   n    n  1000          3                                                          <unset>                   24

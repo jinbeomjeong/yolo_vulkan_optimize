@@ -1,0 +1,40 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[hevc @ 0x5556391c6160] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media0,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[scanout] debugfs start (presented 60): active=3 video=plane[83] NV12/SAND128 zpos=0 enc='ITU-R BT.709 YCbCr' range='YCbCr limited range' | boxes=plane[107] AB24 zpos=1 | hvs_underrun=0
+[scanout] debugfs end (presented 900): active=3 video=plane[83] NV12/SAND128 zpos=0 enc='ITU-R BT.709 YCbCr' range='YCbCr limited range' | boxes=plane[107] AB24 zpos=1 | hvs_underrun=0
+== yvo_pipeline (dmabuf, nhcw, batch 2, slots 6, gpu_depth 3, postproc gpu/export) ==
+frames          900 (decoded 900, errors 0)
+wall            30.114 s, 29.89 FPS
+cpu             1.949 ms/frame (process user+sys 1754.5 ms, 6% of one core)
+decode call ms  mean 2.883  median 3.794  p90 4.624  max 41.875
+gpu shader ms   mean 1.894  median 1.863  p90 2.071  max 2.809
+npu latency ms  mean 74.463  median 69.853  p90 94.060  max 99.705
+e2e latency ms  mean 78.424  median 73.288  p90 99.722  max 107.360  (decode return → NPU completion callback)
+slot wait ms    mean 0.000  p90 0.000  (time the main thread waited for a free slot)
+gpu post ms     mean 0.475  median 0.467  p90 0.537  max 0.848  (yolo_decode.comp pass 1)
+cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+nms backend     gpu
+gpu nms ms      mean 0.0510  median 0.0498  p90 0.0592  max 0.0927  (efficient_nms.comp)
+nms fallback    0 frames (capacity 0, iou guard 0)
+candidates      mean 16.81  max 45  overflow frames 0
+slot hold ms    mean 1.418  median 0.736  p90 3.266  max 41.954  (NPU completion callback → slot return)
+disp convert ms -  (wayland-planes: YUV→RGB conversion is done by the HVS during scanout, V3D 0)
+disp overlay ms mean 0.343  median 0.330  p90 0.433  (overlay_boxes_buf.spv + clear, box plane)
+present interval ms median 33.333  p90 50.002  (n=869)
+glass-to-glass  mean 96.61  median 93.27  p90 109.83  (n=870, slot acquired → reaches screen)
+decode-to-screen mean 96.64  median 93.27  p90 109.83  (n=870, decode return → reaches screen, includes slot wait)
+display         presented 900, dropped 0, recreates 0, overlay overflow 0
+display warmup  30 presentations excluded from glass / decode-to-screen / present interval / late frames (glass n 870 of 900, glass median 93.27)
+scanout         zero_copy 1, color_ok 1, hvs_underrun delta 0 (debugfs verdict)
+  debugfs start: active=3 video=plane[83] NV12/SAND128 zpos=0 enc='ITU-R BT.709 YCbCr' range='YCbCr limited range' | boxes=plane[107] AB24 zpos=1 | hvs_underrun=0
+  debugfs end: active=3 video=plane[83] NV12/SAND128 zpos=0 enc='ITU-R BT.709 YCbCr' range='YCbCr limited range' | boxes=plane[107] AB24 zpos=1 | hvs_underrun=0
+scanout         overlay skipped 2, frame-callback timeouts 0, busy reuse 0, presentation ZERO_COPY 899/900
+scanout         late frames 320 (vblank seq gap > 2 = max(1, ceil(every 1 x 60.000 Hz / 30.000 fps - 0.01)); gaps 869, max gap 5, chain breaks 0), discarded 0
+held frames max 5 (decoder limit about 13), slot timeout 0
+detections      3369 total, 3.74 / frame
+hailo chip temp 64.6 -> 73.3 C
+soc temp        68.1 -> 68.1 C
+vk validation   errors 0, warnings 1
+RESULT_CSV,wlp_source_m12,dmabuf,nhcw,2,6,900,30.114,29.89,1.949,2.883,1.894,2.071,74.46,94.06,78.42,99.72,3369,64.6,73.3,68.1,68.1,1
+RESULT_CSV2,wlp_source_m12,gpu,export,0.4752,0.5372,0.000,16.81,45,0,1,wayland-planes,matched,source,0.0000,0.0000,0.3425,33.333,96.61,109.83,900,0,0,5,0,gpu,0.0510,0.0592,0,0,1,1,0,2,0,899
+RESULT_CSV3,wlp_source_m12,30,93.27,870,50.002,869,320,2,5,869,0,0,60.000,1,96.64,93.27,109.83,870
