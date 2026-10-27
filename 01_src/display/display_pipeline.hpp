@@ -101,6 +101,7 @@ struct DisplayPipelineConfig {
     int src_w = 1920;                  // decoder source size (overlay affine + 1:1 decision)
     int src_h = 1080;
     double source_fps = 30.0;          // pace = Source target; set_source_fps() overrides it with the decoder fps
+    double commit_margin_ms = 8.0;     // planes + pace = Source: commit gate = 1000/fps - this (--display-commit-margin-ms)
     int num_slots = 4;                 // number of pipeline slots (retain array size)
 
     ColorRangeRequest color_range = ColorRangeRequest::Auto;   // wayland-planes / kms only

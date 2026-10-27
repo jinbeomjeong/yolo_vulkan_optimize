@@ -9,7 +9,7 @@ Input format (01_src/toolkit/frame_log.hpp, written once at the end of a run):
                       completion, so it can lag the real GPU completion by up to one poll interval (~2 ms).
   dropped: 0 = processed, 1 = dropped by the leaky input queue, 2 = abandoned (still queued at stop/failure).
   With --display on a 10th column present_ms is appended: when the display backend reported the frame on screen;
-  empty for frames that never reached the screen (display drops, --display-every skips, no feedback).
+  empty for frames that never reached the screen (display drops, --display-every skips, no feedback). More columns: ignored.
 
 Per-frame quantities (processed frames only; a quantity is skipped when one of its endpoints is empty):
   e2e_arr   complete - arrival        (paced runs only: arrival -> result)

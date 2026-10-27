@@ -105,7 +105,7 @@ endif()
 # Built only with yvo_display (optional: needs wayland-client/protocols), like the other display tests.
 if(TARGET yvo_display)
   add_executable(test_display_options test_display_options.cpp)
-  target_link_libraries(test_display_options PRIVATE yvo_display yvo_assets GTest::gtest_main)
+  target_link_libraries(test_display_options PRIVATE yvo_display yvo_toolkit yvo_assets GTest::gtest_main)
   yvo_target_defaults(test_display_options)
   gtest_discover_tests(test_display_options
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}

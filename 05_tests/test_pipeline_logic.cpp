@@ -20,7 +20,7 @@
 //   CliParse.*            strict option-value parsing: same values as atoi/atol/atof for well-formed input,
 //                         rejection of what they silently mangled, exit code 2 + message from arg_number().
 //   FrameLog.*            --frame-log CSV: exact header, processed / dropped / abandoned / asap rows, empty fields,
-//                         the optional 10th present_ms column (--display on only; 9 columns otherwise).
+//                         the optional present_ms (+ commit_ms, present_seq) columns (--display on only; 9 otherwise).
 //
 // Links yvo_stages only for the header include paths (InferResult comes from hailo/hailo_runner.hpp);
 // nothing here opens /dev/hailo0 or creates a Vulkan instance.
@@ -972,6 +972,42 @@ TEST(FrameLog, PresentColumnOnlyWithDisplay) {
     const std::string line = yvo::tool::format_frame_log_row(d, true);
     EXPECT_EQ(line, "5,,1,166.667,168.000,,,,,\n");
     EXPECT_EQ(std::count(line.begin(), line.end(), ','), 9);
+}
+
+TEST(FrameLog, CommitColumnsFollowPresentOnlyWithBoth) {
+    const std::string h10 =
+        "src,seq,dropped,arrival_ms,decode_end_ms,submit_ms,npu_done_ms,gpu_post_done_ms,complete_ms,present_ms";
+    EXPECT_EQ(yvo::tool::format_frame_log_header(true, true), h10 + ",commit_ms,present_seq\n");
+    EXPECT_EQ(yvo::tool::format_frame_log_header(true, false), h10 + "\n");
+    EXPECT_EQ(yvo::tool::format_frame_log_header(false, true), yvo::tool::format_frame_log_header());   // needs present
+    yvo::tool::FrameLogRow r;
+    r.src = 4;
+    r.seq = 3;
+    r.arrival_ms = 133.333;
+    r.decode_end_ms = 135.0;
+    r.submit_ms = 136.0;
+    r.npu_done_ms = 170.0;
+    r.gpu_post_done_ms = 171.0;
+    r.complete_ms = 171.25;
+    r.present_ms = 230.5;
+    r.commit_ms = 214.0004;
+    r.present_seq = 123456789012ULL;
+    EXPECT_EQ(yvo::tool::format_frame_log_row(r, true, true),
+              "4,3,0,133.333,135.000,136.000,170.000,171.000,171.250,230.500,214.000,123456789012\n");
+    EXPECT_EQ(yvo::tool::format_frame_log_row(r, true), "4,3,0,133.333,135.000,136.000,170.000,171.000,171.250,230.500\n");
+    EXPECT_EQ(yvo::tool::format_frame_log_row(r, false, true), "4,3,0,133.333,135.000,136.000,170.000,171.000,171.250\n");
+    // Vulkan composition path / never committed: present may exist, commit and seq stay empty (12 fields).
+    yvo::tool::FrameLogRow v = r;
+    v.commit_ms = yvo::tool::FrameLogRow::kNone;
+    v.present_seq = 0;
+    const std::string line = yvo::tool::format_frame_log_row(v, true, true);
+    EXPECT_EQ(line, "4,3,0,133.333,135.000,136.000,170.000,171.000,171.250,230.500,,\n");
+    EXPECT_EQ(std::count(line.begin(), line.end(), ','), 11);
+    // Committed but never presented (discarded / shutdown): commit_ms only.
+    yvo::tool::FrameLogRow c = v;
+    c.present_ms = yvo::tool::FrameLogRow::kNone;
+    c.commit_ms = 300.0;
+    EXPECT_EQ(yvo::tool::format_frame_log_row(c, true, true), "4,3,0,133.333,135.000,136.000,170.000,171.000,171.250,,300.000,\n");
 }
 
 } // namespace

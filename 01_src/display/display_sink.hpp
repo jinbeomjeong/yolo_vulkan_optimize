@@ -135,6 +135,18 @@ public:
         double refresh_hz = 0.0;           // output refresh reported by the transport (0 = unknown)
     };
     virtual ScanoutReport scanout_report() const { return {}; }
+    // One record per accepted plane commit (commit order, no --display-warmup cut; --frame-log commit_ms / present_seq).
+    // t = the commit gate's time (taken just before the transport commit, = the gate's last_commit), present_seq = vblank
+    // counter of that commit's presentation (0 = not presented / no seq / still pending at shutdown).
+    struct CommitRecord {
+        std::int64_t src = -1;
+        Clock::time_point t{};
+        std::uint64_t present_seq = 0;
+    };
+    virtual const std::vector<CommitRecord>& commit_log() const {
+        static const std::vector<CommitRecord> kEmpty;
+        return kEmpty;
+    }
 
 protected:
     static const std::vector<double>& empty_series() {

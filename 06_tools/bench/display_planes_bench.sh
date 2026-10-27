@@ -36,6 +36,10 @@
 #   SKIP_KMS=1 bash ...                                               # vk + wlp only (no session switch)
 #   ONLY='^wlp_' RUNS=1 FRAMES=300 bash ...                           # subset (grep -E on config id)
 #   SLOTS=6 bash ...                                                  # --slots of every config (default 4; --batch stays 2)
+#   FRAME_LOG=1 bash ...                                              # + --frame-log raw/<id>_run<N>/frame_log.csv per run
+#   COMMIT_MARGINS="8 4 0 12" bash ...                                # wlp_source -> wlp_source_m8, _m4, _m0, _m12 (interleaved)
+#                       each with --display-commit-margin-ms <x> (plane commit gate = 1000/fps - x; diagnostic, 0..1000;
+#                       id tag: '.' -> 'p', e.g. 2.5 -> m2p5). Unset = the single wlp_source without the option, as before
 #   DRYRUN=1 bash ...                                                 # print every command (incl. session switches), exit
 #   CHECK_ONLY=1 bash ...                                             # binary/tool check only
 #   SESSIONS_ONLY=1 bash ...                                          # read-only: print the session ids found, exit
@@ -46,7 +50,7 @@
 #   env_bench.txt, results_raw.csv (one row per run), results.csv (per config), evidence/sessions.txt (kms switch log),
 #   raw/<id>_run<N>/{stdout.log, hailort.log, meta.txt, gpu_stats_{pre,post}.txt, labwc_stat_{pre,post}.txt,
 #                    labwc_fdinfo_{pre,post}.txt, yvo_stat_last.txt, yvo_fdinfo_last.txt, dri_state_mid.txt,
-#                    dri_clients_{pre,post}.txt, wlr_randr_pre.txt (not for kms)}
+#                    dri_clients_{pre,post}.txt, wlr_randr_pre.txt (not for kms), frame_log.csv (FRAME_LOG=1)}
 #   raw/_session/hailort.log (temperature probe)
 # results_raw.csv = 11 script columns + RESULT_CSV (22) + RESULT_CSV2 without label and its duplicate ok (33)
 #                   + RESULT_CSV3 without label and ok (12 + d2s_mean/median/p90/n = 16)
@@ -77,6 +81,8 @@ COOL_EVERY="${COOL_EVERY:-1}"
 APPEND="${APPEND:-0}"
 DRYRUN="${DRYRUN:-0}"
 SKIP_KMS="${SKIP_KMS:-0}"
+FRAME_LOG="${FRAME_LOG:-0}"
+COMMIT_MARGINS="${COMMIT_MARGINS:-}"
 SESSIONS_ONLY="${SESSIONS_ONLY:-0}"
 CONNECTOR="${CONNECTOR:-HDMI-A-1}"
 SWITCH_WAIT_S="${SWITCH_WAIT_S:-15}"   # max wait for master / output to settle after a session switch
@@ -91,12 +97,24 @@ export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
 [[ "$WARMUP" =~ ^[0-9]+$ ]] || { echo "WARMUP must be >= 0: $WARMUP" >&2; exit 2; }
 [[ "$SLOTS" =~ ^[1-9][0-9]*$ ]] || { echo "SLOTS must be a positive integer: $SLOTS" >&2; exit 2; }
 (( WARMUP < FRAMES )) || { echo "WARMUP ($WARMUP) must be < FRAMES ($FRAMES)" >&2; exit 2; }
+[[ "$FRAME_LOG" == "0" || "$FRAME_LOG" == "1" ]] || { echo "FRAME_LOG must be 0 or 1: $FRAME_LOG" >&2; exit 2; }
+margins=()   # COMMIT_MARGINS: plain decimals 0..1000 (the app range), no duplicates
+for m in $COMMIT_MARGINS; do
+  [[ "$m" =~ ^[0-9]+(\.[0-9]+)?$ ]] && awk -v x="$m" 'BEGIN{exit !(x <= 1000)}' \
+    || { echo "COMMIT_MARGINS: not a margin in ms (0..1000): $m" >&2; exit 2; }
+  for o in "${margins[@]}"; do [[ "${o//./p}" != "${m//./p}" ]] || { echo "COMMIT_MARGINS: duplicate $m" >&2; exit 2; }; done
+  margins+=("$m")
+done
 # Mid-run debugfs state snapshot: half of the source-paced duration + 3 s of startup.
 MID_SNAP_S="${MID_SNAP_S:-$(( FRAMES / 60 + 3 ))}"
 require_bin "$BIN" yvo_pipeline
 for t in timeout loginctl wlr-randr pgrep awk; do
   command -v "$t" >/dev/null || { echo "required tool not found: $t" >&2; exit 1; }
 done
+if (( ${#margins[@]} )); then   # the binary must know the option (string search: running it would leave a hailort.log)
+  grep -aq -- '--display-commit-margin-ms' "$BIN" \
+    || { echo "COMMIT_MARGINS set but $BIN has no --display-commit-margin-ms (rebuild)" >&2; exit 1; }
+fi
 check_only_exit
 
 # Shared arguments (everything explicit, also the CLI defaults: defaults can move, archived commands must not).
@@ -114,6 +132,18 @@ configs=(
   "kms_source |$BASE_ARGS $KMS_ARGS --display-pace source"
   "kms_asap   |$BASE_ARGS $KMS_ARGS --display-pace asap"
 )
+if (( ${#margins[@]} )); then   # COMMIT_MARGINS: wlp_source -> one config per margin, in place (keeps interleaving)
+  expanded=()
+  for c in "${configs[@]}"; do
+    IFS='|' read -r id args <<<"$c"
+    if [[ "${id// /}" == "wlp_source" ]]; then
+      for m in "${margins[@]}"; do expanded+=("wlp_source_m${m//./p}|$args --display-commit-margin-ms $m"); done
+    else
+      expanded+=("$c")
+    fi
+  done
+  configs=("${expanded[@]}")
+fi
 selected=()
 for c in "${configs[@]}"; do
   IFS='|' read -r id args <<<"$c"; id="${id// /}"
@@ -180,10 +210,13 @@ build_cmd() {
   local id="$1" args="$2" argv=()
   read -ra argv <<<"$args"
   cmd=(env -u YVO_DEC_THREADS "$BIN" --video "$VIDEO" --hef "$HEF" "${argv[@]}" --frames "$FRAMES" --quiet --csv-label "$id")
+  [[ "$FRAME_LOG" == "1" ]] && cmd+=(--frame-log frame_log.csv)   # relative: the child runs in raw/<id>_run<N>/
+  return 0
 }
 
 if [[ "$DRYRUN" == "1" ]]; then
   echo "DRYRUN: $(basename "$0") OUT_DIR=$OUT_DIR RUNS=$RUNS FRAMES=$FRAMES WARMUP=$WARMUP SLOTS=$SLOTS ONLY='$ONLY' SKIP_KMS=$SKIP_KMS"
+  echo "DRYRUN: FRAME_LOG=$FRAME_LOG COMMIT_MARGINS='$COMMIT_MARGINS' configs: $(for c in "${selected[@]}"; do printf '%s ' "${c%%|*}"; done)"
   echo "DRYRUN: TIMEOUT_S=$TIMEOUT_S MID_SNAP_S=$MID_SNAP_S COOL_EVERY=$COOL_EVERY env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR WAYLAND_DISPLAY=$WAYLAND_DISPLAY"
   for ((r = 1; r <= RUNS; r++)); do
     on_tty=0
@@ -300,6 +333,7 @@ env_snapshot() {
   echo "hef: $HEF"
   echo "runs: $RUNS frames: $FRAMES warmup: $WARMUP slots: $SLOTS only: $ONLY skip_kms: $SKIP_KMS timeout_s: $TIMEOUT_S mid_snap_s: $MID_SNAP_S"
   echo "cool: COOL_C=$COOL_C COOL_MAX_S=$COOL_MAX_S HOT_C=$HOT_C COOL_EVERY=$COOL_EVERY"
+  echo "frame_log: $FRAME_LOG commit_margins: ${COMMIT_MARGINS:-<unset>}"
   echo "caller YVO_DEC_THREADS: ${YVO_DEC_THREADS-<unset>} (removed for every child: app default)"
   echo "env: $(env | grep -E '^(VK_|HAILO|AV_|FFREPORT|YVO_|WAYLAND_DISPLAY|XDG_RUNTIME_DIR)' | paste -sd ' ' || true)"
   echo "$SESSIONS_DESC"

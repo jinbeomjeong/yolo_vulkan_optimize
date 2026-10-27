@@ -247,6 +247,8 @@ void usage(const char* a0) {
                  "  --display-fullscreen | --display-size WxH | --display-every K\n"
                  "  --display-warmup N                       leave the first N presentations out of glass / decode-to-screen /\n"
                  "               present-interval / late-frame stats, every backend (default 0 = keep all; kms 1st commit = modeset)\n"
+                 "  --display-commit-margin-ms X             diagnostic: plane commit gate = 1000/fps - X ms with --display-pace source\n"
+                 "               (wayland-planes / kms only; default 8, 0..1000; 0 = exactly the source interval, >= interval = no gate)\n"
                  "  --present-mode {fifo,mailbox,immediate}  default fifo\n"
                  "  --display-blit                           force the blit fallback even if STORAGE is available\n"
                  "  --overlay-line-width N | --overlay-text-scale N   default 2 / 2\n"
@@ -336,6 +338,10 @@ bool parse(int argc, char** argv, Args& a) {
             a.disp.height = h;
         } else if (s == "--display-every" && (v = next())) a.disp.every = arg_number<int>(argv[0], s, v);
         else if (s == "--display-warmup" && (v = next())) a.disp.warmup = arg_number<int>(argv[0], s, v);
+        else if (s == "--display-commit-margin-ms" && (v = next())) {
+            a.disp.commit_margin_ms = arg_number<double>(argv[0], s, v);
+            if (!yvo::display::commit_margin_valid(a.disp.commit_margin_ms)) return false;   // range: usage, code 2
+        }
         else if (s == "--present-mode" && (v = next())) {
             if (!yvo::display::parse_present_mode(v, &a.disp.present_mode)) return false;
         } else if (s == "--display-blit") a.disp.force_blit = true;
@@ -1077,8 +1083,9 @@ int run(const Args& a) {
     // --frame-log (toolkit/frame_log.hpp): time points per source frame, indexed by src (= seq with asap).
     // Only collected here — the file is written after the drain. Unset time points stay at the epoch (empty field).
     struct FrameTimes {
-        Clock::time_point arrival{}, decode_end{}, submit{}, npu_done{}, post_done{}, complete{}, present{};
+        Clock::time_point arrival{}, decode_end{}, submit{}, npu_done{}, post_done{}, complete{}, present{}, commit{};
         std::int64_t seq = -1;   // < 0: never submitted (dropped by the leaky queue, or abandoned when !dropped)
+        std::uint64_t present_seq = 0;   // plane path vblank seq of the presentation (0 = unknown)
         bool dropped = false;
     };
     const bool frame_log_on = frame_log_fp != nullptr;
@@ -1516,6 +1523,12 @@ int run(const Args& a) {
             if (frame_log_on && static_cast<std::size_t>(src) < frame_times.size())
                 frame_times[static_cast<std::size_t>(src)].present = plog[i].t;
         }
+        if (frame_log_on)   // plane path only (empty on the Vulkan path): commit time + presentation vblank seq
+            for (const auto& c : display->commit_log())
+                if (c.src >= 0 && static_cast<std::size_t>(c.src) < frame_times.size()) {
+                    frame_times[static_cast<std::size_t>(c.src)].commit = c.t;
+                    frame_times[static_cast<std::size_t>(c.src)].present_seq = c.present_seq;
+                }
         disp.sda = stats(a2p_ms);
     }
 #endif
@@ -1546,7 +1559,7 @@ int run(const Args& a) {
                                              : std::chrono::duration<double, std::milli>(tp - t0).count();
         };
         std::FILE* fp = frame_log_fp.release();
-        std::fputs(yvo::tool::format_frame_log_header(a.display).c_str(), fp);   // + present_ms with --display on
+        std::fputs(yvo::tool::format_frame_log_header(a.display, a.display).c_str(), fp);   // + present/commit with display
         for (std::size_t i = 0; i < frame_times.size(); ++i) {
             const FrameTimes& ft = frame_times[i];
             std::fputs(yvo::tool::format_frame_log_row(
@@ -1554,8 +1567,9 @@ int run(const Args& a) {
                             .dropped = ft.seq >= 0 ? 0 : ft.dropped ? 1 : 2, .arrival_ms = rel(ft.arrival),
                             .decode_end_ms = rel(ft.decode_end), .submit_ms = rel(ft.submit),
                             .npu_done_ms = rel(ft.npu_done), .gpu_post_done_ms = rel(ft.post_done),
-                            .complete_ms = rel(ft.complete), .present_ms = rel(ft.present)},
-                                                      a.display)
+                            .complete_ms = rel(ft.complete), .present_ms = rel(ft.present),
+                            .commit_ms = rel(ft.commit), .present_seq = ft.present_seq},
+                                                      a.display, a.display)
                            .c_str(),
                        fp);
         }

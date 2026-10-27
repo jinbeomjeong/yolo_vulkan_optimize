@@ -19,7 +19,7 @@
 //
 // ── Pacing (never blocks forever) ──────────────────────────────────────────────────────────
 //   The meaning of pace(source/asap) is the same as DisplayPipeline (pace_deadline). With pace=source the commit interval is also
-//   widened to at least source interval - 8 ms (evens out the bunching of matched + batch). On top of that there is one more vblank gate:
+//   widened to at least source interval - 8 ms (--display-commit-margin-ms; evens out the bunching of matched + batch). On top of that there is one more vblank gate:
 //   each commit requests a frame callback (wl_surface.frame / page flip), and the next commit is deferred until it arrives.
 //   **If the callback does not arrive within kFrameCallbackTimeout, it just commits** (counted in frame_cb_timeouts). A commit is a non-blocking
 //   request, so this process does not stall even if the compositor is stalled. pump()/show() never block in any case,
@@ -82,6 +82,14 @@ inline int late_gap_threshold(int every, std::uint64_t upstream_missing, double 
     const double frames = static_cast<double>(std::max(every, 1)) + static_cast<double>(upstream_missing);
     return std::max(1, static_cast<int>(std::ceil(frames * refresh_hz / source_fps - 0.01)));
 }
+
+// pace=source commit gate of the plane path (ms): no commit sooner than this after the previous one. margin_ms is
+// --display-commit-margin-ms (default 8 = half a 60 Hz vblank); 0 = exactly the source interval, >= interval = no gate.
+inline double commit_gate_ms(double source_fps, double margin_ms) {
+    return source_fps > 0.0 ? std::max(1000.0 / source_fps - margin_ms, 0.0) : 0.0;
+}
+// Accepted --display-commit-margin-ms values: finite, 0..1000 ms (a negative margin would gate slower than the source).
+inline bool commit_margin_valid(double margin_ms) { return std::isfinite(margin_ms) && margin_ms >= 0.0 && margin_ms <= 1000.0; }
 
 // Transport → PlaneDisplay events. All arrive inside PlaneScanout::dispatch() (main thread).
 class PlaneScanoutListener {
@@ -171,6 +179,7 @@ public:
     const std::vector<double>& glass_ms() const override { return glass_ms_; }
     const std::vector<double>& decode_to_screen_ms() const override { return d2s_ms_; }
     const std::vector<PresentRecord>& present_log() const override { return present_log_; }
+    const std::vector<CommitRecord>& commit_log() const override { return commit_log_; }
 
     std::string describe() const override;
     ScanoutReport scanout_report() const override;
@@ -196,6 +205,7 @@ private:
         Clock::time_point t_retain{}, t_decoded{};
         std::int64_t src = -1;
         std::uint64_t missing = 0;
+        std::size_t log_idx = 0;     // index into commit_log_
     };
 
     // PlaneScanoutListener
@@ -226,7 +236,7 @@ private:
     std::uint64_t next_token_ = 1;
 
     bool frame_cb_pending_ = false;
-    Clock::duration min_commit_interval_{0};   // pace=source: source interval - 8 ms (half a vblank). 0 = no gate
+    Clock::duration min_commit_interval_{0};   // pace=source: source interval - commit_margin_ms (default 8). 0 = no gate
     Clock::time_point last_commit_{};
     bool overlay_ever_committed_ = false;
 
@@ -251,6 +261,7 @@ private:
     std::int64_t last_present_ns_ = 0;
     std::vector<double> overlay_ms_, interval_ms_, glass_ms_, d2s_ms_;
     std::vector<PresentRecord> present_log_;   // pairs with glass_ms_
+    std::vector<CommitRecord> commit_log_;     // one per accepted commit (present_seq filled by on_presented)
 
     bool snap_start_taken_ = false;
     DrmStateSnapshot snap_start_, snap_end_;

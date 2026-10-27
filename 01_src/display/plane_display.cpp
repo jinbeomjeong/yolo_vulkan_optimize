@@ -68,12 +68,12 @@ void PlaneDisplay::set_source_size(int w, int h) {
 }
 
 void PlaneDisplay::set_source_fps(double fps) {
-    // pace=source commit gate = source interval - 8 ms (half a vblank). <= 0 / NaN keeps the current value.
+    // pace=source commit gate = source interval - commit_margin_ms (default 8 ms, half a vblank). <= 0 / NaN keeps the current value.
     if (!(fps > 0.0)) return;
     cfg_.source_fps = fps;
     if (cfg_.pace == DisplayPace::Source)
         min_commit_interval_ = std::chrono::duration_cast<Clock::duration>(
-            std::chrono::duration<double, std::milli>(std::max(1000.0 / fps - 8.0, 0.0)));
+            std::chrono::duration<double, std::milli>(commit_gate_ms(fps, cfg_.commit_margin_ms)));
 }
 
 void PlaneDisplay::retain(int slot, const DrmFrame& f, Clock::time_point t_decoded) {
@@ -217,7 +217,8 @@ void PlaneDisplay::try_commit(bool force) {
     if (!scanout_->reports_presentation()) ++presented_;
     frame_cb_pending_ = true;
     last_commit_ = now;
-    await_present_[p.token] = AwaitPresent{p.t_retain, p.t_decoded, p.src, p.missing};
+    await_present_[p.token] = AwaitPresent{p.t_retain, p.t_decoded, p.src, p.missing, commit_log_.size()};
+    commit_log_.push_back(CommitRecord{p.src, now, 0});   // --frame-log commit_ms (same time as last_commit_)
     const std::uint64_t tok = p.token;
     committed_.emplace(tok, std::move(p));
     pending_.pop_front();
@@ -280,7 +281,7 @@ void PlaneDisplay::on_presented(std::uint64_t token, std::int64_t t_ns, bool clo
                                                   std::chrono::nanoseconds(t_ns)))});
         }
     }
-    if (it != await_present_.end()) await_present_.erase(it);
+    if (it != await_present_.end()) { commit_log_[it->second.log_idx].present_seq = seq; await_present_.erase(it); }
 }
 
 void PlaneDisplay::on_discarded(std::uint64_t token) {

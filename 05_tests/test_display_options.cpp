@@ -7,6 +7,8 @@
 //   --present-mode         parse_present_mode (+ present_mode_name)
 //   late frames (planes)   late_gap_threshold (display/plane_display.hpp): vblank gap allowance per presentation pair,
 //                          widened by source frames the leaky input queue dropped (--input-pace source)
+//   --display-commit-margin-ms  yvo::tool::parse_number<double> (toolkit/cli_parse.hpp, as main.cpp's arg_number)
+//                          + commit_margin_valid, and the gate it sets: commit_gate_ms (display/plane_display.hpp)
 //
 // Needs no GPU or display: the functions are only linked from yvo_display, nothing creates a Vulkan instance or
 // connects to Wayland. Built only when yvo_display exists (wayland-client/protocols present).
@@ -20,6 +22,7 @@
 #include "display/display_pipeline.hpp"
 #include "display/plane_display.hpp"
 #include "display/vk_swapchain.hpp"
+#include "toolkit/cli_parse.hpp"
 
 namespace {
 
@@ -208,6 +211,54 @@ TEST(LateGapThreshold, UnknownRefreshOrFpsIsZero) {
     EXPECT_EQ(late_gap_threshold(1, 0, 0.0, 30.0), 0);
     EXPECT_EQ(late_gap_threshold(1, 0, 60.0, 0.0), 0);
     EXPECT_EQ(late_gap_threshold(1, 2, std::nan(""), 30.0), 0);
+}
+
+// ── --display-commit-margin-ms (plane commit gate) ──────────────────────────────────────────────────────────
+
+// main.cpp parse(): arg_number<double> (exit 2 on a malformed number) then commit_margin_valid (usage, exit 2).
+bool parse_commit_margin(const char* text, double& out) {
+    double v = 0.0;
+    if (!yvo::tool::parse_number(text, v) || !commit_margin_valid(v)) return false;
+    out = v;
+    return true;
+}
+
+TEST(CommitMargin, DefaultKeepsTheOldGate) {
+    EXPECT_DOUBLE_EQ(DisplayPipelineConfig{}.commit_margin_ms, 8.0);
+    // The gate before the option existed: max(1000/fps - 8, 0).
+    EXPECT_DOUBLE_EQ(commit_gate_ms(30.0, 8.0), 1000.0 / 30.0 - 8.0);
+    EXPECT_DOUBLE_EQ(commit_gate_ms(25.0, 8.0), 32.0);
+}
+
+TEST(CommitMargin, GateFollowsTheMargin) {
+    EXPECT_DOUBLE_EQ(commit_gate_ms(30.0, 0.0), 1000.0 / 30.0);   // exactly the source interval
+    EXPECT_DOUBLE_EQ(commit_gate_ms(30.0, 4.0), 1000.0 / 30.0 - 4.0);
+    EXPECT_DOUBLE_EQ(commit_gate_ms(30.0, 12.0), 1000.0 / 30.0 - 12.0);
+    EXPECT_DOUBLE_EQ(commit_gate_ms(30.0, 40.0), 0.0);            // >= interval: no gate
+    EXPECT_DOUBLE_EQ(commit_gate_ms(0.0, 8.0), 0.0);              // unknown fps: no gate
+    EXPECT_DOUBLE_EQ(commit_gate_ms(std::nan(""), 8.0), 0.0);
+}
+
+TEST(CommitMargin, ParseAcceptsNonNegativeFiniteUpTo1000) {
+    const struct {
+        const char* s;
+        double v;
+    } cases[] = {{"8", 8.0}, {"8.0", 8.0}, {"0", 0.0}, {"4", 4.0}, {"12", 12.0}, {"2.5", 2.5}, {"1000", 1000.0},
+                 {"1e1", 10.0}, {"-0", 0.0}};
+    for (const auto& c : cases) {
+        double out = -1.0;
+        EXPECT_TRUE(parse_commit_margin(c.s, out)) << c.s;
+        EXPECT_DOUBLE_EQ(out, c.v) << c.s;
+    }
+}
+
+TEST(CommitMargin, ParseRejectsAndLeavesOutputUntouched) {
+    for (const char* s : {"", " ", "-1", "-0.5", "1000.5", "1e9", "abc", "8ms", "8 ", "nan", "inf", "-inf", "0x", "--"}) {
+        double out = 7.0;
+        EXPECT_FALSE(parse_commit_margin(s, out)) << '"' << s << '"';
+        EXPECT_DOUBLE_EQ(out, 7.0) << s;
+    }
+    EXPECT_FALSE(commit_margin_valid(std::nan("")));
 }
 
 } // namespace

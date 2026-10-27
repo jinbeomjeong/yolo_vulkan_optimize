@@ -310,6 +310,15 @@ class PresentTest(Tmp):
         self.assertEqual(s["latency"]["a2p"]["n"], 4)
         self.assertEqual(s["present_cadence"]["n"], 3)
 
+    def test_commit_columns_are_ignored(self) -> None:
+        # yvo_pipeline appends commit_ms,present_seq after present_ms with --display on (12 columns, empty on the
+        # Vulkan composition path). The stats must not change: same report as the 10-column file.
+        rows12 = [r + (",," if i % 3 == 2 else f",{100.0 + i:.3f},{1000 + 2 * i}") for i, r in enumerate(PACED_B2_DISP)]
+        f10 = fls.load(self.write("d10.csv", PACED_B2_DISP, header=HEADER10), "d.csv", 3.0, None)
+        f12 = fls.load(self.write("d12.csv", rows12, header=HEADER10 + ",commit_ms,present_seq"), "d.csv", 3.0, None)
+        self.assertTrue(f12.has_present)
+        self.assertEqual(fls.format_report(fls.analyze([f12], "d.csv")), fls.format_report(fls.analyze([f10], "d.csv")))
+
     def test_present_on_dropped_row_warns(self) -> None:
         rows = list(PACED_B2_DISP)
         rows[2] = with_present(row(2, None, 1, 66.667, 70.0), 150.0)
