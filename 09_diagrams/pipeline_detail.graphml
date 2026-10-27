@@ -41,7 +41,7 @@
       </data>
       <graph edgedefault="directed" id="n0:">
       <node id="n0::n0">
-        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:1-54 '메인 스레드: 디코드 → 빈 슬롯 확보 → GPU submit → wait → HailoRT submit'. 출력 구조체는 01_src/core/frame_types.hpp struct DrmFrame. 디코더 스레드: FFmpeg 프레임 스레드 기본 1 (01_src/pipeline/main.cpp:196 → 01_src/decode/ffmpeg_drm_decoder.cpp:181 codec_->thread_count; 환경변수 YVO_DEC_THREADS(읽기 main.cpp:348), 0 = FFmpeg 자동). display_e2e 등 2026-09-28 이전 측정은 자동(5스레드, av:hevc:df0~4)이었다. 07_results/dec_threads/summary.md: 표시 on disp_source 에서 1스레드는 CPU 2.073→1.778 ms/f, glass 평균 99.48→99.52 ms, 앱 e2e p90 +1.9 ms.</data>
+        <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:1-54 '메인 스레드: 디코드 → 빈 슬롯 확보 → GPU submit → wait → HailoRT submit'. 출력 구조체는 01_src/core/frame_types.hpp struct DrmFrame. 디코더 스레드: FFmpeg 프레임 스레드 기본 1 (01_src/pipeline/main.cpp:196 → 01_src/decode/ffmpeg_drm_decoder.cpp:181 codec_->thread_count; 환경변수 YVO_DEC_THREADS(읽기 main.cpp:354), 0 = FFmpeg 자동). display_e2e 등 2026-09-28 이전 측정은 자동(5스레드, av:hevc:df0~4)이었다. 07_results/dec_threads/summary.md: 표시 on disp_source 에서 1스레드는 CPU 2.073→1.778 ms/f, glass 평균 99.48→99.52 ms, 앱 e2e p90 +1.9 ms.</data>
         <data key="d6">
           <y:GenericNode configuration="com.yworks.flowchart.process">
             <y:Geometry height="54.0" width="480.0" x="130.0" y="120.0"/>
@@ -421,7 +421,7 @@ FOREIGN 큐 소유권 전환 (release / acquire)<y:LabelModel>
       </data>
     </node>
     <node id="n4">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/slot_exchange.cpp:64-69 의 시작 시 검사(Vulkan 합성 경로, 호출 main.cpp:391-402). 평면 백엔드(wayland-planes / kms)는 slot_exchange.cpp:33-54 에서 slots + 1 (+ latest 면 PlaneDisplay::kExtraHeldBeyondSlots 5, 정의 01_src/display/plane_display.hpp:142) ≤ 10 으로 따로 막는다 — 프레임을 스캔아웃 release 까지 쥐기 때문이다. '⚠ 디코더 13프레임 제약: 동시에 약 13프레임을 넘게 잡으면 디코더가 에러 없이 멈춘다. matched 는 slots + gpu_depth 를, latest 는 gpu_depth + image_count 를 잡는다. 여유를 두고 10 에서 막는다.' 운용점 b2/s4 는 4+3=7 (실측 held_frames_max 4, 여유 6). 평면 경로 정식 측정(2026-10-08, V3D 1150 MHz · 디코더 1스레드): 평면 경로는 프레임을 release 까지 최대 5장 쥐어(held_frames_max 5) b2/s4 에서는 디코드된 프레임이 평균 28~30 ms 슬롯을 기다리고 fps 가 29.23~29.33 으로 떨어진다(07_results/display_planes_e2e/summary.md 결론 4). b2/s6 에서는 slot wait 0, fps 29.87~29.90(runs/slots6/summary.md 결론 1·4) — 표시 on 평면 경로의 운용점은 b2/s6 이고, matched 보유 상한은 6 + 1 = 7 ≤ 10 이다. 라벨 3행.</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/slot_exchange.cpp:64-69 의 시작 시 검사(Vulkan 합성 경로, 호출 main.cpp:397-408). 평면 백엔드(wayland-planes / kms)는 slot_exchange.cpp:33-54 에서 slots + 1 (+ latest 면 PlaneDisplay::kExtraHeldBeyondSlots 5, 정의 01_src/display/plane_display.hpp:150) ≤ 10 으로 따로 막는다 — 프레임을 스캔아웃 release 까지 쥐기 때문이다. '⚠ 디코더 13프레임 제약: 동시에 약 13프레임을 넘게 잡으면 디코더가 에러 없이 멈춘다. matched 는 slots + gpu_depth 를, latest 는 gpu_depth + image_count 를 잡는다. 여유를 두고 10 에서 막는다.' 운용점 b2/s4 는 4+3=7 (실측 held_frames_max 4, 여유 6). 평면 경로 정식 측정(2026-10-08, V3D 1150 MHz · 디코더 1스레드): 평면 경로는 프레임을 release 까지 최대 5장 쥐어(held_frames_max 5) b2/s4 에서는 디코드된 프레임이 평균 28~30 ms 슬롯을 기다리고 fps 가 29.23~29.33 으로 떨어진다(07_results/display_planes_e2e/summary.md 결론 4). b2/s6 에서는 slot wait 0, fps 29.87~29.90(runs/slots6/summary.md 결론 1·4) — 표시 on 평면 경로의 운용점은 b2/s6 이고, matched 보유 상한은 6 + 1 = 7 ≤ 10 이다. 라벨 3행.</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="79.7" width="340.0" x="1300.0" y="75.0"/>
@@ -442,7 +442,7 @@ FOREIGN 큐 소유권 전환 (release / acquire)<y:LabelModel>
       </data>
     </node>
     <node id="n5">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:479-492 의 두 검사(:479-484 ptr+nhcw 거부, :487-492 --postproc gpu 전제). 이어서 :493-496 은 '--nms 는 --postproc gpu 전용'을 검사한다. '--postproc gpu 는 --mode dmabuf --layout nhcw 전용이다: HailoRawRunner 는 입력·출력을 dma-buf 로만 받고(호스트 포인터 경로 없음), 원시 출력 6스트림 경로는 NHCW 입력으로만 검증됐다.'</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:485-498 의 두 검사(:485-490 ptr+nhcw 거부, :493-498 --postproc gpu 전제). 이어서 :499-502 은 '--nms 는 --postproc gpu 전용'을 검사한다. '--postproc gpu 는 --mode dmabuf --layout nhcw 전용이다: HailoRawRunner 는 입력·출력을 dma-buf 로만 받고(호스트 포인터 경로 없음), 원시 출력 6스트림 경로는 NHCW 입력으로만 검증됐다.'</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="54.0" width="340.0" x="1300.0" y="171.3"/>
@@ -479,7 +479,7 @@ dma_map = lseek 실크기 / infer_async = hw_frame_size
       </data>
     </node>
     <node id="n7">
-      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:1-54 '종료 순서' 주석 그대로. '창은 컨텍스트보다 늦게 죽어야 하므로 컨텍스트보다 먼저 선언한다.' export fd 는 러너가 unmap 한 뒤 닫는다 (main.cpp:433 struct FdCloser, :855 export_fds).</data>
+      <data key="d5">/home/pi/workspace/yolo_vulkan_optimize/01_src/pipeline/main.cpp:1-54 '종료 순서' 주석 그대로. '창은 컨텍스트보다 늦게 죽어야 하므로 컨텍스트보다 먼저 선언한다.' export fd 는 러너가 unmap 한 뒤 닫는다 (main.cpp:439 struct FdCloser, :861 export_fds).</data>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
           <y:Geometry height="79.7" width="340.0" x="1300.0" y="351.6"/>
@@ -569,7 +569,7 @@ GPU 구간 원시 출력 : 07_results/display_e2e/runs/
 운용점 · 최종 커맨드 : 07_results/op_point/summary.md §8
 스레드 · 슬롯 규약 : 01_src/pipeline/main.cpp:1-54
 slots+gpu_depth ≤ 10 : 01_src/pipeline/slot_exchange.cpp:64-69 (평면 :33-54)
---postproc gpu 전제 : 01_src/pipeline/main.cpp:487-492
+--postproc gpu 전제 : 01_src/pipeline/main.cpp:493-498
 스레드 규율      : 01_src/pipeline/infer_stage.hpp:9-17
 콜백 람다 :154 / NMS fallback :203 : gpu_postproc_stage.cpp
 평면 표시 : 01_src/display/plane_display.hpp

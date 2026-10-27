@@ -74,7 +74,7 @@ File ▸ Export 를 대신 눌러 준다. 사용자 화면을 건드리지 않�
 
 - V3D 1150 MHz — 부트로더 2026-09-25. FPS·CPU 는 그대로이고 GPU 전처리가 b1 2.11→1.81 ms, b8 평균 약 2.6→2.0 ms 로 줄었다
   ([`bootloader_20260925/summary.md`](../07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)).
-- 앱 디코더 프레임 스레드 기본 1 — `01_src/pipeline/main.cpp:196`, 환경변수 `YVO_DEC_THREADS`(0 = FFmpeg 자동, 읽는 곳 `main.cpp:348`).
+- 앱 디코더 프레임 스레드 기본 1 — `01_src/pipeline/main.cpp:196`, 환경변수 `YVO_DEC_THREADS`(0 = FFmpeg 자동, 읽는 곳 `main.cpp:354`).
   표시 on disp_source 에서 CPU 2.073→1.778 ms/f, glass 평균 99.48→99.52 ms, 앱 e2e p90 +1.9 ms
   ([`dec_threads/summary.md`](../07_results/dec_threads/summary.md)).
 - NMS 기본 `--nms gpu` — **정식 측정 2026-10-08**([`gpu_nms_e2e/summary.md`](../07_results/gpu_nms_e2e/summary.md), 1150 MHz · 디코더 1스레드 · 표시 off, 설정당 3회 중앙값).
@@ -108,10 +108,10 @@ File ▸ Export 를 대신 눌러 준다. 사용자 화면을 건드리지 않�
 | ⓒ decode call 0.107 ms(FFmpeg 자동 5스레드) · NPU median 69.7 / mean 73.9 ms · present 간격 16.955 ms · cpu nms 2.667 µs (CPU NMS 당시 측정 — 지금 기본은 GPU NMS, description 에만 남김) | [`07_results/display_e2e/raw/disp_source_run1/stdout.log`](../07_results/display_e2e/raw/disp_source_run1/stdout.log) |
 | 운용점 `b2/s4 --postproc gpu` 와 최종 실행 커맨드 | [`07_results/op_point/summary.md`](../07_results/op_point/summary.md) §8 |
 | 스레드·슬롯 규약, 종료 순서 | `01_src/pipeline/main.cpp:1-54` |
-| `slots + gpu_depth <= 10` 강제 (Vulkan 합성 경로) | `01_src/pipeline/slot_exchange.cpp:64-69` (호출 `main.cpp:391-402`) |
-| 평면 백엔드 보유 상한 `slots + 1 (+5 latest) <= 10`. 평면 경로는 release 까지 최대 5장을 쥐어 b2/s4 에서 슬롯 대기 28~30 ms — **표시 on 평면 경로는 `--slots 6` 필요**(ⓝ [`runs/slots6`](../07_results/display_planes_e2e/runs/slots6/summary.md) 결론 4) | `01_src/pipeline/slot_exchange.cpp:33-54` (호출 `main.cpp:391-402`) |
-| `--postproc gpu` ⇒ `--mode dmabuf --layout nhcw` 강제 | `01_src/pipeline/main.cpp:487-492` |
-| `--nms gpu\|cpu\|verify`(기본 gpu)는 `--postproc gpu` 전용 | `01_src/pipeline/main.cpp:32-34`, `:493-496` |
+| `slots + gpu_depth <= 10` 강제 (Vulkan 합성 경로) | `01_src/pipeline/slot_exchange.cpp:64-69` (호출 `main.cpp:397-408`) |
+| 평면 백엔드 보유 상한 `slots + 1 (+5 latest) <= 10`. 평면 경로는 release 까지 최대 5장을 쥐어 b2/s4 에서 슬롯 대기 28~30 ms — **표시 on 평면 경로는 `--slots 6` 필요**(ⓝ [`runs/slots6`](../07_results/display_planes_e2e/runs/slots6/summary.md) 결론 4) | `01_src/pipeline/slot_exchange.cpp:33-54` (호출 `main.cpp:397-408`) |
+| `--postproc gpu` ⇒ `--mode dmabuf --layout nhcw` 강제 | `01_src/pipeline/main.cpp:493-498` |
+| `--nms gpu\|cpu\|verify`(기본 gpu)는 `--postproc gpu` 전용 | `01_src/pipeline/main.cpp:32-34`, `:499-502` |
 | 스레드 규율(VkQueue 1개 → Vulkan 은 메인 스레드만) | `01_src/pipeline/infer_stage.hpp:9-17` |
 | HailoRT 콜백 람다 / CPU NMS fallback 호출 | `01_src/pipeline/gpu_postproc_stage.cpp:154` / `:203` (억제 분기 `finish()` `:191-228`) |
 | GPU NMS (`efficient_nms.comp`, yolo_decode 뒤 같은 커맨드 버퍼) | `01_src/vulkan/yolo_postproc.hpp:10`, `01_src/vulkan/efficient_nms.hpp` |
@@ -142,7 +142,7 @@ id 로 찾으면 된다 (`grep -n 'id="n_pre"' pipeline_overview.graphml`).
 
 - **디코더 스레드 수** — overview `n_dec` 라벨 4행 `[측정 조건: FFmpeg 자동 5스레드]`, detail `n0::n0` 라벨 3행
   (`FFmpeg 프레임 스레드 기본 1 (YVO_DEC_THREADS) · 측정 당시 자동 5`), 두 노드와 detail `n0` 의 `d5`.
-  기본값의 정본은 `01_src/pipeline/main.cpp:196`, 환경변수를 읽는 곳은 `:348` 이다.
+  기본값의 정본은 `01_src/pipeline/main.cpp:196`, 환경변수를 읽는 곳은 `:354` 이다.
 - **V3D 클럭** — overview `n_pre`·`n_post`·`n_conv`·`n_ovl` 라벨의 `[1150 MHz]`와 `d5`, `n_note_perf` 의 GPU 합 줄, detail `n0::n5`·`n0::n7` 의 `d5`.
   2026-10-16 에 GPU 구간을 현재 기본값으로 다시 재서(CPU 거버너 performance 고정 회차 [`display_e2e/runs/v3d1150_quiet_perfgov_20261016`](../07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md) §2.3) 모든 셰이더 노드가 `[1150 MHz]` 가 됐다.
   라벨 값은 소스 30 fps 페이싱 실행(`disp_source`)의 중앙값이다(실행별 stdout median 의 5회 중앙값, 논문 §6.7 표 24와 같은 정의).
