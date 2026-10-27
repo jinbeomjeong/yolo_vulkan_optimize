@@ -24,11 +24,13 @@ GST_PIPELINE = "yvo_gst_pipeline"
 _GST_SINK_RE = re.compile(r"--sink(?:\s+|=)(\S+)")
 # yvo_postproc_probe depends on the mode (postproc_probe.cpp main()):
 #   live, stale, v3 -> opens a VDevice (exclusive NPU)
-#   gpuab, nms, stages, sweep -> uses only fixtures, but measures GPU/CPU time, so it is classified as load
-#   fixture (default), heapimport, topk -> no NPU needed
+#   gpuab, nms, stages, sweep, stride, memasym -> no NPU, but measures GPU/CPU time or bandwidth, so it is load
+#   fixture (default), heapimport, topk, groups -> no NPU needed
 POSTPROC_PROBE = "yvo_postproc_probe"
 POSTPROC_NPU_MODES = {"live", "stale", "v3"}
-POSTPROC_LOAD_MODES = {"gpuab", "nms", "stages", "sweep"}
+POSTPROC_LOAD_MODES = {"gpuab", "nms", "stages", "sweep", "stride", "memasym"}
+# Tools that never open the NPU but time the GPU/CPU themselves (preproc_bench: workgroup sweep, --impl CPU vs GPU).
+LOAD_CMDS = {"yvo_preproc_bench"}
 _PROBE_MODE_RE = re.compile(r"--probe(?:\s+|=)(\S+)|--(live|stale|fixture|sweep|heapimport)\b")
 
 # The bench list is found by globbing 06_tools/bench/*_bench.sh. If root resolution fails, fall back to the list below.
@@ -98,6 +100,8 @@ def classify(shell_cmd):
         elif base == "bash" or base.endswith(".sh"):
             if any(b in seg for b in BENCH_SCRIPTS):
                 npu_hit = "bench script"
+        elif base in LOAD_CMDS:
+            load_hit = base
         elif base in ("python", "python3") and "hailo_platform" in seg:
             npu_hit = base
         elif base == "cmake" and "--build" in seg:
