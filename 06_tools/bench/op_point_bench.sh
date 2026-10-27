@@ -151,8 +151,8 @@ for ((r = 1; r <= RUNS; r++)); do
     rm -rf "$run_dir"; mkdir -p "$run_dir"
     echo "[$(date +%T)] run $r/$RUNS $id (hailo $(hailo_temp) C)"
     set +e
-    # shellcheck disable=SC2086  # args is word-split on purpose
-    (cd "$run_dir" && "$BIN" --video "$VIDEO" --hef "$HEF" $args \
+    # shellcheck disable=SC2086  # args is word-split on purpose; --input-pace asap: pre-2026-10-27 app default, explicit since O2 became the default
+    (cd "$run_dir" && "$BIN" --video "$VIDEO" --hef "$HEF" --input-pace asap $args \
         "${frames_arg[@]}" --quiet --csv-label "$id" > stdout.log 2>&1)
     rc=$?
     set -e

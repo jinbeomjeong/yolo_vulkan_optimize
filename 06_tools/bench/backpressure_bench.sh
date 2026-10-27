@@ -20,10 +20,10 @@ bench_lock_acquire
 mkdir -p "$OUT_DIR/raw"
 
 configs=(
-  "host_b2s4 |--mode dmabuf --layout nhcw --batch 2 --slots 4  --postproc host"
-  "gpu_b2s4  |--mode dmabuf --layout nhcw --batch 2 --slots 4  --postproc gpu"
-  "host_b8s16|--mode dmabuf --layout nhcw --batch 8 --slots 16 --postproc host"
-  "gpu_b8s16 |--mode dmabuf --layout nhcw --batch 8 --slots 16 --postproc gpu"
+  "host_b2s4 |--mode dmabuf --layout nhcw --batch 2 --slots 4  --postproc host --input-pace asap"
+  "gpu_b2s4  |--mode dmabuf --layout nhcw --batch 2 --slots 4  --postproc gpu --input-pace asap"
+  "host_b8s16|--mode dmabuf --layout nhcw --batch 8 --slots 16 --postproc host --input-pace asap"
+  "gpu_b8s16 |--mode dmabuf --layout nhcw --batch 8 --slots 16 --postproc gpu --input-pace asap"
 )
 
 {

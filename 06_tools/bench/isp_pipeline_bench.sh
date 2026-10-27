@@ -44,7 +44,7 @@ mkdir -p "$OUT_DIR/raw"
 
 # id|tool|args
 configs=(
-  "gpu_nhcw_b8|gpu|--mode dmabuf --layout nhcw --batch 8 --slots 16 --postproc host"
+  "gpu_nhcw_b8|gpu|--mode dmabuf --layout nhcw --batch 8 --slots 16 --postproc host --input-pace asap"
   "isp_A_nhwc_b8|isp|--mode dmabuf --layout nhwc --batch 8 --slots 16"
   "isp_C_nhcw_b8|isp|--mode dmabuf --layout nhcw --repack cpu --batch 8 --slots 16"
 )

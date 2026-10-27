@@ -104,7 +104,7 @@ check_only_exit
 CALLER_DEC_THREADS="${YVO_DEC_THREADS-<unset>}"
 
 # Shared operating-point arguments (everything explicit; display off).
-BASE_ARGS="--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --gpu-depth 3 --display off"
+BASE_ARGS="--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --gpu-depth 3 --display off --input-pace asap"
 # id|args (perf mode)
 configs=(
   "b2s4_cpu  |$BASE_ARGS --batch 2 --slots 4 --nms cpu"

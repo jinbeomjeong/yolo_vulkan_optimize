@@ -146,7 +146,7 @@ build_cmd() {
   if is_display "$args"; then cmd+=(timeout -s KILL "$DISP_TIMEOUT_S"); fi
   if [[ "$threads" == "auto" ]]; then cmd+=(env YVO_DEC_THREADS=0)
   else cmd+=(env "YVO_DEC_THREADS=$threads"); fi
-  cmd+=("$BIN" --video "$VIDEO" --hef "$HEF" "${argv[@]}")
+  cmd+=("$BIN" --video "$VIDEO" --hef "$HEF" --input-pace asap "${argv[@]}")   # --input-pace asap: pre-2026-10-27 app default, explicit since O2 became the default
   if [[ "$frames" != "all" ]]; then cmd+=(--frames "$frames"); fi
   cmd+=(--quiet --csv-label "$id")
 }

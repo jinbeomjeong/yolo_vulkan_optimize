@@ -168,10 +168,10 @@ HAVE_WAYLAND=0; [[ -n "${WAYLAND_DISPLAY:-}" ]] && HAVE_WAYLAND=1
 
 # id|free-form args. Operating point fixed at b2/s4 --postproc gpu; only the display axis varies.
 configs=(
-  "reg_host_off |--mode dmabuf --layout nhcw --batch 2 --slots 4 --postproc host"
-  "disp_off     |--mode dmabuf --layout nhcw --batch 2 --slots 4 --postproc gpu"
-  "disp_asap    |--mode dmabuf --layout nhcw --batch 2 --slots 4 --postproc gpu --display on --display-fullscreen --display-pace asap"
-  "disp_source  |--mode dmabuf --layout nhcw --batch 2 --slots 4 --postproc gpu --display on --display-fullscreen --display-pace source"
+  "reg_host_off |--mode dmabuf --layout nhcw --batch 2 --slots 4 --postproc host --input-pace asap"
+  "disp_off     |--mode dmabuf --layout nhcw --batch 2 --slots 4 --postproc gpu --input-pace asap"
+  "disp_asap    |--mode dmabuf --layout nhcw --batch 2 --slots 4 --postproc gpu --display on --display-fullscreen --display-pace asap --input-pace asap"
+  "disp_source  |--mode dmabuf --layout nhcw --batch 2 --slots 4 --postproc gpu --display on --display-fullscreen --display-pace source --input-pace asap"
 )
 
 # DRYRUN=1: print the commands of every run (same loop filters) and exit. No lock, no files, no sudo, no NPU access

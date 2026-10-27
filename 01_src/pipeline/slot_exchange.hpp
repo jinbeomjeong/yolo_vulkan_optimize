@@ -174,4 +174,18 @@ inline constexpr int kMinPlaneMatchedSlots = 2;
 std::string validate_slot_budget(SlotBudgetPath path, bool latest_sync, int slots, int gpu_depth,
                                  int extra_held_beyond_slots, int input_queue = 0);
 
+// yvo_pipeline's --slots default (used when --slots is absent or <= 0). The app default is the minimum-latency
+// operating point O2 = --batch 1 --slots 1 --input-pace source --input-queue 1 (user decision 2026-10-27):
+//   batch 1 with paced input → 1. One frame in flight: a second slot would only queue a frame behind the one on the
+//                             NPU (b1 cannot keep up with 30 fps), which is the latency O2 removes.
+//   otherwise               → max(4, 2 * batch), the rule every earlier measurement used. 2 * batch is the
+//                             throughput ceiling (07_results/op_point), and with paced input b2/s4 had the same
+//                             latency as b2/s3 (07_results/input_pacing), so pacing alone does not change it.
+// batch is clamped so an out-of-range --batch (rejected later by parse()) cannot overflow.
+inline int default_slots(int batch, bool paced_input) {
+    if (batch == 1 && paced_input) return 1;
+    const int b = batch < 2 ? 2 : (batch > (1 << 20) ? (1 << 20) : batch);
+    return b * 2 > 4 ? b * 2 : 4;
+}
+
 } // namespace yvo::pipeline

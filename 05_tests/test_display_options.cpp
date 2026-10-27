@@ -1,6 +1,7 @@
 // yvo_pipeline display option parsers (display/display_pipeline.hpp, display/vk_swapchain.hpp) — pure string → enum.
 //
-//   --display-backend      parse_backend_kind
+//   --display-backend      parse_backend_kind (+ is_plane_backend: auto is never a plane path, so yvo_pipeline's
+//                          --display on gate for auto is the composition rule — O2's --slots 1 cannot deadlock there)
 //   --display-color-range  parse_color_range  (+ color_range_name)
 //   --display-sync         parse_display_sync (+ sync_name)
 //   --display-pace         parse_display_pace (+ pace_name)
@@ -61,6 +62,19 @@ TEST(DisplayOptions, BackendKindInvalidLeavesOutputUntouched) {
     DisplayBackendKind out = DisplayBackendKind::Offscreen;
     EXPECT_FALSE(parse_backend_kind(std::string("kms\0", 4), &out)) << "embedded NUL";
     EXPECT_EQ(out, DisplayBackendKind::Offscreen);
+}
+
+TEST(DisplayOptions, PlaneBackendOnlyWhenNamedExplicitly) {
+    EXPECT_FALSE(is_plane_backend(DisplayBackendKind::Auto));
+    EXPECT_FALSE(is_plane_backend(DisplayBackendKind::Wayland));
+    EXPECT_FALSE(is_plane_backend(DisplayBackendKind::Offscreen));
+    EXPECT_TRUE(is_plane_backend(DisplayBackendKind::WaylandPlanes));
+    EXPECT_TRUE(is_plane_backend(DisplayBackendKind::Kms));
+    // The --display-backend default (DisplayPipelineConfig) and the parsed "auto" both stay off the plane paths.
+    EXPECT_FALSE(is_plane_backend(DisplayPipelineConfig{}.backend));
+    DisplayBackendKind out = DisplayBackendKind::Kms;
+    ASSERT_TRUE(parse_backend_kind("auto", &out));
+    EXPECT_FALSE(is_plane_backend(out));
 }
 
 TEST(DisplayOptions, ColorRangeValidAndRoundTrip) {

@@ -10,6 +10,9 @@
 //                         plane_frames_held(): the plane-path count shared with yvo_pipeline's extra_hw_frames.
 //                         With --input-pace source the queued frames (--input-queue N) are added on every path.
 //                         Plane paths with matched sync need --slots >= 2 (the on-screen frame keeps its slot).
+//   DefaultSlots.*        default_slots(): the --slots default — 1 for the O2 app default (batch 1 + --input-pace
+//                         source), max(4, 2*batch) otherwise (the pre-2026-10-27 rule), and that the O2 defaults pass
+//                         the --display on gate on the composition path (what --display-backend auto resolves to).
 //   LeakyQueue.*          --input-pace source queue: FIFO, a full queue drops (and hands back) the oldest
 //   ArrivalSchedule.*     t_arr(k) = t0 + k/fps on an absolute base, the boundary counts as due
 //   InputPacer.*          max_gap() (longest dropped run) and the validate_input_queue() startup gate
@@ -423,7 +426,7 @@ TEST(SlotBudget, CompositeAllowsUpToTen) {
 
 TEST(SlotBudget, CompositeRejectsElevenWithExactMessage) {
     EXPECT_EQ(validate_slot_budget(SlotBudgetPath::Composite, false, 8, 3, kExtra), composite_msg(8, 3, 11));
-    // Default --batch 8 → slots 16: --display on without --slots is rejected.
+    // --batch 8 without --slots under asap → slots 16 (the pre-2026-10-27 default): --display on is rejected.
     EXPECT_EQ(validate_slot_budget(SlotBudgetPath::Composite, false, 16, 3, kExtra), composite_msg(16, 3, 19));
 }
 
@@ -518,6 +521,53 @@ TEST(SlotBudget, OneSlotIsFineWithLatestOrComposite) {
     EXPECT_EQ(validate_slot_budget(SlotBudgetPath::Kms, true, 1, 1, kExtra, 1), "");
     EXPECT_EQ(validate_slot_budget(SlotBudgetPath::Composite, false, 1, 3, kExtra), "");
     EXPECT_EQ(validate_slot_budget(SlotBudgetPath::Composite, true, 1, 1, kExtra, 1), "");
+}
+
+// ═══════════════════════════════════════════════ default_slots
+
+using yvo::pipeline::default_slots;
+
+TEST(DefaultSlots, O2DefaultIsOneSlot) {
+    // No arguments = --batch 1 --input-pace source → --slots 1 (O2, user decision 2026-10-27).
+    EXPECT_EQ(default_slots(1, true), 1);
+}
+
+TEST(DefaultSlots, AsapKeepsTheOldRuleForEveryBatch) {
+    // --input-pace asap (every bench passes it): byte-for-byte the old max(4, batch*2), batch 1..64 (parse() range).
+    for (int b = 1; b <= 64; ++b) EXPECT_EQ(default_slots(b, false), std::max(4, b * 2)) << "batch " << b;
+    EXPECT_EQ(default_slots(8, false), 16);   // the old no-argument default (b8/s16)
+    EXPECT_EQ(default_slots(1, false), 4);
+}
+
+TEST(DefaultSlots, PacedBatchAboveOneKeepsTheOldRule) {
+    // Only batch 1 changes with pacing: b2 paced → 4 (07_results/input_pacing: b2/s4 = b2/s3 latency, no drops).
+    for (int b = 2; b <= 64; ++b) EXPECT_EQ(default_slots(b, true), std::max(4, b * 2)) << "batch " << b;
+}
+
+TEST(DefaultSlots, OutOfRangeBatchStaysPositiveWithoutOverflow) {
+    // parse() rejects these right after; the default must not overflow first (the old batch * 2 did for INT_MAX).
+    EXPECT_EQ(default_slots(0, false), 4);
+    EXPECT_EQ(default_slots(0, true), 4);
+    EXPECT_EQ(default_slots(-7, true), 4);
+    EXPECT_GT(default_slots(INT_MAX, false), 0);
+    EXPECT_GT(default_slots(INT_MIN, true), 0);
+}
+
+TEST(DefaultSlots, O2DefaultsPassTheDisplayGateOnComposition) {
+    // --display on with no other argument: backend auto = composition (never a plane path, display_pipeline.hpp
+    // is_plane_backend), gpu_depth min(3, slots) = 1, input queue 1 → 1 + 1 + 1 = 3 <= 10.
+    const int slots = default_slots(1, true);
+    const int depth = std::min(3, slots);
+    EXPECT_EQ(validate_slot_budget(SlotBudgetPath::Composite, false, slots, depth, kExtra, 1), "");
+    EXPECT_EQ(validate_slot_budget(SlotBudgetPath::Composite, true, slots, depth, kExtra, 1), "");
+    // An explicit plane backend with matched sync and the O2 slot count is refused with a message, not run into a
+    // deadlock (the on-screen frame would keep the only slot).
+    const std::string err = validate_slot_budget(SlotBudgetPath::WaylandPlanes, false, slots, depth, kExtra, 1);
+    EXPECT_NE(err.find("--display-backend wayland-planes --display-sync matched requires --slots >= 2 (now 1)"),
+              std::string::npos) << err;
+    EXPECT_NE(validate_slot_budget(SlotBudgetPath::Kms, false, slots, depth, kExtra, 1), "");
+    // latest returns the slot right after show(): 1 + 1 + 5 + 1 = 8 <= 10 is allowed.
+    EXPECT_EQ(validate_slot_budget(SlotBudgetPath::WaylandPlanes, true, slots, depth, kExtra, 1), "");
 }
 
 // ═══════════════════════════════════════════════ RESULT_CSV (toolkit/result_csv.hpp)

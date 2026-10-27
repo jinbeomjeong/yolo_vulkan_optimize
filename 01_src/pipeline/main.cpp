@@ -34,9 +34,9 @@
 //          --nms cpu: CPU greedy suppression (cpu_nms_greedy_by_class). --nms verify: runs both and compares bit-exactly.
 //          Pushing NPU completions to the GPU is also done by the **main thread** (InferStage::pump/drain_one) —
 //          because there is only one VkQueue, vkQueueSubmit must not be called from another thread.
-// Input pacing (--input-pace)
-//   asap   : (default) decode as fast as slots free up — the loop below, unchanged.
-//   source : frames arrive at the source frame rate (t0 + k/fps, like a camera) into a leaky queue of --input-queue N
+// Input pacing (--input-pace)  — app default = O2: --batch 1 --slots 1 --input-pace source --input-queue 1 (2026-10-27)
+//   asap   : decode as fast as slots free up — the loop below, unchanged. (default until 2026-10-27; benches pass it)
+//   source : (default) frames arrive at the source frame rate (t0 + k/fps, like a camera) into a leaky queue of --input-queue N
 //            (full → drop the oldest, take the oldest: GStreamer queue leaky=downstream). Single-threaded paced loop.
 //            --display on: same display calls as asap minus the display pace gate (pace_deadline) — input is already paced.
 // Shutdown order: InferStage::drain → flush_results → display drain → SandLetterbox::clear_import_cache
@@ -177,8 +177,8 @@ struct Args {
     Mode mode = Mode::Dmabuf;
     // Preprocessing output / NPU input tensor layout. With Nhcw, HailoRT's CPU input conversion disappears (dmabuf mode only).
     yvo::TensorLayout layout = yvo::TensorLayout::Nhcw;
-    int batch = 8;
-    int slots = 0;      // 0 = batch*2 (minimum 4)
+    int batch = 1;      // default operating point O2 (minimum latency); throughput setups pass --batch / --slots
+    int slots = 0;      // 0 = yvo::pipeline::default_slots(): 1 for batch 1 + --input-pace source, else max(4, batch*2)
     int gpu_depth = 3;  // number of frames kept in flight on the GPU at once
     float score = -1.0f;
     Postproc postproc = Postproc::Gpu;
@@ -194,7 +194,7 @@ struct Args {
     std::string csv_label;  // if set, print one CSV line (RESULT_CSV,...) at the end
     // Decoder frame threads: 1 (07_results/dec_threads). Research knob YVO_DEC_THREADS (environment); 0 -> FFmpeg auto.
     int dec_threads = 1;
-    InputPace input_pace = InputPace::Asap;
+    InputPace input_pace = InputPace::Source;   // O2 default (user decision 2026-10-27); asap was the default before
     int input_queue = 1;               // leaky queue capacity, --input-pace source only (user decision 2026-10-12: 1)
     bool input_queue_explicit = false;
     std::string frame_log;             // --frame-log PATH: per-frame timing CSV written once at the end ("" = off)
@@ -215,8 +215,8 @@ void usage(const char* a0) {
                  "          [--quiet] [--csv-label L] [--input-pace asap|source] [--input-queue N] [--frame-log PATH]\n"
                  "  --layout     preprocessing output / NPU input tensor layout (default nhcw with the default --mode dmabuf; nhwc under --mode ptr)\n"
                  "               nhcw removes HailoRT's CPU input conversion (about 14 ms/frame). --mode dmabuf only\n"
-                 "  --slots      number of slots shared by GPU and NPU (default max(4, batch*2))\n"
-                 "  --gpu-depth  max frames in flight on the GPU at once (default 3, 2~4 recommended: decoder buffer limit)\n"
+                 "  --batch N / --slots N  NPU batch size (default 1) / slots shared by GPU and NPU (default 1 with batch 1 + --input-pace source, else max(4, batch*2))\n"
+                 "  --gpu-depth  max frames in flight on the GPU at once (default 3, capped at --slots; 2~4 recommended: decoder buffer limit)\n"
                  "  --postproc   post-processing location (default gpu; host under --mode ptr or --layout nhwc). gpu = 6 raw output streams + yolo_decode.comp + efficient_nms.comp suppression\n"
                  "               (only edge-case frames fall back to CPU, see --nms)\n"
                  "               --mode dmabuf --layout nhcw only\n"
@@ -225,9 +225,9 @@ void usage(const char* a0) {
                  "               cpu = cpu_nms_greedy_by_class, verify = run both and compare bit-exactly (output is the CPU side)\n"
                  "               --postproc gpu only\n"
                  "  --dump-dir   detections.jsonl (one line per frame) + box PNG every K frames (on the letterbox input)\n"
-                 "  --input-pace asap = decode as fast as slots free up (default). source = frames arrive at the stream\n"
-                 "               frame rate into a leaky queue (full: drop the oldest). --frames counts\n"
-                 "               arrived frames; dropped frames get no jsonl line / PNG (\"frame\" stays the source index)\n"
+                 "  --input-pace source = frames arrive at the stream frame rate into a leaky queue (full: drop the oldest). default:\n"
+                 "               O2 = --batch 1 --slots 1 --input-pace source --input-queue 1 (minimum latency). asap = decode as fast as\n"
+                 "               slots free up (throughput benches). --frames counts arrived frames; dropped frames get no jsonl line / PNG (\"frame\" stays the source index)\n"
                  "  --input-queue N  leaky queue size for --input-pace source, 1..3 (default 1)\n"
                  "               paced cpu ms/frame and FPS are per processed frame: not comparable to asap\n"
                  "  --frame-log PATH  one CSV row per frame at the end (ms since start; dropped 1 = queue drop, 2 = abandoned)\n"
@@ -356,7 +356,7 @@ bool parse(int argc, char** argv, Args& a) {
     const bool pp_dn = !a.postproc_explicit && (a.mode == Mode::Ptr || a.layout == yvo::TensorLayout::Nhwc);
     if (lay_dn || pp_dn) std::fprintf(stderr, "note: default lowered to%s%s (nhcw needs --mode dmabuf, --postproc gpu needs dmabuf + nhcw)\n", lay_dn ? " --layout nhwc" : "", pp_dn ? " --postproc host" : "");
     a.layout = lay_dn ? yvo::TensorLayout::Nhwc : a.layout;  a.postproc = pp_dn ? Postproc::Host : a.postproc;
-    if (a.slots <= 0) a.slots = std::max(4, a.batch * 2);
+    if (a.slots <= 0) a.slots = yvo::pipeline::default_slots(a.batch, a.input_pace == InputPace::Source);
     if (a.batch < 1 || a.batch > 64 || a.gpu_depth < 1 || a.dump_every < 1) return false;
     a.gpu_depth = std::min(a.gpu_depth, a.slots);
     if (a.input_pace == InputPace::Asap && a.input_queue_explicit) {
@@ -378,8 +378,8 @@ bool parse(int argc, char** argv, Args& a) {
         a.disp.pace = a.display ? yvo::display::DisplayPace::Source : yvo::display::DisplayPace::None;
     a.disp.num_slots = a.slots;
     // Plane scanout (PlaneDisplay): wayland-planes and kms. Same frame-holding rules (same PlaneDisplay limit).
-    const bool planes = a.disp.backend == yvo::display::DisplayBackendKind::WaylandPlanes ||
-                        a.disp.backend == yvo::display::DisplayBackendKind::Kms;
+    // auto is never a plane path (Wayland composition or offscreen) → it always takes the composition budget below.
+    const bool planes = yvo::display::is_plane_backend(a.disp.backend);
     if (!a.disp.connector.empty() && a.disp.backend != yvo::display::DisplayBackendKind::Kms)
         std::fprintf(stderr, "warning: --display-connector is used only with --display-backend kms (ignored for now)\n");
     if (planes) a.disp.fullscreen = true;   // in windowed mode labwc composites with GL → this backend becomes pointless (kms is always fullscreen)
@@ -878,7 +878,7 @@ int run(const Args& a) {
     yvo::display::WaylandWindow win;
     bool have_win = false;
     const bool kms = a.display && a.disp.backend == yvo::display::DisplayBackendKind::Kms;
-    const bool planes = a.display && (a.disp.backend == yvo::display::DisplayBackendKind::WaylandPlanes || kms);
+    const bool planes = a.display && yvo::display::is_plane_backend(a.disp.backend);
     // kms: no window and no Vulkan present (copt default = present off). If master cannot be acquired, exit with
     // code 2 before opening the NPU/GPU — so device open and master acquisition are done **first**. The screen changes on the first commit.
     std::unique_ptr<yvo::display::KmsScanout> kms_scanout;

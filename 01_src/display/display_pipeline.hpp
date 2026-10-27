@@ -256,4 +256,12 @@ const char* color_range_name(ColorRangeRequest r);
 bool parse_display_sync(const std::string& s, DisplaySync* out);
 bool parse_display_pace(const std::string& s, DisplayPace* out);
 
+// True when the backend scans out through PlaneDisplay (wayland-planes, kms) instead of DisplayPipeline.
+// Auto is **never** a plane backend: it means "Wayland composition, offscreen if the window/present fails"
+// (DisplayPipeline), so yvo_pipeline's slot budget for auto is always the composition rule — the plane rules
+// (matched needs --slots >= 2) apply only when the user names wayland-planes / kms explicitly.
+inline bool is_plane_backend(DisplayBackendKind k) {
+    return k == DisplayBackendKind::WaylandPlanes || k == DisplayBackendKind::Kms;
+}
+
 } // namespace yvo::display

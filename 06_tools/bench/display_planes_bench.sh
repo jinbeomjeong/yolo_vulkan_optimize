@@ -118,7 +118,7 @@ fi
 check_only_exit
 
 # Shared arguments (everything explicit, also the CLI defaults: defaults can move, archived commands must not).
-BASE_ARGS="--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --nms gpu --gpu-depth 3 --batch 2 --slots $SLOTS"
+BASE_ARGS="--mode dmabuf --layout nhcw --postproc gpu --postproc-alloc export --nms gpu --gpu-depth 3 --batch 2 --slots $SLOTS --input-pace asap"
 BASE_ARGS+=" --display on --display-fullscreen --display-sync matched --display-warmup $WARMUP"
 VK_ARGS="--display-backend wayland"
 WLP_ARGS="--display-backend wayland-planes --display-color-range auto"

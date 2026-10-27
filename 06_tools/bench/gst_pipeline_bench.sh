@@ -87,7 +87,7 @@ build_cmd() {
   case "$tool" in
     app)
       cmd=("$APP_BIN" --video "$VIDEO" --hef "$HEF" --mode dmabuf --layout nhcw --postproc host
-           --batch "$batch" --slots "$slots" "${frames_arg[@]}")
+           --batch "$batch" --slots "$slots" --input-pace asap "${frames_arg[@]}")   # asap: pre-2026-10-27 app default, explicit since O2 became the default
       if [[ -n "$dump" ]]; then cmd+=(--dump-dir "$dump" --dump-every "$DETS_PNG_EVERY"); fi
       ;;
     gst)

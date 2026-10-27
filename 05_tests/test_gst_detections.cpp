@@ -2,7 +2,7 @@
 //
 //   reference : FfmpegDrmDecoder → SandLetterbox (NHCW, exported dma-buf per slot) → HailoRunner (NHCW, batch B,
 //               map_dmabuf(fd, input_frame_size) per slot, HEF NMS on the host) — the calls yvo_pipeline makes with
-//               --mode dmabuf --layout nhcw (HostNmsStage), slots = max(4, 2*B) like its default.
+//               --mode dmabuf --layout nhcw --input-pace asap (HostNmsStage), slots = max(4, 2*B) like its asap default.
 //   gstreamer : filesrc ! qtdemux ! h265parse ! v4l2slh265dec ! queue ! yvosandletterbox ! queue ! yvohailosink batch=B
 //               (the yvo_gst_pipeline --sink hailo chain), results collected in seq order by the sink's callback.
 // Criterion: for every frame the detection lists are EQUAL (same order, class, score and box floats) — the NHCW
@@ -85,7 +85,7 @@ protected:
         if (skip_.empty() && error_.empty()) run_gstreamer();
     }
 
-    // yvo_pipeline --mode dmabuf --layout nhcw --batch B (slots max(4, 2B)), pipelined over the ring like the app.
+    // yvo_pipeline --mode dmabuf --layout nhcw --batch B --input-pace asap (slots max(4, 2B)), pipelined over the ring like the app.
     static void run_reference() {
         const int slots = std::max(4, 2 * batch_);
         std::vector<int> fds;
