@@ -1,5 +1,5 @@
 // 발표 덱 생성 스크립트: NPU 기반 YOLO 추론에서 호스트 CPU 최소화 (16장, 16:9) — 버전 4: v3 + 부록 A3 전처리 CPU 대 GPU (명세 ../content_spec_v4.md)
-// 실행: NODE_PATH=<python-dev>/lib/node_modules <python-dev>/bin/node build_deck.js
+// 실행: NODE_PATH=<python-dev>/lib/node_modules <python-dev>/bin/node build_deck_v4.js
 // 내용 정본: ../content_spec.md (수치는 명세에 적힌 것만 쓴다)
 // 입력·출력 경로는 이 파일 위치 기준으로 고정한다. 날짜·난수를 쓰지 않는다.
 'use strict';
@@ -634,7 +634,7 @@ async function build() {
     s.addShape(pres.shapes.RECTANGLE, { x: lx, y: ly + 0.05, w: 0.14, h: 0.14, fill: { color: col }, line: { type: 'none' }, objectName: `범례 색 ${name}` });
     tx(s, name, { x: lx + 0.2, y: ly, w: cw[i % 3] - 0.22, h: 0.24, fontSize: 11, color: C.text1, valign: 'middle', objectName: `범례 ${name}` });
   });
-  tx(s, '4스레드로 나눠도 평면화(약 1.1 ms) 같은 메모리 단계는 줄지 않는다 — GPU는 이 단계가 없다',
+  tx(s, '평면화(약 1.1 ms)는 넷으로 나누면 오히려 느려진다(1.17→1.60 ms) — GPU는 이 단계가 없다',
     { x: rx16, y: a3y + a3hR + 0.55, w: rw16, h: 0.55, fontSize: 14, color: C.text1, objectName: '오른쪽 한 줄' });
   // 아래: 핵심 메시지 2줄 + 각주 2줄
   tx(s, [
