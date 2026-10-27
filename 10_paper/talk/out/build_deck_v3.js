@@ -1,4 +1,4 @@
-// 발표 덱 생성 스크립트: NPU 기반 YOLO 추론에서 호스트 CPU 최소화 (13장, 16:9) — 버전 3: v2(6~10번 블록 다이어그램 틀) + 7·12번 근거 한 줄과 부록 A1·A2 (명세 ../content_spec_v3.md)
+// 발표 덱 생성 스크립트: NPU 기반 YOLO 추론에서 호스트 CPU 최소화 (15장, 16:9) — 버전 3: v2(6~10번 블록 다이어그램 틀) + 7·12번 근거 한 줄과 부록 A1·A2 (명세 ../content_spec_v3.md)
 // 실행: NODE_PATH=<python-dev>/lib/node_modules <python-dev>/bin/node build_deck.js
 // 내용 정본: ../content_spec.md (수치는 명세에 적힌 것만 쓴다)
 // 입력·출력 경로는 이 파일 위치 기준으로 고정한다. 날짜·난수를 쓰지 않는다.
