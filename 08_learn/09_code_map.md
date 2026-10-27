@@ -248,7 +248,7 @@ ctest --test-dir build
 
 | 테스트 | NPU | 합격 기준 |
 |---|---|---|
-| `test_preproc` | 불필요 | GPU 전처리가 CPU 기준과 **NHCW에서 바이트 완전 일치**. `SandRefVsFfmpeg.*`: 기준 de-SAND가 rpi-ffmpeg SAND→NV12 변환과 **바이트 일치** — GPU ↔ `ref/` ↔ rpi-ffmpeg 사슬을 닫는다 |
+| `test_preproc` | 불필요 | GPU 전처리가 CPU 기준과 **NHCW에서 바이트 완전 일치**(검사 프레임 5장 기준. 전 프레임 대조에서는 660프레임 중 4바이트 G ±1 — [`preproc_cpu_vs_gpu`](../07_results/preproc_cpu_vs_gpu/summary.md)). `SandRefVsFfmpeg.*`: 기준 de-SAND가 rpi-ffmpeg SAND→NV12 변환과 **바이트 일치** — GPU ↔ `ref/` ↔ rpi-ffmpeg 사슬을 닫는다 |
 | `PostprocFixture.*` (6개) | **불필요** | 후보 수 동일, 점수 **비트 일치**, 좌표 오차 < 0.25 px, 10회 결정성, GPU NMS 결과 **비트 일치**(score 0.2·0.01), heap 입력 경로(`YoloInputAlloc::ImportHeap`)가 Plain과 **비트 일치**(dma-heap 노드가 없으면 skip) |
 | `EfficientNms.*` (7개) | **불필요** | 합성 DetBuf: 동점, 클래스 정원, 클래스 간 겹침, 용량 초과·IoU 보호대 신호, 0/1개, 결정성 |
 | `test_postproc_live` | 필요 | host 경로 vs GPU 경로 검출 매칭 ≥ 0.95 |
@@ -343,7 +343,7 @@ build/bin/yvo_pipeline --video ... --hef ...
 **Q1. GPU 셰이더의 계산이 맞는지 어떻게 확인하는가?**
 
 `01_src/ref/`의 CPU 기준 구현과 비교한다. 셰이더는 그 수식의 번역본이고,
-`ctest`가 두 결과를 대조한다. 전처리 NHCW와 오버레이는 **바이트 완전 일치**가 합격 기준이다.
+`ctest`가 두 결과를 대조한다. 전처리 NHCW와 오버레이는 **바이트 완전 일치**가 합격 기준이다(검사 프레임에서. 전처리는 전 프레임으로 넓히면 660프레임 중 4바이트가 ±1 다르다 — [`preproc_cpu_vs_gpu`](../07_results/preproc_cpu_vs_gpu/summary.md)).
 
 **Q2. `hailo/`와 `vulkan/`이 서로 링크하지 않으면 데이터는 어떻게 주고받는가?**
 

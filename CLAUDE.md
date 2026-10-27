@@ -129,7 +129,8 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론 파이프�
     `PkgConfig` → `libavformat`·`libavcodec`·`libavutil`·`libdrm` (`01_src/decode/CMakeLists.txt`)
   - **선택**: `OpenCV`(**REQUIRED 아님** — 없으면 경고만 내고 OpenCV를 쓰는 타깃이 빠진다),
     `wayland-client`+`wayland-protocols`(없으면 표시 경로가 kms 백엔드까지 조용히 빠진다. staging `color-representation` XML은 있으면 쓴다), `libpisp`(없으면 `yvo_isp` 전체가 빠진다),
-    `gstreamer-1.0`·`-base`·`-video`·`-allocators`·`-app` ≥1.24(없으면 `yvo_gstelem`과 `tools/gst/` 도구가 빠진다)
+    `gstreamer-1.0`·`-base`·`-video`·`-allocators`·`-app` ≥1.24(없으면 `yvo_gstelem`과 `tools/gst/` 도구가 빠진다),
+    `libswscale`(pkg-config, 없으면 `yvo_preproc_bench`의 `--impl sws-rgb24|sws-gbrp`만 빠진다 — `01_src/tools/CMakeLists.txt`, 2026-10-27)
   - **`YVO_BUILD_TESTS`일 때**: `GTest`(→ `GTest::gtest_main`)
   - `pybind11`·`nlohmann_json`은 **쓰지 않는다.** `find_package` 호출이 없다.
     nlohmann_json은 conda prefix에만 있어 다른 시스템 헤더를 가릴 위험이 있어 의도적으로 뺐다

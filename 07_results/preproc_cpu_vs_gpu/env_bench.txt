@@ -1,0 +1,35 @@
+date: 2026-10-27T14:30:48+09:00
+host: Raspberry Pi Compute Module 5 Rev 1.0
+kernel: 6.18.50+rpt-rpi-2712
+mesa-vulkan-drivers: 26.2.2-1~bpo13+0~rpt1
+libdrm2: 2.4.134-3~bpo13+1+rpt1
+libavcodec61: 8:7.1.5-0+deb13u1+rpt2
+libavutil59: 8:7.1.5-0+deb13u1+rpt2
+libswscale8: 8:7.1.5-0+deb13u1+rpt2
+v3d_freq config: v3d_freq=1150
+clock v3d: frequency(0)=1150008192  arm: frequency(0)=2400027136
+governor(cpu0..3): performance performance performance performance 
+scaling_max_freq(cpu0): 2400000
+soc temp: 68.1 C  throttled=0x80000
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)  (NPU not used)
+dma_heap: default_cma_region linux,cma system vidbuf_cached 
+git HEAD: cd6c8bd88b0c8fc7fbf0b4f83e19920d0d020cd0 (tracked changes)
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_preproc_bench md5 0f46cad4fabaebe2d01d1d0f660f50e1 mtime 2026-10-27 14:26:18.910547542 +0900
+video: /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 (yvo_preproc_bench default)
+frames: 600 timed after 60 warm-up frames per run; accuracy pass: first 660 frames
+configs:
+  cpuref_t1: taskset -c 3 --impl cpuref --frames 600 --warmup 60
+  cpuref_t1_permap: taskset -c 3 --impl cpuref --cpu-map perframe --frames 600 --warmup 60
+  cpuref_t1_malloc: taskset -c 3 --impl cpuref --cpu-out malloc --frames 600 --warmup 60
+  cpuref_t4: taskset -c 0-3 --impl cpuref --threads 4 --mem-threads 1 --frames 600 --warmup 60
+  cpuref_t4_mem4: taskset -c 0-3 --impl cpuref --threads 4 --mem-threads 4 --frames 600 --warmup 60
+  sws_rgb24_t1: taskset -c 3 --impl sws-rgb24 --frames 600 --warmup 60
+  sws_rgb24_t1_malloc: taskset -c 3 --impl sws-rgb24 --cpu-out malloc --frames 600 --warmup 60
+  sws_rgb24_t4: taskset -c 0-3 --impl sws-rgb24 --threads 4 --mem-threads 1 --frames 600 --warmup 60
+  sws_gbrp_t1: taskset -c 3 --impl sws-gbrp --frames 600 --warmup 60
+  sws_gbrp_t4: taskset -c 0-3 --impl sws-gbrp --threads 4 --mem-threads 1 --frames 600 --warmup 60
+  sws_fastbil_t1: taskset -c 3 --impl sws-rgb24 --sws-flags fast_bilinear --frames 600 --warmup 60
+  sws_fastbil_t4: taskset -c 0-3 --impl sws-rgb24 --sws-flags fast_bilinear --threads 4 --mem-threads 1 --frames 600 --warmup 60
+  gpu: taskset -c 3 --impl gpu --frames 600 --warmup 60
+runs: 3  cool: SoC <= 70 C (max 300s) and throttled bits 0..3 == 0 before each run
+soc temp after timed runs: 71.4 C  throttled=0x80000

@@ -1,0 +1,216 @@
+governor now: performance performance performance performance 
+date: 2026-10-27T14:30:48+09:00
+host: Raspberry Pi Compute Module 5 Rev 1.0
+kernel: 6.18.50+rpt-rpi-2712
+mesa-vulkan-drivers: 26.2.2-1~bpo13+0~rpt1
+libdrm2: 2.4.134-3~bpo13+1+rpt1
+libavcodec61: 8:7.1.5-0+deb13u1+rpt2
+libavutil59: 8:7.1.5-0+deb13u1+rpt2
+libswscale8: 8:7.1.5-0+deb13u1+rpt2
+v3d_freq config: v3d_freq=1150
+clock v3d: frequency(0)=1150008192  arm: frequency(0)=2400027136
+governor(cpu0..3): performance performance performance performance 
+scaling_max_freq(cpu0): 2400000
+soc temp: 68.1 C  throttled=0x80000
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)  (NPU not used)
+dma_heap: default_cma_region linux,cma system vidbuf_cached 
+git HEAD: cd6c8bd88b0c8fc7fbf0b4f83e19920d0d020cd0 (tracked changes)
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_preproc_bench md5 0f46cad4fabaebe2d01d1d0f660f50e1 mtime 2026-10-27 14:26:18.910547542 +0900
+video: /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 (yvo_preproc_bench default)
+frames: 600 timed after 60 warm-up frames per run; accuracy pass: first 660 frames
+configs:
+  cpuref_t1: taskset -c 3 --impl cpuref --frames 600 --warmup 60
+  cpuref_t1_permap: taskset -c 3 --impl cpuref --cpu-map perframe --frames 600 --warmup 60
+  cpuref_t1_malloc: taskset -c 3 --impl cpuref --cpu-out malloc --frames 600 --warmup 60
+  cpuref_t4: taskset -c 0-3 --impl cpuref --threads 4 --mem-threads 1 --frames 600 --warmup 60
+  cpuref_t4_mem4: taskset -c 0-3 --impl cpuref --threads 4 --mem-threads 4 --frames 600 --warmup 60
+  sws_rgb24_t1: taskset -c 3 --impl sws-rgb24 --frames 600 --warmup 60
+  sws_rgb24_t1_malloc: taskset -c 3 --impl sws-rgb24 --cpu-out malloc --frames 600 --warmup 60
+  sws_rgb24_t4: taskset -c 0-3 --impl sws-rgb24 --threads 4 --mem-threads 1 --frames 600 --warmup 60
+  sws_gbrp_t1: taskset -c 3 --impl sws-gbrp --frames 600 --warmup 60
+  sws_gbrp_t4: taskset -c 0-3 --impl sws-gbrp --threads 4 --mem-threads 1 --frames 600 --warmup 60
+  sws_fastbil_t1: taskset -c 3 --impl sws-rgb24 --sws-flags fast_bilinear --frames 600 --warmup 60
+  sws_fastbil_t4: taskset -c 0-3 --impl sws-rgb24 --sws-flags fast_bilinear --threads 4 --mem-threads 1 --frames 600 --warmup 60
+  gpu: taskset -c 3 --impl gpu --frames 600 --warmup 60
+runs: 3  cool: SoC <= 70 C (max 300s) and throttled bits 0..3 == 0 before each run
+  cooling (before cpuref_t1 run 1): soc 68.6 C -> <= 70 C (max 300s)
+  cooled 0s, soc 68.6 C
+== cpuref_t1 run 1 (SoC 67.5 C, cooled 0s)
+   [RESULT] impl=cpuref threads=1 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=10.5694 wall_p90=10.7450 wall_mean=10.6077 cpu_med=10.570
+  cooling (before cpuref_t1_permap run 1): soc 71.9 C -> <= 70 C (max 300s)
+  cooled 5s, soc 68.6 C
+== cpuref_t1_permap run 1 (SoC 69.7 C, cooled 5s)
+   [RESULT] impl=cpuref threads=1 mem_threads=1 cpu_out=heap cpu_map=perframe frames=600 warmup=60 wall_med=10.6581 wall_p90=10.8389 wall_mean=10.6922 cpu_med=10.6
+  cooling (before cpuref_t1_malloc run 1): soc 71.9 C -> <= 70 C (max 300s)
+  cooled 10s, soc 69.7 C
+== cpuref_t1_malloc run 1 (SoC 69.7 C, cooled 10s)
+   [RESULT] impl=cpuref threads=1 mem_threads=1 cpu_out=malloc cpu_map=cached frames=600 warmup=60 wall_med=10.5345 wall_p90=10.6686 wall_mean=10.5581 cpu_med=10.5
+  cooling (before cpuref_t4 run 1): soc 73.0 C -> <= 70 C (max 300s)
+  cooled 15s, soc 69.7 C
+== cpuref_t4 run 1 (SoC 69.7 C, cooled 15s)
+   [RESULT] impl=cpuref threads=4 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=4.1632 wall_p90=4.3340 wall_mean=4.2058 cpu_med=10.7858 c
+  cooling (before cpuref_t4_mem4 run 1): soc 75.2 C -> <= 70 C (max 300s)
+  cooled 25s, soc 69.2 C
+== cpuref_t4_mem4 run 1 (SoC 70.3 C, cooled 25s)
+   [RESULT] impl=cpuref threads=4 mem_threads=4 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=4.5459 wall_p90=4.6857 wall_mean=4.6475 cpu_med=16.9844 c
+  cooling (before sws_rgb24_t1 run 1): soc 75.7 C -> <= 70 C (max 300s)
+  cooled 10s, soc 69.7 C
+== sws_rgb24_t1 run 1 (SoC 70.3 C, cooled 10s)
+   [RESULT] impl=sws-rgb24 threads=1 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=5.5400 wall_p90=5.6917 wall_mean=5.5487 cpu_med=5.5435
+  cooling (before sws_rgb24_t1_malloc run 1): soc 73.6 C -> <= 70 C (max 300s)
+  cooled 20s, soc 69.7 C
+== sws_rgb24_t1_malloc run 1 (SoC 69.2 C, cooled 20s)
+   [RESULT] impl=sws-rgb24 threads=1 mem_threads=1 cpu_out=malloc cpu_map=cached frames=600 warmup=60 wall_med=5.4667 wall_p90=5.6010 wall_mean=5.5028 cpu_med=5.46
+  cooling (before sws_rgb24_t4 run 1): soc 74.1 C -> <= 70 C (max 300s)
+  cooled 10s, soc 69.7 C
+== sws_rgb24_t4 run 1 (SoC 69.7 C, cooled 10s)
+   [RESULT] impl=sws-rgb24 threads=4 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=2.6236 wall_p90=2.7298 wall_mean=2.6509 cpu_med=5.8220
+  cooling (before sws_gbrp_t1 run 1): soc 74.1 C -> <= 70 C (max 300s)
+  cooled 15s, soc 69.2 C
+== sws_gbrp_t1 run 1 (SoC 70.8 C, cooled 15s)
+   [RESULT] impl=sws-gbrp threads=1 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=6.8460 wall_p90=6.9697 wall_mean=6.8794 cpu_med=6.8448 
+  cooling (before sws_gbrp_t4 run 1): soc 74.7 C -> <= 70 C (max 300s)
+  cooled 25s, soc 69.7 C
+== sws_gbrp_t4 run 1 (SoC 70.3 C, cooled 25s)
+   [RESULT] impl=sws-gbrp threads=4 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=2.7329 wall_p90=2.8169 wall_mean=2.7829 cpu_med=7.1257 
+  cooling (before sws_fastbil_t1 run 1): soc 75.2 C -> <= 70 C (max 300s)
+  cooled 15s, soc 69.7 C
+== sws_fastbil_t1 run 1 (SoC 69.7 C, cooled 15s)
+   [RESULT] impl=sws-rgb24 threads=1 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=3.5371 wall_p90=3.7212 wall_mean=3.5822 cpu_med=3.5392
+  cooling (before sws_fastbil_t4 run 1): soc 73.6 C -> <= 70 C (max 300s)
+  cooled 20s, soc 69.2 C
+== sws_fastbil_t4 run 1 (SoC 71.4 C, cooled 20s)
+   [RESULT] impl=sws-rgb24 threads=4 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=2.1045 wall_p90=2.1930 wall_mean=2.1383 cpu_med=3.9102
+  cooling (before gpu run 1): soc 73.0 C -> <= 70 C (max 300s)
+  cooled 20s, soc 69.7 C
+== gpu run 1 (SoC 69.7 C, cooled 20s)
+   [RESULT] impl=gpu threads=1 mem_threads=1 cpu_out=v3d cpu_map=- frames=600 warmup=60 wall_med=1.8104 wall_p90=1.8217 wall_mean=1.8167 cpu_med=0.0768 cpu_p90=0.0
+  cooling (before cpuref_t1 run 2): soc 71.4 C -> <= 70 C (max 300s)
+  cooled 25s, soc 69.2 C
+== cpuref_t1 run 2 (SoC 69.2 C, cooled 25s)
+   [RESULT] impl=cpuref threads=1 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=10.6157 wall_p90=10.9002 wall_mean=10.7100 cpu_med=10.616
+  cooling (before cpuref_t1_permap run 2): soc 75.2 C -> <= 70 C (max 300s)
+  cooled 25s, soc 69.7 C
+== cpuref_t1_permap run 2 (SoC 69.7 C, cooled 25s)
+   [RESULT] impl=cpuref threads=1 mem_threads=1 cpu_out=heap cpu_map=perframe frames=600 warmup=60 wall_med=10.6215 wall_p90=10.7587 wall_mean=10.6441 cpu_med=10.6
+  cooling (before cpuref_t1_malloc run 2): soc 73.6 C -> <= 70 C (max 300s)
+  cooled 40s, soc 69.2 C
+== cpuref_t1_malloc run 2 (SoC 69.2 C, cooled 40s)
+   [RESULT] impl=cpuref threads=1 mem_threads=1 cpu_out=malloc cpu_map=cached frames=600 warmup=60 wall_med=10.5561 wall_p90=10.6723 wall_mean=10.5719 cpu_med=10.5
+  cooling (before cpuref_t4 run 2): soc 72.5 C -> <= 70 C (max 300s)
+  cooled 25s, soc 69.7 C
+== cpuref_t4 run 2 (SoC 70.8 C, cooled 25s)
+   [RESULT] impl=cpuref threads=4 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=4.1296 wall_p90=4.2625 wall_mean=4.2037 cpu_med=10.7525 c
+  cooling (before cpuref_t4_mem4 run 2): soc 74.1 C -> <= 70 C (max 300s)
+  cooled 10s, soc 69.7 C
+== cpuref_t4_mem4 run 2 (SoC 69.7 C, cooled 10s)
+   [RESULT] impl=cpuref threads=4 mem_threads=4 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=4.5726 wall_p90=4.7155 wall_mean=4.6835 cpu_med=17.0348 c
+  cooling (before sws_rgb24_t1 run 2): soc 74.7 C -> <= 70 C (max 300s)
+  cooled 10s, soc 69.7 C
+== sws_rgb24_t1 run 2 (SoC 69.7 C, cooled 10s)
+   [RESULT] impl=sws-rgb24 threads=1 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=5.4610 wall_p90=5.5923 wall_mean=5.4981 cpu_med=5.4622
+  cooling (before sws_rgb24_t1_malloc run 2): soc 72.5 C -> <= 70 C (max 300s)
+  cooled 15s, soc 68.6 C
+== sws_rgb24_t1_malloc run 2 (SoC 69.7 C, cooled 15s)
+   [RESULT] impl=sws-rgb24 threads=1 mem_threads=1 cpu_out=malloc cpu_map=cached frames=600 warmup=60 wall_med=5.5018 wall_p90=5.6470 wall_mean=5.5319 cpu_med=5.50
+  cooling (before sws_rgb24_t4 run 2): soc 73.0 C -> <= 70 C (max 300s)
+  cooled 5s, soc 69.7 C
+== sws_rgb24_t4 run 2 (SoC 70.3 C, cooled 5s)
+   [RESULT] impl=sws-rgb24 threads=4 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=2.6210 wall_p90=2.7359 wall_mean=2.6610 cpu_med=5.8202
+  cooling (before sws_gbrp_t1 run 2): soc 75.7 C -> <= 70 C (max 300s)
+  cooled 20s, soc 69.2 C
+== sws_gbrp_t1 run 2 (SoC 70.3 C, cooled 20s)
+   [RESULT] impl=sws-gbrp threads=1 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=6.8460 wall_p90=6.9556 wall_mean=6.8706 cpu_med=6.8461 
+  cooling (before sws_gbrp_t4 run 2): soc 74.1 C -> <= 70 C (max 300s)
+  cooled 25s, soc 69.7 C
+== sws_gbrp_t4 run 2 (SoC 70.3 C, cooled 25s)
+   [RESULT] impl=sws-gbrp threads=4 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=2.7748 wall_p90=2.8530 wall_mean=2.8491 cpu_med=7.1733 
+  cooling (before sws_fastbil_t1 run 2): soc 75.7 C -> <= 70 C (max 300s)
+  cooled 10s, soc 69.7 C
+== sws_fastbil_t1 run 2 (SoC 69.7 C, cooled 10s)
+   [RESULT] impl=sws-rgb24 threads=1 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=3.5643 wall_p90=3.7531 wall_mean=3.6129 cpu_med=3.5668
+  cooling (before sws_fastbil_t4 run 2): soc 70.3 C -> <= 70 C (max 300s)
+  cooled 15s, soc 69.7 C
+== sws_fastbil_t4 run 2 (SoC 70.8 C, cooled 15s)
+   [RESULT] impl=sws-rgb24 threads=4 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=2.1162 wall_p90=2.2040 wall_mean=2.1564 cpu_med=3.9039
+  cooling (before gpu run 2): soc 72.5 C -> <= 70 C (max 300s)
+  cooled 10s, soc 69.2 C
+== gpu run 2 (SoC 69.2 C, cooled 10s)
+   [RESULT] impl=gpu threads=1 mem_threads=1 cpu_out=v3d cpu_map=- frames=600 warmup=60 wall_med=1.8104 wall_p90=1.8194 wall_mean=1.8176 cpu_med=0.0763 cpu_p90=0.0
+  cooling (before cpuref_t1 run 3): soc 71.4 C -> <= 70 C (max 300s)
+  cooled 10s, soc 69.7 C
+== cpuref_t1 run 3 (SoC 69.7 C, cooled 10s)
+   [RESULT] impl=cpuref threads=1 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=10.5954 wall_p90=10.7088 wall_mean=10.6114 cpu_med=10.595
+  cooling (before cpuref_t1_permap run 3): soc 72.5 C -> <= 70 C (max 300s)
+  cooled 30s, soc 69.7 C
+== cpuref_t1_permap run 3 (SoC 69.7 C, cooled 30s)
+   [RESULT] impl=cpuref threads=1 mem_threads=1 cpu_out=heap cpu_map=perframe frames=600 warmup=60 wall_med=10.6167 wall_p90=10.8178 wall_mean=10.6792 cpu_med=10.6
+  cooling (before cpuref_t1_malloc run 3): soc 74.1 C -> <= 70 C (max 300s)
+  cooled 50s, soc 69.7 C
+== cpuref_t1_malloc run 3 (SoC 69.2 C, cooled 50s)
+   [RESULT] impl=cpuref threads=1 mem_threads=1 cpu_out=malloc cpu_map=cached frames=600 warmup=60 wall_med=10.5665 wall_p90=10.6815 wall_mean=10.5829 cpu_med=10.5
+  cooling (before cpuref_t4 run 3): soc 73.0 C -> <= 70 C (max 300s)
+  cooled 20s, soc 69.7 C
+== cpuref_t4 run 3 (SoC 69.7 C, cooled 20s)
+   [RESULT] impl=cpuref threads=4 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=4.1320 wall_p90=4.3163 wall_mean=4.1867 cpu_med=10.7633 c
+  cooling (before cpuref_t4_mem4 run 3): soc 75.2 C -> <= 70 C (max 300s)
+  cooled 25s, soc 69.7 C
+== cpuref_t4_mem4 run 3 (SoC 69.7 C, cooled 25s)
+   [RESULT] impl=cpuref threads=4 mem_threads=4 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=4.5528 wall_p90=4.6996 wall_mean=4.6854 cpu_med=16.9933 c
+  cooling (before sws_rgb24_t1 run 3): soc 76.3 C -> <= 70 C (max 300s)
+  cooled 15s, soc 69.2 C
+== sws_rgb24_t1 run 3 (SoC 69.2 C, cooled 15s)
+   [RESULT] impl=sws-rgb24 threads=1 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=5.4619 wall_p90=5.5930 wall_mean=5.4989 cpu_med=5.4634
+  cooling (before sws_rgb24_t1_malloc run 3): soc 74.1 C -> <= 70 C (max 300s)
+  cooled 10s, soc 69.7 C
+== sws_rgb24_t1_malloc run 3 (SoC 70.8 C, cooled 10s)
+   [RESULT] impl=sws-rgb24 threads=1 mem_threads=1 cpu_out=malloc cpu_map=cached frames=600 warmup=60 wall_med=5.4865 wall_p90=5.6225 wall_mean=5.5236 cpu_med=5.48
+  cooling (before sws_rgb24_t4 run 3): soc 73.0 C -> <= 70 C (max 300s)
+  cooled 15s, soc 69.2 C
+== sws_rgb24_t4 run 3 (SoC 69.2 C, cooled 15s)
+   [RESULT] impl=sws-rgb24 threads=4 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=2.5804 wall_p90=2.6721 wall_mean=2.6309 cpu_med=5.7826
+  cooling (before sws_gbrp_t1 run 3): soc 74.7 C -> <= 70 C (max 300s)
+  cooled 15s, soc 69.7 C
+== sws_gbrp_t1 run 3 (SoC 70.3 C, cooled 15s)
+   [RESULT] impl=sws-gbrp threads=1 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=6.8367 wall_p90=6.9508 wall_mean=6.8633 cpu_med=6.8365 
+  cooling (before sws_gbrp_t4 run 3): soc 74.7 C -> <= 70 C (max 300s)
+  cooled 40s, soc 69.7 C
+== sws_gbrp_t4 run 3 (SoC 70.3 C, cooled 40s)
+   [RESULT] impl=sws-gbrp threads=4 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=2.7677 wall_p90=2.8517 wall_mean=2.8066 cpu_med=7.1540 
+  cooling (before sws_fastbil_t1 run 3): soc 76.3 C -> <= 70 C (max 300s)
+  cooled 35s, soc 69.7 C
+== sws_fastbil_t1 run 3 (SoC 70.3 C, cooled 35s)
+   [RESULT] impl=sws-rgb24 threads=1 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=3.5185 wall_p90=3.7018 wall_mean=3.5713 cpu_med=3.5209
+  cooling (before sws_fastbil_t4 run 3): soc 74.7 C -> <= 70 C (max 300s)
+  cooled 15s, soc 69.2 C
+== sws_fastbil_t4 run 3 (SoC 69.7 C, cooled 15s)
+   [RESULT] impl=sws-rgb24 threads=4 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=2.1091 wall_p90=2.1923 wall_mean=2.1397 cpu_med=3.9128
+  cooling (before gpu run 3): soc 73.0 C -> <= 70 C (max 300s)
+  cooled 20s, soc 69.7 C
+== gpu run 3 (SoC 70.8 C, cooled 20s)
+   [RESULT] impl=gpu threads=1 mem_threads=1 cpu_out=v3d cpu_map=- frames=600 warmup=60 wall_med=1.8119 wall_p90=1.8287 wall_mean=1.8171 cpu_med=0.0780 cpu_p90=0.0
+== accuracy cpuref_t1
+   [ACCURACY] impl=cpuref threads=1 frames=660 identical_frames=660 content: bytes=456192000 identical=1.000000 max_abs=0 mean_abs=0.0000 psnr_db=inf whole: bytes=
+== accuracy cpuref_t4
+   [ACCURACY] impl=cpuref threads=4 frames=660 identical_frames=660 content: bytes=456192000 identical=1.000000 max_abs=0 mean_abs=0.0000 psnr_db=inf whole: bytes=
+== accuracy cpuref_t4_mem4
+   [ACCURACY] impl=cpuref threads=4 frames=660 identical_frames=660 content: bytes=456192000 identical=1.000000 max_abs=0 mean_abs=0.0000 psnr_db=inf whole: bytes=
+== accuracy sws_rgb24_t1
+   [ACCURACY] impl=sws-rgb24 threads=1 frames=660 identical_frames=0 content: bytes=456192000 identical=0.045224 max_abs=144 mean_abs=2.3538 psnr_db=38.37 whole: b
+== accuracy sws_rgb24_t4
+   [ACCURACY] impl=sws-rgb24 threads=4 frames=660 identical_frames=0 content: bytes=456192000 identical=0.045224 max_abs=144 mean_abs=2.3538 psnr_db=38.37 whole: b
+== accuracy sws_gbrp_t1
+   [ACCURACY] impl=sws-gbrp threads=1 frames=660 identical_frames=0 content: bytes=456192000 identical=0.601249 max_abs=137 mean_abs=0.7227 psnr_db=42.17 whole: by
+== accuracy sws_gbrp_t4
+   [ACCURACY] impl=sws-gbrp threads=4 frames=660 identical_frames=0 content: bytes=456192000 identical=0.601249 max_abs=137 mean_abs=0.7227 psnr_db=42.17 whole: by
+== accuracy sws_fastbil_t1
+   [ACCURACY] impl=sws-rgb24 threads=1 frames=660 identical_frames=0 content: bytes=456192000 identical=0.090833 max_abs=199 mean_abs=4.1176 psnr_db=33.50 whole: b
+== accuracy sws_fastbil_t4
+   [ACCURACY] impl=sws-rgb24 threads=4 frames=660 identical_frames=0 content: bytes=456192000 identical=0.090833 max_abs=199 mean_abs=4.1176 psnr_db=33.50 whole: b
+== accuracy gpu
+   [ACCURACY] impl=gpu threads=1 frames=660 identical_frames=656 content: bytes=456192000 identical=1.000000 max_abs=1 mean_abs=0.0000 psnr_db=128.70 whole: bytes=
+== validation layer: gpu setting
+   validation: layer=on messenger=on errors=0 warnings=2
+results -> /home/pi/workspace/yolo_vulkan_optimize/07_results/preproc_cpu_vs_gpu/results.csv, medians -> /home/pi/workspace/yolo_vulkan_optimize/07_results/preproc_cpu_vs_gpu/evidence/medians.txt
+runner rc 0
+governor restored: ondemand

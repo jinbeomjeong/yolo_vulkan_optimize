@@ -20,9 +20,18 @@ yvo_add_tool(yvo_hailo_raw_probe hailo/hailo_raw_probe.cpp
 
 # ── vulkan ─────────────────────────────────────────────────────────────────────
 # Performance/verification tool: full decode + GPU preprocessing
+# Optional libswscale (2026-10-27): --impl sws-rgb24|sws-gbrp CPU comparison. Missing -> only those modes are left out.
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(YVO_SWSCALE QUIET IMPORTED_TARGET libswscale)
+if(YVO_SWSCALE_FOUND)
+  add_library(yvo_swscale INTERFACE)
+  target_link_libraries(yvo_swscale INTERFACE PkgConfig::YVO_SWSCALE)
+else()
+  message(STATUS "libswscale not found — yvo_preproc_bench is built without --impl sws-*")
+endif()
 yvo_add_tool(yvo_preproc_bench vulkan/preproc_bench.cpp
   LIBS yvo_vulkan yvo_decoder yvo_toolkit
-  OPTIONAL yvo_opencv=YVO_HAVE_OPENCV)
+  OPTIONAL yvo_opencv=YVO_HAVE_OPENCV yvo_swscale=YVO_HAVE_SWSCALE)
 
 # Postprocessing probe (plan §6.2 P3).
 #   --probe fixture|sweep : no NPU needed (04_data/raw_tensors fixtures)

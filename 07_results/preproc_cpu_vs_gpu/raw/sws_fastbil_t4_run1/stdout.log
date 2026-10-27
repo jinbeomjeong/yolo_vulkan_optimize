@@ -1,0 +1,5 @@
+[hevc @ 0x5555d4373ae0] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media0,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+input 1920x1080 y_fd exp_name=system size=2097152 uv_fd exp_name=system size=1048576 sand_col_h=1088/544
+[impl] sws-rgb24 threads=4 mem_threads=1 sws_threads=4 sws_flags=0x00000001 libswscale=8.3.100 map=cached entries=36 mmaps=36 hits=1284 out=dma-heap /dev/dma_heap/vidbuf_cached (exp_name system)
+[impl] affinity=0,1,2,3 video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4
+[RESULT] impl=sws-rgb24 threads=4 mem_threads=1 cpu_out=heap cpu_map=cached frames=600 warmup=60 wall_med=2.1045 wall_p90=2.1930 wall_mean=2.1383 cpu_med=3.9102 cpu_p90=4.0186 cpu_mean=3.9255 user_mean=3.5823 sys_mean=0.3489 map_med=0.1265 map_p90=0.1310 flatten_med=1.0615 flatten_p90=1.1224 resize_med=0.6262 resize_p90=0.6525 pad_med=0.0589 pad_p90=0.0638 transpose_med=0.2233 transpose_p90=0.2350 sync_med=0.0040 sync_p90=0.0053

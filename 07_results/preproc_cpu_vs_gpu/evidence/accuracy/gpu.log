@@ -1,0 +1,9 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[hevc @ 0x55559d253b20] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media0,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[vulkan] device: V3D 7.1.10.2 (api 1.3.354, driver 0x6802002), queue family 0, timestamps yes (period 1.000 ns, 64 bits), dma-buf import=1 export=1 dedicated_only=0, external qf=FOREIGN_EXT, validation=off
+input 1920x1080 y_fd exp_name=system size=2097152 uv_fd exp_name=system size=1048576 sand_col_h=1088/544
+saved sample: /home/pi/workspace/yolo_vulkan_optimize/07_results/preproc_cpu_vs_gpu/samples/impl_gpu_t1_frame100.png
+[impl] gpu sand_letterbox.comp local=32x8 slots=8 out=V3D exported dma-buf (NHCW)
+[impl] affinity=0,1,2,3 video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4
+[ACCURACY] impl=gpu threads=1 frames=660 identical_frames=656 content: bytes=456192000 identical=1.000000 max_abs=1 mean_abs=0.0000 psnr_db=128.70 whole: bytes=811008000 identical=1.000000 max_abs=1 mean_abs=0.0000 psnr_db=131.20 hash=584c4f4c423cce0d
+validation: layer=off messenger=on errors=0 warnings=1
