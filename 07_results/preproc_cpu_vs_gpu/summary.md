@@ -121,3 +121,7 @@
 - 검증: 검증 레이어를 켠 gpu 설정 200프레임에서 errors 0 / warnings 2(로더 메시지)([`verification/validation_impl_gpu_200f.log`](verification/validation_impl_gpu_200f.log)).
 - 측정 위임: 프로젝트 `vulkan-expert`가 세션에 로드되지 않아 전역 `cpp-expert`가 `vulkan-expert.md` 규약을 따라 구현·측정했다. 본문은 그 보고를 메인 에이전트가 원자료와 대조해 저장했다(불일치 로그의 바이너리 md5 한 곳을 바로잡음).
 - 결정: GPU 비트 일치 서술은 문서에서 "검사 프레임 5장 기준, 전 프레임 대조 시 660프레임 중 4바이트 ±1"로 고치고, 셰이더·`01_src/ref/`는 고치지 않는다 (사용자 결정, 2026-10-27). 반영: `README.md`, `08_learn/08_method.md`, `08_learn/09_code_map.md`.
+
+## 5. 정정 (2026-10-27, 메인 에이전트 — 위 본문은 고치지 않는다)
+
+- §3 결론 5의 "1/44(fast t4 3.93)"는 근거 표기가 틀렸다. CPU 구현 중 CPU ms/f가 가장 작은 것은 `sws_fastbil_t1` **3.584**이고, 3.584 / 0.081 ≈ **44**다. `sws_fastbil_t4`(3.926)로 계산하면 약 48이다. 범위 "1/44~1/131"은 맞다.

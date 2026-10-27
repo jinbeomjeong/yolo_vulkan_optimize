@@ -3793,6 +3793,7 @@ LineCount classify_lines(const std::uint8_t* p, std::size_t bytes, std::uint32_t
 
 // ─────────────────────────────────────────────────────────────── GPU kernels (mem_bw.comp)
 
+// CopyU32 is loaded but not dispatched by any part yet (spare variant; only CopyV4 runs).
 enum class BwKernel { ReadU32, ReadV4, WriteU32, WriteV4, CopyU32, CopyV4 };
 constexpr std::array<const char*, 6> kBwKernelName{"read_u32", "read_v4", "write_u32", "write_v4", "copy_u32",
                                                    "copy_v4"};

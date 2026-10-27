@@ -336,8 +336,8 @@ bash 06_tools/bench/input_pace_bench.sh  # 입력 페이싱 + leaky 큐 N=1·2·
 | 도구 | 용도 |
 |---|---|
 | `yvo_drm_dump` | 디코더 dma-buf descriptor 덤프, de-SAND 바이트 비교, 디코드 성능 |
-| `yvo_preproc_bench` | GPU 전처리 단독 성능·워크그룹 스윕 |
-| `yvo_postproc_probe` | GPU 후처리 프로브 (`--probe fixture` 는 **NPU 불필요**, 수 초. `--probe stages` 는 디코딩 단계별 GPU 시간 — `--variants` 로 진단 변형 선택. `--probe groups` 는 프리필터 통과 수 분포(CPU 전용), `--probe sweep` 은 local size 스윕) |
+| `yvo_preproc_bench` | GPU 전처리 단독 성능·워크그룹 스윕. `--impl cpuref\|sws-rgb24\|sws-gbrp\|gpu` 는 CPU 구현 대 GPU 같은 조건 비교([`preproc_cpu_vs_gpu`](07_results/preproc_cpu_vs_gpu/summary.md)) |
+| `yvo_postproc_probe` | GPU 후처리 프로브 (`--probe fixture` 는 **NPU 불필요**, 수 초. `--probe stages` 는 디코딩 단계별 GPU 시간 — `--variants` 로 진단 변형 선택. `--probe groups` 는 프리필터 통과 수 분포(CPU 전용), `--probe sweep` 은 local size 스윕. `--probe memasym` 은 CPU↔GPU 메모리 접근 비대칭([`memory_asymmetry`](07_results/memory_asymmetry/summary.md))) |
 | `yvo_perf_counters` | V3D 성능 카운터 열거(93개, 1 pass 최대 32개)와 쿼리 동작 확인 (`--csv`, NPU 불필요) |
 | `yvo_hailo_raw_probe` | 원시 출력 경로 프로브 (`--probe f0` 이 입출력 dma-buf 동시 사용 관문) |
 | `yvo_hailo_selftest` | NPU 러너 단독 검증 |

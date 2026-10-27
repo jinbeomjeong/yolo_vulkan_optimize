@@ -19,7 +19,7 @@
 | 대역 | 폴더 | 무엇이 있나 |
 |---|---|---|
 | **코드** | [`01_src/`](../01_src/) | C++ 소스 전부. 하위 폴더는 §9.2 |
-| | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 — 본 파이프라인 5개 + `diag/` 진단 전용 2개 (`.comp`). `overlay_boxes.comp` 는 버퍼 변형까지 SPIR-V 2개로 빌드 |
+| | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 — 본 파이프라인 5개 + `diag/` 진단 전용 3개 (`.comp`). `overlay_boxes.comp` 는 버퍼 변형까지 SPIR-V 2개로 빌드 |
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
 | | `04_data/` | 입력 영상(기본 `video_h265.mp4`, 혼잡 장면용 `mot20_{02,05}_h265.mp4`)과 테스트용 원시 텐서 픽스처 (git에 없음) |
 | **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 10개(`test_postproc_live` 를 따로 세면 11), ctest 항목 184개 |
@@ -47,7 +47,7 @@
 01_src/
 ├── core/       헤더만. 공용 계약 타입·OS 글루 — 다른 모든 폴더가 여기에 의존 (include 루트는 여기서만 지정)
 ├── ref/        헤더만. CPU 기준 구현 — 수식의 단일 진실 원천 (셰이더는 이것의 번역본)
-├── toolkit/    헤더만. 도구·앱 전용 헬퍼(CLI·엄격한 숫자·크기 파싱 `cli_parse.hpp`·RESULT_CSV 서식 `result_csv.hpp`·`--frame-log` CSV 서식 `frame_log.hpp`·이미지 저장·통계·perf 구간 제어 `perf_window`) — 라이브러리는 include 하지 않는다
+├── toolkit/    헤더만. 도구·앱 전용 헬퍼(CLI·엄격한 숫자·크기 파싱 `cli_parse.hpp`·RESULT_CSV 서식 `result_csv.hpp`·`--frame-log` CSV 서식 `frame_log.hpp`·이미지 저장·통계·perf 구간 제어 `perf_window`·CPU 전처리 대조 `cpu_preproc.hpp`·libswscale 래퍼 `sws_preproc.hpp`) — 라이브러리는 include 하지 않는다
 ├── testkit/    헤더만. 테스트·프로브가 공유하는 검증 하네스(픽스처 파서, 오프스크린 타깃, 비트 일치 판정)
 ├── decode/     HW HEVC 디코더 (FFmpeg DRM_PRIME → DrmFrame)
 ├── hailo/      NPU (HailoRT)                    ┐ 이 둘은 서로
@@ -141,9 +141,9 @@ GPU 셰이더는 전부 CPU 기준 구현의 **번역본**이고, 원문은 `01_
 
 ---
 
-## 9.4 셰이더 — 본 5개 + 진단 2개
+## 9.4 셰이더 — 본 5개 + 진단 3개
 
-전부 `02_shaders/` 에 있고 확장자는 `.comp`(컴퓨트 셰이더)다. 예외 하나: `bt709.glsl` 은 `sand_letterbox.comp`·`display_convert.comp` 가 `#include` 하는 공유 조각이라 혼자 빌드되지 않는다. 진단 전용 2개는 `02_shaders/diag/` 에 따로 두고
+전부 `02_shaders/` 에 있고 확장자는 `.comp`(컴퓨트 셰이더)다. 예외 하나: `bt709.glsl` 은 `sand_letterbox.comp`·`display_convert.comp` 가 `#include` 하는 공유 조각이라 혼자 빌드되지 않는다. 진단 전용 3개는 `02_shaders/diag/` 에 따로 두고
 (`yvo_shaders_diag`), 도구만 링크한다. 본 5개는 `yvo_shaders` 다.
 `yvo_shaders` 의 SPIR-V 산출물은 6개다 — `overlay_boxes.comp` 를 `YVO_OVERLAY_BUFFER` 로 한 번 더 컴파일한
 `overlay_boxes_buf.spv`(HVS 박스 평면용, storage buffer 에 그린다)가 더 있다. 문법은 [05장](05_vulkan_compute.md) 빌드 파이프라인.
@@ -157,8 +157,9 @@ GPU 셰이더는 전부 CPU 기준 구현의 **번역본**이고, 원문은 `01_
 | [`overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) | 박스·라벨·HUD 그리기 (변형 `overlay_boxes_buf`: AB24 dma-buf 버퍼에) | ⑦ 오버레이 |
 | [`diag/display_probe.comp`](../02_shaders/diag/display_probe.comp) | 고정 테스트 패턴 | 진단 전용 |
 | [`diag/heap_sum.comp`](../02_shaders/diag/heap_sum.comp) | 바이트 합 리덕션 | 진단 전용 |
+| [`diag/mem_bw.comp`](../02_shaders/diag/mem_bw.comp) | 읽기 합산·쓰기·복사 대역폭 커널 (uint/uvec4, 6변종) | 진단 전용 (`--probe memasym`) |
 
-앞의 5개가 실제 파이프라인에서 돌고, 뒤의 2개는 **"이 경로가 정말 동작하는가"를 가르는 관문**용이다.
+앞의 5개가 실제 파이프라인에서 돌고, 뒤의 3개 중 `display_probe`·`heap_sum` 은 **"이 경로가 정말 동작하는가"를 가르는 관문**용, `mem_bw` 는 메모리 대역폭 측정용이다.
 
 ### 셰이더 읽을 때 알아 둘 것
 
@@ -190,7 +191,7 @@ cmake -S . -B build -G Ninja && cmake --build build
 | `yvo_testkit_postproc` / `yvo_testkit_display` | 헤더만 (INTERFACE) | 테스트·프로브 공용 검증 하네스(`nms_harness.hpp`: `efficient_nms` 단독 실행 — `test_postproc` 의 `EfficientNms.*` 와 `yvo_postproc_probe --probe nms` 가 공유) |
 | `yvo_warnings` | 경고 플래그만 | `-Wall -Wextra -Wpedantic -Wshadow -Wnon-virtual-dtor` |
 | `yvo_shaders` | 컴파일된 셰이더 헤더 (본 5개 + 버퍼 변형 1 = 6개) | 링크하면 include 경로가 붙는다 |
-| `yvo_shaders_diag` | 진단 셰이더 헤더 (`diag/` 2개) | 도구만 링크한다 |
+| `yvo_shaders_diag` | 진단 셰이더 헤더 (`diag/` 3개 — `mem_bw` 는 6변종) | 도구만 링크한다 |
 | `yvo_shaders_decode_stages` | `yolo_decode.comp`를 `-DYVO_DECODE_STOP=1\|2\|3`(단계 멈춤 3개), `YVO_EMIT_NOATOMIC`·`YVO_EMIT_NORESCAN`(⑤ emit 분리 2개), `YVO_DECODE_LEGACY_EMIT`(지름길 이전 ①+⑤ 기준선 `legacy`·`stop1_legacy` 2개)로 컴파일한 변형 `.spv` 7개 + 그 디렉터리 매크로 | `yvo_postproc_probe --probe stages`만 링크한다 |
 | `yvo_hailo` | NPU | **`yvo_vulkan`에 의존하지 않는다** |
 | `yvo_vulkan` | GPU | |
@@ -210,8 +211,8 @@ cmake -S . -B build -G Ninja && cmake --build build
 | 도구 | 무엇을 따로 보나 | NPU 필요? |
 |---|---|---|
 | `yvo_drm_dump` | 디코더가 내놓는 버퍼의 실제 모양 | 아니오 |
-| `yvo_preproc_bench` | GPU 전처리만, 워크그룹 크기 스윕 | 아니오 |
-| `yvo_postproc_probe` | GPU 후처리. `--probe fixture`는 저장된 텐서로 검증, `--probe stages`는 디코딩 단계별 GPU 시간(차분법, `--variants`로 변형 선택), `--probe groups`는 그룹당 통과 앵커·프리필터 통과 수 분포(CPU 전용), `--probe sweep`은 local size 26조합 | `fixture`·`stages`·`groups`·`sweep`은 불필요 |
+| `yvo_preproc_bench` | GPU 전처리만, 워크그룹 크기 스윕. `--impl cpuref\|sws-rgb24\|sws-gbrp\|gpu` 는 같은 디코드 프레임에서 CPU 구현과 GPU 셰이더를 비교([`preproc_cpu_vs_gpu`](../07_results/preproc_cpu_vs_gpu/summary.md)) | 아니오 |
+| `yvo_postproc_probe` | GPU 후처리. `--probe fixture`는 저장된 텐서로 검증, `--probe stages`는 디코딩 단계별 GPU 시간(차분법, `--variants`로 변형 선택), `--probe groups`는 그룹당 통과 앵커·프리필터 통과 수 분포(CPU 전용), `--probe sweep`은 local size 26조합, `--probe memasym`은 CPU↔GPU 메모리 접근 비대칭(GPU 대역폭·PTE 속성·일관성·CPU 쓰기, [`memory_asymmetry`](../07_results/memory_asymmetry/summary.md)) | `fixture`·`stages`·`groups`·`sweep`은 불필요 |
 | `yvo_perf_counters` | V3D 성능 카운터(`VK_KHR_performance_query`) 열거·pass 분석, 작은 dispatch로 쿼리 동작 확인 | 아니오 |
 | `yvo_hailo_selftest` | NPU 러너만 | 예 |
 | `yvo_hailo_raw_probe` | 원시 출력 경로, dma-buf 동시 사용 관문 | 예 |
