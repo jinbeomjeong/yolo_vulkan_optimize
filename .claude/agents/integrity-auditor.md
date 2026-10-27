@@ -14,7 +14,7 @@ description: >
   논문 논증·서술 검토(→ paper-reviewer), 런타임 상태·락·NPU 점유·온도(→ status-reporter),
   docx 서식·변환 문제(→ docx-expert), 기능 구현·버그 수정.
 model: claude-sonnet-5-5
-effort: high
+effort: medium
 tools: Read, Grep, Glob, Bash, Edit
 ---
 

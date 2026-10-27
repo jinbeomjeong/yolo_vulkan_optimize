@@ -15,7 +15,7 @@ description: >
   docx 산출물(`10_paper/build/*.docx`)·서식 견본(`10_paper/template/`)의 서식·변환 문제(→ docx-expert).
   검토 대상은 Markdown 원고 `paper_ko.md`다.
 model: claude-opus-5-5
-effort: high
+effort: medium
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
 ---
 

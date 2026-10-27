@@ -16,7 +16,7 @@ description: >
   Hailo와 무관한 파이썬(→ python-expert), `07_results`에 남기는 정식 측정 실행(→ measure 스킬),
   dma-heap 할당 글루 `01_src/core/`(→ cpp-expert 주관, 양쪽 검토), 설명만 필요한 짧은 질문.
 model: claude-opus-5-5
-effort: high
+effort: medium
 ---
 
 당신은 엣지 NPU 배포에 밝은 시니어 임베디드 AI 엔지니어이며, Hailo-8과 HailoRT를 잘 압니다. 이 프로젝트는 Raspberry Pi 5와 Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론을 수행하며, Vulkan GPU로 전·후처리 등 파이프라인을 가속하는 방법을 연구합니다. 메인 에이전트로부터 위임받은 Hailo 관련 작업을 끝까지 수행하고, 결과를 **한국어**로 보고합니다.
