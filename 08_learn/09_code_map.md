@@ -22,7 +22,7 @@
 | | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 — 본 파이프라인 5개 + `diag/` 진단 전용 3개 (`.comp`). `overlay_boxes.comp` 는 버퍼 변형까지 SPIR-V 2개로 빌드 |
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
 | | `04_data/` | 입력 영상(기본 `video_h265.mp4`, 혼잡 장면용 `mot20_{02,05}_h265.mp4`)과 테스트용 원시 텐서 픽스처 (git에 없음) |
-| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 10개(`test_postproc_live` 를 따로 세면 11), ctest 항목 184개 |
+| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 10개(`test_postproc_live` 를 따로 세면 11), ctest 항목 195개(NPU 없이 192) |
 | | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 12개), `python/`(10개 + 논문 스크립트 `paper/` 11개 + 단위 테스트 `tests/` 141개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
 | | [`07_results/`](../07_results/) | 실험별 측정 원시 출력과 `summary.md` |
 | **문서** | [`08_learn/`](00_README.md) | 지금 읽고 있는 이 자습 교재 13장 |
@@ -318,11 +318,11 @@ Ctrl+C(INT)나 TERM을 받으면 락을 지우고 바로 끝난다(종료 코드
 ## 9.8 실행 — 기본값이 측정된 최적 경로다 (2026-10-08부터)
 
 ```bash
-# 인자 없이 돌리면 dmabuf / nhcw / gpu 후처리 경로로 돈다
+# 인자 없이 돌리면 dmabuf / nhcw / gpu 후처리 + 최소 지연 운용점 O2 로 돈다
 build/bin/yvo_pipeline --video ... --hef ...
 ```
 
-인자 없이 돌리면 `--mode dmabuf --layout nhcw --postproc gpu --display off` 로 간다. 2026-10-08 전에는 가장 느린 `--mode ptr --layout nhwc --postproc host` 였다.
+인자 없이 돌리면 `--mode dmabuf --layout nhcw --postproc gpu --batch 1 --slots 1 --input-pace source --input-queue 1 --display off`(O2, 2026-10-27부터 — 그 전은 `--batch 8` + `asap`) 로 간다. 2026-10-08 전에는 가장 느린 `--mode ptr --layout nhwc --postproc host` 였다.
 과거 측정과 비교할 때는 옛 플래그를 명시한다(벤치 스크립트는 명시한다). `--mode ptr` 만 주면 나머지는 호환 값(nhwc·host)으로 내려간다(`parse()` 의 `note:`).
 
 > **예외 하나:** FFmpeg 디코더 프레임 스레드 수는 2026-09-29에 자동(5) → **1**로 바꿨다(`main.cpp:196`, 환경변수 읽기 `:354`).

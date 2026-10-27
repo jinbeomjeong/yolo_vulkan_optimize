@@ -22,7 +22,7 @@ Vulkan(V3D GPU)으로 밀어낸** 프로젝트다. 디코드·전처리·추론�
 > `source` glass 의 차이(median 101.20 대 89.86)는 두 회차의 실행별 범위가 겹쳐 판정하지 않는다. 옛 조건을 재현하려면 `--nms cpu` 와 `YVO_DEC_THREADS=0` 을 준다
 > (V3D 클럭은 펌웨어가 정한다).
 > - V3D 클럭이 바뀌어도 FPS·CPU 는 그대로이고 GPU 전처리만 약 14% 빨라졌다([`bootloader_20260925`](07_results/pipeline_ffmpeg_vulkan_hailo/runs/bootloader_20260925/summary.md)).
-> - 현재 기본값의 **표시 off 정식 기준선**(2026-10-08): b8s16 51.50 fps · CPU 0.869 ms/frame, GPU NMS 는 CPU NMS 대비 회귀 없음·검출 바이트 동일([`gpu_nms_e2e/`](07_results/gpu_nms_e2e/summary.md)). 표시 on 정식 측정은 [`display_planes_e2e/`](07_results/display_planes_e2e/summary.md)에 있다 — Vulkan 합성 소스 페이싱 b2/s4 CPU 2.059 ms/frame, 평면 경로는 CPU −0.44 ms/f·V3D −72%·지연 같음(`--slots 6` 필요). 위 표와는 회차·코드(메인 스레드 대기 변경 이전)가 달라 섞지 않는다.
+> - 2026-10-08 당시 기본값(입력 `asap`)의 **표시 off 정식 기준선**: b8s16 51.50 fps · CPU 0.869 ms/frame, GPU NMS 는 CPU NMS 대비 회귀 없음·검출 바이트 동일([`gpu_nms_e2e/`](07_results/gpu_nms_e2e/summary.md)). 표시 on 정식 측정은 [`display_planes_e2e/`](07_results/display_planes_e2e/summary.md)에 있다 — Vulkan 합성 소스 페이싱 b2/s4 CPU 2.059 ms/frame, 평면 경로는 CPU −0.44 ms/f·V3D −72%·지연 같음(`--slots 6` 필요). 위 표와는 회차·코드(메인 스레드 대기 변경 이전)가 달라 섞지 않는다.
 > - 혼잡 장면(MOT20, 후보 약 11배)에서도 FPS 그대로·검출 바이트 동일·CPU로 넘긴 프레임 0이다. 디코딩 후보 버퍼 4096 넘침은 이 HEF로는 닿지 않아(양자화 바닥에서도 최대 1925) 고치지 않고 남겼다([`nms_crowd_stress/`](07_results/nms_crowd_stress/summary.md)).
 
 ---
@@ -61,7 +61,7 @@ dma-buf 세 그룹(디코더 SAND / 전처리 NHCW / 원시 텐서)이 전부 ze
 
 > **구간별 지연 수치는 여기 적지 않는다.** 같은 값이 세 곳에 복제돼 있다가 한 번 어긋난 적이 있어
 > (`09_diagrams/README.md` 의 정렬 기록), 2026-09-21 에 이 도식에서는 **흐름만** 남겼다.
-> 구간 median 은 [`display_e2e/runs/v3d1150_quiet_perfgov_20261016`](07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md) §2.3(`raw/disp_source_run*/stdout.log` 5회 중앙값)(소스 페이싱, V3D 1150 MHz · 현재 기본값, 논문 §6.7 표 24)이 정본이고
+> 구간 median 은 [`display_e2e/runs/v3d1150_quiet_perfgov_20261016`](07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md) §2.3(`raw/disp_source_run*/stdout.log` 5회 중앙값)(소스 페이싱, V3D 1150 MHz · 현재 조건, 논문 §6.7 표 24)이 정본이고
 > (960 MHz 당시 값은 [`display_e2e/summary.md`](07_results/display_e2e/summary.md) §3.1), 같은 값을 붙인 그림이 [`09_diagrams/pipeline_overview.graphml`](09_diagrams/pipeline_overview.graphml) 에 있다.
 
 ---
@@ -84,9 +84,11 @@ wayland-protocols 에 staging `color-representation` XML 이 없으면 그 요�
 
 ## 3. 실행
 
-### 기본값 = 측정된 최적 경로 (2026-10-08 변경)
+### 기본값 = 최소 지연 운용점 O2 (2026-10-27 변경)
 
-인자 없이 실행하면 `--mode dmabuf --layout nhcw --postproc gpu --batch 8 --display off` 로 돈다(300프레임 1회 확인: CPU 0.904 ms/frame, 검출 동일).
+인자 없이 실행하면 `--mode dmabuf --layout nhcw --postproc gpu --batch 1 --slots 1 --input-pace source --input-queue 1 --display off` 로 돈다 — 최소 지연 운용점 O2(§3.3). 결정: 프로젝트 기본은 낮은 지연 파이프라인 (사용자 결정, 2026-10-27).
+`--frames N` 은 도착한 프레임 수라 실행 시간은 약 N/30 s 이고, 처리 24.4 FPS 라 입력의 약 19% 를 버린다. 처리량을 재려면 `--input-pace asap` 을 준다 — **벤치 스크립트는 모두 `--input-pace asap` 을 명시한다**(2026-10-27, 그 전 측정과 같은 조건).
+2026-10-08 ~ 10-27 의 기본값은 `--batch 8`(slots 16) + 입력 `asap` 의 최대 처리량 경로였다(300프레임 1회 확인: CPU 0.904 ms/frame, 검출 동일).
 2026-10-08 전에는 **가장 느린 경로** `--mode ptr --layout nhwc --postproc host`(CPU 17.6 ms/frame, 자동 스레드 조건 — 1스레드 16.97)가 기본이었다. 옛 측정을 재현하려면 그 플래그를 명시한다(벤치 스크립트는 명시한다). `--mode ptr` 만 주면 layout·postproc 은 호환 값(nhwc·host)으로 내려간다.
 디코더 프레임 스레드는 2026-09-29 에 자동(5) → **1** 로 바꿨다(CPU −14%·e2e −8.8 ms, FPS·검출 동일,
 [`dec_threads/`](07_results/dec_threads/summary.md)). 옛 측정과 비교할 때는 `YVO_DEC_THREADS=0`(자동)을 준다.
@@ -99,7 +101,7 @@ XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
 build/bin/yvo_pipeline \
   --video 04_data/videos/video_h265.mp4 --hef 03_models/yolov11m.hef \
   --mode dmabuf --layout nhcw --postproc gpu \
-  --batch 2 --slots 4 \
+  --batch 2 --slots 4 --input-pace asap \
   --display on --display-fullscreen --display-sync matched --display-pace source
 ```
 
@@ -109,7 +111,7 @@ build/bin/yvo_pipeline \
 build/bin/yvo_pipeline \
   --video 04_data/videos/video_h265.mp4 --hef 03_models/yolov11m.hef \
   --mode dmabuf --layout nhcw --postproc gpu \
-  --batch 8 --slots 16 \
+  --batch 8 --slots 16 --input-pace asap \
   --dump-dir /tmp/out --dump-every 300
 ```
 
@@ -119,13 +121,13 @@ build/bin/yvo_pipeline \
 
 | 목적 | 인자 | 결과 |
 |---|---|---|
-| **실시간 표시** (권장) | `--batch 2 --slots 4` | 표시 off 34.98 FPS / 표시 on `pace source` **29.90 FPS, glass 평균 98 ms(median 90 ms)**(2026-10-16, 거버너 performance, [`v3d1150_quiet_perfgov_20261016`](07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md)). 입력 페이싱(표시 off)이면 도착 기준 평균 80.7 · p90 100 ms, 버림 0([`code_2f2d3d0`](07_results/input_pacing/runs/code_2f2d3d0/summary.md)). 40분 연속 운용에서도 칩이 데워진 평형 상태로 34.25~34.75 FPS 를 유지한다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
-| 최대 처리량 (**단시간만**) | `--batch 8 --slots 16` | 51.5 FPS, e2e 325 ms. ⚠ **추가 냉각 없이는 약 5분 만에 Hailo 칩이 red zone(약 120 °C)에 닿아 칩이 추론을 멈춘다** — 51.5 FPS 는 칩이 식어 있는 처음 약 2분의 값이다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
-| **최소 지연** (O2, 2026-10-12 확정) | `--batch 1 --slots 1 --input-pace source --input-queue 1` | **도착 기준 평균 58.4 · p90 71.7 · max 75.0 ms**(표시 off). 화면까지는 `--display on --display-fullscreen`(Vulkan 합성)으로 **도착 → 화면 평균 70.2 · p90 78.6 ms**, 버림 19.1%(2026-10-16 · 코드 `2f2d3d0` 재측정, [`code_2f2d3d0`](07_results/input_pacing/runs/code_2f2d3d0/summary.md) · [`code_2f2d3d0_display_on`](07_results/input_pacing/runs/code_2f2d3d0_display_on/summary.md) — HVS 평면 백엔드는 slots 1 에서 교착하므로 쓰지 않는다). 처리 24.4 FPS 라 30 fps 입력의 **18.6% 를 버린다**(가장 오래된 프레임부터, 연속 버림 최대 1). 페이싱 없는 `--batch 1 --slots 1` 은 디코드 끝 기준 79.2 ms 지만 그중 약 42 ms 가 파일을 앞서 읽어 생긴 슬롯 대기다([`input_pacing/`](07_results/input_pacing/summary.md)) |
+| **실시간 표시** (권장) | `--batch 2 --slots 4 --input-pace asap` | 표시 off 34.98 FPS / 표시 on `pace source` **29.90 FPS, glass 평균 98 ms(median 90 ms)**(2026-10-16, 거버너 performance, [`v3d1150_quiet_perfgov_20261016`](07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md)). 입력 페이싱(표시 off)이면 도착 기준 평균 80.7 · p90 100 ms, 버림 0([`code_2f2d3d0`](07_results/input_pacing/runs/code_2f2d3d0/summary.md)). 40분 연속 운용에서도 칩이 데워진 평형 상태로 34.25~34.75 FPS 를 유지한다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
+| 최대 처리량 (**단시간만**) | `--batch 8 --slots 16 --input-pace asap` | 51.5 FPS, e2e 325 ms. ⚠ **추가 냉각 없이는 약 5분 만에 Hailo 칩이 red zone(약 120 °C)에 닿아 칩이 추론을 멈춘다** — 51.5 FPS 는 칩이 식어 있는 처음 약 2분의 값이다([`thermal_soak/`](07_results/thermal_soak/summary.md)) |
+| **최소 지연** (O2, 2026-10-12 확정 · **2026-10-27부터 기본값**) | 인자 없음 = `--batch 1 --slots 1 --input-pace source --input-queue 1` | **도착 기준 평균 58.4 · p90 71.7 · max 75.0 ms**(표시 off). 화면까지는 `--display on --display-fullscreen`(Vulkan 합성)으로 **도착 → 화면 평균 70.2 · p90 78.6 ms**, 버림 19.1%(2026-10-16 · 코드 `2f2d3d0` 재측정, [`code_2f2d3d0`](07_results/input_pacing/runs/code_2f2d3d0/summary.md) · [`code_2f2d3d0_display_on`](07_results/input_pacing/runs/code_2f2d3d0_display_on/summary.md) — HVS 평면 백엔드는 slots 1 에서 교착하므로 쓰지 않는다). 처리 24.4 FPS 라 30 fps 입력의 **18.6% 를 버린다**(가장 오래된 프레임부터, 연속 버림 최대 1). 페이싱 없는 `--batch 1 --slots 1` 은 디코드 끝 기준 79.2 ms 지만 그중 약 42 ms 가 파일을 앞서 읽어 생긴 슬롯 대기다([`input_pacing/`](07_results/input_pacing/summary.md)) |
 | 영상만 저지연 표시 | 위에 `--display-sync latest` 추가 | 화면 glass 28 ms, 박스만 뒤처진다 |
 
-> 최소 지연 행과 페이싱 값은 **현재 기본값**(V3D 1150 MHz·디코더 1스레드·GPU 후처리·GPU 억제, 2026-10-12)이고, 나머지 지연은
-> 디코더 자동 5스레드·V3D 960 MHz 조건 값이다([`op_point/`](07_results/op_point/summary.md) §8). 지금 기본값에서는 b8/s16 e2e 318.6 ms,
+> 최소 지연 행과 페이싱 값은 **현재 조건**(V3D 1150 MHz·디코더 1스레드·GPU 후처리·GPU 억제, 2026-10-12)이고, 나머지 지연은
+> 디코더 자동 5스레드·V3D 960 MHz 조건 값이다([`op_point/`](07_results/op_point/summary.md) §8). 지금 조건(입력 `asap`)에서는 b8/s16 e2e 318.6 ms,
 > 표시 off b2/s4 GPU 후처리 34.99 FPS 로 조금씩 짧고 FPS 는 같다([`dec_threads/`](07_results/dec_threads/summary.md)).
 > 페이싱 없는 b1/s1 은 79.19 ms 이고 gpu-depth 1 과 3 이 같다([`latency_b1s1_20261012`](07_results/op_point/runs/latency_b1s1_20261012/summary.md)).
 >
@@ -191,14 +193,14 @@ V3D 가 표시 변환을 하지 않는 두 번째 표시 방식이다. 디코더
 XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
 build/bin/yvo_pipeline \
   --video 04_data/videos/video_h265.mp4 --mode dmabuf --layout nhcw --postproc gpu \
-  --batch 2 --slots 4 --display on --display-backend wayland-planes
+  --batch 2 --slots 4 --input-pace asap --display on --display-backend wayland-planes
 
 # kms — KMS atomic 으로 직접 커밋한다. DRM master 가 필요하다
 loginctl list-sessions                 # 데스크톱이 아닌 tty 세션 id 를 찾는다
 loginctl activate <tty 세션 id>         # (또는 sudo chvt 3) 모니터가 콘솔로 바뀌고 labwc 가 master 를 놓는다
 build/bin/yvo_pipeline \
   --video 04_data/videos/video_h265.mp4 --mode dmabuf --layout nhcw --postproc gpu \
-  --batch 2 --slots 4 --display on --display-backend kms
+  --batch 2 --slots 4 --input-pace asap --display on --display-backend kms
 loginctl activate <데스크톱 세션 id>    # (또는 sudo chvt 7) 데스크톱으로 돌아간다
 ```
 
@@ -220,9 +222,9 @@ loginctl activate <데스크톱 세션 id>    # (또는 sudo chvt 7) 데스크�
 | `--layout nhwc\|nhcw` | `nhcw` | **`nhcw` 필수.** HailoRT 의 CPU 입력 변환(약 14 ms/f)을 없앤다. dmabuf 전용 |
 | `--postproc host\|gpu` | `gpu` | `gpu` 는 원시 출력 + `yolo_decode.comp` + `--nms` 억제. **`dmabuf`+`nhcw` 전용** |
 | `--nms gpu\|cpu\|verify` | `gpu` | `--postproc gpu` 의 억제 위치. `gpu` 는 `efficient_nms.comp`(CPU 기준과 비트 일치, 보장 못 하는 프레임만 자동 CPU 처리), `cpu` 는 `cpu_nms_greedy_by_class`, `verify` 는 매 프레임 둘을 비트 비교 |
-| `--batch N` / `--slots N` | 8 / `max(4,batch*2)` | 운용점. §3.3 참조 |
+| `--batch N` / `--slots N` | 1 / 1(batch 1 + `--input-pace source`), 그 밖에는 `max(4,batch*2)` | 운용점. §3.3 참조. 2026-10-27 전 기본은 8 / `max(4,batch*2)` |
 | `--gpu-depth N` | 3 | GPU 동시 프레임 상한. **지연에 영향 없음**(실측 1 vs 3 동일) |
-| `--input-pace asap\|source` | `asap` | 입력 도착 방식. `asap` = 슬롯이 비는 대로 디코드(지금까지의 방식). `source` = 프레임이 `t0 + k/fps` 에 도착한다(카메라 흉내). 요약에 도착 시각부터 잰 `e2e_arr`·버림·`RESULT_CSV4` 가, 표시 on 이면 도착 → 화면 `arrival-to-present`·`RESULT_CSV5` 가 붙는다(표시 쪽 프레임 게이트 `--display-pace` 는 입력이 이미 페이싱되므로 쓰지 않는다) |
+| `--input-pace asap\|source` | `source` | 입력 도착 방식. `asap` = 슬롯이 비는 대로 디코드(2026-10-27 전 기본, 벤치가 명시). `source` = 프레임이 `t0 + k/fps` 에 도착한다(카메라 흉내). 요약에 도착 시각부터 잰 `e2e_arr`·버림·`RESULT_CSV4` 가, 표시 on 이면 도착 → 화면 `arrival-to-present`·`RESULT_CSV5` 가 붙는다(표시 쪽 프레임 게이트 `--display-pace` 는 입력이 이미 페이싱되므로 쓰지 않는다) |
 | `--input-queue N` | 1 | `--input-pace source` 전용 leaky 입력 큐 크기 1~3. 넘치면 가장 오래된 프레임을 버린다(GStreamer `queue leaky=downstream`). **1 이 맞다** — 2~3 은 효과 없거나 지연만 는다([`input_pacing/`](07_results/input_pacing/summary.md)). 보유 예산 `gpu_depth + N + 1 ≤ 10`(표시 on 이면 표시 쪽 보유 상한에 N 을 더한다) |
 | `--frame-log PATH` | 끔 | 프레임마다 도착·디코드 끝·제출·NPU 완료·후처리 완료·완료 시각(실행 시작 기준 ms)을 CSV 로 남긴다. 실행 끝에 한 번만 쓰고(루프 안 파일 I/O 없음), 경로가 잘못되면 장치를 열기 전에 종료 코드 2. `dropped` 1 = 입력 큐에서 버림, 2 = 중단 시 큐에 남음. 표시 on 이면 10번째 열 `present_ms`(화면에 닿은 시각)가 붙는다. 분석은 `06_tools/python/frame_log_stats.py` |
 | `--display off\|on` | `off` | HDMI 실시간 표시 |
@@ -273,7 +275,7 @@ median 을 써라(V3D 가 커맨드 버퍼를 합치면서 한쪽 구간이 0에
 ## 6. 검증
 
 ```bash
-ctest --test-dir build        # 184/184 통과해야 한다
+ctest --test-dir build        # 195/195 통과해야 한다
 ```
 
 | 테스트 | NPU | 무엇을 보는가 |

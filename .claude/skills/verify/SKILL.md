@@ -37,7 +37,7 @@ ctest --test-dir build --output-on-failure
   합격 기준은 **max 오차 0**(근사가 아니라 비트 단위 일치)이다.
 - `test_detections` — CPU / GPU ptr / GPU dmabuf / GPU dmabuf NHCW 경로의 검출을 비교한다.
   NPU를 독점하므로 `RUN_SERIAL`이고 느리다(약 19초). 합격 기준은 **매칭 비율 1.0000**이다.
-- 전체 개수는 **184**이다(2026-10-16 — 메인 스레드 이벤트 대기·평면 슬롯 하한의 `SlotExchange.Wake*`·`*AcquirePoll`·`WaitEventUntil*` 5개와 `SlotBudget.PlanesMatchedNeedTwoSlots`·`OneSlotIsFineWithLatestOrComposite` 2개로 177 → 184, NPU 없이 181. 그 앞 2026-10-12 — 표시 페이싱(11040f3)의 `LateGapThreshold.*` 3개·`SlotBudget` 1개·`ResultCsv.Csv5*` 2개·`FrameLog` 1개로 170 → 177, NPU 없이 174. 그 앞 2026-10-12 — `FrameLog.*` 5개(`--frame-log` 서식)·`CliParse.*` 5개(`parse_stof`·`parse_size`·`arg_stof`)로 160 → 170, NPU 없이 167. 그 앞 2026-10-12 — 입력 페이싱 순수 로직·RESULT_CSV4 테스트 13개 추가로 147 → 160. 2026-10-11 — 하드웨어 없는 `test_pipeline_logic`(SlotExchange·SlotBudget·ResultCsv·CliParse)·`test_display_options` 추가로 95 → 147. NPU가 필요한 3개(`test_detections`·`test_postproc_live`·`test_gst_detections`)는 `npu` 라벨이 있어 `ctest -LE npu` 로 뺄 수 있다. 같은 날 앞서 `PostprocFixture.ImportHeapMatchesPlainBitExact` 추가: heap 입력 경로가 Plain과 비트 일치, NPU 불필요, dma-heap 노드가 없으면 skip. 이전 2026-09-29, `test_preproc` 의 `SandRefVsFfmpeg` 5개 — ref de-SAND 대 rpi-ffmpeg 바이트 일치; `test_gst_adapter` 10개 — HW HEVC 디코더와 GPU 필요, 없으면 skip; `test_gst_detections` 1개 — NPU 필요, RUN_SERIAL). `test_overlay`의 `KmsScanout.*`는 `/dev/dri/card1`을 열지만 **DRM master를
+- 전체 개수는 **195**이다(2026-10-27 — 평면 경로 계측 ee445a3의 `CommitMargin.*` 4개·`FrameLog` 1개, 기본 운용점 O2의 `DefaultSlots.*` 5개·`DisplayOptions.PlaneBackendOnlyWhenNamedExplicitly` 1개로 184 → 195, NPU 없이 192. 알려진 환경 실패: `04_data/raw_tensors/` 가 없으면 `PostprocFixture.*` 6개, `/dev/media0` 가 디코더로 잡히면 `IspPreprocTest.*` 10개. 그 앞 2026-10-16 — 메인 스레드 이벤트 대기·평면 슬롯 하한의 `SlotExchange.Wake*`·`*AcquirePoll`·`WaitEventUntil*` 5개와 `SlotBudget.PlanesMatchedNeedTwoSlots`·`OneSlotIsFineWithLatestOrComposite` 2개로 177 → 184, NPU 없이 181. 그 앞 2026-10-12 — 표시 페이싱(11040f3)의 `LateGapThreshold.*` 3개·`SlotBudget` 1개·`ResultCsv.Csv5*` 2개·`FrameLog` 1개로 170 → 177, NPU 없이 174. 그 앞 2026-10-12 — `FrameLog.*` 5개(`--frame-log` 서식)·`CliParse.*` 5개(`parse_stof`·`parse_size`·`arg_stof`)로 160 → 170, NPU 없이 167. 그 앞 2026-10-12 — 입력 페이싱 순수 로직·RESULT_CSV4 테스트 13개 추가로 147 → 160. 2026-10-11 — 하드웨어 없는 `test_pipeline_logic`(SlotExchange·SlotBudget·ResultCsv·CliParse)·`test_display_options` 추가로 95 → 147. NPU가 필요한 3개(`test_detections`·`test_postproc_live`·`test_gst_detections`)는 `npu` 라벨이 있어 `ctest -LE npu` 로 뺄 수 있다. 같은 날 앞서 `PostprocFixture.ImportHeapMatchesPlainBitExact` 추가: heap 입력 경로가 Plain과 비트 일치, NPU 불필요, dma-heap 노드가 없으면 skip. 이전 2026-09-29, `test_preproc` 의 `SandRefVsFfmpeg` 5개 — ref de-SAND 대 rpi-ffmpeg 바이트 일치; `test_gst_adapter` 10개 — HW HEVC 디코더와 GPU 필요, 없으면 skip; `test_gst_detections` 1개 — NPU 필요, RUN_SERIAL). `test_overlay`의 `KmsScanout.*`는 `/dev/dri/card1`을 열지만 **DRM master를
   가져가지 않는다** — 다른 프로세스(labwc)가 master일 때만 돌고, 아무도 master가 아니면 skip한다.
 
 ## 3. Vulkan 검증 레이어 — errors 0
@@ -45,15 +45,18 @@ ctest --test-dir build --output-on-failure
 ```bash
 VK_LOADER_LAYERS_ENABLE='*validation' build/bin/yvo_pipeline \
     --video 04_data/videos/video_h265.mp4 --mode dmabuf --layout nhcw --frames 200
+VK_LOADER_LAYERS_ENABLE='*validation' build/bin/yvo_pipeline \
+    --video 04_data/videos/video_h265.mp4 --mode dmabuf --layout nhcw --frames 200 --input-pace asap --batch 8
 ```
 
-- 합격: 출력 끝 줄의 `vk validation errors 0`. 2026-10-08부터 `--postproc` 기본값이 gpu 라 이 명령은 GPU 후처리(`yolo_decode`·`efficient_nms`)까지 덮는다.
+- 2026-10-27부터 기본값이 O2(`--batch 1 --slots 1 --input-pace source`)라 첫 명령은 페이싱 루프(`run_paced`, 약 7 s)를, 둘째 명령은 asap 루프(배치 8)를 덮는다. **둘 다 돌린다.**
+- 합격: 각 출력 끝 줄의 `vk validation errors 0`. 2026-10-08부터 `--postproc` 기본값이 gpu 라 이 명령은 GPU 후처리(`yolo_decode`·`efficient_nms`)까지 덮는다.
 - 셰이더·배리어·동기화·dma-buf import를 건드렸으면 반드시 돈다.
 - `yvo_preproc_bench`도 같은 방식으로 돌릴 수 있다(NPU를 쓰지 않아 더 빠르다).
 
 ### 3-1. 표시 경로를 건드렸을 때
 
-`01_src/display/`를 바꿨으면 해당 백엔드로 실제 표시를 한 번 돌린다(`--batch 2 --slots 4 --postproc gpu --display on`).
+`01_src/display/`를 바꿨으면 해당 백엔드로 실제 표시를 한 번 돌린다(`--batch 2 --slots 4 --input-pace asap --postproc gpu --display on`. 평면 백엔드는 `--slots 6`).
 **항상 `timeout -s KILL 90`으로 감싼다.**
 - 먼저 `XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 wlr-randr`에 **HDMI-A-1**이 있는지 본다.
   `Headless output`만 있으면 labwc가 HDMI를 잃은 것이다. 이 상태에서 스왑체인 경로(`wayland`)는 `vkQueuePresentKHR`에서
@@ -75,7 +78,11 @@ cmake -S . -B build-asan -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DYVO_SANITI
 cmake --build build-asan
 build-asan/bin/yvo_pipeline --video 04_data/videos/video_h265.mp4 \
     --mode dmabuf --layout nhcw --frames 100
+build-asan/bin/yvo_pipeline --video 04_data/videos/video_h265.mp4 \
+    --mode dmabuf --layout nhcw --frames 100 --input-pace asap --batch 8
 ```
+
+- 2026-10-27부터 기본값(O2)은 페이싱 루프만 지나므로 asap 루프도 한 번 더 돌린다(§3과 같은 이유).
 
 - `YVO_SANITIZE=ON`(2026-10-11)은 C 스텁까지 모든 타깃의 컴파일·링크에 `-fsanitize=address,undefined`를 넣는다. 예전 방식(`CMAKE_CXX_FLAGS`)으로 설정된 `build-asan/` 캐시가 남아 있어도 플래그가 겹칠 뿐 해롭지 않다. TSan은 이 보드에서 돌지 않는다(47비트 VMA 미지원).
 - 합격: ASan/UBSan 출력 없음, `LeakSanitizer` 누수 0. (위 명령은 기본값인 GPU 후처리 경로를 돈다. host NMS 경로를 보려면 `--postproc host`.)

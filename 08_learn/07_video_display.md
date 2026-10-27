@@ -830,7 +830,7 @@ KMS 커밋에는 card1 의 DRM master 가 필요하고, 평소에는 labwc 가 �
 ```bash
 loginctl list-sessions                  # tty 세션 id 확인 (sudo 불필요)
 loginctl activate <tty 세션 id>          # 또는 sudo chvt 3 — 모니터가 콘솔로 바뀐다
-build/bin/yvo_pipeline ... --display on --display-backend kms
+build/bin/yvo_pipeline ... --batch 2 --slots 6 --input-pace asap --display on --display-backend kms   # 기본 O2(slots 1)는 평면 경로가 거부한다
 loginctl activate <데스크톱 세션 id>      # 또는 sudo chvt 7 — labwc 가 master 를 되찾는다
 ```
 

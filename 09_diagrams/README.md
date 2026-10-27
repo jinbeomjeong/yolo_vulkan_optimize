@@ -80,7 +80,7 @@ File ▸ Export 를 대신 눌러 준다. 사용자 화면을 건드리지 않�
 - NMS 기본 `--nms gpu` — **정식 측정 2026-10-08**([`gpu_nms_e2e/summary.md`](../07_results/gpu_nms_e2e/summary.md), 1150 MHz · 디코더 1스레드 · 표시 off, 설정당 3회 중앙값).
   GPU NMS median b2s4 0.0486 / p90 0.0578 ms, b8s16 0.0500 / 0.0595 ms, fallback 0, 검출 9457 이 CPU NMS 와 바이트 동일,
   V3D CSD 잡 프레임당 4 → 5. CPU NMS 가 원래 약 2 µs/f 라 판정은 "CPU 절감"이 아니라 "회귀 없음 + GPU 비용 약 0.05 ms"다.
-  같은 실험이 현재 기본값의 표시 off 기준선이다 — b8s16 51.50 fps · CPU 0.869 ms/f, b2s4 34.99 fps · CPU 0.908 ms/f.
+  같은 실험이 2026-10-08 당시 기본값(입력 `asap`)의 표시 off 기준선이다 — b8s16 51.50 fps · CPU 0.869 ms/f, b2s4 34.99 fps · CPU 0.908 ms/f.
 - 대안 표시 경로(HVS 평면) — **정식 측정 2026-10-08**([`display_planes_e2e/summary.md`](../07_results/display_planes_e2e/summary.md) b2/s4,
   [`runs/slots6/summary.md`](../07_results/display_planes_e2e/runs/slots6/summary.md) b2/s6; 1150 MHz · 디코더 1스레드 · GPU NMS · 표시 on source 페이싱).
   Vulkan 합성 대비 CPU −0.44~0.49 ms/f, V3D 10.2 → 2.9 ms/f(TFU 3.7 ms 소멸), wayland-planes ≈ kms.
