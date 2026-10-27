@@ -133,6 +133,13 @@
   template/
     reference.docx       docx 서식 견본(글꼴·여백·스타일). make_reference_docx.py 의 산출물 — 추적. 손으로 고치지 않는다
   build/                 docx 산출물(paper_ko.docx 등). git 밖(.gitignore) — 언제든 다시 만든다
+  talk/                  발표 자료(pptx). 원고·그림은 사본 없이 ../ 를 직접 참조한다
+    content_spec*.md     슬라이드별 내용 명세(버전별). 내용은 메인 에이전트가 정한다
+    diagrams/            발표용 yEd 도식: <이름>.graphml + 내보낸 .png·.svg (yed-auto export)
+    out/
+      build_deck*.js     pptx 생성 스크립트(pptxgenjs, conda python-dev 의 node)
+      *.pptx             생성된 덱 — 추적
+      render*/           렌더 검사 산출물(pdf·jpg·slide_text·fonts.conf). git 밖(.gitignore)
 06_tools/python/paper/
   paper_style.py         공용 스타일(글꼴·크기·색)
   figNN_<slug>.py        그림 하나당 스크립트 하나 — 07_results 만 읽고 10_paper/figures 에 쓴다
@@ -148,6 +155,10 @@
   docx 스크립트 작성은 docx-expert, 실행·견본 재생성·커밋은 메인 에이전트다.
   docx 스크립트의 실행 환경(정의 파일 없음 — 이 줄이 정본): conda `python-dev`(Python 3.13, conda-forge `--override-channels -c conda-forge`): python-docx 1.2.0 · lxml 6.1.3 · pandoc 3.12.1 · defusedxml 0.7.1 · mammoth 1.13.0 · docxcompose 2.2.0 · docxtpl 0.20.2 · pillow 12.3.0 · cairosvg 2.9.1 · nodejs 26.10.0, pip docx2python 3.7.1, npm(env 안 전역) docx 9.11.0. 렌더 검사는 시스템 LibreOffice 25.2·poppler-utils·fonts-nanum·fonts-noto-cjk.
   결정: python-dev 환경은 정의 파일 없이 이 문서에 패키지·버전만 적는다 (사용자 결정, 2026-10-14) 결정: docx 견본은 `10_paper/template/`, 산출물은 `10_paper/build/`(추적 안 함), 스크립트는 `06_tools/python/paper/` (사용자 결정, 2026-10-14)
+- 발표 자료는 `10_paper/talk/`에 둔다. 덱은 `out/build_deck*.js` 실행으로만 만들고(덱을 손으로 고치지 않는다), 수치는 `07_results` 정본과 원고에서만 가져온다.
+  내용 명세(`content_spec*.md`)와 `10_paper/talk/` 커밋은 메인 에이전트, 덱 생성·렌더 검사는 pptx-expert, 도식(`diagrams/`)은 graphml-expert가 맡는다.
+  실행 환경은 conda `python-dev`의 node 26.10 + npm(env 안 전역) pptxgenjs 4.0.1 · react/react-dom 18.3.1 · react-icons 5.7.0 · sharp 0.35.5, conda-forge python-pptx 1.0.2.
+  결정: 발표 자료 폴더는 `10_paper/talk/`로 편입하고 렌더 산출물은 추적하지 않는다 (사용자 결정, 2026-10-27)
 
 ## 3. `07_results/` 레이아웃
 

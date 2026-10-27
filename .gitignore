@@ -5,6 +5,8 @@
 __pycache__/
 # 논문 docx 산출물 — 06_tools/python/paper/build_docx.py 로 언제든 다시 만든다
 10_paper/build/
+# 발표 덱 렌더 검사 산출물(pdf·jpg) — 10_paper/talk/out/build_deck*.js 와 soffice 로 다시 만든다
+10_paper/talk/out/render*/
 
 # 런타임 로그 — HailoRT 가 CWD 에 떨어뜨리는 잔재만 제외한다.
 #   07_results/**/hailort*.log(605개, 8 MB, 2026-10-14)는 측정 신뢰성 판정의 근거이므로 추적한다
