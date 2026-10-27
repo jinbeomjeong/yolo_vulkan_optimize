@@ -1,10 +1,17 @@
 # Diagnostic-only shaders → build/02_shaders/diag/generated/*_spv.h (generated header names follow the same rule as the main shaders)
 #   display_probe.comp : fixed test pattern for the P5 present gate (yvo_display_probe)
 #   heap_sum.comp      : byte-sum reduction for the dma-heap round trip (yvo_postproc_probe --probe heapimport)
+#   mem_bw.comp        : bandwidth-bound read-sum / write / copy kernels, uint or uvec4 (yvo_postproc_probe --probe memasym)
 # **Libraries do not link this** — only tools (01_src/tools/) link it. It is not used in the pipeline.
 yvo_add_shaders(yvo_shaders_diag
   display_probe.comp
   heap_sum.comp
+  mem_bw.comp@mem_bw_read_u32@YVO_MEMBW_READ
+  mem_bw.comp@mem_bw_read_v4@YVO_MEMBW_READ,YVO_MEMBW_VEC4
+  mem_bw.comp@mem_bw_write_u32@YVO_MEMBW_WRITE
+  mem_bw.comp@mem_bw_write_v4@YVO_MEMBW_WRITE,YVO_MEMBW_VEC4
+  mem_bw.comp@mem_bw_copy_u32@YVO_MEMBW_COPY
+  mem_bw.comp@mem_bw_copy_v4@YVO_MEMBW_COPY,YVO_MEMBW_VEC4
 )
 
 # Diagnostic variants of the production yolo_decode.comp (same source, different -D) for yvo_postproc_probe

@@ -1,0 +1,107 @@
+yvo_postproc_probe --probe memasym   (CPU<->GPU memory access asymmetry)
+[memasym] parts attr,coherence  rounds 1 x repeats 2  cpu pin 3 (running on cpu 3)  pid 38293
+[env] SoC temp=67.5'C  throttled throttled=0x80000  v3d frequency(0)=1150014720  arm frequency(0)=2400027136  governor(cpu0) ondemand
+[vk] device=V3D 7.1.10.2  timestampPeriod 1.000 ns  validBits 64  memoryType0 flags 0x7
+[part] mono=50415.097622 begin attr
+
+== [attr] mapping behaviour, 1228800 B buffers ==
+[alloc] heap /dev/dma_heap/system  1228800 B requested, dmabuf 1245184 B, range 1244928, ptr 0x7ffed8f10000
+[alloc] cma  /dev/dma_heap/linux,cma  1228800 B requested, dmabuf 1245184 B, range 1244928, ptr 0x7ffed8ddc000
+[map] v3d ptr 0x7ffed9044000 len 1228800
+[map] heap ptr 0x7ffed8f10000 len 1228800
+[map] cma ptr 0x7ffed8ddc000 len 1228800
+[map] malloc ptr 0x7ffed8cac000 len 1228800
+[attr] dependent-load latency, 200000 loads per sample (ns/load)
+alloc        target              median    p10      p90      n
+v3d          same 64 B line       121.44   121.43   121.46    2
+heap         same 64 B line         2.09     2.08     2.09    2
+cma          same 64 B line         2.09     2.09     2.10    2
+malloc       same 64 B line         2.08     2.08     2.08    2
+malloc       random 16 MiB        116.06   115.31   116.81    2
+[attr] chase sink 8247392 (end index; 0 for the same-line rows)
+[attr] unaligned access (DCZID_EL0 0x4: DC ZVA block 64 B)
+alloc    ldr_x@+1        ldr_x@+61(cross)  ldr_w@+2        dc_zva          values
+v3d      ok              ok                ok              ok              match
+heap     ok              ok                ok              ok              match
+cma      ok              ok                ok              ok              match
+malloc   ok              ok                ok              ok              match
+[check] attr: unaligned loads succeed with correct values (Normal memory) on every allocation
+[part] mono=50415.310154 begin coherence
+
+== [coherence] size 262144 B (4096 lines of 64 B), 1 trials per cell ==
+[part] mono=50415.310180 begin coherence size 262144
+[alloc] heap /dev/dma_heap/system  262144 B requested, dmabuf 278528 B, range 278272, ptr 0x7ffed90e8000
+[alloc] cma  /dev/dma_heap/linux,cma  262144 B requested, dmabuf 278528 B, range 278272, ptr 0x7ffed90a0000
+[map] v3d ptr 0x7ffed9130000 len 262144 (GPU copy destination)
+[map] heap ptr 0x7ffed90e8000 len 262144
+[map] cma ptr 0x7ffed90a0000 len 262144
+alloc  direction     sync  trial  lines_new  lines_stale  lines_mixed  control_bad_words
+[mark] mono=50415.311735 coherence heap cpu2gpu_plain sync=off trial=0 cpu-write-B
+[mark] mono=50415.311810 coherence heap cpu2gpu_plain sync=off trial=0 gpu-copy
+[mark] mono=50415.311963 coherence heap cpu2gpu_plain sync=off trial=0 gpu-done
+heap   cpu2gpu_plain     off       0       3886          210            0                  0
+[coh-sum] heap size 262144 cpu2gpu_plain    sync=off: new 0.9487 stale 0.0513 mixed 0.0000 (fraction of 4096 line samples), control bad words 0
+[mark] mono=50415.312823 coherence heap cpu2gpu_plain sync=on trial=0 cpu-write-B
+[mark] mono=50415.312922 coherence heap cpu2gpu_plain sync=on trial=0 gpu-copy
+[mark] mono=50415.313066 coherence heap cpu2gpu_plain sync=on trial=0 gpu-done
+heap   cpu2gpu_plain     on        0       4096            0            0                  0
+[coh-sum] heap size 262144 cpu2gpu_plain    sync=on : new 1.0000 stale 0.0000 mixed 0.0000 (fraction of 4096 line samples), control bad words 0
+[mark] mono=50415.313958 coherence heap cpu2gpu_resident sync=off trial=0 cpu-write-B
+[mark] mono=50415.313991 coherence heap cpu2gpu_resident sync=off trial=0 gpu-copy
+[mark] mono=50415.314126 coherence heap cpu2gpu_resident sync=off trial=0 gpu-done
+heap   cpu2gpu_resident  off       0        322         3774            0                  0
+[coh-sum] heap size 262144 cpu2gpu_resident sync=off: new 0.0786 stale 0.9214 mixed 0.0000 (fraction of 4096 line samples), control bad words 0
+[mark] mono=50415.315016 coherence heap cpu2gpu_resident sync=on trial=0 cpu-write-B
+[mark] mono=50415.315108 coherence heap cpu2gpu_resident sync=on trial=0 gpu-copy
+[mark] mono=50415.315252 coherence heap cpu2gpu_resident sync=on trial=0 gpu-done
+heap   cpu2gpu_resident  on        0       4096            0            0                  0
+[coh-sum] heap size 262144 cpu2gpu_resident sync=on : new 1.0000 stale 0.0000 mixed 0.0000 (fraction of 4096 line samples), control bad words 0
+[mark] mono=50415.315893 coherence heap gpu2cpu sync=off trial=0 gpu-write-B
+[mark] mono=50415.316020 coherence heap gpu2cpu sync=off trial=0 gpu-done
+[mark] mono=50415.316039 coherence heap gpu2cpu sync=off trial=0 cpu-read
+[mark] mono=50415.316061 coherence heap gpu2cpu sync=off trial=0 cpu-done
+heap   gpu2cpu           off       0        703         3393            0                  0
+[coh-sum] heap size 262144 gpu2cpu          sync=off: new 0.1716 stale 0.8284 mixed 0.0000 (fraction of 4096 line samples), control bad words 0
+[mark] mono=50415.316461 coherence heap gpu2cpu sync=on trial=0 gpu-write-B
+[mark] mono=50415.316584 coherence heap gpu2cpu sync=on trial=0 gpu-done
+[mark] mono=50415.316594 coherence heap gpu2cpu sync=on trial=0 cpu-read
+[mark] mono=50415.316669 coherence heap gpu2cpu sync=on trial=0 cpu-done
+heap   gpu2cpu           on        0       4096            0            0                  0
+[coh-sum] heap size 262144 gpu2cpu          sync=on : new 1.0000 stale 0.0000 mixed 0.0000 (fraction of 4096 line samples), control bad words 0
+[mark] mono=50415.317193 coherence cma cpu2gpu_plain sync=off trial=0 cpu-write-B
+[mark] mono=50415.317254 coherence cma cpu2gpu_plain sync=off trial=0 gpu-copy
+[mark] mono=50415.317390 coherence cma cpu2gpu_plain sync=off trial=0 gpu-done
+cma    cpu2gpu_plain     off       0       3840          256            0                  0
+[coh-sum] cma  size 262144 cpu2gpu_plain    sync=off: new 0.9375 stale 0.0625 mixed 0.0000 (fraction of 4096 line samples), control bad words 0
+[mark] mono=50415.318147 coherence cma cpu2gpu_plain sync=on trial=0 cpu-write-B
+[mark] mono=50415.318215 coherence cma cpu2gpu_plain sync=on trial=0 gpu-copy
+[mark] mono=50415.318346 coherence cma cpu2gpu_plain sync=on trial=0 gpu-done
+cma    cpu2gpu_plain     on        0       4096            0            0                  0
+[coh-sum] cma  size 262144 cpu2gpu_plain    sync=on : new 1.0000 stale 0.0000 mixed 0.0000 (fraction of 4096 line samples), control bad words 0
+[mark] mono=50415.319166 coherence cma cpu2gpu_resident sync=off trial=0 cpu-write-B
+[mark] mono=50415.319198 coherence cma cpu2gpu_resident sync=off trial=0 gpu-copy
+[mark] mono=50415.319330 coherence cma cpu2gpu_resident sync=off trial=0 gpu-done
+cma    cpu2gpu_resident  off       0        298         3798            0                  0
+[coh-sum] cma  size 262144 cpu2gpu_resident sync=off: new 0.0728 stale 0.9272 mixed 0.0000 (fraction of 4096 line samples), control bad words 0
+[mark] mono=50415.320126 coherence cma cpu2gpu_resident sync=on trial=0 cpu-write-B
+[mark] mono=50415.320189 coherence cma cpu2gpu_resident sync=on trial=0 gpu-copy
+[mark] mono=50415.320327 coherence cma cpu2gpu_resident sync=on trial=0 gpu-done
+cma    cpu2gpu_resident  on        0       4096            0            0                  0
+[coh-sum] cma  size 262144 cpu2gpu_resident sync=on : new 1.0000 stale 0.0000 mixed 0.0000 (fraction of 4096 line samples), control bad words 0
+[mark] mono=50415.320847 coherence cma gpu2cpu sync=off trial=0 gpu-write-B
+[mark] mono=50415.320958 coherence cma gpu2cpu sync=off trial=0 gpu-done
+[mark] mono=50415.320967 coherence cma gpu2cpu sync=off trial=0 cpu-read
+[mark] mono=50415.320985 coherence cma gpu2cpu sync=off trial=0 cpu-done
+cma    gpu2cpu           off       0        203         3893            0                  0
+[coh-sum] cma  size 262144 gpu2cpu          sync=off: new 0.0496 stale 0.9504 mixed 0.0000 (fraction of 4096 line samples), control bad words 0
+[mark] mono=50415.321290 coherence cma gpu2cpu sync=on trial=0 gpu-write-B
+[mark] mono=50415.321410 coherence cma gpu2cpu sync=on trial=0 gpu-done
+[mark] mono=50415.321423 coherence cma gpu2cpu sync=on trial=0 cpu-read
+[mark] mono=50415.321470 coherence cma gpu2cpu sync=on trial=0 cpu-done
+cma    gpu2cpu           on        0       4096            0            0                  0
+[coh-sum] cma  size 262144 gpu2cpu          sync=on : new 1.0000 stale 0.0000 mixed 0.0000 (fraction of 4096 line samples), control bad words 0
+[check] coherence: sync-on cells all new and controls clean: PASS
+[part] mono=50415.321672 end
+
+[validation] errors=0 warnings=1
+[RESULT] memasym PASS

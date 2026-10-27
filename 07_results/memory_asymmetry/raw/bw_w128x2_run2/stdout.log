@@ -1,0 +1,52 @@
+yvo_postproc_probe --probe memasym   (CPU<->GPU memory access asymmetry)
+[memasym] parts gpubw  rounds 3 x repeats 10  cpu pin 3 (running on cpu 3)  pid 37708
+[env] SoC temp=69.2'C  throttled throttled=0x80000  v3d frequency(0)=572227264  arm frequency(0)=1600013696  governor(cpu0) ondemand
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[vk] device=V3D 7.1.10.2  timestampPeriod 1.000 ns  validBits 64  memoryType0 flags 0x7
+[part] mono=50296.561721 begin gpubw
+
+== [gpubw] size 1228800 B ==
+[alloc] heap /dev/dma_heap/system  1228800 B requested, dmabuf 1245184 B, range 1244928, ptr 0x7fff8e6f0000
+[alloc] cma  /dev/dma_heap/linux,cma  1228800 B requested, dmabuf 1245184 B, range 1244928, ptr 0x7fff8e5bc000
+[gpubw] local 128  groups 2  dispatches/sample 41  samples/cell 30 (warm-up 2)  read checksum 0x1931a800
+[env] SoC temp=71.4'C  throttled throttled=0x80000  v3d frequency(0)=1150014720  arm frequency(0)=2400037120  governor(cpu0) ondemand
+size_B     kernel     alloc  GBps_median  GBps_p10  GBps_p90  GBps_min  GBps_max  net_GBps_median    n
+1228800    read_u32   v3d          2.104     2.100     2.106     2.026     2.107            2.224   30
+1228800    read_u32   heap         2.104     2.094     2.106     1.981     2.106            2.224   30
+1228800    read_u32   cma          2.102     2.062     2.104     1.986     2.105            2.222   30
+1228800    read_v4    v3d          6.384     6.342     6.395     5.940     6.404            7.634   30
+1228800    read_v4    heap         6.385     6.372     6.397     6.344     6.403            7.636   30
+1228800    read_v4    cma          6.381     6.366     6.393     5.774     6.410            7.630   30
+1228800    write_u32  v3d          4.962     4.941     4.966     4.303     4.966            5.685   30
+1228800    write_u32  heap         4.963     4.938     4.966     4.555     4.967            5.687   30
+1228800    write_u32  cma          4.252     4.247     4.257     4.063     4.264            4.772   30
+1228800    write_v4   v3d         11.372    11.263    11.415    11.186    11.422           16.055   30
+1228800    write_v4   heap        11.380    11.282    11.434     8.959    11.445           16.070   30
+1228800    write_v4   cma          8.224     8.205     8.242     8.180     8.248           10.422   30
+[gpubw] per-dispatch fixed cost (1 workgroup, 128 elements, v3d): median 31.5 us  p90 31.8 us  (included 41 times in every sample above; net_GBps subtracts the median)
+[check] gpubw size 1228800: read sums PASS (0 bad), written words PASS (0 bad), workgroup counts PASS (0 bad)
+
+== [gpubw] size 16777216 B ==
+[alloc] heap /dev/dma_heap/system  16777216 B requested, dmabuf 16793600 B, range 16793344, ptr 0x7fff808c4000
+[alloc] cma  /dev/dma_heap/linux,cma  16777216 B requested, dmabuf 16793600 B, range 16793344, ptr 0x7fff7f8bc000
+[gpubw] local 128  groups 2  dispatches/sample 3  samples/cell 30 (warm-up 2)  read checksum 0xd7e00000
+[env] SoC temp=72.5'C  throttled throttled=0x80000  v3d frequency(0)=1150008192  arm frequency(0)=2400030464  governor(cpu0) ondemand
+size_B     kernel     alloc  GBps_median  GBps_p10  GBps_p90  GBps_min  GBps_max  net_GBps_median    n
+16777216   read_u32   v3d          2.207     2.186     2.211     2.136     2.215            2.217   30
+16777216   read_u32   heap         2.207     2.202     2.211     2.133     2.214            2.217   30
+16777216   read_u32   cma          2.207     2.203     2.211     2.076     2.215            2.218   30
+16777216   read_v4    v3d          7.554     7.526     7.574     6.803     7.581            7.676   30
+16777216   read_v4    heap         7.552     7.542     7.569     7.408     7.575            7.673   30
+16777216   read_v4    cma          7.549     7.545     7.567     7.044     7.573            7.671   30
+16777216   write_u32  v3d          3.798     3.574     4.238     3.061     4.375            3.828   30
+16777216   write_u32  heap         3.697     3.571     4.069     3.555     4.690            3.726   30
+16777216   write_u32  cma          3.776     3.479     4.133     3.207     4.478            3.806   30
+16777216   write_v4   v3d         14.554    14.460    14.590    12.695    14.644           15.013   30
+16777216   write_v4   heap        14.582    14.510    14.615    10.185    14.631           15.042   30
+16777216   write_v4   cma         13.915    13.752    13.943    13.513    13.983           14.334   30
+[gpubw] per-dispatch fixed cost (1 workgroup, 128 elements, v3d): median 35.2 us  p90 35.8 us  (included 3 times in every sample above; net_GBps subtracts the median)
+[check] gpubw size 16777216: read sums PASS (0 bad), written words PASS (0 bad), workgroup counts PASS (0 bad)
+[part] mono=50307.945497 end
+
+[validation] errors=0 warnings=1
+[RESULT] memasym PASS

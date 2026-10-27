@@ -1,0 +1,17 @@
+p:yvo_memasym/vmf_insert_pfn_prot vmf_insert_pfn_prot addr=$arg2:x64 pfn=$arg3:x64 prot=$arg4:x64
+p:yvo_memasym/remap_pfn_range remap_pfn_range addr=$arg2:x64 pfn=$arg3:x64 size=$arg4:x64 prot=$arg5:x64
+p:yvo_memasym/drm_gem_shmem_mmap drm_shmem_helper:drm_gem_shmem_mmap
+p:yvo_memasym/drm_gem_shmem_fault drm_shmem_helper:drm_gem_shmem_fault
+p:yvo_memasym/cma_heap_vm_fault cma_heap_vm_fault
+p:yvo_memasym/system_heap_mmap system_heap_mmap
+p:yvo_memasym/arch_sync_dma_for_device arch_sync_dma_for_device paddr=$arg1:x64 size=$arg2:x64 dir=$arg3:s32
+p:yvo_memasym/arch_sync_dma_for_cpu arch_sync_dma_for_cpu paddr=$arg1:x64 size=$arg2:x64 dir=$arg3:s32
+p:yvo_memasym/dma_buf_begin_cpu_access dma_buf_begin_cpu_access dir=$arg2:s32
+p:yvo_memasym/dma_buf_end_cpu_access dma_buf_end_cpu_access dir=$arg2:s32
+p:yvo_memasym/dma_buf_map_attachment dma_buf_map_attachment dir=$arg2:s32
+p:yvo_memasym/v3d_submit_csd_ioctl v3d:v3d_submit_csd_ioctl
+p:yvo_memasym/v3d_csd_job_run v3d:v3d_csd_job_run
+p:yvo_memasym/v3d_cache_clean_job_run v3d:v3d_cache_clean_job_run
+p:yvo_memasym/v3d_invalidate_caches v3d:v3d_invalidate_caches
+p:yvo_memasym/v3d_clean_caches v3d:v3d_clean_caches
+p:yvo_memasym/v3d_wait_bo_ioctl v3d:v3d_wait_bo_ioctl

@@ -182,7 +182,7 @@ struct Options {
 
 void usage() {
     std::puts(
-        "yvo_postproc_probe --probe {fixture|sweep|nms|stages|groups|topk|live|stale|heapimport|gpuab|v3|stride} [options]\n"
+        "yvo_postproc_probe --probe {fixture|sweep|nms|stages|groups|topk|live|stale|heapimport|gpuab|v3|stride|memasym} [options]\n"
         "  --fixture-dir DIR      fixture directory (default <repo>/04_data/raw_tensors = YVO_FIXTURE_DIR)\n"
         "  --out-dir DIR          evidence file directory (default <repo>/build/out/yvo_postproc_probe)\n"
         "  --out-file NAME        evidence file name (default p3_<probe>.txt)\n"
@@ -3468,6 +3468,7 @@ public:
     StrideVkBuffer(const StrideVkBuffer&) = delete;
     StrideVkBuffer& operator=(const StrideVkBuffer&) = delete;
     std::uint8_t* ptr() const { return ptr_; }
+    VkBuffer vk_buffer() const { return buf_; }
     std::uint32_t type() const { return type_; }
     VkMemoryPropertyFlags flags() const { return flags_; }
 
@@ -3659,10 +3660,1043 @@ int run_stride(const Options& o, const StrideOptions& so, Tee& log) {
 
 } // namespace
 
+// ═════════════════════════════════════════════════════════════════════════════════════════════
+//  --probe memasym (**no NPU**) CPU<->GPU memory access asymmetry. Four parts, chosen with --parts (default all):
+//   gpubw     : GPU read / write bandwidth (02_shaders/diag/mem_bw.comp, uint and uvec4) per allocation —
+//               v3d (V3D's own HOST_VISIBLE|HOST_COHERENT memory) / heap (cached dma-heap "system", imported) /
+//               cma (dma-heap "linux,cma", imported; skipped if the allocation fails). Sizes --bw-sizes.
+//               One sample = one command buffer with K back-to-back dispatches between two timestamps
+//               (K = ceil(48 MiB / size)), so the V3DV CPU-job timestamp wake-up is amortized. A 1-workgroup
+//               "tiny" dispatch row gives the per-dispatch fixed cost included in every sample; net GB/s subtracts
+//               it. --bw-local/--bw-groups choose the dispatch shape (defaults = read-optimal 256 x 3).
+//               Read samples check the GPU word sum, write samples check every written word on the CPU.
+//   attr      : behavioural check of the CPU mapping type: dependent-load latency on one cache line (cached ->
+//               L1 level, non-cacheable -> DRAM level; a 16 MiB malloc random chase is the DRAM reference) and
+//               unaligned LDR / DC ZVA (Device memory -> alignment fault = SIGBUS, Normal memory -> fine).
+//   coherence : does the V3D see CPU caches? CPU writes a cached dma-heap buffer **without** DMA_BUF_IOCTL_SYNC and
+//               the GPU copies it out (CPU->GPU); the CPU primes its cache, the GPU writes, the CPU reads without
+//               START|READ (GPU->CPU). Every 64 B line is classified new / stale / mixed. sync-on cells are the
+//               control. Sizes --coh-sizes (default 256 KiB = inside the A76 L2, 8 MiB = outside L2+L3).
+//               "[mark] mono=" lines carry CLOCK_MONOTONIC so a tracefs capture (trace_clock mono) can be aligned.
+//   cpuwrite  : CPU write cost of 1,228,800 B: memset (non-zero / zero), memcpy (malloc source), 1-byte sequential
+//               store loop, into v3d / heap (START|WRITE..END|WRITE inside the timed interval) / malloc.
+//               A `dsb sy` closes every timed interval (stores issued and completed, write-combine drained).
+// Vulkan side is always correct (queue family acquire/release for the imported buffers, barriers between
+// dispatches); only the CPU cache sync is omitted in the coherence off cells.
+#include <csetjmp>
+#include <csignal>
+#include <time.h>
+
+#include "mem_bw_copy_u32_spv.h"
+#include "mem_bw_copy_v4_spv.h"
+#include "mem_bw_read_u32_spv.h"
+#include "mem_bw_read_v4_spv.h"
+#include "mem_bw_write_u32_spv.h"
+#include "mem_bw_write_v4_spv.h"
+
+namespace {
+
+struct MemAsymOptions {
+    std::string parts = "gpubw,attr,coherence,cpuwrite";
+    std::string bw_sizes = "1228800,16777216";
+    std::string coh_sizes = "262144,8388608";
+    int coh_trials = 5;
+    std::uint32_t bw_local = 256;   // local_size_x of mem_bw.comp (power of two, <= 256)
+    std::uint32_t bw_groups = 3;    // workgroup count; 0 = auto (about 64 B per invocation — far from saturation)
+};
+
+void usage_memasym() {
+    std::puts(
+        "memasym mode (--probe memasym: CPU<->GPU memory access asymmetry, no NPU):\n"
+        "  --parts LIST           gpubw,attr,coherence,cpuwrite (default all)\n"
+        "  --bw-sizes LIST        gpubw buffer sizes in bytes, multiples of 16 (default 1228800,16777216)\n"
+        "  --bw-local N           gpubw local_size_x, power of two <= 256 (default 256)\n"
+        "  --bw-groups N          gpubw workgroup count (default 3; 0 = about 64 B per invocation). Few large\n"
+        "                         grid-stride workgroups saturate best on V3D (sweep 2026-10-27: 256x3 for reads,\n"
+        "                         128x2 for writes); the auto value is far below saturation\n"
+        "  --coh-sizes LIST       coherence buffer sizes in bytes (default 262144,8388608)\n"
+        "  --coh-trials N         coherence trials per cell (default 5)\n"
+        "  --rounds/--repeats     samples per gpubw/attr/cpuwrite cell (default 3 x 10), --cpu N pins the thread");
+}
+
+constexpr std::uint32_t kMaWordMul = 2654435761u;   // same constant as mem_bw.comp
+constexpr std::size_t kMaLine = 64;
+
+double mono_now() {
+    timespec ts{};
+    ::clock_gettime(CLOCK_MONOTONIC, &ts);
+    return static_cast<double>(ts.tv_sec) + static_cast<double>(ts.tv_nsec) * 1e-9;
+}
+
+std::vector<std::size_t> parse_size_list(const std::string& s) {
+    std::vector<std::size_t> out;
+    for (const int v : parse_int_list(s)) {
+        if (v <= 0) throw std::runtime_error("size list: values must be > 0: " + s);
+        out.push_back(static_cast<std::size_t>(v));
+    }
+    return out;
+}
+
+inline void full_dsb() { asm volatile("dsb sy" ::: "memory"); }
+
+// word w of a pattern = w * kMaWordMul ^ seed (the mem_bw.comp WRITE formula)
+void fill_words(std::uint8_t* dst, std::size_t bytes, std::uint32_t seed) {
+    for (std::size_t w = 0; w < bytes / 4; ++w) {
+        const std::uint32_t v = (static_cast<std::uint32_t>(w) * kMaWordMul) ^ seed;
+        std::memcpy(dst + w * 4, &v, 4);
+    }
+}
+
+std::uint32_t word_sum(const std::uint8_t* p, std::size_t bytes) {
+    std::uint32_t s = 0;
+    for (std::size_t w = 0; w < bytes / 4; ++w) {
+        std::uint32_t v;
+        std::memcpy(&v, p + w * 4, 4);
+        s += v;
+    }
+    return s;
+}
+
+// Number of words that differ from the pattern with `seed`.
+std::size_t pattern_mismatch(const std::uint8_t* p, std::size_t bytes, std::uint32_t seed) {
+    std::size_t bad = 0;
+    for (std::size_t w = 0; w < bytes / 4; ++w) {
+        std::uint32_t v;
+        std::memcpy(&v, p + w * 4, 4);
+        bad += v != ((static_cast<std::uint32_t>(w) * kMaWordMul) ^ seed);
+    }
+    return bad;
+}
+
+// Per 64 B line: all words == new pattern / all == old pattern / anything else.
+struct LineCount {
+    std::size_t fresh = 0, stale = 0, mixed = 0;
+};
+LineCount classify_lines(const std::uint8_t* p, std::size_t bytes, std::uint32_t seed_new, std::uint32_t seed_old) {
+    LineCount c;
+    for (std::size_t l = 0; l < bytes / kMaLine; ++l) {
+        bool all_new = true, all_old = true;
+        for (std::size_t k = 0; k < kMaLine / 4; ++k) {
+            const std::size_t w = l * (kMaLine / 4) + k;
+            std::uint32_t v;
+            std::memcpy(&v, p + w * 4, 4);
+            const std::uint32_t base = static_cast<std::uint32_t>(w) * kMaWordMul;
+            all_new = all_new && v == (base ^ seed_new);
+            all_old = all_old && v == (base ^ seed_old);
+        }
+        if (all_new) ++c.fresh;
+        else if (all_old) ++c.stale;
+        else ++c.mixed;
+    }
+    return c;
+}
+
+// ─────────────────────────────────────────────────────────────── GPU kernels (mem_bw.comp)
+
+enum class BwKernel { ReadU32, ReadV4, WriteU32, WriteV4, CopyU32, CopyV4 };
+constexpr std::array<const char*, 6> kBwKernelName{"read_u32", "read_v4", "write_u32", "write_v4", "copy_u32",
+                                                   "copy_v4"};
+bool bw_is_v4(BwKernel k) { return k == BwKernel::ReadV4 || k == BwKernel::WriteV4 || k == BwKernel::CopyV4; }
+bool bw_reads(BwKernel k) { return k == BwKernel::ReadU32 || k == BwKernel::ReadV4 || k == BwKernel::CopyU32 || k == BwKernel::CopyV4; }
+bool bw_writes(BwKernel k) { return !(k == BwKernel::ReadU32 || k == BwKernel::ReadV4); }
+
+struct BwBinding {
+    VkBuffer buf = VK_NULL_HANDLE;
+    VkDeviceSize range = 0;
+    bool external = false;   // imported dma-buf: queue family acquire (FOREIGN/EXTERNAL -> compute) and release
+};
+
+class MemBwRig {
+public:
+    MemBwRig(yvo::vk::VulkanContext& ctx, std::uint32_t local) : ctx_(ctx), local_(local) {
+        VkDevice dev = ctx_.device();
+        std::array<VkDescriptorSetLayoutBinding, 3> b{};
+        for (std::uint32_t i = 0; i < b.size(); ++i) {
+            b[i].binding = i;
+            b[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            b[i].descriptorCount = 1;
+            b[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+        }
+        VkDescriptorSetLayoutCreateInfo sli{};
+        sli.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        sli.bindingCount = static_cast<std::uint32_t>(b.size());
+        sli.pBindings = b.data();
+        YVO_VK_CHECK(vkCreateDescriptorSetLayout(dev, &sli, nullptr, &set_layout_));
+        VkPushConstantRange pcr{};
+        pcr.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+        pcr.size = 2 * sizeof(std::uint32_t);
+        VkPipelineLayoutCreateInfo pli{};
+        pli.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        pli.setLayoutCount = 1;
+        pli.pSetLayouts = &set_layout_;
+        pli.pushConstantRangeCount = 1;
+        pli.pPushConstantRanges = &pcr;
+        YVO_VK_CHECK(vkCreatePipelineLayout(dev, &pli, nullptr, &pipe_layout_));
+
+        const std::array<std::pair<const std::uint32_t*, std::size_t>, 6> code{{
+            {kMemBwReadU32Spv, sizeof(kMemBwReadU32Spv)},   {kMemBwReadV4Spv, sizeof(kMemBwReadV4Spv)},
+            {kMemBwWriteU32Spv, sizeof(kMemBwWriteU32Spv)}, {kMemBwWriteV4Spv, sizeof(kMemBwWriteV4Spv)},
+            {kMemBwCopyU32Spv, sizeof(kMemBwCopyU32Spv)},   {kMemBwCopyV4Spv, sizeof(kMemBwCopyV4Spv)}}};
+        VkSpecializationMapEntry me{};
+        me.constantID = 0;
+        me.offset = 0;
+        me.size = sizeof(std::uint32_t);
+        VkSpecializationInfo spec{};
+        spec.mapEntryCount = 1;
+        spec.pMapEntries = &me;
+        spec.dataSize = sizeof(local_);
+        spec.pData = &local_;
+        for (std::size_t i = 0; i < code.size(); ++i) {
+            VkShaderModuleCreateInfo smi{};
+            smi.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+            smi.codeSize = code[i].second;
+            smi.pCode = code[i].first;
+            VkShaderModule mod = VK_NULL_HANDLE;
+            YVO_VK_CHECK(vkCreateShaderModule(dev, &smi, nullptr, &mod));
+            VkComputePipelineCreateInfo cpi{};
+            cpi.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+            cpi.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            cpi.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+            cpi.stage.module = mod;
+            cpi.stage.pName = "main";
+            cpi.stage.pSpecializationInfo = &spec;
+            cpi.layout = pipe_layout_;
+            const VkResult pr = vkCreateComputePipelines(dev, VK_NULL_HANDLE, 1, &cpi, nullptr, &pipes_[i]);
+            vkDestroyShaderModule(dev, mod, nullptr);
+            YVO_VK_CHECK(pr);
+        }
+
+        VkDescriptorPoolSize ps{};
+        ps.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        ps.descriptorCount = 3;
+        VkDescriptorPoolCreateInfo dpi{};
+        dpi.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        dpi.maxSets = 1;
+        dpi.poolSizeCount = 1;
+        dpi.pPoolSizes = &ps;
+        YVO_VK_CHECK(vkCreateDescriptorPool(dev, &dpi, nullptr, &pool_));
+        VkDescriptorSetAllocateInfo dsi{};
+        dsi.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        dsi.descriptorPool = pool_;
+        dsi.descriptorSetCount = 1;
+        dsi.pSetLayouts = &set_layout_;
+        YVO_VK_CHECK(vkAllocateDescriptorSets(dev, &dsi, &set_));
+
+        res_ = std::make_unique<StrideVkBuffer>(ctx_, 64);
+        dummy_ = std::make_unique<StrideVkBuffer>(ctx_, 256);
+
+        VkQueryPoolCreateInfo qp{};
+        qp.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+        qp.queryType = VK_QUERY_TYPE_TIMESTAMP;
+        qp.queryCount = 2;
+        YVO_VK_CHECK(vkCreateQueryPool(dev, &qp, nullptr, &qpool_));
+
+        VkCommandPoolCreateInfo cpci{};
+        cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        cpci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        cpci.queueFamilyIndex = ctx_.queue_family();
+        YVO_VK_CHECK(vkCreateCommandPool(dev, &cpci, nullptr, &cmd_pool_));
+        VkCommandBufferAllocateInfo cbi{};
+        cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cbi.commandPool = cmd_pool_;
+        cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        cbi.commandBufferCount = 1;
+        YVO_VK_CHECK(vkAllocateCommandBuffers(dev, &cbi, &cmd_));
+        VkFenceCreateInfo fci{};
+        fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        YVO_VK_CHECK(vkCreateFence(dev, &fci, nullptr, &fence_));
+    }
+    ~MemBwRig() {
+        VkDevice dev = ctx_.device();
+        if (fence_) vkDestroyFence(dev, fence_, nullptr);
+        if (cmd_pool_) vkDestroyCommandPool(dev, cmd_pool_, nullptr);
+        if (qpool_) vkDestroyQueryPool(dev, qpool_, nullptr);
+        res_.reset();
+        dummy_.reset();
+        if (pool_) vkDestroyDescriptorPool(dev, pool_, nullptr);
+        for (VkPipeline p : pipes_)
+            if (p) vkDestroyPipeline(dev, p, nullptr);
+        if (pipe_layout_) vkDestroyPipelineLayout(dev, pipe_layout_, nullptr);
+        if (set_layout_) vkDestroyDescriptorSetLayout(dev, set_layout_, nullptr);
+    }
+    MemBwRig(const MemBwRig&) = delete;
+    MemBwRig& operator=(const MemBwRig&) = delete;
+
+    std::uint32_t local() const { return local_; }
+    BwBinding dummy() const { return {dummy_buf(), 256, false}; }
+
+    // Records and runs one command buffer: ts0, reps x (dispatch, barrier), ts1. Returns ts1 - ts0 in ns.
+    // sum/groups: contents of the result buffer after the run (READ: word sum over all reps; groups summed over reps).
+    double run(BwKernel k, const BwBinding& src, const BwBinding& dst, std::uint32_t n_elems, std::uint32_t seed,
+               std::uint32_t groups, int reps, std::uint32_t& sum, std::uint32_t& groups_seen) {
+        VkDevice dev = ctx_.device();
+        auto* res = reinterpret_cast<std::uint32_t*>(res_->ptr());
+        res[0] = 0;
+        res[1] = 0;
+
+        std::array<VkDescriptorBufferInfo, 3> bi{};
+        bi[0] = {src.buf, 0, src.range};
+        bi[1] = {dst.buf, 0, dst.range};
+        bi[2] = {res_buf(), 0, VK_WHOLE_SIZE};
+        std::array<VkWriteDescriptorSet, 3> w{};
+        for (std::uint32_t i = 0; i < w.size(); ++i) {
+            w[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            w[i].dstSet = set_;
+            w[i].dstBinding = i;
+            w[i].descriptorCount = 1;
+            w[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            w[i].pBufferInfo = &bi[i];
+        }
+        vkUpdateDescriptorSets(dev, static_cast<std::uint32_t>(w.size()), w.data(), 0, nullptr);
+
+        YVO_VK_CHECK(vkResetCommandBuffer(cmd_, 0));
+        VkCommandBufferBeginInfo cbb{};
+        cbb.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        cbb.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        YVO_VK_CHECK(vkBeginCommandBuffer(cmd_, &cbb));
+        vkCmdResetQueryPool(cmd_, qpool_, 0, 2);
+
+        const std::uint32_t q = ctx_.queue_family();
+        const std::uint32_t ext = ctx_.external_queue_family();
+        const bool rd = bw_reads(k), wr = bw_writes(k);
+        // ① acquire: imported buffers from the external family; host writes (result reset, CPU-written V3D memory)
+        //    made visible to the shader by a global barrier.
+        std::vector<VkBufferMemoryBarrier2> acq;
+        auto qfot = [&](const BwBinding& bnd, bool reads, bool writes) {
+            VkBufferMemoryBarrier2 bb{};
+            bb.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+            bb.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+            bb.srcAccessMask = VK_ACCESS_2_NONE;
+            bb.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+            bb.dstAccessMask = (reads ? VK_ACCESS_2_SHADER_STORAGE_READ_BIT : VK_ACCESS_2_NONE) |
+                               (writes ? VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT : VK_ACCESS_2_NONE);
+            bb.srcQueueFamilyIndex = ext;
+            bb.dstQueueFamilyIndex = q;
+            bb.buffer = bnd.buf;
+            bb.offset = 0;
+            bb.size = VK_WHOLE_SIZE;
+            return bb;
+        };
+        if (rd && src.external) acq.push_back(qfot(src, true, false));
+        if (wr && dst.external) acq.push_back(qfot(dst, false, true));
+        VkMemoryBarrier2 host_mb{};
+        host_mb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+        host_mb.srcStageMask = VK_PIPELINE_STAGE_2_HOST_BIT;
+        host_mb.srcAccessMask = VK_ACCESS_2_HOST_WRITE_BIT;
+        host_mb.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        host_mb.dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+        VkDependencyInfo di{};
+        di.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        di.memoryBarrierCount = 1;
+        di.pMemoryBarriers = &host_mb;
+        di.bufferMemoryBarrierCount = static_cast<std::uint32_t>(acq.size());
+        di.pBufferMemoryBarriers = acq.empty() ? nullptr : acq.data();
+        vkCmdPipelineBarrier2(cmd_, &di);
+
+        vkCmdWriteTimestamp2(cmd_, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, qpool_, 0);
+        vkCmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_COMPUTE, pipes_[static_cast<std::size_t>(k)]);
+        vkCmdBindDescriptorSets(cmd_, VK_PIPELINE_BIND_POINT_COMPUTE, pipe_layout_, 0, 1, &set_, 0, nullptr);
+        const std::array<std::uint32_t, 2> pc{n_elems, seed};
+        vkCmdPushConstants(cmd_, pipe_layout_, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pc), pc.data());
+        // ② between dispatches: compute write (result atomics, dst) -> next compute read/write
+        //    (RAW/WAW need a memory dependency; it also serializes the dispatches so each one streams alone).
+        VkMemoryBarrier2 cc{};
+        cc.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+        cc.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        cc.srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+        cc.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        cc.dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+        VkDependencyInfo dcc{};
+        dcc.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        dcc.memoryBarrierCount = 1;
+        dcc.pMemoryBarriers = &cc;
+        for (int r = 0; r < reps; ++r) {
+            vkCmdDispatch(cmd_, groups, 1, 1);
+            vkCmdPipelineBarrier2(cmd_, &dcc);
+        }
+        vkCmdWriteTimestamp2(cmd_, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, qpool_, 1);
+
+        // ③ release imported buffers back to the external family; shader writes -> host reads.
+        std::vector<VkBufferMemoryBarrier2> rel;
+        for (VkBufferMemoryBarrier2 bb : acq) {
+            bb.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+            bb.srcAccessMask = (bb.dstAccessMask & VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT) ? VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT
+                                                                                       : VK_ACCESS_2_NONE;
+            bb.dstStageMask = VK_PIPELINE_STAGE_2_NONE;
+            bb.dstAccessMask = VK_ACCESS_2_NONE;
+            bb.srcQueueFamilyIndex = q;
+            bb.dstQueueFamilyIndex = ext;
+            rel.push_back(bb);
+        }
+        VkMemoryBarrier2 to_host{};
+        to_host.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+        to_host.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        to_host.srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+        to_host.dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT;
+        to_host.dstAccessMask = VK_ACCESS_2_HOST_READ_BIT;
+        di.memoryBarrierCount = 1;
+        di.pMemoryBarriers = &to_host;
+        di.bufferMemoryBarrierCount = static_cast<std::uint32_t>(rel.size());
+        di.pBufferMemoryBarriers = rel.empty() ? nullptr : rel.data();
+        vkCmdPipelineBarrier2(cmd_, &di);
+        YVO_VK_CHECK(vkEndCommandBuffer(cmd_));
+
+        YVO_VK_CHECK(vkResetFences(dev, 1, &fence_));
+        VkSubmitInfo si{};
+        si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        si.commandBufferCount = 1;
+        si.pCommandBuffers = &cmd_;
+        YVO_VK_CHECK(vkQueueSubmit(ctx_.queue(), 1, &si, fence_));
+        YVO_VK_CHECK(vkWaitForFences(dev, 1, &fence_, VK_TRUE, 10ull * 1000 * 1000 * 1000));
+
+        std::array<std::uint64_t, 2> ts{};
+        YVO_VK_CHECK(vkGetQueryPoolResults(dev, qpool_, 0, 2, sizeof(ts), ts.data(), sizeof(std::uint64_t),
+                                           VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT));
+        const std::uint32_t bits = ctx_.timestamp_valid_bits();
+        const std::uint64_t mask = bits >= 64 ? ~0ull : ((1ull << bits) - 1ull);
+        const std::uint64_t dt = (ts[1] - ts[0]) & mask;
+        sum = res[0];
+        groups_seen = res[1];
+        return static_cast<double>(dt) * static_cast<double>(ctx_.timestamp_period());
+    }
+
+private:
+    VkBuffer res_buf() const { return res_->vk_buffer(); }
+    VkBuffer dummy_buf() const { return dummy_->vk_buffer(); }
+
+    yvo::vk::VulkanContext& ctx_;
+    std::uint32_t local_;
+    VkDescriptorSetLayout set_layout_ = VK_NULL_HANDLE;
+    VkPipelineLayout pipe_layout_ = VK_NULL_HANDLE;
+    std::array<VkPipeline, 6> pipes_{};
+    VkDescriptorPool pool_ = VK_NULL_HANDLE;
+    VkDescriptorSet set_ = VK_NULL_HANDLE;
+    std::unique_ptr<StrideVkBuffer> res_, dummy_;
+    VkQueryPool qpool_ = VK_NULL_HANDLE;
+    VkCommandPool cmd_pool_ = VK_NULL_HANDLE;
+    VkCommandBuffer cmd_ = VK_NULL_HANDLE;
+    VkFence fence_ = VK_NULL_HANDLE;
+};
+
+// ─────────────────────────────────────────────────────────────── allocations
+
+// One test buffer: V3D memory, or a dma-heap buffer imported into Vulkan (system = cached heap, linux,cma).
+struct MaAlloc {
+    std::string name;
+    std::uint8_t* ptr = nullptr;
+    int sync_fd = -1;            // >= 0: dma-buf, CPU access goes through DMA_BUF_IOCTL_SYNC
+    BwBinding bind;
+    std::unique_ptr<StrideVkBuffer> vk;
+    std::unique_ptr<yvo::DmaHeapPool> pool;
+};
+
+std::unique_ptr<MaAlloc> ma_alloc_v3d(yvo::vk::VulkanContext& ctx, std::size_t bytes) {
+    auto a = std::make_unique<MaAlloc>();
+    a->name = "v3d";
+    a->vk = std::make_unique<StrideVkBuffer>(ctx, bytes);
+    a->ptr = a->vk->ptr();
+    a->bind = {a->vk->vk_buffer(), static_cast<VkDeviceSize>(bytes), false};
+    return a;
+}
+
+// Returns nullptr (and logs why) if the heap cannot be opened or the allocation fails (e.g. CMA too small).
+std::unique_ptr<MaAlloc> ma_alloc_heap(yvo::vk::VulkanContext& ctx, yvo::vk::DmaBufImportCache& cache,
+                                       const char* name, const char* node, std::size_t bytes, Tee& log) {
+    auto a = std::make_unique<MaAlloc>();
+    a->name = name;
+    try {
+        yvo::vk::StorageHeadroomQuery hq(ctx.device());
+        yvo::DmaHeapConfig hc;
+        hc.heaps = {node};
+        hc.align = yvo::vk::kHailoAsyncAlign;
+        hc.device_headroom = hq.headroom(bytes);
+        hc.map = true;
+        hc.strict_sync = true;
+        hc.zero_init = true;
+        hc.name = std::string("yvo_memasym_") + name;
+        a->pool = std::make_unique<yvo::DmaHeapPool>(hc);
+        const yvo::DmaHeapBuf hb = a->pool->at(a->pool->allocate(bytes));
+        yvo::vk::ImportedDmaBuf& imp = cache.get(hb.fd, hb.dmabuf_size, bytes);
+        cache.pin(imp);
+        a->ptr = hb.ptr;
+        a->sync_fd = hb.fd;
+        a->bind = {imp.buffer, imp.range, true};
+        log(fmt("[alloc] %-4s %s  %zu B requested, dmabuf %zu B, range %llu, ptr %p", name, node, bytes,
+                hb.dmabuf_size, static_cast<unsigned long long>(imp.range), static_cast<void*>(hb.ptr)));
+    } catch (const std::exception& e) {
+        log(fmt("[alloc] %-4s %s  %zu B: unavailable (%s) — rows skipped", name, node, bytes, e.what()));
+        return nullptr;
+    }
+    return a;
+}
+
+// CPU write / read of a whole allocation with the correct sync (for setup and verification, never timed).
+void ma_cpu_write(const MaAlloc& a, const std::uint8_t* src, std::size_t bytes) {
+    if (a.sync_fd >= 0) {
+        yvo::DmaCpuAccess acc(a.sync_fd, yvo::DmaSyncDir::Write, true);
+        std::memcpy(a.ptr, src, bytes);
+        acc.finish();
+    } else {
+        std::memcpy(a.ptr, src, bytes);
+    }
+}
+void ma_cpu_read(const MaAlloc& a, std::uint8_t* dst, std::size_t bytes) {
+    if (a.sync_fd >= 0) {
+        yvo::DmaCpuAccess acc(a.sync_fd, yvo::DmaSyncDir::Read, true);
+        std::memcpy(dst, a.ptr, bytes);
+        acc.finish();
+    } else {
+        std::memcpy(dst, a.ptr, bytes);
+    }
+}
+
+std::uint32_t bw_auto_groups(std::size_t bytes, std::uint32_t local) {
+    const std::size_t g = (bytes + static_cast<std::size_t>(local) * 64 - 1) / (static_cast<std::size_t>(local) * 64);
+    return static_cast<std::uint32_t>(std::clamp<std::size_t>(g, 1, 65535));
+}
+
+// ─────────────────────────────────────────────────────────────── part 1: GPU bandwidth
+
+bool part_gpubw(yvo::vk::VulkanContext& ctx, MemBwRig& rig, const Options& o, const MemAsymOptions& mo, Tee& log) {
+    bool ok = true;
+    const std::array<BwKernel, 4> kerns{BwKernel::ReadU32, BwKernel::ReadV4, BwKernel::WriteU32, BwKernel::WriteV4};
+    for (const std::size_t bytes : parse_size_list(mo.bw_sizes)) {
+        if (bytes % 16 != 0) throw std::runtime_error(fmt("--bw-sizes: %zu is not a multiple of 16", bytes));
+        log("");
+        log(fmt("== [gpubw] size %zu B ==", bytes));
+        yvo::vk::DmaBufImportCache cache(ctx, 8);   // per size: imports (and CMA) are released at scope end
+        std::vector<std::unique_ptr<MaAlloc>> al;
+        al.push_back(ma_alloc_v3d(ctx, bytes));
+        if (auto h = ma_alloc_heap(ctx, cache, "heap", "/dev/dma_heap/system", bytes, log)) al.push_back(std::move(h));
+        if (auto c = ma_alloc_heap(ctx, cache, "cma", "/dev/dma_heap/linux,cma", bytes, log)) al.push_back(std::move(c));
+        const std::size_t na = al.size();
+
+        const std::uint32_t seed0 = 0x1234567u;
+        std::vector<std::uint8_t> ref(bytes), back(bytes);
+        fill_words(ref.data(), bytes, seed0);
+        const std::uint32_t ref_sum = word_sum(ref.data(), bytes);
+        for (auto& a : al) ma_cpu_write(*a, ref.data(), bytes);
+
+        const int reps = static_cast<int>(std::max<std::size_t>(1, ((48u << 20) + bytes - 1) / bytes));
+        const std::uint32_t groups = mo.bw_groups > 0 ? mo.bw_groups : bw_auto_groups(bytes, rig.local());
+        log(fmt("[gpubw] local %u  groups %u  dispatches/sample %d  samples/cell %d (warm-up 2)  read checksum 0x%08x",
+                rig.local(), groups, reps, o.rounds * o.repeats, ref_sum));
+
+        // samples[kernel][alloc] = GB/s ; tiny = per-dispatch ns of a 1-workgroup dispatch on v3d
+        std::array<std::vector<std::vector<double>>, 4> gbs;
+        for (auto& v : gbs) v.assign(na, {});
+        std::vector<double> tiny_ns;
+        std::size_t bad_sum = 0, bad_words = 0, bad_groups = 0;
+        std::uint32_t seed_ctr = 0x9e3779b9u;
+
+        auto sample = [&](std::size_t ki, std::size_t ai, bool record) {
+            const BwKernel k = kerns[ki];
+            MaAlloc& a = *al[ai];
+            const std::uint32_t n = static_cast<std::uint32_t>(bytes / (bw_is_v4(k) ? 16 : 4));
+            const std::uint32_t seed = (seed_ctr += 0x61c88647u) | 1u;
+            std::uint32_t sum = 0, gs = 0;
+            const BwBinding src = bw_reads(k) ? a.bind : rig.dummy();
+            const BwBinding dst = bw_writes(k) ? a.bind : rig.dummy();
+            const double ns = rig.run(k, src, dst, n, seed, groups, reps, sum, gs);
+            if (gs != groups * static_cast<std::uint32_t>(reps)) ++bad_groups;
+            if (!bw_writes(k)) {
+                if (sum != ref_sum * static_cast<std::uint32_t>(reps)) ++bad_sum;
+            } else {
+                ma_cpu_read(a, back.data(), bytes);
+                bad_words += pattern_mismatch(back.data(), bytes, seed);
+            }
+            if (record) gbs[ki][ai].push_back(static_cast<double>(bytes) * reps / ns);
+        };
+        auto tiny = [&](bool record) {
+            std::uint32_t sum = 0, gs = 0;
+            const int tr = 64;
+            const double ns = rig.run(BwKernel::ReadU32, al[0]->bind, rig.dummy(), rig.local(), 0, 1, tr, sum, gs);
+            if (record) tiny_ns.push_back(ns / tr);
+        };
+        // Reads first (the buffers still hold the reference pattern), then writes.
+        for (std::size_t phase = 0; phase < 2; ++phase) {
+            const std::size_t k0 = phase * 2;
+            for (int wu = 0; wu < 2; ++wu)
+                for (std::size_t ki = k0; ki < k0 + 2; ++ki)
+                    for (std::size_t ai = 0; ai < na; ++ai) sample(ki, ai, false);
+            if (phase == 0) tiny(false);
+            int s = 0;
+            for (int round = 0; round < o.rounds; ++round)
+                for (int i = 0; i < o.repeats; ++i, ++s) {
+                    for (std::size_t ki = k0; ki < k0 + 2; ++ki)
+                        for (std::size_t j = 0; j < na; ++j) sample(ki, (j + static_cast<std::size_t>(s)) % na, true);
+                    if (phase == 0) tiny(true);
+                }
+        }
+        log(stride_env_line());
+        const double tiny_med = percentile(tiny_ns, 0.5);
+        log("size_B     kernel     alloc  GBps_median  GBps_p10  GBps_p90  GBps_min  GBps_max  net_GBps_median    n");
+        for (std::size_t ki = 0; ki < kerns.size(); ++ki)
+            for (std::size_t ai = 0; ai < na; ++ai) {
+                const auto& v = gbs[ki][ai];
+                const double med = percentile(v, 0.5);
+                const double per_disp = static_cast<double>(bytes) / med;   // ns per dispatch
+                const double net = per_disp > tiny_med ? static_cast<double>(bytes) / (per_disp - tiny_med) : std::nan("");
+                log(fmt("%-9zu  %-9s  %-5s  %11.3f  %8.3f  %8.3f  %8.3f  %8.3f  %15.3f  %3zu", bytes,
+                        kBwKernelName[static_cast<std::size_t>(kerns[ki])], al[ai]->name.c_str(), med,
+                        percentile(v, 0.1), percentile(v, 0.9), *std::min_element(v.begin(), v.end()),
+                        *std::max_element(v.begin(), v.end()), net, v.size()));
+            }
+        log(fmt("[gpubw] per-dispatch fixed cost (1 workgroup, %u elements, v3d): median %.1f us  p90 %.1f us  "
+                "(included %d times in every sample above; net_GBps subtracts the median)",
+                rig.local(), tiny_med * 1e-3, percentile(tiny_ns, 0.9) * 1e-3, reps));
+        const bool pass = bad_sum == 0 && bad_words == 0 && bad_groups == 0;
+        log(fmt("[check] gpubw size %zu: read sums %s (%zu bad), written words %s (%zu bad), workgroup counts %s (%zu bad)",
+                bytes, bad_sum ? "FAIL" : "PASS", bad_sum, bad_words ? "FAIL" : "PASS", bad_words,
+                bad_groups ? "FAIL" : "PASS", bad_groups));
+        ok = ok && pass;
+    }
+    return ok;
+}
+
+// ─────────────────────────────────────────────────────────────── part 2: mapping behaviour
+
+__attribute__((noipa)) std::uint64_t ma_chase(const std::uint64_t* p, std::size_t n) {
+    std::uint64_t i = 0;
+    for (std::size_t k = 0; k < n; ++k) i = *reinterpret_cast<const volatile std::uint64_t*>(p + i);
+    return i;
+}
+__attribute__((noipa)) std::uint64_t ma_ldr64(const std::uint8_t* p) {
+    std::uint64_t v;
+    asm volatile("ldr %x0, [%x1]" : "=r"(v) : "r"(p) : "memory");
+    return v;
+}
+__attribute__((noipa)) std::uint32_t ma_ldr32(const std::uint8_t* p) {
+    std::uint32_t v;
+    asm volatile("ldr %w0, [%x1]" : "=r"(v) : "r"(p) : "memory");
+    return v;
+}
+__attribute__((noipa)) void ma_dczva(std::uint8_t* p) { asm volatile("dc zva, %x0" : : "r"(p) : "memory"); }
+
+sigjmp_buf g_ma_jmp;
+volatile sig_atomic_t g_ma_sig = 0;
+void ma_fault_handler(int sig, siginfo_t*, void*) {
+    g_ma_sig = sig;
+    siglongjmp(g_ma_jmp, 1);
+}
+
+bool part_attr(yvo::vk::VulkanContext& ctx, const Options& o, Tee& log) {
+    const std::size_t bytes = kStrBytes;
+    log("");
+    log(fmt("== [attr] mapping behaviour, %zu B buffers ==", bytes));
+    yvo::vk::DmaBufImportCache cache(ctx, 8);
+    std::vector<std::unique_ptr<MaAlloc>> al;
+    al.push_back(ma_alloc_v3d(ctx, bytes));
+    if (auto h = ma_alloc_heap(ctx, cache, "heap", "/dev/dma_heap/system", bytes, log)) al.push_back(std::move(h));
+    if (auto c = ma_alloc_heap(ctx, cache, "cma", "/dev/dma_heap/linux,cma", bytes, log)) al.push_back(std::move(c));
+    {
+        auto m = std::make_unique<MaAlloc>();
+        m->name = "malloc";
+        m->ptr = static_cast<std::uint8_t*>(std::aligned_alloc(16384, bytes));
+        if (!m->ptr) throw std::runtime_error("attr: aligned_alloc failed");
+        al.push_back(std::move(m));
+    }
+    struct MallocGuard {
+        std::uint8_t* p;
+        ~MallocGuard() { std::free(p); }
+    } mg{al.back()->ptr};
+    for (const auto& a : al)
+        log(fmt("[map] %s ptr %p len %zu", a->name.c_str(), static_cast<void*>(a->ptr), bytes));
+
+    // Pattern with word 0 == 0, so the chase `i = p[i]` keeps loading the first word (one cache line).
+    std::vector<std::uint8_t> ref(bytes);
+    fill_words(ref.data(), bytes, 0);
+    std::memset(ref.data(), 0, 8);
+    for (auto& a : al) ma_cpu_write(*a, ref.data(), bytes);
+
+    // DRAM reference: random cyclic chase over 16 MiB of malloc (64 B lines; 1024 pages of 16 KiB fit the L2 TLB,
+    // up to 1/8 of the lines may still hit the 2 MiB L3).
+    constexpr std::size_t kRefBytes = 16u << 20;
+    const std::size_t lines = kRefBytes / kMaLine;
+    std::unique_ptr<std::uint64_t, void (*)(void*)> dram(static_cast<std::uint64_t*>(std::aligned_alloc(16384, kRefBytes)),
+                                                         std::free);
+    if (!dram) throw std::runtime_error("attr: aligned_alloc(16 MiB) failed");
+    {
+        std::vector<std::uint32_t> perm(lines);
+        for (std::size_t i = 0; i < lines; ++i) perm[i] = static_cast<std::uint32_t>(i);
+        std::uint64_t x = 88172645463325252ull;   // xorshift64, Sattolo's single-cycle shuffle
+        for (std::size_t i = lines - 1; i > 0; --i) {
+            x ^= x << 13; x ^= x >> 7; x ^= x << 17;
+            std::swap(perm[i], perm[x % i]);
+        }
+        for (std::size_t i = 0; i < lines; ++i)
+            dram.get()[static_cast<std::size_t>(perm[i]) * 8] = static_cast<std::uint64_t>(perm[(i + 1) % lines]) * 8;
+    }
+
+    const std::size_t kChase = 200000;
+    std::vector<std::vector<double>> lat(al.size() + 1);
+    std::uint64_t sink = 0;
+    auto chase_one = [&](std::size_t ai, bool record) {
+        using clk = std::chrono::steady_clock;
+        if (ai == al.size()) {
+            const auto t0 = clk::now();
+            sink += ma_chase(dram.get(), kChase);
+            const auto t1 = clk::now();
+            if (record) lat[ai].push_back(std::chrono::duration<double, std::nano>(t1 - t0).count() / kChase);
+            return;
+        }
+        const MaAlloc& a = *al[ai];
+        if (a.sync_fd >= 0) yvo::dma_sync_begin(a.sync_fd, yvo::DmaSyncDir::Read, true);
+        const auto t0 = clk::now();
+        sink += ma_chase(reinterpret_cast<const std::uint64_t*>(a.ptr), kChase);
+        const auto t1 = clk::now();
+        if (a.sync_fd >= 0) yvo::dma_sync_end(a.sync_fd, yvo::DmaSyncDir::Read, true);
+        if (record) lat[ai].push_back(std::chrono::duration<double, std::nano>(t1 - t0).count() / kChase);
+    };
+    for (int wu = 0; wu < 2; ++wu)
+        for (std::size_t ai = 0; ai <= al.size(); ++ai) chase_one(ai, false);
+    int s = 0;
+    for (int round = 0; round < o.rounds; ++round)
+        for (int i = 0; i < o.repeats; ++i, ++s)
+            for (std::size_t j = 0; j <= al.size(); ++j) chase_one((j + static_cast<std::size_t>(s)) % (al.size() + 1), true);
+    log(fmt("[attr] dependent-load latency, %zu loads per sample (ns/load)", kChase));
+    log("alloc        target              median    p10      p90      n");
+    for (std::size_t ai = 0; ai <= al.size(); ++ai)
+        log(fmt("%-11s  %-18s  %7.2f  %7.2f  %7.2f  %3zu", ai == al.size() ? "malloc" : al[ai]->name.c_str(),
+                ai == al.size() ? "random 16 MiB" : "same 64 B line", percentile(lat[ai], 0.5),
+                percentile(lat[ai], 0.1), percentile(lat[ai], 0.9), lat[ai].size()));
+    log(fmt("[attr] chase sink %llu (end index; 0 for the same-line rows)", static_cast<unsigned long long>(sink)));
+
+    // Unaligned loads and DC ZVA. Device memory raises an alignment fault (SIGBUS) for both; Normal memory
+    // (cacheable or non-cacheable) does not. Values are compared with the pattern the CPU wrote.
+    std::uint64_t dczid = 0;
+    asm volatile("mrs %x0, dczid_el0" : "=r"(dczid));
+    const std::size_t zva_bytes = static_cast<std::size_t>(4) << (dczid & 0xf);
+    const bool zva_ok = (dczid & 0x10) == 0;
+    struct sigaction sa{}, old_bus{}, old_segv{};
+    sa.sa_sigaction = ma_fault_handler;
+    sa.sa_flags = SA_SIGINFO;
+    sigemptyset(&sa.sa_mask);
+    ::sigaction(SIGBUS, &sa, &old_bus);
+    ::sigaction(SIGSEGV, &sa, &old_segv);
+    auto attempt = [&](auto&& fn) -> std::string {
+        g_ma_sig = 0;
+        if (sigsetjmp(g_ma_jmp, 1) == 0) {
+            fn();
+            return "ok";
+        }
+        return g_ma_sig == SIGBUS ? "SIGBUS" : (g_ma_sig == SIGSEGV ? "SIGSEGV" : "signal");
+    };
+    bool all_normal = true;
+    log(fmt("[attr] unaligned access (DCZID_EL0 0x%llx: DC ZVA block %zu B%s)", static_cast<unsigned long long>(dczid),
+            zva_bytes, zva_ok ? "" : ", prohibited"));
+    log("alloc    ldr_x@+1        ldr_x@+61(cross)  ldr_w@+2        dc_zva          values");
+    for (auto& ap : al) {
+        const MaAlloc& a = *ap;
+        if (a.sync_fd >= 0) yvo::dma_sync_begin(a.sync_fd, yvo::DmaSyncDir::ReadWrite, true);
+        volatile std::uint64_t v1 = 0, v2 = 0;
+        volatile std::uint32_t v3 = 0;
+        const std::string r1 = attempt([&] { v1 = ma_ldr64(a.ptr + 4096 + 1); });
+        const std::string r2 = attempt([&] { v2 = ma_ldr64(a.ptr + 4096 + 61); });
+        const std::string r3 = attempt([&] { v3 = ma_ldr32(a.ptr + 4096 + 2); });
+        std::uint8_t* zp = a.ptr + 8192;   // 8192 is a multiple of any ZVA block size
+        const std::string r4 = zva_ok ? attempt([&] { ma_dczva(zp); }) : std::string("n/a");
+        bool zero_ok = true;
+        if (r4 == "ok")
+            for (std::size_t i = 0; i < zva_bytes; ++i) zero_ok = zero_ok && zp[i] == 0;
+        if (r4 == "ok") std::memcpy(zp, ref.data() + 8192, zva_bytes);   // restore the pattern
+        if (a.sync_fd >= 0) yvo::dma_sync_end(a.sync_fd, yvo::DmaSyncDir::ReadWrite, true);
+        std::uint64_t e1, e2;
+        std::uint32_t e3;
+        std::memcpy(&e1, ref.data() + 4096 + 1, 8);
+        std::memcpy(&e2, ref.data() + 4096 + 61, 8);
+        std::memcpy(&e3, ref.data() + 4096 + 2, 4);
+        const bool vals = (r1 != "ok" || v1 == e1) && (r2 != "ok" || v2 == e2) && (r3 != "ok" || v3 == e3) && zero_ok;
+        all_normal = all_normal && r1 == "ok" && r2 == "ok" && r3 == "ok" && vals;
+        log(fmt("%-7s  %-14s  %-16s  %-14s  %-14s  %s", a.name.c_str(), r1.c_str(), r2.c_str(), r3.c_str(), r4.c_str(),
+                vals ? "match" : "MISMATCH"));
+    }
+    ::sigaction(SIGBUS, &old_bus, nullptr);
+    ::sigaction(SIGSEGV, &old_segv, nullptr);
+    log(fmt("[check] attr: unaligned loads %s on every allocation",
+            all_normal ? "succeed with correct values (Normal memory)" : "FAULTED or mismatched somewhere"));
+    // The attr part records behaviour; a fault is a finding, not a probe failure.
+    return true;
+}
+
+// ─────────────────────────────────────────────────────────────── part 3: coherence
+
+bool part_coherence(yvo::vk::VulkanContext& ctx, MemBwRig& rig, const MemAsymOptions& mo, Tee& log) {
+    bool ok = true;
+    for (const std::size_t bytes : parse_size_list(mo.coh_sizes)) {
+        if (bytes % kMaLine != 0) throw std::runtime_error(fmt("--coh-sizes: %zu is not a multiple of 64", bytes));
+        log("");
+        log(fmt("== [coherence] size %zu B (%zu lines of 64 B), %d trials per cell ==", bytes, bytes / kMaLine,
+                mo.coh_trials));
+        log(fmt("[part] mono=%.6f begin coherence size %zu", mono_now(), bytes));
+        yvo::vk::DmaBufImportCache cache(ctx, 8);
+        auto out = ma_alloc_v3d(ctx, bytes);   // GPU copy destination (CPU reads it, never caches it)
+        std::vector<std::unique_ptr<MaAlloc>> al;
+        if (auto h = ma_alloc_heap(ctx, cache, "heap", "/dev/dma_heap/system", bytes, log)) al.push_back(std::move(h));
+        if (auto c = ma_alloc_heap(ctx, cache, "cma", "/dev/dma_heap/linux,cma", bytes, log)) al.push_back(std::move(c));
+        log(fmt("[map] v3d ptr %p len %zu (GPU copy destination)", static_cast<void*>(out->ptr), bytes));
+        for (const auto& a : al) log(fmt("[map] %s ptr %p len %zu", a->name.c_str(), static_cast<void*>(a->ptr), bytes));
+        std::vector<std::uint8_t> pat_a(bytes), pat_b(bytes), scratch(bytes);
+        const std::uint32_t groups = bw_auto_groups(bytes, rig.local());
+        const std::uint32_t n_v4 = static_cast<std::uint32_t>(bytes / 16);
+        log("alloc  direction     sync  trial  lines_new  lines_stale  lines_mixed  control_bad_words");
+        // Directions:
+        //   cpu2gpu_plain    : CPU memcpy B over A (lines may or may not be resident; A76 write streaming can send
+        //                      full-line stores past L1/L2), then the GPU copies the buffer out.
+        //   cpu2gpu_resident : the CPU first loads the whole buffer (load-only, lines resident and clean), then
+        //                      memcpy B — the stores hit resident lines and stay dirty in the CPU caches.
+        //   gpu2cpu          : the CPU loads the whole buffer (load-only priming), the GPU writes B, the CPU reads.
+        const std::array<const char*, 3> dname{"cpu2gpu_plain", "cpu2gpu_resident", "gpu2cpu"};
+        volatile std::uint32_t prime_sink = 0;
+        for (auto& ap : al) {
+            MaAlloc& a = *ap;
+            for (int dir = 0; dir < 3; ++dir)
+                for (int sync_on = 0; sync_on < 2; ++sync_on) {
+                    LineCount tot;
+                    std::size_t ctrl_bad_tot = 0;
+                    for (int t = 0; t < mo.coh_trials; ++t) {
+                        const std::uint32_t seed_a = 0xA0000001u + static_cast<std::uint32_t>(t) * 2u +
+                                                     static_cast<std::uint32_t>(dir * 64 + sync_on * 32);
+                        const std::uint32_t seed_b = seed_a ^ 0x5A5A5A5Au;
+                        fill_words(pat_a.data(), bytes, seed_a);
+                        fill_words(pat_b.data(), bytes, seed_b);
+                        std::uint32_t sum = 0, gs = 0;
+                        std::size_t ctrl_bad = 0;
+                        LineCount c;
+                        auto mark = [&](const char* what) {
+                            log(fmt("[mark] mono=%.6f coherence %s %s sync=%s trial=%d %s", mono_now(), a.name.c_str(),
+                                    dname[static_cast<std::size_t>(dir)], sync_on ? "on" : "off", t, what));
+                        };
+                        // Load-only priming inside a READ section: invalidate, load every word, END (clean, lines stay).
+                        auto prime = [&] {
+                            yvo::DmaCpuAccess acc(a.sync_fd, yvo::DmaSyncDir::Read, true);
+                            prime_sink = prime_sink + word_sum(a.ptr, bytes);
+                            acc.finish();
+                            prime_sink = prime_sink + word_sum(a.ptr, bytes);   // touch again after END
+                        };
+                        if (dir < 2) {
+                            // CPU -> GPU. Control: A written with sync, GPU copy must return A.
+                            ma_cpu_write(a, pat_a.data(), bytes);
+                            rig.run(BwKernel::CopyV4, a.bind, out->bind, n_v4, 0, groups, 1, sum, gs);
+                            std::memcpy(scratch.data(), out->ptr, bytes);
+                            ctrl_bad = pattern_mismatch(scratch.data(), bytes, seed_a);
+                            if (dir == 1) prime();
+                            mark("cpu-write-B");
+                            if (sync_on) {
+                                ma_cpu_write(a, pat_b.data(), bytes);
+                            } else {
+                                std::memcpy(a.ptr, pat_b.data(), bytes);   // no DMA_BUF_IOCTL_SYNC at all
+                                full_dsb();
+                            }
+                            mark("gpu-copy");
+                            rig.run(BwKernel::CopyV4, a.bind, out->bind, n_v4, 0, groups, 1, sum, gs);
+                            mark("gpu-done");
+                            std::memcpy(scratch.data(), out->ptr, bytes);
+                            c = classify_lines(scratch.data(), bytes, seed_b, seed_a);
+                            // leave the buffer consistent for the next cell (clean dirty lines through the heap)
+                            ma_cpu_write(a, pat_b.data(), bytes);
+                        } else {
+                            // GPU -> CPU. A written with sync, then primed into the CPU cache (clean lines).
+                            ma_cpu_write(a, pat_a.data(), bytes);
+                            ma_cpu_read(a, scratch.data(), bytes);
+                            ctrl_bad = pattern_mismatch(scratch.data(), bytes, seed_a);
+                            prime();
+                            mark("gpu-write-B");
+                            rig.run(BwKernel::WriteV4, rig.dummy(), a.bind, n_v4, seed_b, groups, 1, sum, gs);
+                            mark("gpu-done");
+                            mark("cpu-read");
+                            if (sync_on) {
+                                ma_cpu_read(a, scratch.data(), bytes);
+                            } else {
+                                std::memcpy(scratch.data(), a.ptr, bytes);   // no START|READ
+                            }
+                            mark("cpu-done");
+                            c = classify_lines(scratch.data(), bytes, seed_b, seed_a);
+                        }
+                        log(fmt("%-5s  %-16s  %-4s  %5d  %9zu  %11zu  %11zu  %17zu", a.name.c_str(),
+                                dname[static_cast<std::size_t>(dir)], sync_on ? "on" : "off", t, c.fresh, c.stale,
+                                c.mixed, ctrl_bad));
+                        tot.fresh += c.fresh;
+                        tot.stale += c.stale;
+                        tot.mixed += c.mixed;
+                        ctrl_bad_tot += ctrl_bad;
+                    }
+                    const double n = static_cast<double>(bytes / kMaLine) * mo.coh_trials;
+                    log(fmt("[coh-sum] %-4s size %zu %-16s sync=%s: new %.4f stale %.4f mixed %.4f (fraction of %zu "
+                            "line samples), control bad words %zu",
+                            a.name.c_str(), bytes, dname[static_cast<std::size_t>(dir)], sync_on ? "on " : "off",
+                            static_cast<double>(tot.fresh) / n, static_cast<double>(tot.stale) / n,
+                            static_cast<double>(tot.mixed) / n, static_cast<std::size_t>(n), ctrl_bad_tot));
+                    // Only the sync-on cells and the controls are pass conditions; sync-off is the observation.
+                    if (ctrl_bad_tot != 0 || (sync_on && (tot.stale != 0 || tot.mixed != 0))) ok = false;
+                }
+        }
+    }
+    log(fmt("[check] coherence: sync-on cells all new and controls clean: %s", ok ? "PASS" : "FAIL"));
+    return ok;
+}
+
+// ─────────────────────────────────────────────────────────────── part 4: CPU write cost
+
+__attribute__((noipa, optimize("no-tree-vectorize", "no-tree-slp-vectorize", "no-tree-loop-distribute-patterns",
+                               "no-store-merging")))
+void ma_seq_byte_write(std::uint8_t* __restrict dst, std::size_t n, std::uint8_t v) {
+    for (std::size_t i = 0; i < n; ++i) dst[i] = v;
+}
+__attribute__((noipa)) void ma_memset(std::uint8_t* dst, std::size_t n, int v) { std::memset(dst, v, n); }
+__attribute__((noipa)) void ma_memcpy(std::uint8_t* dst, const std::uint8_t* src, std::size_t n) {
+    std::memcpy(dst, src, n);
+}
+
+bool part_cpuwrite(yvo::vk::VulkanContext& ctx, const Options& o, Tee& log) {
+    const std::size_t bytes = kStrBytes;
+    log("");
+    log(fmt("== [cpuwrite] CPU write of %zu B; timed interval ends with dsb sy; heap includes START|WRITE + END|WRITE ==",
+            bytes));
+    yvo::vk::DmaBufImportCache cache(ctx, 8);
+    std::vector<std::unique_ptr<MaAlloc>> al;
+    al.push_back(ma_alloc_v3d(ctx, bytes));
+    if (auto h = ma_alloc_heap(ctx, cache, "heap", "/dev/dma_heap/system", bytes, log)) al.push_back(std::move(h));
+    {
+        auto m = std::make_unique<MaAlloc>();
+        m->name = "malloc";
+        m->ptr = static_cast<std::uint8_t*>(std::aligned_alloc(16384, bytes));
+        if (!m->ptr) throw std::runtime_error("cpuwrite: aligned_alloc failed");
+        al.push_back(std::move(m));
+    }
+    struct MallocGuard {
+        std::uint8_t* p;
+        ~MallocGuard() { std::free(p); }
+    } mg{al.back()->ptr};
+    const std::unique_ptr<std::uint8_t, HostFree> src(static_cast<std::uint8_t*>(std::aligned_alloc(16384, bytes)));
+    const std::unique_ptr<std::uint8_t, HostFree> back(static_cast<std::uint8_t*>(std::aligned_alloc(16384, bytes)));
+    if (!src || !back) throw std::runtime_error("cpuwrite: aligned_alloc failed");
+    fill_words(src.get(), bytes, 0x0badf00du);
+    const std::uint64_t src_sum = stride_checksum(src.get());
+    std::vector<std::uint8_t> refbuf(bytes);
+
+    constexpr std::size_t kNP = 4;
+    const std::array<const char*, kNP> pname{"memset_val", "memset_zero", "memcpy", "seq_byte"};
+    const std::size_t na = al.size();
+    std::vector<std::array<std::vector<double>, kNP>> ms(na), sync_ms(na);
+    std::size_t bad = 0;
+    std::uint8_t vctr = 0;
+    auto sample = [&](std::size_t ai, std::size_t p, bool record) {
+        const MaAlloc& a = *al[ai];
+        const std::uint8_t v = static_cast<std::uint8_t>((++vctr & 0x7f) | 0x01);   // never 0
+        using clk = std::chrono::steady_clock;
+        const auto t0 = clk::now();
+        if (a.sync_fd >= 0) yvo::dma_sync_begin(a.sync_fd, yvo::DmaSyncDir::Write, true);
+        const auto t1 = clk::now();
+        switch (p) {
+            case 0: ma_memset(a.ptr, bytes, v); break;
+            case 1: ma_memset(a.ptr, bytes, 0); break;
+            case 2: ma_memcpy(a.ptr, src.get(), bytes); break;
+            default: ma_seq_byte_write(a.ptr, bytes, v); break;
+        }
+        full_dsb();
+        const auto t2 = clk::now();
+        if (a.sync_fd >= 0) yvo::dma_sync_end(a.sync_fd, yvo::DmaSyncDir::Write, true);
+        const auto t3 = clk::now();
+        ma_cpu_read(a, back.get(), bytes);
+        std::uint64_t want;
+        if (p == 2) {
+            want = src_sum;
+        } else {
+            std::memset(refbuf.data(), p == 1 ? 0 : v, bytes);
+            want = stride_checksum(refbuf.data());
+        }
+        if (stride_checksum(back.get()) != want) ++bad;
+        if (record) {
+            ms[ai][p].push_back(std::chrono::duration<double, std::milli>(t3 - t0).count());
+            sync_ms[ai][p].push_back(std::chrono::duration<double, std::milli>((t1 - t0) + (t3 - t2)).count());
+        }
+    };
+    for (int wu = 0; wu < 3; ++wu)
+        for (std::size_t p = 0; p < kNP; ++p)
+            for (std::size_t ai = 0; ai < na; ++ai) sample(ai, p, false);
+    int k = 0;
+    for (int round = 0; round < o.rounds; ++round)
+        for (int i = 0; i < o.repeats; ++i, ++k)
+            for (std::size_t p = 0; p < kNP; ++p)
+                for (std::size_t j = 0; j < na; ++j) sample((j + static_cast<std::size_t>(k)) % na, p, true);
+    log(stride_env_line());
+    log("alloc   pattern       median_ms    p90_ms    min_ms  GB/s(median)  sync_ms(median)    n");
+    for (std::size_t ai = 0; ai < na; ++ai)
+        for (std::size_t p = 0; p < kNP; ++p) {
+            const auto& v = ms[ai][p];
+            const double med = percentile(v, 0.5);
+            log(fmt("%-6s  %-11s  %9.3f  %8.3f  %8.3f  %12.3f  %15.3f  %3zu", al[ai]->name.c_str(), pname[p], med,
+                    percentile(v, 0.9), *std::min_element(v.begin(), v.end()),
+                    static_cast<double>(bytes) / (med * 1e-3) / 1e9, percentile(sync_ms[ai][p], 0.5), v.size()));
+        }
+    log("note: malloc is an optimistic reference (the destination stays in L2/L3 between samples); heap rows include "
+        "the END|WRITE cache clean to memory, v3d rows only drain the write-combine buffer (dsb).");
+    log(fmt("[check] cpuwrite read-back checksum: %s (%zu mismatching samples)", bad == 0 ? "PASS" : "FAIL", bad));
+    return bad == 0;
+}
+
+int run_memasym(const Options& o, const StrideOptions& so, const MemAsymOptions& mo, Tee& log) {
+    if (o.rounds <= 0 || o.repeats <= 0) throw std::runtime_error("--rounds and --repeats must be > 0");
+    if (mo.bw_local == 0 || mo.bw_local > 256 || (mo.bw_local & (mo.bw_local - 1)) != 0)
+        throw std::runtime_error("--bw-local must be a power of two <= 256");
+    if (mo.coh_trials <= 0) throw std::runtime_error("--coh-trials must be > 0");
+    const std::vector<std::string> parts = parse_name_list(mo.parts);
+    for (const std::string& p : parts)
+        if (p != "gpubw" && p != "attr" && p != "coherence" && p != "cpuwrite")
+            throw std::runtime_error("--parts: unknown part " + p);
+    auto has = [&](const char* p) { return std::find(parts.begin(), parts.end(), p) != parts.end(); };
+
+    if (so.cpu >= CPU_SETSIZE) throw std::runtime_error(fmt("--cpu %d: out of range", so.cpu));
+    if (so.cpu >= 0) {
+        cpu_set_t set;
+        CPU_ZERO(&set);
+        CPU_SET(so.cpu, &set);
+        if (::sched_setaffinity(0, sizeof(set), &set) != 0)
+            throw std::runtime_error(fmt("--cpu %d: sched_setaffinity failed: %s", so.cpu, std::strerror(errno)));
+    }
+    log(fmt("[memasym] parts %s  rounds %d x repeats %d  cpu pin %s (running on cpu %d)  pid %d", mo.parts.c_str(),
+            o.rounds, o.repeats, so.cpu >= 0 ? std::to_string(so.cpu).c_str() : "off", ::sched_getcpu(),
+            static_cast<int>(::getpid())));
+    log(stride_env_line());
+
+    yvo::vk::VulkanContextOptions co;
+    co.enable_validation = o.validation;
+    co.validation_sync = o.sync_validation;
+    co.verbose = o.verbose;
+    yvo::vk::VulkanContext ctx(co);
+    log(fmt("[vk] device=%s  timestampPeriod %.3f ns  validBits %u  memoryType0 flags 0x%x", ctx.device_name(),
+            static_cast<double>(ctx.timestamp_period()), ctx.timestamp_valid_bits(),
+            static_cast<unsigned>(ctx.memory_properties().memoryTypes[0].propertyFlags)));
+    if (std::strstr(ctx.device_name(), "V3D") == nullptr)
+        throw std::runtime_error(std::string("memasym: Vulkan device is not V3D: ") + ctx.device_name());
+    if (!ctx.timestamps_supported()) throw std::runtime_error("memasym needs timestamp queries");
+
+    bool ok = true;
+    {
+        MemBwRig rig(ctx, mo.bw_local);
+        auto begin = [&](const char* p) { log(fmt("[part] mono=%.6f begin %s", mono_now(), p)); };
+        if (has("gpubw")) { begin("gpubw"); ok = part_gpubw(ctx, rig, o, mo, log) && ok; }
+        if (has("attr")) { begin("attr"); ok = part_attr(ctx, o, log) && ok; }
+        if (has("coherence")) { begin("coherence"); ok = part_coherence(ctx, rig, mo, log) && ok; }
+        if (has("cpuwrite")) { begin("cpuwrite"); ok = part_cpuwrite(ctx, o, log) && ok; }
+        log(fmt("[part] mono=%.6f end", mono_now()));
+    }
+    log("");
+    log(fmt("[validation] errors=%llu warnings=%llu", static_cast<unsigned long long>(ctx.validation_errors()),
+            static_cast<unsigned long long>(ctx.validation_warnings())));
+    const bool pass = ok && ctx.validation_errors() == 0;
+    log(fmt("[RESULT] memasym %s", pass ? "PASS" : "FAIL"));
+    return pass ? 0 : 1;
+}
+
+} // namespace
+
 int main(int argc, char** argv) {
     Options o;
     TopkOptions to;
     StrideOptions so;
+    MemAsymOptions mo;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         auto next = [&](const char* what) -> std::string {
@@ -3701,6 +4735,12 @@ int main(int argc, char** argv) {
             else if (a == "--scores") { to.scores = next("--scores"); (void)parse_float_list(to.scores); }
             else if (a == "--ks") { to.ks = next("--ks"); (void)parse_int_list(to.ks); }
             else if (a == "--cpu") so.cpu = yvo::tool::arg_number<int>(argv[0], a, next("--cpu").c_str());
+            else if (a == "--parts") mo.parts = next("--parts");
+            else if (a == "--bw-sizes") { mo.bw_sizes = next("--bw-sizes"); (void)parse_size_list(mo.bw_sizes); }
+            else if (a == "--coh-sizes") { mo.coh_sizes = next("--coh-sizes"); (void)parse_size_list(mo.coh_sizes); }
+            else if (a == "--coh-trials") mo.coh_trials = yvo::tool::arg_number<int>(argv[0], a, next("--coh-trials").c_str());
+            else if (a == "--bw-local") mo.bw_local = yvo::tool::arg_number<std::uint32_t>(argv[0], a, next("--bw-local").c_str());
+            else if (a == "--bw-groups") mo.bw_groups = yvo::tool::arg_number<std::uint32_t>(argv[0], a, next("--bw-groups").c_str());
             else if (a == "--no-headroom") o.no_headroom = true;
             else if (a == "--heapimport") o.probe = "heapimport";
             else if (a == "--validation") o.validation = true;
@@ -3716,6 +4756,7 @@ int main(int argc, char** argv) {
                 usage();
                 usage_topk();
                 usage_stride();
+                usage_memasym();
                 return 0;
             } else {
                 std::fprintf(stderr, "unknown argument: %s\n", a.c_str());
@@ -3736,6 +4777,7 @@ int main(int argc, char** argv) {
             o.out_file = o.probe == "heapimport" ? "p0_heapimport.txt" : ("stage_" + o.probe + ".txt");
     }
     if (o.probe == "stride" && o.out_file.empty()) o.out_file = "stride_read.txt";
+    if (o.probe == "memasym" && o.out_file.empty()) o.out_file = "memasym.txt";
     if (o.out_file.empty()) o.out_file = "p3_" + o.probe + ".txt";
     const std::string out_path = o.out_dir.empty() ? std::string() : o.out_dir + "/" + o.out_file;
 
@@ -3743,7 +4785,9 @@ int main(int argc, char** argv) {
         Tee log(out_path);
         log(fmt("yvo_postproc_probe --probe %s   (%s)", o.probe.c_str(),
                 o.probe == "heapimport" ? "plan Appendix B step 1 = P0 gate"
-                                        : (o.probe == "stride" ? "paper §6.3 table 9 stride read" : "plan §6.2 P3")));
+                                        : (o.probe == "stride"    ? "paper §6.3 table 9 stride read"
+                                           : o.probe == "memasym" ? "CPU<->GPU memory access asymmetry"
+                                                                  : "plan §6.2 P3")));
         if (o.probe == "heapimport") return run_heapimport(o, log);
         if (o.probe == "gpuab") return run_gpuab(o, log);
         if (o.probe == "v3") return run_v3(o, log);
@@ -3754,6 +4798,7 @@ int main(int argc, char** argv) {
         if (o.probe == "groups") return run_groups(o, log);
         if (o.probe == "topk") return run_topk(o, to, log);
         if (o.probe == "stride") return run_stride(o, so, log);
+        if (o.probe == "memasym") return run_memasym(o, so, mo, log);
         if (o.probe == "live") return run_live(o, log);
         if (o.probe == "stale") return run_stale(o, log);
         log(fmt("unknown probe: %s", o.probe.c_str()));

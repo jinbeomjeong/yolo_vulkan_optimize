@@ -1,0 +1,33 @@
+yvo_postproc_probe --probe memasym   (CPU<->GPU memory access asymmetry)
+[memasym] parts attr  rounds 3 x repeats 10  cpu pin 3 (running on cpu 3)  pid 38035
+[env] SoC temp=70.3'C  throttled throttled=0x80000  v3d frequency(0)=500007584  arm frequency(0)=1500016128  governor(cpu0) ondemand
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[vk] device=V3D 7.1.10.2  timestampPeriod 1.000 ns  validBits 64  memoryType0 flags 0x7
+[part] mono=50367.153917 begin attr
+
+== [attr] mapping behaviour, 1228800 B buffers ==
+[alloc] heap /dev/dma_heap/system  1228800 B requested, dmabuf 1245184 B, range 1244928, ptr 0x7fff2bdf0000
+[alloc] cma  /dev/dma_heap/linux,cma  1228800 B requested, dmabuf 1245184 B, range 1244928, ptr 0x7fff2bcbc000
+[map] v3d ptr 0x7fff2bf24000 len 1228800
+[map] heap ptr 0x7fff2bdf0000 len 1228800
+[map] cma ptr 0x7fff2bcbc000 len 1228800
+[map] malloc ptr 0x7fff2bb8c000 len 1228800
+[attr] dependent-load latency, 200000 loads per sample (ns/load)
+alloc        target              median    p10      p90      n
+v3d          same 64 B line       121.33   121.24   121.52   30
+heap         same 64 B line         2.08     2.08     2.09   30
+cma          same 64 B line         4.17     2.09     4.17   30
+malloc       same 64 B line         2.08     2.08     2.09   30
+malloc       random 16 MiB        108.49   106.96   113.07   30
+[attr] chase sink 65979136 (end index; 0 for the same-line rows)
+[attr] unaligned access (DCZID_EL0 0x4: DC ZVA block 64 B)
+alloc    ldr_x@+1        ldr_x@+61(cross)  ldr_w@+2        dc_zva          values
+v3d      ok              ok                ok              ok              match
+heap     ok              ok                ok              ok              match
+cma      ok              ok                ok              ok              match
+malloc   ok              ok                ok              ok              match
+[check] attr: unaligned loads succeed with correct values (Normal memory) on every allocation
+[part] mono=50368.705607 end
+
+[validation] errors=0 warnings=1
+[RESULT] memasym PASS

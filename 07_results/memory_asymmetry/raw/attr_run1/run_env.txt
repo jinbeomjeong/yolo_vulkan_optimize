@@ -1,0 +1,1 @@
+soc_pre 70.3 soc_post 71.4 cooled_s 5 throttled=0x80000 rc 0

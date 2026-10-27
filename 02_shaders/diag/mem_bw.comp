@@ -1,0 +1,73 @@
+#version 450
+// Bandwidth-bound memory kernels for `yvo_postproc_probe --probe memasym` (CPU<->GPU memory access asymmetry).
+// Diagnostic only — no CPU reference header in ref/ (the "reference" is the host word sum / byte pattern below).
+//
+// One source, six SPIR-V variants (02_shaders/diag/CMakeLists.txt):
+//   YVO_MEMBW_READ  : sum every 32-bit word of src (uint32 wraparound) -> atomicAdd(res.sum). Read-only stream.
+//   YVO_MEMBW_WRITE : dst word w = w * 2654435761u ^ seed. Write-only stream (nothing is read).
+//   YVO_MEMBW_COPY  : dst = src (used only for the coherence check, not timed).
+//   YVO_MEMBW_VEC4  : element = uvec4 (16 B per load/store) instead of uint (4 B).
+// The READ checksum and the WRITE pattern are defined per **32-bit word**, so the uint and uvec4 variants produce the
+// same checksum / the same bytes and the host verifies both against one reference.
+//
+// Grid-stride loop: consecutive invocations touch consecutive elements (the host picks the workgroup count).
+// The loop condition is the bounds check, so there is no early return before barrier().
+layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;   // local size: specialization constant 0 (<= 256)
+
+#ifdef YVO_MEMBW_VEC4
+#define ELEM uvec4
+#else
+#define ELEM uint
+#endif
+
+layout(std430, set = 0, binding = 0) readonly buffer Src { ELEM e[]; } src;
+layout(std430, set = 0, binding = 1) writeonly buffer Dst { ELEM e[]; } dst;
+layout(std430, set = 0, binding = 2) buffer Res { uint sum; uint groups; } res;
+
+layout(push_constant, std430) uniform Params {
+    uint n_elems;   // number of ELEMs to touch (= bytes / sizeof(ELEM))
+    uint seed;      // WRITE: pattern seed
+} pc;
+
+#ifdef YVO_MEMBW_READ
+shared uint s_part[256];
+#endif
+
+void main() {
+    const uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+#if defined(YVO_MEMBW_READ)
+#ifdef YVO_MEMBW_VEC4
+    uvec4 acc4 = uvec4(0u);
+    for (uint i = gl_GlobalInvocationID.x; i < pc.n_elems; i += stride) acc4 += src.e[i];
+    const uint acc = acc4.x + acc4.y + acc4.z + acc4.w;
+#else
+    uint acc = 0u;
+    for (uint i = gl_GlobalInvocationID.x; i < pc.n_elems; i += stride) acc += src.e[i];
+#endif
+    s_part[gl_LocalInvocationID.x] = acc;
+    barrier();
+    for (uint st = gl_WorkGroupSize.x / 2u; st > 0u; st >>= 1) {
+        if (gl_LocalInvocationID.x < st) s_part[gl_LocalInvocationID.x] += s_part[gl_LocalInvocationID.x + st];
+        barrier();
+    }
+    if (gl_LocalInvocationID.x == 0u) {
+        atomicAdd(res.sum, s_part[0]);
+        atomicAdd(res.groups, 1u);
+    }
+#elif defined(YVO_MEMBW_WRITE)
+    for (uint i = gl_GlobalInvocationID.x; i < pc.n_elems; i += stride) {
+#ifdef YVO_MEMBW_VEC4
+        const uint w = i * 4u;
+        dst.e[i] = (uvec4(w, w + 1u, w + 2u, w + 3u) * 2654435761u) ^ uvec4(pc.seed);
+#else
+        dst.e[i] = (i * 2654435761u) ^ pc.seed;
+#endif
+    }
+    if (gl_LocalInvocationID.x == 0u) atomicAdd(res.groups, 1u);
+#elif defined(YVO_MEMBW_COPY)
+    for (uint i = gl_GlobalInvocationID.x; i < pc.n_elems; i += stride) dst.e[i] = src.e[i];
+    if (gl_LocalInvocationID.x == 0u) atomicAdd(res.groups, 1u);
+#else
+#error "define one of YVO_MEMBW_READ / YVO_MEMBW_WRITE / YVO_MEMBW_COPY"
+#endif
+}

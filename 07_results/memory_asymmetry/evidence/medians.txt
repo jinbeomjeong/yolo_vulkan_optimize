@@ -1,0 +1,145 @@
+# memasym aggregate: /home/pi/workspace/yolo_vulkan_optimize/07_results/memory_asymmetry  (15 run logs)
+results: attr_run1: PASS, attr_run2: PASS, attr_run3: PASS, bw_r256x3_run1: PASS, bw_r256x3_run2: PASS, bw_r256x3_run3: PASS, bw_w128x2_run1: PASS, bw_w128x2_run2: PASS, bw_w128x2_run3: PASS, coh_run1: PASS, coh_run2: PASS, coh_run3: PASS, cpuwrite_run1: PASS, cpuwrite_run2: PASS, cpuwrite_run3: PASS
+checks (cfg, line) x runs:
+  attr       x3  [check] attr: unaligned loads succeed with correct values (Normal memory) on every allocation
+  bw_r256x3  x3  [check] gpubw size 1228800: read sums PASS , written words PASS , workgroup counts PASS
+  bw_r256x3  x3  [check] gpubw size 16777216: read sums PASS , written words PASS , workgroup counts PASS
+  bw_w128x2  x3  [check] gpubw size 1228800: read sums PASS , written words PASS , workgroup counts PASS
+  bw_w128x2  x3  [check] gpubw size 16777216: read sums PASS , written words PASS , workgroup counts PASS
+  coh        x3  [check] coherence: sync-on cells all new and controls clean: PASS
+  cpuwrite   x3  [check] cpuwrite read-back checksum: PASS
+
+## 1. GPU bandwidth (GB/s; median of per-run medians [min..max]; net = minus per-dispatch fixed cost)
+cfg        size_B     kernel     alloc  GBps_median [range]          net_GBps [range]
+bw_r256x3  1228800    read_u32   cma      3.927 [3.925..3.927]     4.368 [4.367..4.370]
+bw_r256x3  1228800    read_u32   heap     3.933 [3.931..3.936]     4.377 [4.375..4.380]
+bw_r256x3  1228800    read_u32   v3d      3.934 [3.933..3.937]     4.379 [4.377..4.382]
+bw_r256x3  1228800    read_v4    cma     10.511 [10.503..10.518]    14.422 [14.398..14.435]
+bw_r256x3  1228800    read_v4    heap    10.635 [10.623..10.637]    14.648 [14.633..14.659]
+bw_r256x3  1228800    read_v4    v3d     10.641 [10.637..10.643]    14.660 [14.659..14.672]
+bw_r256x3  1228800    write_u32  cma      4.534 [4.527..4.535]     5.134 [5.125..5.135]
+bw_r256x3  1228800    write_u32  heap     5.523 [5.518..5.525]     6.441 [6.433..6.442]
+bw_r256x3  1228800    write_u32  v3d      5.520 [5.517..5.526]     6.436 [6.430..6.444]
+bw_r256x3  1228800    write_v4   cma      7.785 [7.769..7.788]     9.742 [9.716..9.743]
+bw_r256x3  1228800    write_v4   heap    11.280 [11.252..11.287]    15.910 [15.853..15.913]
+bw_r256x3  1228800    write_v4   v3d     11.249 [11.239..11.262]    15.849 [15.827..15.863]
+bw_r256x3  16777216   read_u32   cma      4.109 [4.106..4.115]     4.143 [4.139..4.147]
+bw_r256x3  16777216   read_u32   heap     4.292 [4.291..4.293]     4.328 [4.327..4.328]
+bw_r256x3  16777216   read_u32   v3d      4.294 [4.291..4.294]     4.329 [4.327..4.330]
+bw_r256x3  16777216   read_v4    cma     14.570 [14.547..14.575]    14.986 [14.978..14.988]
+bw_r256x3  16777216   read_v4    heap    14.780 [14.777..14.794]    15.221 [15.208..15.222]
+bw_r256x3  16777216   read_v4    v3d     14.804 [14.771..14.809]    15.234 [15.216..15.236]
+bw_r256x3  16777216   write_u32  cma      3.388 [3.375..3.396]     3.411 [3.396..3.418]
+bw_r256x3  16777216   write_u32  heap     3.966 [3.961..3.976]     3.996 [3.991..4.008]
+bw_r256x3  16777216   write_u32  v3d      3.966 [3.946..3.975]     3.996 [3.975..4.007]
+bw_r256x3  16777216   write_v4   cma     10.187 [10.165..10.234]    10.389 [10.364..10.445]
+bw_r256x3  16777216   write_v4   heap    13.586 [13.567..13.624]    13.961 [13.927..13.985]
+bw_r256x3  16777216   write_v4   v3d     13.594 [13.577..13.599]    13.953 [13.951..13.961]
+bw_w128x2  1228800    read_u32   cma      2.103 [2.102..2.104]     2.222 [2.222..2.223]
+bw_w128x2  1228800    read_u32   heap     2.104 [2.103..2.105]     2.224 [2.222..2.224]
+bw_w128x2  1228800    read_u32   v3d      2.104 [2.103..2.104]     2.223 [2.222..2.224]
+bw_w128x2  1228800    read_v4    cma      6.383 [6.381..6.383]     7.621 [7.620..7.630]
+bw_w128x2  1228800    read_v4    heap     6.386 [6.385..6.387]     7.628 [7.625..7.636]
+bw_w128x2  1228800    read_v4    v3d      6.384 [6.383..6.387]     7.627 [7.620..7.634]
+bw_w128x2  1228800    write_u32  cma      4.252 [4.251..4.253]     4.769 [4.767..4.772]
+bw_w128x2  1228800    write_u32  heap     4.959 [4.959..4.963]     5.676 [5.675..5.687]
+bw_w128x2  1228800    write_u32  v3d      4.961 [4.958..4.962]     5.678 [5.674..5.685]
+bw_w128x2  1228800    write_v4   cma      8.220 [8.220..8.224]    10.395 [10.393..10.422]
+bw_w128x2  1228800    write_v4   heap    11.394 [11.380..11.406]    16.068 [16.049..16.070]
+bw_w128x2  1228800    write_v4   v3d     11.386 [11.372..11.386]    16.032 [16.028..16.055]
+bw_w128x2  16777216   read_u32   cma      2.206 [2.205..2.207]     2.217 [2.216..2.218]
+bw_w128x2  16777216   read_u32   heap     2.207 [2.206..2.208]     2.217 [2.216..2.218]
+bw_w128x2  16777216   read_u32   v3d      2.207 [2.207..2.207]     2.217 [2.217..2.217]
+bw_w128x2  16777216   read_v4    cma      7.552 [7.549..7.554]     7.674 [7.671..7.675]
+bw_w128x2  16777216   read_v4    heap     7.555 [7.552..7.555]     7.677 [7.673..7.677]
+bw_w128x2  16777216   read_v4    v3d      7.554 [7.553..7.555]     7.676 [7.675..7.677]
+bw_w128x2  16777216   write_u32  cma      3.770 [3.554..3.776]     3.801 [3.581..3.806]
+bw_w128x2  16777216   write_u32  heap     3.697 [3.599..3.795]     3.726 [3.626..3.826]
+bw_w128x2  16777216   write_u32  v3d      3.798 [3.780..3.798]     3.828 [3.811..3.829]
+bw_w128x2  16777216   write_v4   cma     13.857 [13.849..13.915]    14.274 [14.264..14.334]
+bw_w128x2  16777216   write_v4   heap    14.497 [14.463..14.582]    14.953 [14.918..15.042]
+bw_w128x2  16777216   write_v4   v3d     14.485 [14.470..14.554]    14.940 [14.926..15.013]
+per-dispatch fixed cost (us, 1 workgroup):
+  bw_r256x3 size 1228800   31.7 [31.7..31.7]
+  bw_r256x3 size 16777216  32.0 [31.8..33.2]
+  bw_w128x2 size 1228800   31.3 [31.3..31.5]
+  bw_w128x2 size 16777216  35.2 [35.2..35.4]
+best configuration per (size, kernel, alloc):
+  1228800   read_u32  cma     3.927 GB/s (net   4.368)  bw_r256x3
+  1228800   read_u32  heap    3.933 GB/s (net   4.377)  bw_r256x3
+  1228800   read_u32  v3d     3.934 GB/s (net   4.379)  bw_r256x3
+  1228800   read_v4   cma    10.511 GB/s (net  14.422)  bw_r256x3
+  1228800   read_v4   heap   10.635 GB/s (net  14.648)  bw_r256x3
+  1228800   read_v4   v3d    10.641 GB/s (net  14.660)  bw_r256x3
+  1228800   write_u32 cma     4.534 GB/s (net   5.134)  bw_r256x3
+  1228800   write_u32 heap    5.523 GB/s (net   6.441)  bw_r256x3
+  1228800   write_u32 v3d     5.520 GB/s (net   6.436)  bw_r256x3
+  1228800   write_v4  cma     8.220 GB/s (net  10.395)  bw_w128x2
+  1228800   write_v4  heap   11.394 GB/s (net  16.068)  bw_w128x2
+  1228800   write_v4  v3d    11.386 GB/s (net  16.032)  bw_w128x2
+  16777216  read_u32  cma     4.109 GB/s (net   4.143)  bw_r256x3
+  16777216  read_u32  heap    4.292 GB/s (net   4.328)  bw_r256x3
+  16777216  read_u32  v3d     4.294 GB/s (net   4.329)  bw_r256x3
+  16777216  read_v4   cma    14.570 GB/s (net  14.986)  bw_r256x3
+  16777216  read_v4   heap   14.780 GB/s (net  15.221)  bw_r256x3
+  16777216  read_v4   v3d    14.804 GB/s (net  15.234)  bw_r256x3
+  16777216  write_u32 cma     3.770 GB/s (net   3.801)  bw_w128x2
+  16777216  write_u32 heap    3.966 GB/s (net   3.996)  bw_r256x3
+  16777216  write_u32 v3d     3.966 GB/s (net   3.996)  bw_r256x3
+  16777216  write_v4  cma    13.857 GB/s (net  14.274)  bw_w128x2
+  16777216  write_v4  heap   14.497 GB/s (net  14.953)  bw_w128x2
+  16777216  write_v4  v3d    14.485 GB/s (net  14.940)  bw_w128x2
+
+## 2b. Dependent-load latency (ns/load)
+  cma     same 64 B line           2.08 [2.08..4.17]  runs 3
+  heap    same 64 B line           2.08 [2.08..2.08]  runs 3
+  malloc  random 16 MiB          108.86 [108.49..114.42]  runs 3
+  malloc  same 64 B line           2.08 [2.08..2.08]  runs 3
+  v3d     same 64 B line         121.36 [121.33..121.42]  runs 3
+unaligned / DC ZVA (distinct row strings over runs):
+  cma     ok ok ok ok match
+  heap    ok ok ok ok match
+  malloc  ok ok ok ok match
+  v3d     ok ok ok ok match
+
+## 3. Coherence (fraction of 64 B line samples, pooled over runs)
+alloc size_B    direction         sync  new     stale   mixed   line_samples  control_bad_words
+cma   262144    cpu2gpu_plain     off   0.9219  0.0781  0.0000         61440  0
+cma   262144    cpu2gpu_plain     on    1.0000  0.0000  0.0000         61440  0
+cma   262144    cpu2gpu_resident  off   0.0335  0.9665  0.0000         61440  0
+cma   262144    cpu2gpu_resident  on    1.0000  0.0000  0.0000         61440  0
+cma   262144    gpu2cpu           off   0.0272  0.9728  0.0000         61440  0
+cma   262144    gpu2cpu           on    1.0000  0.0000  0.0000         61440  0
+cma   8388608   cpu2gpu_plain     off   0.9982  0.0018  0.0000       1966080  0
+cma   8388608   cpu2gpu_plain     on    1.0000  0.0000  0.0000       1966080  0
+cma   8388608   cpu2gpu_resident  off   0.8483  0.1517  0.0000       1966080  0
+cma   8388608   cpu2gpu_resident  on    1.0000  0.0000  0.0000       1966080  0
+cma   8388608   gpu2cpu           off   0.8578  0.1422  0.0000       1966080  0
+cma   8388608   gpu2cpu           on    1.0000  0.0000  0.0000       1966080  0
+heap  262144    cpu2gpu_plain     off   0.9301  0.0699  0.0000         61440  0
+heap  262144    cpu2gpu_plain     on    1.0000  0.0000  0.0000         61440  0
+heap  262144    cpu2gpu_resident  off   0.0365  0.9635  0.0000         61440  0
+heap  262144    cpu2gpu_resident  on    1.0000  0.0000  0.0000         61440  0
+heap  262144    gpu2cpu           off   0.0261  0.9739  0.0000         61440  0
+heap  262144    gpu2cpu           on    1.0000  0.0000  0.0000         61440  0
+heap  8388608   cpu2gpu_plain     off   0.9975  0.0025  0.0000       1966080  0
+heap  8388608   cpu2gpu_plain     on    1.0000  0.0000  0.0000       1966080  0
+heap  8388608   cpu2gpu_resident  off   0.8406  0.1594  0.0000       1966080  0
+heap  8388608   cpu2gpu_resident  on    1.0000  0.0000  0.0000       1966080  0
+heap  8388608   gpu2cpu           off   0.8434  0.1566  0.0000       1966080  0
+heap  8388608   gpu2cpu           on    1.0000  0.0000  0.0000       1966080  0
+
+## 4. CPU write of 1,228,800 B (ms; median of per-run medians [min..max])
+alloc   pattern       ms_median [range]            GB/s    sync_ms
+v3d     memcpy         0.203 [0.196..0.259]    6.053  0.000
+v3d     memset_val     0.098 [0.098..0.098]   12.539  0.000
+v3d     memset_zero    0.098 [0.098..0.098]   12.539  0.000
+v3d     seq_byte       0.514 [0.512..0.580]    2.391  0.000
+heap    memcpy         0.251 [0.238..0.282]    4.896  0.022
+heap    memset_val     0.157 [0.156..0.157]    7.827  0.022
+heap    memset_zero    0.157 [0.156..0.158]    7.827  0.021
+heap    seq_byte       0.533 [0.533..0.534]    2.305  0.021
+malloc  memcpy         0.206 [0.199..0.206]    5.965  0.000
+malloc  memset_val     0.119 [0.115..0.121]   10.326  0.000
+malloc  memset_zero    0.121 [0.115..0.122]   10.155  0.000
+malloc  seq_byte       0.512 [0.512..0.512]    2.400  0.000

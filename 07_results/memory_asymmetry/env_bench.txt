@@ -1,0 +1,22 @@
+date: 2026-10-27T13:29:48+09:00
+host: Raspberry Pi Compute Module 5 Rev 1.0
+kernel: 6.18.50+rpt-rpi-2712
+mesa-vulkan-drivers: 26.2.2-1~bpo13+0~rpt1
+libdrm2: 2.4.134-3~bpo13+1+rpt1
+v3d_freq config: v3d_freq=1150
+clock v3d: frequency(0)=1150011520  arm: frequency(0)=2400027136
+governor(cpu0..3): ondemand ondemand ondemand ondemand 
+soc temp: 69.2 C  throttled=0x80000
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)  (NPU not used)
+CmaTotal/CmaFree: CmaTotal: 65536 kB  CmaFree: 55232 kB  
+dma_heap: default_cma_region linux,cma system vidbuf_cached 
+git HEAD: fa0e2b5c2b44a51186cb7c1e4904288006a32469 (tracked changes)
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_postproc_probe md5 a80774324838fa633d633fc194598e51 mtime 2026-10-27 13:21:02.429610557 +0900
+configs:
+  bw_r256x3: --probe memasym --cpu 3 --rounds 3 --repeats 10 --out-dir  --parts gpubw --bw-local 256 --bw-groups 3
+  bw_w128x2: --probe memasym --cpu 3 --rounds 3 --repeats 10 --out-dir  --parts gpubw --bw-local 128 --bw-groups 2
+  attr: --probe memasym --cpu 3 --rounds 3 --repeats 10 --out-dir  --parts attr
+  coh: --probe memasym --cpu 3 --rounds 3 --repeats 10 --out-dir  --parts coherence --coh-trials 5
+  cpuwrite: --probe memasym --cpu 3 --rounds 3 --repeats 10 --out-dir  --parts cpuwrite
+runs: 3  cool: SoC <= 70 C (max 300s) and throttled bits 0..3 == 0 before each run
+soc temp after: 70.3 C  throttled=0x80000

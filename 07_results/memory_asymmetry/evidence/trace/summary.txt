@@ -1,0 +1,398 @@
+# memasym trace summary: /home/pi/workspace/yolo_vulkan_optimize/07_results/memory_asymmetry/evidence/trace
+events 2857, probe maps 7, marks 40
+event totals: arch_sync_dma_for_cpu 1011, arch_sync_dma_for_device 1011, cma_heap_vm_fault 93, dma_buf_begin_cpu_access 54, dma_buf_end_cpu_access 54, dma_buf_map_attachment 4, drm_gem_shmem_fault 123, drm_gem_shmem_mmap 36, remap_pfn_range 93, system_heap_mmap 2, v3d_cache_clean_job_run 20, v3d_clean_caches 22, v3d_csd_job_run 20, v3d_invalidate_caches 20, v3d_submit_csd_ioctl 20, v3d_wait_bo_ioctl 55, vmf_insert_pfn_prot 219
+
+## 1. PTE protection of the probe's CPU mappings
+map      range                                 event                 n_pages  prot values -> AttrIndx
+v3d      0x7ffed9044000-0x7ffed9170000  vmf_insert_pfn_prot        75  0x68000000000fcb -> 2 MT_NORMAL_NC (non-cacheable) (x75)
+heap     0x7ffed8f10000-0x7ffed903c000  remap_pfn_range            75  0x68000000000fc3 -> 0 MT_NORMAL (write-back cacheable) (x75)
+cma      0x7ffed8ddc000-0x7ffed8f08000  vmf_insert_pfn_prot        75  0x68000000000fc3 -> 0 MT_NORMAL (write-back cacheable) (x75)
+malloc   0x7ffed8cac000-0x7ffed8dd8000  -                           0  no event in range (malloc / already mapped)
+v3d      0x7ffed9130000-0x7ffed9170000  vmf_insert_pfn_prot        16  0x68000000000fcb -> 2 MT_NORMAL_NC (non-cacheable) (x16)
+heap     0x7ffed90e8000-0x7ffed9128000  remap_pfn_range            16  0x68000000000fc3 -> 0 MT_NORMAL (write-back cacheable) (x16)
+cma      0x7ffed90a0000-0x7ffed90e0000  vmf_insert_pfn_prot        16  0x68000000000fc3 -> 0 MT_NORMAL (write-back cacheable) (x16)
+
+## 2. Events inside each coherence window ([mark] .. next [mark])
+
+[heap cpu2gpu_plain sync=off cpu-write-B]  windows 1, total 0.07 ms
+  (no traced event)
+
+[heap cpu2gpu_plain sync=off gpu-copy]  windows 1, total 0.15 ms
+  drm_gem_shmem_fault                                               1
+  drm_gem_shmem_mmap                                                1
+  v3d_cache_clean_job_run[kworker/u16:0]                            1
+  v3d_clean_caches[kworker/u16:0]                                   1
+  v3d_csd_job_run[kworker/u16:1]                                    1
+  v3d_invalidate_caches[kworker/u16:1]                              1
+  v3d_submit_csd_ioctl                                              1
+  v3d_wait_bo_ioctl                                                 2
+  vmf_insert_pfn_prot                                               1
+
+[heap cpu2gpu_plain sync=off gpu-done]  windows 1, total 0.86 ms  (rest of the cell: CPU check + next cell setup)
+  arch_sync_dma_for_cpu(TO_DEVICE -> dcache_none)                  34  bytes 557056
+  arch_sync_dma_for_device(TO_DEVICE -> dcache_clean)              34  bytes 557056
+  dma_buf_begin_cpu_access                                          2
+  dma_buf_end_cpu_access                                            2
+  drm_gem_shmem_fault                                               1
+  drm_gem_shmem_mmap                                                1
+  v3d_cache_clean_job_run[kworker/u16:1]                            1
+  v3d_clean_caches[kworker/u16:1]                                   1
+  v3d_csd_job_run[kworker/u16:0]                                    1
+  v3d_invalidate_caches[kworker/u16:0]                              1
+  v3d_submit_csd_ioctl                                              1
+  v3d_wait_bo_ioctl                                                 2
+  vmf_insert_pfn_prot                                               1
+  stack x34 arch_sync_dma_for_cpu: arch_sync_dma_for_cpu <- __dma_sync_sg_for_cpu <- system_heap_dma_buf_begin_cpu_access <- dma_buf_begin_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+  stack x34 arch_sync_dma_for_device: arch_sync_dma_for_device <- __dma_sync_sg_for_device <- system_heap_dma_buf_end_cpu_access <- dma_buf_end_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+
+[heap cpu2gpu_plain sync=on cpu-write-B]  windows 1, total 0.10 ms
+  arch_sync_dma_for_cpu(TO_DEVICE -> dcache_none)                  17  bytes 278528
+  arch_sync_dma_for_device(TO_DEVICE -> dcache_clean)              17  bytes 278528
+  dma_buf_begin_cpu_access                                          1
+  dma_buf_end_cpu_access                                            1
+  stack x17 arch_sync_dma_for_cpu: arch_sync_dma_for_cpu <- __dma_sync_sg_for_cpu <- system_heap_dma_buf_begin_cpu_access <- dma_buf_begin_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+  stack x17 arch_sync_dma_for_device: arch_sync_dma_for_device <- __dma_sync_sg_for_device <- system_heap_dma_buf_end_cpu_access <- dma_buf_end_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+
+[heap cpu2gpu_plain sync=on gpu-copy]  windows 1, total 0.14 ms
+  drm_gem_shmem_fault                                               1
+  drm_gem_shmem_mmap                                                1
+  v3d_cache_clean_job_run[kworker/u16:3]                            1
+  v3d_clean_caches[kworker/u16:3]                                   1
+  v3d_csd_job_run[kworker/u16:1]                                    1
+  v3d_invalidate_caches[kworker/u16:1]                              1
+  v3d_submit_csd_ioctl                                              1
+  v3d_wait_bo_ioctl                                                 2
+  vmf_insert_pfn_prot                                               1
+
+[heap cpu2gpu_plain sync=on gpu-done]  windows 1, total 0.89 ms  (rest of the cell: CPU check + next cell setup)
+  arch_sync_dma_for_cpu(FROM_DEVICE -> dcache_inval)               17  bytes 278528
+  arch_sync_dma_for_cpu(TO_DEVICE -> dcache_none)                  34  bytes 557056
+  arch_sync_dma_for_device(FROM_DEVICE -> dcache_inval)            17  bytes 278528
+  arch_sync_dma_for_device(TO_DEVICE -> dcache_clean)              34  bytes 557056
+  dma_buf_begin_cpu_access                                          3
+  dma_buf_end_cpu_access                                            3
+  drm_gem_shmem_fault                                               1
+  drm_gem_shmem_mmap                                                1
+  v3d_cache_clean_job_run[kworker/u16:3]                            1
+  v3d_clean_caches[kworker/u16:3]                                   1
+  v3d_csd_job_run[kworker/u16:3]                                    1
+  v3d_invalidate_caches[kworker/u16:3]                              1
+  v3d_submit_csd_ioctl                                              1
+  v3d_wait_bo_ioctl                                                 2
+  vmf_insert_pfn_prot                                               1
+  stack x51 arch_sync_dma_for_cpu: arch_sync_dma_for_cpu <- __dma_sync_sg_for_cpu <- system_heap_dma_buf_begin_cpu_access <- dma_buf_begin_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+  stack x51 arch_sync_dma_for_device: arch_sync_dma_for_device <- __dma_sync_sg_for_device <- system_heap_dma_buf_end_cpu_access <- dma_buf_end_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+
+[heap cpu2gpu_resident sync=off cpu-write-B]  windows 1, total 0.03 ms
+  (no traced event)
+
+[heap cpu2gpu_resident sync=off gpu-copy]  windows 1, total 0.13 ms
+  drm_gem_shmem_fault                                               1
+  drm_gem_shmem_mmap                                                1
+  v3d_cache_clean_job_run[kworker/u16:0]                            1
+  v3d_clean_caches[kworker/u16:0]                                   1
+  v3d_csd_job_run[kworker/u16:3]                                    1
+  v3d_invalidate_caches[kworker/u16:3]                              1
+  v3d_submit_csd_ioctl                                              1
+  v3d_wait_bo_ioctl                                                 2
+  vmf_insert_pfn_prot                                               1
+
+[heap cpu2gpu_resident sync=off gpu-done]  windows 1, total 0.89 ms  (rest of the cell: CPU check + next cell setup)
+  arch_sync_dma_for_cpu(FROM_DEVICE -> dcache_inval)               17  bytes 278528
+  arch_sync_dma_for_cpu(TO_DEVICE -> dcache_none)                  34  bytes 557056
+  arch_sync_dma_for_device(FROM_DEVICE -> dcache_inval)            17  bytes 278528
+  arch_sync_dma_for_device(TO_DEVICE -> dcache_clean)              34  bytes 557056
+  dma_buf_begin_cpu_access                                          3
+  dma_buf_end_cpu_access                                            3
+  drm_gem_shmem_fault                                               1
+  drm_gem_shmem_mmap                                                1
+  v3d_cache_clean_job_run[kworker/u16:1]                            1
+  v3d_clean_caches[kworker/u16:1]                                   1
+  v3d_csd_job_run[kworker/u16:0]                                    1
+  v3d_invalidate_caches[kworker/u16:0]                              1
+  v3d_submit_csd_ioctl                                              1
+  v3d_wait_bo_ioctl                                                 2
+  vmf_insert_pfn_prot                                               1
+  stack x51 arch_sync_dma_for_cpu: arch_sync_dma_for_cpu <- __dma_sync_sg_for_cpu <- system_heap_dma_buf_begin_cpu_access <- dma_buf_begin_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+  stack x51 arch_sync_dma_for_device: arch_sync_dma_for_device <- __dma_sync_sg_for_device <- system_heap_dma_buf_end_cpu_access <- dma_buf_end_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+
+[heap cpu2gpu_resident sync=on cpu-write-B]  windows 1, total 0.09 ms
+  arch_sync_dma_for_cpu(TO_DEVICE -> dcache_none)                  17  bytes 278528
+  arch_sync_dma_for_device(TO_DEVICE -> dcache_clean)              17  bytes 278528
+  dma_buf_begin_cpu_access                                          1
+  dma_buf_end_cpu_access                                            1
+  stack x17 arch_sync_dma_for_cpu: arch_sync_dma_for_cpu <- __dma_sync_sg_for_cpu <- system_heap_dma_buf_begin_cpu_access <- dma_buf_begin_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+  stack x17 arch_sync_dma_for_device: arch_sync_dma_for_device <- __dma_sync_sg_for_device <- system_heap_dma_buf_end_cpu_access <- dma_buf_end_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+
+[heap cpu2gpu_resident sync=on gpu-copy]  windows 1, total 0.14 ms
+  drm_gem_shmem_fault                                               1
+  drm_gem_shmem_mmap                                                1
+  v3d_cache_clean_job_run[kworker/u16:3]                            1
+  v3d_clean_caches[kworker/u16:3]                                   1
+  v3d_csd_job_run[kworker/u16:1]                                    1
+  v3d_invalidate_caches[kworker/u16:1]                              1
+  v3d_submit_csd_ioctl                                              1
+  v3d_wait_bo_ioctl                                                 2
+  vmf_insert_pfn_prot                                               1
+
+[heap cpu2gpu_resident sync=on gpu-done]  windows 1, total 0.64 ms  (rest of the cell: CPU check + next cell setup)
+  arch_sync_dma_for_cpu(FROM_DEVICE -> dcache_inval)               34  bytes 557056
+  arch_sync_dma_for_cpu(TO_DEVICE -> dcache_none)                  34  bytes 557056
+  arch_sync_dma_for_device(FROM_DEVICE -> dcache_inval)            34  bytes 557056
+  arch_sync_dma_for_device(TO_DEVICE -> dcache_clean)              34  bytes 557056
+  dma_buf_begin_cpu_access                                          4
+  dma_buf_end_cpu_access                                            4
+  stack x68 arch_sync_dma_for_cpu: arch_sync_dma_for_cpu <- __dma_sync_sg_for_cpu <- system_heap_dma_buf_begin_cpu_access <- dma_buf_begin_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+  stack x68 arch_sync_dma_for_device: arch_sync_dma_for_device <- __dma_sync_sg_for_device <- system_heap_dma_buf_end_cpu_access <- dma_buf_end_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+
+[heap gpu2cpu sync=off gpu-write-B]  windows 1, total 0.13 ms
+  drm_gem_shmem_fault                                               1
+  drm_gem_shmem_mmap                                                1
+  v3d_cache_clean_job_run[kworker/u16:0]                            1
+  v3d_clean_caches[kworker/u16:0]                                   1
+  v3d_csd_job_run[kworker/u16:3]                                    1
+  v3d_invalidate_caches[kworker/u16:3]                              1
+  v3d_submit_csd_ioctl                                              1
+  v3d_wait_bo_ioctl                                                 2
+  vmf_insert_pfn_prot                                               1
+
+[heap gpu2cpu sync=off gpu-done]  windows 1, total 0.02 ms  (rest of the cell: CPU check + next cell setup)
+  (no traced event)
+
+[heap gpu2cpu sync=off cpu-read]  windows 1, total 0.02 ms
+  (no traced event)
+
+[heap gpu2cpu sync=off cpu-done]  windows 1, total 0.40 ms  (rest of the cell: check + next setup)
+  arch_sync_dma_for_cpu(FROM_DEVICE -> dcache_inval)               34  bytes 557056
+  arch_sync_dma_for_cpu(TO_DEVICE -> dcache_none)                  17  bytes 278528
+  arch_sync_dma_for_device(FROM_DEVICE -> dcache_inval)            34  bytes 557056
+  arch_sync_dma_for_device(TO_DEVICE -> dcache_clean)              17  bytes 278528
+  dma_buf_begin_cpu_access                                          3
+  dma_buf_end_cpu_access                                            3
+  stack x51 arch_sync_dma_for_cpu: arch_sync_dma_for_cpu <- __dma_sync_sg_for_cpu <- system_heap_dma_buf_begin_cpu_access <- dma_buf_begin_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+  stack x51 arch_sync_dma_for_device: arch_sync_dma_for_device <- __dma_sync_sg_for_device <- system_heap_dma_buf_end_cpu_access <- dma_buf_end_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+
+[heap gpu2cpu sync=on gpu-write-B]  windows 1, total 0.12 ms
+  drm_gem_shmem_fault                                               1
+  drm_gem_shmem_mmap                                                1
+  v3d_cache_clean_job_run[kworker/u16:0]                            1
+  v3d_clean_caches[kworker/u16:0]                                   1
+  v3d_csd_job_run[kworker/u16:0]                                    1
+  v3d_invalidate_caches[kworker/u16:0]                              1
+  v3d_submit_csd_ioctl                                              1
+  v3d_wait_bo_ioctl                                                 2
+  vmf_insert_pfn_prot                                               1
+
+[heap gpu2cpu sync=on gpu-done]  windows 1, total 0.01 ms  (rest of the cell: CPU check + next cell setup)
+  (no traced event)
+
+[heap gpu2cpu sync=on cpu-read]  windows 1, total 0.07 ms
+  arch_sync_dma_for_cpu(FROM_DEVICE -> dcache_inval)               17  bytes 278528
+  arch_sync_dma_for_device(FROM_DEVICE -> dcache_inval)            17  bytes 278528
+  dma_buf_begin_cpu_access                                          1
+  dma_buf_end_cpu_access                                            1
+  stack x17 arch_sync_dma_for_cpu: arch_sync_dma_for_cpu <- __dma_sync_sg_for_cpu <- system_heap_dma_buf_begin_cpu_access <- dma_buf_begin_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+  stack x17 arch_sync_dma_for_device: arch_sync_dma_for_device <- __dma_sync_sg_for_device <- system_heap_dma_buf_end_cpu_access <- dma_buf_end_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+
+[heap gpu2cpu sync=on cpu-done]  windows 1, total 0.52 ms  (rest of the cell: check + next setup)
+  arch_sync_dma_for_cpu(TO_DEVICE -> dcache_none)                   1  bytes 278528
+  arch_sync_dma_for_device(TO_DEVICE -> dcache_clean)               1  bytes 278528
+  dma_buf_begin_cpu_access                                          1
+  dma_buf_end_cpu_access                                            1
+  drm_gem_shmem_fault                                               1
+  drm_gem_shmem_mmap                                                1
+  v3d_cache_clean_job_run[kworker/u16:0]                            1
+  v3d_clean_caches[kworker/u16:0]                                   1
+  v3d_csd_job_run[kworker/u16:0]                                    1
+  v3d_invalidate_caches[kworker/u16:0]                              1
+  v3d_submit_csd_ioctl                                              1
+  v3d_wait_bo_ioctl                                                 2
+  vmf_insert_pfn_prot                                               1
+  stack x1 arch_sync_dma_for_cpu: arch_sync_dma_for_cpu <- __dma_sync_sg_for_cpu <- cma_heap_dma_buf_begin_cpu_access <- dma_buf_begin_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+  stack x1 arch_sync_dma_for_device: arch_sync_dma_for_device <- __dma_sync_sg_for_device <- cma_heap_dma_buf_end_cpu_access <- dma_buf_end_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+
+[cma cpu2gpu_plain sync=off cpu-write-B]  windows 1, total 0.06 ms
+  (no traced event)
+
+[cma cpu2gpu_plain sync=off gpu-copy]  windows 1, total 0.14 ms
+  drm_gem_shmem_fault                                               1
+  drm_gem_shmem_mmap                                                1
+  v3d_cache_clean_job_run[kworker/u16:0]                            1
+  v3d_clean_caches[kworker/u16:0]                                   1
+  v3d_csd_job_run[kworker/u16:0]                                    1
+  v3d_invalidate_caches[kworker/u16:0]                              1
+  v3d_submit_csd_ioctl                                              1
+  v3d_wait_bo_ioctl                                                 2
+  vmf_insert_pfn_prot                                               1
+
+[cma cpu2gpu_plain sync=off gpu-done]  windows 1, total 0.76 ms  (rest of the cell: CPU check + next cell setup)
+  arch_sync_dma_for_cpu(TO_DEVICE -> dcache_none)                   2  bytes 557056
+  arch_sync_dma_for_device(TO_DEVICE -> dcache_clean)               2  bytes 557056
+  dma_buf_begin_cpu_access                                          2
+  dma_buf_end_cpu_access                                            2
+  drm_gem_shmem_fault                                               1
+  drm_gem_shmem_mmap                                                1
+  v3d_cache_clean_job_run[kworker/u16:3]                            1
+  v3d_clean_caches[kworker/u16:3]                                   1
+  v3d_csd_job_run[kworker/u16:0]                                    1
+  v3d_invalidate_caches[kworker/u16:0]                              1
+  v3d_submit_csd_ioctl                                              1
+  v3d_wait_bo_ioctl                                                 2
+  vmf_insert_pfn_prot                                               1
+  stack x2 arch_sync_dma_for_cpu: arch_sync_dma_for_cpu <- __dma_sync_sg_for_cpu <- cma_heap_dma_buf_begin_cpu_access <- dma_buf_begin_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+  stack x2 arch_sync_dma_for_device: arch_sync_dma_for_device <- __dma_sync_sg_for_device <- cma_heap_dma_buf_end_cpu_access <- dma_buf_end_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+
+[cma cpu2gpu_plain sync=on cpu-write-B]  windows 1, total 0.07 ms
+  arch_sync_dma_for_cpu(TO_DEVICE -> dcache_none)                   1  bytes 278528
+  arch_sync_dma_for_device(TO_DEVICE -> dcache_clean)               1  bytes 278528
+  dma_buf_begin_cpu_access                                          1
+  dma_buf_end_cpu_access                                            1
+  stack x1 arch_sync_dma_for_cpu: arch_sync_dma_for_cpu <- __dma_sync_sg_for_cpu <- cma_heap_dma_buf_begin_cpu_access <- dma_buf_begin_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+  stack x1 arch_sync_dma_for_device: arch_sync_dma_for_device <- __dma_sync_sg_for_device <- cma_heap_dma_buf_end_cpu_access <- dma_buf_end_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+
+[cma cpu2gpu_plain sync=on gpu-copy]  windows 1, total 0.13 ms
+  drm_gem_shmem_fault                                               1
+  drm_gem_shmem_mmap                                                1
+  v3d_cache_clean_job_run[kworker/u16:3]                            1
+  v3d_clean_caches[kworker/u16:3]                                   1
+  v3d_csd_job_run[kworker/u16:3]                                    1
+  v3d_invalidate_caches[kworker/u16:3]                              1
+  v3d_submit_csd_ioctl                                              1
+  v3d_wait_bo_ioctl                                                 2
+  vmf_insert_pfn_prot                                               1
+
+[cma cpu2gpu_plain sync=on gpu-done]  windows 1, total 0.82 ms  (rest of the cell: CPU check + next cell setup)
+  arch_sync_dma_for_cpu(FROM_DEVICE -> dcache_inval)                1  bytes 278528
+  arch_sync_dma_for_cpu(TO_DEVICE -> dcache_none)                   2  bytes 557056
+  arch_sync_dma_for_device(FROM_DEVICE -> dcache_inval)             1  bytes 278528
+  arch_sync_dma_for_device(TO_DEVICE -> dcache_clean)               2  bytes 557056
+  dma_buf_begin_cpu_access                                          3
+  dma_buf_end_cpu_access                                            3
+  drm_gem_shmem_fault                                               1
+  drm_gem_shmem_mmap                                                1
+  v3d_cache_clean_job_run[kworker/u16:0]                            1
+  v3d_clean_caches[kworker/u16:0]                                   1
+  v3d_csd_job_run[kworker/u16:3]                                    1
+  v3d_invalidate_caches[kworker/u16:3]                              1
+  v3d_submit_csd_ioctl                                              1
+  v3d_wait_bo_ioctl                                                 2
+  vmf_insert_pfn_prot                                               1
+  stack x3 arch_sync_dma_for_cpu: arch_sync_dma_for_cpu <- __dma_sync_sg_for_cpu <- cma_heap_dma_buf_begin_cpu_access <- dma_buf_begin_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+  stack x3 arch_sync_dma_for_device: arch_sync_dma_for_device <- __dma_sync_sg_for_device <- cma_heap_dma_buf_end_cpu_access <- dma_buf_end_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+
+[cma cpu2gpu_resident sync=off cpu-write-B]  windows 1, total 0.03 ms
+  (no traced event)
+
+[cma cpu2gpu_resident sync=off gpu-copy]  windows 1, total 0.13 ms
+  drm_gem_shmem_fault                                               1
+  drm_gem_shmem_mmap                                                1
+  v3d_cache_clean_job_run[kworker/u16:0]                            1
+  v3d_clean_caches[kworker/u16:0]                                   1
+  v3d_csd_job_run[kworker/u16:0]                                    1
+  v3d_invalidate_caches[kworker/u16:0]                              1
+  v3d_submit_csd_ioctl                                              1
+  v3d_wait_bo_ioctl                                                 2
+  vmf_insert_pfn_prot                                               1
+
+[cma cpu2gpu_resident sync=off gpu-done]  windows 1, total 0.80 ms  (rest of the cell: CPU check + next cell setup)
+  arch_sync_dma_for_cpu(FROM_DEVICE -> dcache_inval)                1  bytes 278528
+  arch_sync_dma_for_cpu(TO_DEVICE -> dcache_none)                   2  bytes 557056
+  arch_sync_dma_for_device(FROM_DEVICE -> dcache_inval)             1  bytes 278528
+  arch_sync_dma_for_device(TO_DEVICE -> dcache_clean)               2  bytes 557056
+  dma_buf_begin_cpu_access                                          3
+  dma_buf_end_cpu_access                                            3
+  drm_gem_shmem_fault                                               1
+  drm_gem_shmem_mmap                                                1
+  v3d_cache_clean_job_run[kworker/u16:3]                            1
+  v3d_clean_caches[kworker/u16:3]                                   1
+  v3d_csd_job_run[kworker/u16:0]                                    1
+  v3d_invalidate_caches[kworker/u16:0]                              1
+  v3d_submit_csd_ioctl                                              1
+  v3d_wait_bo_ioctl                                                 2
+  vmf_insert_pfn_prot                                               1
+  stack x3 arch_sync_dma_for_cpu: arch_sync_dma_for_cpu <- __dma_sync_sg_for_cpu <- cma_heap_dma_buf_begin_cpu_access <- dma_buf_begin_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+  stack x3 arch_sync_dma_for_device: arch_sync_dma_for_device <- __dma_sync_sg_for_device <- cma_heap_dma_buf_end_cpu_access <- dma_buf_end_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+
+[cma cpu2gpu_resident sync=on cpu-write-B]  windows 1, total 0.06 ms
+  arch_sync_dma_for_cpu(TO_DEVICE -> dcache_none)                   1  bytes 278528
+  arch_sync_dma_for_device(TO_DEVICE -> dcache_clean)               1  bytes 278528
+  dma_buf_begin_cpu_access                                          1
+  dma_buf_end_cpu_access                                            1
+  stack x1 arch_sync_dma_for_cpu: arch_sync_dma_for_cpu <- __dma_sync_sg_for_cpu <- cma_heap_dma_buf_begin_cpu_access <- dma_buf_begin_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+  stack x1 arch_sync_dma_for_device: arch_sync_dma_for_device <- __dma_sync_sg_for_device <- cma_heap_dma_buf_end_cpu_access <- dma_buf_end_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+
+[cma cpu2gpu_resident sync=on gpu-copy]  windows 1, total 0.14 ms
+  drm_gem_shmem_fault                                               1
+  drm_gem_shmem_mmap                                                1
+  v3d_cache_clean_job_run[kworker/u16:1]                            1
+  v3d_clean_caches[kworker/u16:1]                                   1
+  v3d_csd_job_run[kworker/u16:3]                                    1
+  v3d_invalidate_caches[kworker/u16:3]                              1
+  v3d_submit_csd_ioctl                                              1
+  v3d_wait_bo_ioctl                                                 2
+  vmf_insert_pfn_prot                                               1
+
+[cma cpu2gpu_resident sync=on gpu-done]  windows 1, total 0.52 ms  (rest of the cell: CPU check + next cell setup)
+  arch_sync_dma_for_cpu(FROM_DEVICE -> dcache_inval)                2  bytes 557056
+  arch_sync_dma_for_cpu(TO_DEVICE -> dcache_none)                   2  bytes 557056
+  arch_sync_dma_for_device(FROM_DEVICE -> dcache_inval)             2  bytes 557056
+  arch_sync_dma_for_device(TO_DEVICE -> dcache_clean)               2  bytes 557056
+  dma_buf_begin_cpu_access                                          4
+  dma_buf_end_cpu_access                                            4
+  stack x4 arch_sync_dma_for_cpu: arch_sync_dma_for_cpu <- __dma_sync_sg_for_cpu <- cma_heap_dma_buf_begin_cpu_access <- dma_buf_begin_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+  stack x4 arch_sync_dma_for_device: arch_sync_dma_for_device <- __dma_sync_sg_for_device <- cma_heap_dma_buf_end_cpu_access <- dma_buf_end_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+
+[cma gpu2cpu sync=off gpu-write-B]  windows 1, total 0.11 ms
+  drm_gem_shmem_fault                                               1
+  drm_gem_shmem_mmap                                                1
+  v3d_cache_clean_job_run[kworker/u16:3]                            1
+  v3d_clean_caches[kworker/u16:3]                                   1
+  v3d_csd_job_run[kworker/u16:1]                                    1
+  v3d_invalidate_caches[kworker/u16:1]                              1
+  v3d_submit_csd_ioctl                                              1
+  v3d_wait_bo_ioctl                                                 2
+  vmf_insert_pfn_prot                                               1
+
+[cma gpu2cpu sync=off gpu-done]  windows 1, total 0.01 ms  (rest of the cell: CPU check + next cell setup)
+  (no traced event)
+
+[cma gpu2cpu sync=off cpu-read]  windows 1, total 0.02 ms
+  (no traced event)
+
+[cma gpu2cpu sync=off cpu-done]  windows 1, total 0.31 ms  (rest of the cell: check + next setup)
+  arch_sync_dma_for_cpu(FROM_DEVICE -> dcache_inval)                2  bytes 557056
+  arch_sync_dma_for_cpu(TO_DEVICE -> dcache_none)                   1  bytes 278528
+  arch_sync_dma_for_device(FROM_DEVICE -> dcache_inval)             2  bytes 557056
+  arch_sync_dma_for_device(TO_DEVICE -> dcache_clean)               1  bytes 278528
+  dma_buf_begin_cpu_access                                          3
+  dma_buf_end_cpu_access                                            3
+  stack x3 arch_sync_dma_for_cpu: arch_sync_dma_for_cpu <- __dma_sync_sg_for_cpu <- cma_heap_dma_buf_begin_cpu_access <- dma_buf_begin_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+  stack x3 arch_sync_dma_for_device: arch_sync_dma_for_device <- __dma_sync_sg_for_device <- cma_heap_dma_buf_end_cpu_access <- dma_buf_end_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+
+[cma gpu2cpu sync=on gpu-write-B]  windows 1, total 0.12 ms
+  drm_gem_shmem_fault                                               1
+  drm_gem_shmem_mmap                                                1
+  v3d_cache_clean_job_run[kworker/u16:0]                            1
+  v3d_clean_caches[kworker/u16:0]                                   1
+  v3d_csd_job_run[kworker/u16:3]                                    1
+  v3d_invalidate_caches[kworker/u16:3]                              1
+  v3d_submit_csd_ioctl                                              1
+  v3d_wait_bo_ioctl                                                 2
+  vmf_insert_pfn_prot                                               1
+
+[cma gpu2cpu sync=on gpu-done]  windows 1, total 0.01 ms  (rest of the cell: CPU check + next cell setup)
+  (no traced event)
+
+[cma gpu2cpu sync=on cpu-read]  windows 1, total 0.05 ms
+  arch_sync_dma_for_cpu(FROM_DEVICE -> dcache_inval)                1  bytes 278528
+  arch_sync_dma_for_device(FROM_DEVICE -> dcache_inval)             1  bytes 278528
+  dma_buf_begin_cpu_access                                          1
+  dma_buf_end_cpu_access                                            1
+  stack x1 arch_sync_dma_for_cpu: arch_sync_dma_for_cpu <- __dma_sync_sg_for_cpu <- cma_heap_dma_buf_begin_cpu_access <- dma_buf_begin_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+  stack x1 arch_sync_dma_for_device: arch_sync_dma_for_device <- __dma_sync_sg_for_device <- cma_heap_dma_buf_end_cpu_access <- dma_buf_end_cpu_access <- dma_buf_ioctl <- __arm64_sys_ioctl <- invoke_syscall <- el0_svc_common.constprop.0
+
+[cma gpu2cpu sync=on cpu-done]  windows 1, total 0.00 ms  (rest of the cell: check + next setup)
+  arch_sync_dma_for_cpu(BIDIRECTIONAL -> dcache_inval)             50  bytes 1081344
+  stack x32 arch_sync_dma_for_cpu: arch_sync_dma_for_cpu <- dma_unmap_sg_attrs <- drm_gem_shmem_free <- v3d_free_object <- drm_gem_object_free <- drm_gem_object_handle_put_unlocked <- drm_gem_object_release_handle <- drm_gem_handle_delete
+  stack x17 arch_sync_dma_for_cpu: arch_sync_dma_for_cpu <- dma_unmap_sg_attrs <- system_heap_unmap_dma_buf <- dma_buf_unmap_attachment <- dma_buf_unmap_attachment_unlocked <- drm_prime_gem_destroy <- drm_gem_shmem_free <- v3d_free_object
+  stack x1 arch_sync_dma_for_cpu: arch_sync_dma_for_cpu <- dma_unmap_sg_attrs <- cma_heap_unmap_dma_buf <- dma_buf_unmap_attachment <- dma_buf_unmap_attachment_unlocked <- drm_prime_gem_destroy <- drm_gem_shmem_free <- v3d_free_object

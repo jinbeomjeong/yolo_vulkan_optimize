@@ -1,0 +1,29 @@
+yvo_postproc_probe --probe memasym   (CPU<->GPU memory access asymmetry)
+[memasym] parts cpuwrite  rounds 3 x repeats 10  cpu pin 3 (running on cpu 3)  pid 37584
+[env] SoC temp=69.2'C  throttled throttled=0x80000  v3d frequency(0)=500004288  arm frequency(0)=1500016128  governor(cpu0) ondemand
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[vk] device=V3D 7.1.10.2  timestampPeriod 1.000 ns  validBits 64  memoryType0 flags 0x7
+[part] mono=50277.083186 begin cpuwrite
+
+== [cpuwrite] CPU write of 1228800 B; timed interval ends with dsb sy; heap includes START|WRITE + END|WRITE ==
+[alloc] heap /dev/dma_heap/system  1228800 B requested, dmabuf 1245184 B, range 1244928, ptr 0x7fff2fa30000
+[env] SoC temp=70.3'C  throttled throttled=0x80000  v3d frequency(0)=1150014720  arm frequency(0)=2400017408  governor(cpu0) ondemand
+alloc   pattern       median_ms    p90_ms    min_ms  GB/s(median)  sync_ms(median)    n
+v3d     memset_val       0.098     0.115     0.097        12.573            0.000   30
+v3d     memset_zero      0.098     0.112     0.094        12.559            0.000   30
+v3d     memcpy           0.203     0.253     0.190         6.049            0.000   30
+v3d     seq_byte         0.512     0.517     0.512         2.399            0.000   30
+heap    memset_val       0.157     0.171     0.150         7.838            0.022   30
+heap    memset_zero      0.157     0.170     0.153         7.812            0.022   30
+heap    memcpy           0.238     0.276     0.222         5.172            0.022   30
+heap    seq_byte         0.534     0.540     0.533         2.302            0.022   30
+malloc  memset_val       0.119     0.128     0.112        10.288            0.000   30
+malloc  memset_zero      0.122     0.135     0.114        10.090            0.000   30
+malloc  memcpy           0.206     0.240     0.187         5.951            0.000   30
+malloc  seq_byte         0.512     0.518     0.512         2.398            0.000   30
+note: malloc is an optimistic reference (the destination stays in L2/L3 between samples); heap rows include the END|WRITE cache clean to memory, v3d rows only drain the write-combine buffer (dsb).
+[check] cpuwrite read-back checksum: PASS (0 mismatching samples)
+[part] mono=50277.648814 end
+
+[validation] errors=0 warnings=1
+[RESULT] memasym PASS
