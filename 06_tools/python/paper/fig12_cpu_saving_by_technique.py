@@ -3,7 +3,7 @@
 Definition: each bar gathers the CPU saving of one technique from the closest available measurement. Only rows 8, 10 and 11
 are the difference from removing that one technique in the same session.
 The percent label is the reduction, saving / (CPU of the configuration without the technique). It is drawn only on rows 1, 7,
-8 and 10, which have that configuration measured. Rows 2-6 and 9 do not, row 11 is negative, and the residual is not a technique.
+8 and 10, which have that configuration measured. Rows 2-6 and 9 do not, and row 11 is negative.
 The values come from different experiments and conditions (stated per row in the caption), and some ranges overlap (2 and 3,
 10 and 11), so they must not be added; no total is drawn. The letters A-D below and in the report lines are for traceability
 only and are not drawn.
@@ -13,9 +13,8 @@ Sources (under 07_results), all medians of 3 runs. Rows 1, 2, 7, 8, 9, 10 and 11
      in, because it is part of what removing the HW decoder costs. Percent base: sw_auto.
   2  decode_benchmark/runs/ffmpeg_outfmt (B): user+sys per frame of the median-fps run (summary.md's definition) of drm_S1
      (CPU download to yuv420p) minus outfmt_drmprime_S1 (DRM_PRIME kept). This download includes the SAND->planar copy, so it overlaps row 3.
-  3-6, residual  preproc_cpu_vs_gpu/runs/stage_split (C): cpuref_t1 flatten; cpuref_split_t1 color, resize, pad;
-     residual = -parts_minus_full of evidence/medians.txt (median of per-run differences, partly explained: the extra cost of
-     the single-loop implementation, see the residual_cause run).
+  3-6  preproc_cpu_vs_gpu/runs/stage_split (C): cpuref_t1 flatten; cpuref_split_t1 color, resize, pad. These split-loop
+     values do not add up to the single-loop reference (see the stage_split and residual_cause runs); not drawn.
   7  technique_ablation (D): layout_nhwc - post_host. GPU post-processing is NHCW-only, so this is the difference under
      host post-processing, not a single removal from base. Percent base: layout_nhwc.
   8  technique_ablation (D): input_copy - base, the real GPU->NPU copy path. Percent base: input_copy.
@@ -60,7 +59,7 @@ AXES_LEFT, AXES_RIGHT, AXES_BOTTOM, AXES_TOP = 0.37, 0.962, 0.125, 0.94
 
 @dataclass(frozen=True)
 class Row:
-    """One bar. number is empty for the residual, which is not a technique. percent_base is the measured CPU without it."""
+    """One bar. percent_base is the measured CPU without the technique."""
     section: str
     number: str
     name: str
@@ -212,7 +211,6 @@ def build_rows(decoder: dict[str, float], ffmpeg: dict[str, float], stages: dict
         Row("전처리", "4", "YUV→RGB", stages["color"], gpu, "C"),
         Row("전처리", "5", "1080p→640×360 리사이즈", stages["resize"], gpu, "C"),
         Row("전처리", "6", "패딩", stages["pad"], gpu, "C"),
-        Row("전처리", "", "단일 루프 구현의 추가 비용 (일부 규명)", stages["residual"], "white", "C", hatch="////"),
         Row("NPU 입출력", "7", "NHWC→NHCW (호스트 후처리 조건)", layout_saving(cpu), READ_AVOID_COLOR, "D", cpu["layout_nhwc"]),
         Row("NPU 입출력", "8", "dma-buf (GPU→NPU)", gpu_to_npu_saving(cpu), COPY_COLOR, "D", cpu["input_copy"]),
         Row("NPU 입출력", "9", "dma-buf (NPU→GPU, 합성)", stages["copy_saving"], COPY_COLOR, "C"),
@@ -247,7 +245,6 @@ def _legend(ax) -> None:
         Patch(fc=ps.DEVICE_COLORS["gpu"], ec=ps.EDGE_COLOR, lw=0.6, label="GPU 처리"),
         Patch(fc=READ_AVOID_COLOR, ec=ps.EDGE_COLOR, lw=0.6, label="GPU 메모리 읽기 회피"),
         Patch(fc=COPY_COLOR, ec=ps.EDGE_COLOR, lw=0.6, label="복사 제거 (dma-buf)"),
-        Patch(fc="white", ec=ps.EDGE_COLOR, lw=0.6, hatch="////", label="기법이 아님: 단일 루프 구현의 추가 비용"),
     ]
     # Vertically centered on the preprocessing section, whose short bars leave the right side free.
     # The opaque, borderless frame keeps the vertical grid lines out of the legend text.
