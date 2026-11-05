@@ -63,6 +63,7 @@ configs=(
   vcgencmd measure_clock arm 2>/dev/null || true
   vcgencmd measure_clock v3d 2>/dev/null || true
   pcie_link
+  cpu_governor
   echo "libpisp: $(pkg-config --modversion libpisp 2>/dev/null || echo NA)"
   echo "video: $VIDEO frames: ${FRAMES:-all} runs: $RUNS warmup: $WARMUP slots: $SLOTS"
   echo "note: this measurement does not use the NPU (preprocess stage alone). The hailort warning column is always 0."

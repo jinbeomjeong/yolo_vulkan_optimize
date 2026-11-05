@@ -87,6 +87,23 @@ Hailo 칩 온도는 `hailo_platform`으로 읽는다(`06_tools/bench/lib/common.
   print(f'{max(t.ts0_temperature,t.ts1_temperature):.1f}'); d.release()"
 ```
 
+**CPU 거버너** — 거버너가 다르면 CPU ms와 감소율이 함께 달라진다. 같은 날 같은 코드에서 `ondemand` 회차는 3.189 → 2.505 ms/f(−21%),
+`performance` 고정 + `lxtask` 종료 회차는 2.444 → 2.044 ms/f(−16.4%)였다([`v3d1150_quiet_perfgov_20261016`](../../../07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md)).
+
+- **모든 측정에서 거버너를 기록한다.** `06_tools/bench/`의 12개는 환경 스냅샷에 자동으로 남긴다(`common.sh`의 `cpu_governor`. `decode_bench.sh`는 자체 형식 `governor: …`). 다른 드라이버로 잴 때는 직접 `env_bench.txt`에 적는다.
+- **CPU ms를 다른 회차·헤드라인과 비교할 측정은 `performance`로 고정한다.** 측정 동안만 바꾸고 `trap`으로 원복한다(측정·진단용 sudo라 사전 승인이 필요 없고, 명령·목적·원복 여부를 보고한다. 실행 형식은 `CLAUDE.md` §사용자 확인).
+- FPS·GPU ms만 보는 측정은 고정하지 않아도 되지만 기록은 한다. 이 경우의 거버너 영향은 정량화하지 않았다.
+- **거버너가 다른 회차의 CPU ms는 직접 비교하지 않는다.**
+
+```bash
+gov=/sys/devices/system/cpu/cpufreq/policy0/scaling_governor   # policy0 = cpu0~3
+old=$(cat "$gov")
+trap 'sudo sh -c "echo $old > $gov"' EXIT
+sudo sh -c "echo performance > $gov"
+```
+
+`06_tools/probes/preproc_cmp_run.sh`는 거버너를 바꾸지 않는다. 위처럼 감싼 뒤 `EXPECT_GOVERNOR=performance`를 주면 값이 다를 때 측정을 거부한다.
+
 이 스냅샷을 `07_results/<실험>/env_bench.txt`에 남긴다.
 
 ## 2. 냉각 규칙
@@ -171,7 +188,7 @@ csv.writer(f, lineterminator="\n")
 
 순서: **측정 조건 → 표 → 결론 → 주의·남은 일**
 
-- 조건: 날짜, 하드웨어, 링크 속도, 모델, 입력 영상, HailoRT/드라이버 버전, 반복 횟수
+- 조건: 날짜, 하드웨어, 링크 속도, CPU 거버너, 모델, 입력 영상, HailoRT/드라이버 버전, 반복 횟수
 - 표: 설정별 중앙값. 단위를 열 이름에 넣는다(`fps`, `cpu_ms_per_frame`, `e2e_ms_mean`)
 - 결론: 병목이 어디인지, 무엇이 한계인지를 문장으로
 - 주의: 신뢰 불가 값, 온도 상황, 측정하지 않은 설정

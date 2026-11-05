@@ -92,6 +92,16 @@ pcie_link() {
   echo "pcie: read failed (vendor 0x1e60 device not found in /sys/bus/pci/devices)"
 }
 
+# ── CPU governor ───────────────────────────────────────────────────────────────
+# cpu_governor: one "cpufreq policyN: governor <name> cur_khz <value>" line per policy ("?" when unreadable).
+# CPU ms depends on the governor, so env snapshots record it. Same format as display_bench.sh's inline loop.
+cpu_governor() {
+  local g
+  for g in /sys/devices/system/cpu/cpufreq/policy*; do
+    echo "cpufreq $(basename "$g"): governor $(cat "$g/scaling_governor" 2>/dev/null || echo '?') cur_khz $(cat "$g/scaling_cur_freq" 2>/dev/null || echo '?')"
+  done
+}
+
 # ── Package versions ───────────────────────────────────────────────────────────
 # pkg_versions <pkg>…: prints one "<pkg>: <version>" line per package ("?" when dpkg-query fails).
 # Extracted from the loop that was inline in dec_threads_bench.sh (2026-10-08) because three display benches need it.

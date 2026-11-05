@@ -67,6 +67,7 @@ configs=(
   vcgencmd get_throttled 2>/dev/null || true
   vcgencmd measure_clock arm 2>/dev/null || true
   pcie_link
+  cpu_governor
   echo "video: $VIDEO frames: ${FRAMES:-all} runs: $RUNS"
 } > "$OUT_DIR/env_bench.txt"
 

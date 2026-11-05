@@ -63,6 +63,7 @@ SRC_BEFORE=$(src_snapshot)
   echo "throttled: $(throttled)  (0x80000 = past-event bit)"
   vcgencmd measure_clock arm 2>/dev/null || true
   pcie_link
+  cpu_governor
   echo "hef: $HEF"
   echo "libpisp: $(pkg-config --modversion libpisp 2>/dev/null || echo NA)"
   echo "video: $VIDEO frames: ${FRAMES:-all} runs: $RUNS"

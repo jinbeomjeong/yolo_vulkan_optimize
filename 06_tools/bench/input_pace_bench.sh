@@ -155,6 +155,7 @@ mkdir -p "$OUT_DIR/raw"
   vcgencmd get_throttled 2>/dev/null || true
   vcgencmd measure_clock arm 2>/dev/null || true
   pcie_link
+  cpu_governor
   pkg_versions libavcodec61 hailort mesa-vulkan-drivers
   echo "bin: $BIN"
   echo "bin md5: $(md5sum "$BIN" | cut -d' ' -f1)"

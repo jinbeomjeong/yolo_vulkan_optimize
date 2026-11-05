@@ -109,6 +109,7 @@ configs_grid=(
   vcgencmd get_throttled 2>/dev/null || true
   vcgencmd measure_clock arm 2>/dev/null || true
   pcie_link
+  cpu_governor
   pkg_versions "${PKGS_DISPLAY_BENCH[@]}"   # labwc/libwlroots matter: the wayland-planes COLOR_RANGE inversion is a compositor behavior
   echo "bin: $BIN"
   echo "bin md5: $(md5sum "$BIN" | cut -d' ' -f1)"

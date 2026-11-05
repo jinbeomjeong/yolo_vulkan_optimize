@@ -33,6 +33,7 @@ configs=(
   vcgencmd get_throttled 2>/dev/null || true
   vcgencmd measure_clock arm 2>/dev/null || true
   pcie_link
+  cpu_governor
   echo "bin: $BIN"; echo "bin md5: $(md5sum "$BIN" | cut -d' ' -f1)"; echo "bin mtime: $(stat -c %y "$BIN")"
   hailortcli fw-control identify 2>/dev/null | grep -E 'Firmware Version' || true
   echo "video: $VIDEO frames: $FRAMES runs: $RUNS"

@@ -195,6 +195,7 @@ env_snapshot() {
   vcgencmd get_config v3d_freq 2>/dev/null || true
   echo "bootloader: $(vcgencmd bootloader_version 2>/dev/null | head -1)"
   pcie_link
+  cpu_governor
   pkg_versions "${PKGS_DISPLAY_BENCH[@]}"
   env_git_head
   env_bin "$BIN"
