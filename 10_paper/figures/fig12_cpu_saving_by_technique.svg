@@ -408,7 +408,7 @@ z
 " style="fill: #b39ddb; stroke: #333333; stroke-width: 0.6; stroke-linejoin: miter"/>
     </g>
     <g id="text_49">
-     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="350.372598" y="76.997559" transform="rotate(-0 350.372598 76.997559)">디코더로 이관</text>
+     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="350.372598" y="76.997559" transform="rotate(-0 350.372598 76.997559)">하드웨어 디코더 처리</text>
     </g>
     <g id="patch_18">
      <path d="M 327.972598 89.437559 
@@ -419,7 +419,7 @@ z
 " style="fill: #99cc00; stroke: #333333; stroke-width: 0.6; stroke-linejoin: miter"/>
     </g>
     <g id="text_50">
-     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="350.372598" y="89.437559" transform="rotate(-0 350.372598 89.437559)">GPU로 이관</text>
+     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="350.372598" y="89.437559" transform="rotate(-0 350.372598 89.437559)">GPU 처리</text>
     </g>
     <g id="patch_19">
      <path d="M 327.972598 101.877559 

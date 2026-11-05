@@ -243,8 +243,8 @@ def _draw_sections(fig, ax, rows: list[Row], to_fig_data) -> None:
 
 def _legend(ax) -> None:
     handles = [
-        Patch(fc=ps.DEVICE_COLORS["decoder"], ec=ps.EDGE_COLOR, lw=0.6, label="디코더로 이관"),
-        Patch(fc=ps.DEVICE_COLORS["gpu"], ec=ps.EDGE_COLOR, lw=0.6, label="GPU로 이관"),
+        Patch(fc=ps.DEVICE_COLORS["decoder"], ec=ps.EDGE_COLOR, lw=0.6, label="하드웨어 디코더 처리"),
+        Patch(fc=ps.DEVICE_COLORS["gpu"], ec=ps.EDGE_COLOR, lw=0.6, label="GPU 처리"),
         Patch(fc=COPY_COLOR, ec=ps.EDGE_COLOR, lw=0.6, label="복사 제거 (dma-buf)"),
         Patch(fc="white", ec=ps.EDGE_COLOR, lw=0.6, hatch="////", label="기법이 아님: 한 루프의 코드 형태 비용"),
     ]
