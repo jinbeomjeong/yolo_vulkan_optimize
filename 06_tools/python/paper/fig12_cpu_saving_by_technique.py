@@ -1,7 +1,7 @@
 """Figure 12: CPU removed per frame by each offload technique, in pipeline order. One linear horizontal bar panel.
 
 The values come from different experiments and conditions (letters A-F), so they must not be added; no total is drawn.
-Sources (under 07_results), all medians of 3 runs. "Derived" values (dagger) are differences of medians:
+Sources (under 07_results), all medians of 3 runs. Rows 1, 2, 7, 8 and 9 are differences of medians (stated in the caption):
   1  decode_benchmark/runs/pipeline_sw_hw (A): sw_auto app CPU - sw_copy_ms - hw_t1 app CPU, app CPU = sum of the
      "thread cpu" ms/arrived lines of raw/<setting>_run<N>/stdout.log (same reader as figure 11).
   2  decode_benchmark/runs/ffmpeg_outfmt (B): user+sys per frame of the median-fps run (summary.md's definition) of drm_S1
@@ -57,7 +57,6 @@ class Row:
     value: float
     color: str
     condition: str
-    derived: bool = False
     hatch: str | None = None
 
 
@@ -182,24 +181,23 @@ def build_rows(decoder: dict[str, float], ffmpeg: dict[str, float], stages: dict
     """Rows from top to bottom in pipeline order."""
     gpu, moved = ps.DEVICE_COLORS["gpu"], ps.DEVICE_COLORS["decoder"]
     return [
-        Row("디코드", "1", "하드웨어 디코더", decoder["saving"], moved, "A", derived=True),
-        Row("디코드", "2", "dma-buf (디코더→GPU)", ffmpeg["saving"], COPY_COLOR, "B", derived=True),
+        Row("디코드", "1", "하드웨어 디코더", decoder["saving"], moved, "A"),
+        Row("디코드", "2", "dma-buf (디코더→GPU)", ffmpeg["saving"], COPY_COLOR, "B"),
         Row("전처리", "3", "SAND→선형", stages["flatten"], gpu, "C"),
         Row("전처리", "4", "YUV→RGB", stages["color"], gpu, "C"),
         Row("전처리", "", "단계 혼합 잔차 (원인 미확인)", stages["residual"], "white", "C", hatch="////"),
         Row("전처리", "5", "1080p→640×360 리사이즈", stages["resize"], gpu, "C"),
         Row("전처리", "6", "패딩", stages["pad"], gpu, "C"),
-        Row("NPU 입출력", "7", "NHWC→NHCW", layout["saving"], gpu, "D", derived=True),
-        Row("NPU 입출력", "8", "dma-buf (NPU→GPU)", stages["copy_saving"], COPY_COLOR, "C", derived=True),
-        Row("후처리", "9", "GPU 박스 파싱", post["parsing"], gpu, "E", derived=True),
+        Row("NPU 입출력", "7", "NHWC→NHCW", layout["saving"], gpu, "D"),
+        Row("NPU 입출력", "8", "dma-buf (NPU→GPU)", stages["copy_saving"], COPY_COLOR, "C"),
+        Row("후처리", "9", "GPU 박스 파싱", post["parsing"], gpu, "E"),
         Row("후처리", "10", "GPU NMS", post["nms"], gpu, "F"),
     ]
 
 
 def _value_label(row: Row) -> str:
     # Below the 2-decimal resolution the label keeps one significant digit instead of printing 0.00.
-    text = f"약 {ps.fmt_half_up(row.value, 3)}" if row.value < 0.005 else ps.fmt_half_up(row.value, 2)
-    return text + ("†" if row.derived else "")
+    return f"약 {ps.fmt_half_up(row.value, 3)}" if row.value < 0.005 else ps.fmt_half_up(row.value, 2)
 
 
 def _draw_sections(fig, ax, rows: list[Row], to_fig_data) -> None:
@@ -220,7 +218,6 @@ def _legend(ax) -> None:
         Patch(fc=ps.DEVICE_COLORS["gpu"], ec=ps.EDGE_COLOR, lw=0.6, label="GPU로 옮김"),
         Patch(fc=COPY_COLOR, ec=ps.EDGE_COLOR, lw=0.6, label="복사 제거 (dma-buf)"),
         Patch(fc="white", ec=ps.EDGE_COLOR, lw=0.6, hatch="////", label="기법이 아님: 단계 혼합 잔차"),
-        Line2D([], [], ls="none", marker=r"$\dagger$", ms=6, color=ps.EDGE_COLOR, label="차감값"),
         Line2D([], [], ls="none", marker="o", ms=5, mfc="none", mec=ps.EDGE_COLOR, mew=0.9,
                label="CPU 기준 구현의 전치 (캐시 메모리, 코드 다름)"),
     ]

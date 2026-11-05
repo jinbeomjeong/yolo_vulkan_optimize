@@ -251,7 +251,7 @@ L 477.212598 223.228346
 " style="fill: none; stroke: #333333; stroke-width: 0.6; stroke-linejoin: miter; stroke-linecap: square"/>
    </g>
    <g id="text_9">
-    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="441.006875" y="27.138053" transform="rotate(-0 441.006875 27.138053)">28.23†</text>
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="441.006875" y="27.138053" transform="rotate(-0 441.006875 27.138053)">28.23</text>
    </g>
    <g id="text_10">
     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: end" x="49.606299" y="27.138053" transform="rotate(-0 49.606299 27.138053)">1</text>
@@ -263,7 +263,7 @@ L 477.212598 223.228346
     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle; fill: #7f7f7f" x="486.637795" y="27.138053" transform="rotate(-0 486.637795 27.138053)">A</text>
    </g>
    <g id="text_13">
-    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="174.142245" y="46.039986" transform="rotate(-0 174.142245 46.039986)">1.47†</text>
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="174.142245" y="46.039986" transform="rotate(-0 174.142245 46.039986)">1.47</text>
    </g>
    <g id="text_14">
     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: end" x="49.606299" y="46.039986" transform="rotate(-0 49.606299 46.039986)">2</text>
@@ -332,7 +332,7 @@ L 477.212598 223.228346
     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle; fill: #7f7f7f" x="486.637795" y="140.549649" transform="rotate(-0 486.637795 140.549649)">C</text>
    </g>
    <g id="text_36">
-    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="300.028705" y="159.451582" transform="rotate(-0 300.028705 159.451582)">14.10†</text>
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="300.028705" y="159.451582" transform="rotate(-0 300.028705 159.451582)">14.10</text>
    </g>
    <g id="text_37">
     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: end" x="49.606299" y="159.451582" transform="rotate(-0 49.606299 159.451582)">7</text>
@@ -344,7 +344,7 @@ L 477.212598 223.228346
     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle; fill: #7f7f7f" x="486.637795" y="159.451582" transform="rotate(-0 486.637795 159.451582)">D</text>
    </g>
    <g id="text_40">
-    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="162.245654" y="178.353515" transform="rotate(-0 162.245654 178.353515)">0.28†</text>
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="162.245654" y="178.353515" transform="rotate(-0 162.245654 178.353515)">0.28</text>
    </g>
    <g id="text_41">
     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: end" x="49.606299" y="178.353515" transform="rotate(-0 49.606299 178.353515)">8</text>
@@ -356,7 +356,7 @@ L 477.212598 223.228346
     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle; fill: #7f7f7f" x="486.637795" y="178.353515" transform="rotate(-0 486.637795 178.353515)">C</text>
    </g>
    <g id="text_44">
-    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="182.474082" y="197.255447" transform="rotate(-0 182.474082 197.255447)">2.31†</text>
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="182.474082" y="197.255447" transform="rotate(-0 182.474082 197.255447)">2.31</text>
    </g>
    <g id="text_45">
     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: end" x="49.606299" y="197.255447" transform="rotate(-0 49.606299 197.255447)">9</text>
@@ -417,103 +417,78 @@ z
    </g>
    <g id="legend_1">
     <g id="patch_16">
-     <path d="M 295.765098 139.085784 
-L 477.212598 139.085784 
-L 477.212598 61.645784 
-L 295.765098 61.645784 
+     <path d="M 295.765098 132.865784 
+L 477.212598 132.865784 
+L 477.212598 67.865784 
+L 295.765098 67.865784 
 z
 " style="fill: #ffffff"/>
     </g>
     <g id="patch_17">
-     <path d="M 298.965098 71.645784 
-L 314.965098 71.645784 
-L 314.965098 66.045784 
-L 298.965098 66.045784 
+     <path d="M 298.965098 77.865784 
+L 314.965098 77.865784 
+L 314.965098 72.265784 
+L 298.965098 72.265784 
 z
 " style="fill: #b39ddb; stroke: #333333; stroke-width: 0.6; stroke-linejoin: miter"/>
     </g>
     <g id="text_58">
-     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="321.365098" y="71.645784" transform="rotate(-0 321.365098 71.645784)">디코더로 옮김</text>
+     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="321.365098" y="77.865784" transform="rotate(-0 321.365098 77.865784)">디코더로 옮김</text>
     </g>
     <g id="patch_18">
-     <path d="M 298.965098 84.085784 
-L 314.965098 84.085784 
-L 314.965098 78.485784 
-L 298.965098 78.485784 
+     <path d="M 298.965098 90.305784 
+L 314.965098 90.305784 
+L 314.965098 84.705784 
+L 298.965098 84.705784 
 z
 " style="fill: #99cc00; stroke: #333333; stroke-width: 0.6; stroke-linejoin: miter"/>
     </g>
     <g id="text_59">
-     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="321.365098" y="84.085784" transform="rotate(-0 321.365098 84.085784)">GPU로 옮김</text>
+     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="321.365098" y="90.305784" transform="rotate(-0 321.365098 90.305784)">GPU로 옮김</text>
     </g>
     <g id="patch_19">
-     <path d="M 298.965098 96.525784 
-L 314.965098 96.525784 
-L 314.965098 90.925784 
-L 298.965098 90.925784 
+     <path d="M 298.965098 102.745784 
+L 314.965098 102.745784 
+L 314.965098 97.145784 
+L 298.965098 97.145784 
 z
 " style="fill: #bdbdbd; stroke: #333333; stroke-width: 0.6; stroke-linejoin: miter"/>
     </g>
     <g id="text_60">
-     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="321.365098" y="96.525784" transform="rotate(-0 321.365098 96.525784)">복사 제거 (dma-buf)</text>
+     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="321.365098" y="102.745784" transform="rotate(-0 321.365098 102.745784)">복사 제거 (dma-buf)</text>
     </g>
     <g id="patch_20">
-     <path d="M 298.965098 108.965784 
-L 314.965098 108.965784 
-L 314.965098 103.365784 
-L 298.965098 103.365784 
+     <path d="M 298.965098 115.185784 
+L 314.965098 115.185784 
+L 314.965098 109.585784 
+L 298.965098 109.585784 
 z
 " style="fill: url(#h2478744ece); stroke: #333333; stroke-width: 0.6; stroke-linejoin: miter"/>
     </g>
     <g id="text_61">
-     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="321.365098" y="108.965784" transform="rotate(-0 321.365098 108.965784)">기법이 아님: 단계 혼합 잔차</text>
+     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="321.365098" y="115.185784" transform="rotate(-0 321.365098 115.185784)">기법이 아님: 단계 혼합 잔차</text>
     </g>
     <g id="line2d_16">
-     <defs>
-      <path id="mcb0f31bec3" d="M -0.312382 -3 
-L 0.312382 -3 
-L 0.312382 -1.50852 
-L 1.615297 -1.50852 
-L 1.615297 -0.965543 
-L 0.312382 -0.965543 
-L 0.312382 3 
-L -0.312382 3 
-L -0.312382 -0.965543 
-L -1.615297 -0.965543 
-L -1.615297 -1.50852 
-L -0.312382 -1.50852 
-L -0.312382 -3 
-z
-" style="stroke: #333333"/>
-     </defs>
      <g>
-      <use xlink:href="#mcb0f31bec3" x="306.965098" y="118.605784" style="fill: #333333; stroke: #333333"/>
+      <use xlink:href="#m7daed8bb84" x="306.965098" y="124.825784" style="fill-opacity: 0; stroke: #333333; stroke-width: 0.9"/>
      </g>
     </g>
     <g id="text_62">
-     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="321.365098" y="121.405784" transform="rotate(-0 321.365098 121.405784)">차감값</text>
-    </g>
-    <g id="line2d_17">
-     <g>
-      <use xlink:href="#m7daed8bb84" x="306.965098" y="131.045784" style="fill-opacity: 0; stroke: #333333; stroke-width: 0.9"/>
-     </g>
-    </g>
-    <g id="text_63">
-     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="321.365098" y="133.845784" transform="rotate(-0 321.365098 133.845784)">CPU 기준 구현의 전치 (캐시 메모리, 코드 다름)</text>
+     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="321.365098" y="127.625784" transform="rotate(-0 321.365098 127.625784)">CPU 기준 구현의 전치 (캐시 메모리, 코드 다름)</text>
     </g>
    </g>
   </g>
-  <g id="line2d_18">
+  <g id="line2d_17">
    <path d="M 2.976378 53.110952 
 L 492.590551 53.110952 
 " style="fill: none; stroke: #d9d9d9; stroke-width: 0.6; stroke-linecap: square"/>
   </g>
-  <g id="line2d_19">
+  <g id="line2d_18">
    <path d="M 2.976378 147.620616 
 L 492.590551 147.620616 
 " style="fill: none; stroke: #d9d9d9; stroke-width: 0.6; stroke-linecap: square"/>
   </g>
-  <g id="line2d_20">
+  <g id="line2d_19">
    <path d="M 2.976378 185.424481 
 L 492.590551 185.424481 
 " style="fill: none; stroke: #d9d9d9; stroke-width: 0.6; stroke-linecap: square"/>
