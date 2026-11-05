@@ -23,7 +23,7 @@
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
 | | `04_data/` | 입력 영상(기본 `video_h265.mp4`, 혼잡 장면용 `mot20_{02,05}_h265.mp4`)과 테스트용 원시 텐서 픽스처 (git에 없음) |
 | **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 10개(`test_postproc_live` 를 따로 세면 11), ctest 항목 213개(NPU 없이 210) |
-| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 16개), `python/`(15개 + 논문 스크립트 `paper/` 11개 + 단위 테스트 `tests/` 141개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
+| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 16개), `python/`(15개 + 논문 스크립트 `paper/` 14개 + 단위 테스트 `tests/` 141개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
 | | [`07_results/`](../07_results/) | 실험별 측정 원시 출력과 `summary.md` |
 | **문서** | [`08_learn/`](00_README.md) | 지금 읽고 있는 이 자습 교재 13장 |
 | | [`09_diagrams/`](../09_diagrams/) | yEd로 여는 파이프라인 다이어그램 3장(원본 2장 + 논문판 1장) |
@@ -54,7 +54,7 @@
 ├── vulkan/     GPU (Vulkan 컴퓨트, 공용 compute_pipeline·sand_column_lut) ┘ 링크하지 않는다
 ├── display/    화면 표시 (Vulkan 합성·스왑체인 + HVS 평면 스캔아웃: Wayland linux-dmabuf / KMS atomic)   — vulkan과 별도 라이브러리
 ├── isp/        ISP 전처리 — 구현됐지만 미사용
-├── pipeline/   이 전부를 묶는 실행 파일 main.cpp + slot_exchange(슬롯 풀·슬롯 예산 검사)·input_pacer(입력 페이싱 leaky 큐) — 둘 다 단위 테스트 대상
+├── pipeline/   이 전부를 묶는 실행 파일 main.cpp + slot_exchange(슬롯 풀·슬롯 예산 검사)·input_pacer(입력 페이싱 leaky 큐) — 둘 다 단위 테스트 대상. 비교용 input_copy·live_input
 ├── gstelem/    (선택) GStreamer 연구 경로 — 레터박스 요소 + HailoRT 싱크(`yvohailosink`). 앱 본체는 쓰지 않는다
 └── tools/      빌드되는 진단·측정 도구 14개 ({hailo,vulkan,display,isp,decode,gst}/ — 측정 대상 도메인 기준)
 ```
@@ -108,7 +108,7 @@ GPU 전처리를 테스트하는 `test_preproc`을 빌드할 때 Wayland 라이�
 
 > ⚠ **여기 적힌 함정이 실제 함정이다.** 예를 들어 "디코더는 약 13프레임 이상 붙잡으면
 > 에러 없이 조용히 멈춘다"는 문장 때문에 `slots + gpu_depth <= 10` 검사가
-> [`slot_exchange.cpp:30-71`](../01_src/pipeline/slot_exchange.cpp) 의 `validate_slot_budget()` 에 들어 있다(`slots + gpu_depth` 합 검사는 :64-69, HVS 평면 백엔드용 보유 검사는 :33-54, 호출은 `main.cpp:397-408`).
+> [`slot_exchange.cpp:30-71`](../01_src/pipeline/slot_exchange.cpp) 의 `validate_slot_budget()` 에 들어 있다(`slots + gpu_depth` 합 검사는 :64-69, HVS 평면 백엔드용 보유 검사는 :33-54, 호출은 `main.cpp:398-409`).
 
 ### 3단계 — 수식의 원문을 본다 (2시간)
 
@@ -233,7 +233,7 @@ cmake -S . -B build -G Ninja && cmake --build build
 
 | 변수 | 누가 읽나 | 뜻 |
 |---|---|---|
-| `YVO_DEC_THREADS` | `yvo_pipeline` ([`main.cpp:354`](../01_src/pipeline/main.cpp)) | FFmpeg 디코더 프레임 스레드 수. 없으면 **1**(2026-09-29부터 기본), `0`이면 FFmpeg 자동(코어 수) |
+| `YVO_DEC_THREADS` | `yvo_pipeline` ([`main.cpp:355`](../01_src/pipeline/main.cpp)) | FFmpeg 디코더 프레임 스레드 수. 없으면 **1**(2026-09-29부터 기본), `0`이면 FFmpeg 자동(코어 수) |
 | `YVO_SW_HEAP` | `yvo_pipeline` `--decoder sw` ([`main.cpp`](../01_src/pipeline/main.cpp)) | SW 디코드 복사 버퍼의 dma-heap 이름. 없으면 system. heap 비교용 |
 | `YVO_PERF_CTL` / `YVO_PERF_ACK` | `yvo_pipeline`, `yvo_gst_pipeline` ([`tool_util.hpp`](../01_src/toolkit/tool_util.hpp) `perf_window`) | perf 제어 FIFO. 도구가 보고하는 CPU 구간에서만 perf를 켠다([08장](08_method.md) §8.9) |
 | `YVO_VK_VALIDATION` | 모든 Vulkan 사용자 ([`vulkan_context.cpp`](../01_src/vulkan/vulkan_context.cpp)) | `0`이 아닌 값이면 검증 레이어를 켠다 |
@@ -331,7 +331,7 @@ build/bin/yvo_pipeline --video ... --hef ...
 인자 없이 돌리면 `--mode dmabuf --layout nhcw --postproc gpu --batch 1 --slots 1 --input-pace source --input-queue 1 --display off`(O2, 2026-10-27부터 — 그 전은 `--batch 8` + `asap`) 로 간다. 2026-10-08 전에는 가장 느린 `--mode ptr --layout nhwc --postproc host` 였다.
 과거 측정과 비교할 때는 옛 플래그를 명시한다(벤치 스크립트는 명시한다). `--mode ptr` 만 주면 나머지는 호환 값(nhwc·host)으로 내려간다(`parse()` 의 `note:`).
 
-> **예외 하나:** FFmpeg 디코더 프레임 스레드 수는 2026-09-29에 자동(5) → **1**로 바꿨다(`main.cpp:196`, 환경변수 읽기 `:354`).
+> **예외 하나:** FFmpeg 디코더 프레임 스레드 수는 2026-09-29에 자동(5) → **1**로 바꿨다(`main.cpp:196`, 환경변수 읽기 `:355`).
 > 모든 모드에서 FPS·검출이 같고 CPU·지연이 줄었기 때문이다([`dec_threads`](../07_results/dec_threads/summary.md)).
 > 그 이전 측정과 CPU·e2e를 맞대 비교하려면 `YVO_DEC_THREADS=0`으로 돌린다.
 
