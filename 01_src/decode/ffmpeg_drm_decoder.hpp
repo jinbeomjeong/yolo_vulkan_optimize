@@ -3,9 +3,11 @@
 
 #include <chrono>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "core/frame_types.hpp"
@@ -71,6 +73,15 @@ public:
 
     const SwStats& sw_stats() const { return sw_stats_; }
 
+    // Live input (pipeline/live_input.hpp): next() calls the gate with the number of packets sent so far right before it reads
+    // another packet (also before the read that finds the end of the file). The gate may sleep; its time is not counted in
+    // SwStats::decode_wait_ms. false makes next() return nullopt without an error. Set after open(); close() clears it.
+    void set_packet_gate(std::function<bool(std::int64_t)> gate) { packet_gate_ = std::move(gate); }
+    std::int64_t packets_sent() const { return packets_sent_; }
+    bool input_flushed() const { return input_done_; }   // the end of the file was reached and the flush was sent
+    int thread_count() const;     // resolved libavcodec thread count
+    int reorder_frames() const;   // frames the stream may hold back for display order (AVCodecContext::has_b_frames)
+
     // Extract the AVFrame (DRM_PRIME) held in keepalive. For inspection tools. HW path only: an SW frame holds no AVFrame.
     static AVFrame* av_frame(const DrmFrame& f) { return static_cast<AVFrame*>(f.keepalive.get()); }
 
@@ -88,6 +99,8 @@ private:
     AVPacket* pkt_ = nullptr;
     int stream_index_ = -1;
     bool input_done_ = false; // end of packets (flush sent)
+    std::function<bool(std::int64_t)> packet_gate_;
+    std::int64_t packets_sent_ = 0;
     bool eof_ = false;
     std::int64_t frame_counter_ = 0;
     std::string error_;

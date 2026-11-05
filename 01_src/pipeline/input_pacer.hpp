@@ -95,14 +95,14 @@ inline std::int64_t max_gap(const std::vector<std::int64_t>& src) {
 }
 
 // Returns "" when the --input-queue value fits, otherwise the complete stderr message.
-inline std::string validate_input_queue(int n, int gpu_depth) {
+inline std::string validate_input_queue(int n, int gpu_depth, int live_held = 0) {   // live_held: --input-live mailbox
     if (n < kMinInputQueue || n > kMaxInputQueue)
         return "--input-queue must be " + std::to_string(kMinInputQueue) + ".." + std::to_string(kMaxInputQueue) +
                " (now " + std::to_string(n) + ").\n";
-    const long long sum = static_cast<long long>(gpu_depth) + n + 1;
+    const long long sum = static_cast<long long>(gpu_depth) + n + 1 + live_held;
     if (sum > kMaxDecoderFramesHeld)
         return "--input-pace source requires gpu_depth + input_queue + 1 <= " + std::to_string(kMaxDecoderFramesHeld) +
-               " (now " + std::to_string(gpu_depth) + " + " + std::to_string(n) + " + 1 = " + std::to_string(sum) +
+               " (now " + std::to_string(gpu_depth) + " + " + std::to_string(n) + " + 1" + (live_held > 0 ? " + " + std::to_string(live_held) + " --input-live" : std::string()) + " = " + std::to_string(sum) +
                ").\nThe decoder stalls without an error when more than about 13 frames are held at once. "
                "Reduce --gpu-depth or --input-queue.\n";
     return {};

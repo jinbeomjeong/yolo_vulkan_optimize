@@ -22,8 +22,8 @@
 | | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 — 본 파이프라인 5개 + `diag/` 진단 전용 3개 (`.comp`). `overlay_boxes.comp` 는 버퍼 변형까지 SPIR-V 2개로 빌드 |
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
 | | `04_data/` | 입력 영상(기본 `video_h265.mp4`, 혼잡 장면용 `mot20_{02,05}_h265.mp4`)과 테스트용 원시 텐서 픽스처 (git에 없음) |
-| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 10개(`test_postproc_live` 를 따로 세면 11), ctest 항목 208개(NPU 없이 205) |
-| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 14개), `python/`(15개 + 논문 스크립트 `paper/` 11개 + 단위 테스트 `tests/` 141개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
+| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 10개(`test_postproc_live` 를 따로 세면 11), ctest 항목 213개(NPU 없이 210) |
+| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 16개), `python/`(15개 + 논문 스크립트 `paper/` 11개 + 단위 테스트 `tests/` 141개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
 | | [`07_results/`](../07_results/) | 실험별 측정 원시 출력과 `summary.md` |
 | **문서** | [`08_learn/`](00_README.md) | 지금 읽고 있는 이 자습 교재 13장 |
 | | [`09_diagrams/`](../09_diagrams/) | yEd로 여는 파이프라인 다이어그램 3장(원본 2장 + 논문판 1장) |
@@ -281,7 +281,7 @@ C++ 테스트의 판정 규칙([`01_src/ref/detection_match.hpp`](../01_src/ref/
 
 ## 9.7 측정 스크립트
 
-[`06_tools/bench/`](../06_tools/bench/) 의 셸 스크립트 14개가 `07_results/` 의 결과를 만들어 낸다.
+[`06_tools/bench/`](../06_tools/bench/) 의 셸 스크립트 16개가 `07_results/` 의 결과를 만들어 낸다.
 
 | 스크립트 | 무엇을 재나 |
 |---|---|
@@ -297,6 +297,8 @@ C++ 테스트의 판정 규칙([`01_src/ref/detection_match.hpp`](../01_src/ref/
 | `input_pace_bench.sh` | **입력 페이싱** — `--input-pace source` × `--input-queue` 1~3 과 asap 대조, 도착 시각부터 잰 e2e·버림. `FRAME_LOG=1` 이면 프레임별 시각 CSV 도 남긴다. `DISPLAY_RUN=1` 은 표시 on(Vulkan 합성·wayland-planes, 도착 → 화면) |
 | `demo_compare_bench.sh` | 적용 전(`yvo_cpu_baseline`)/후(`yvo_pipeline` O2) 비교 영상용 실시간 기록 |
 | `decode_pipeline_bench.sh` | `yvo_pipeline` O2 표시 on에서 디코더만 변경: HW 1스레드·SW 1스레드·SW 자동 |
+| `technique_ablation_bench.sh` | 확정 파이프라인에서 기법을 하나씩 뺀 구성 비교 |
+| `live_input_bench.sh` | 실시간 입력 모사(`--input-live`)에서 HW·SW 디코더 비교 |
 | `isp_bench.sh` / `isp_pipeline_bench.sh` | ISP 경로 |
 
 공통 규약(설정당 3회 중앙값, 냉각 게이트, 환경 스냅샷)은 [08_method.md](08_method.md)에서 다룬다.
@@ -304,7 +306,7 @@ C++ 테스트의 판정 규칙([`01_src/ref/detection_match.hpp`](../01_src/ref/
 > `pipeline_bench.sh`의 설정 형식은 **바꾸면 안 된다.** 다른 스크립트들이
 > 이걸 대조군 기준으로 쓴다.
 
-14개 스크립트 모두 시작할 때 `build/.bench_running` 에 자기 PID를 쓰고 끝날 때 지운다.
+16개 스크립트 모두 시작할 때 `build/.bench_running` 에 자기 PID를 쓰고 끝날 때 지운다.
 [`.claude/hooks/npu_guard.sh`](../.claude/hooks/npu_guard.sh) 가 이 파일을 보고 **측정 중에는
 빌드·테스트 명령을 막는다** — 측정 중 다른 작업이 돌면 CPU 시간이 에러 없이 오염되기 때문이다.
 Ctrl+C(INT)나 TERM을 받으면 락을 지우고 바로 끝난다(종료 코드 130·143, [`lib/common.sh`](../06_tools/bench/lib/common.sh)).

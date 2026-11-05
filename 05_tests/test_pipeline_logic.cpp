@@ -1061,3 +1061,144 @@ TEST(FrameLog, CommitColumnsFollowPresentOnlyWithBoth) {
 }
 
 } // namespace
+
+// ═══════════════════════════════════════════════ --input-live decode thread (pipeline/live_input.hpp)
+#include "pipeline/live_input.hpp"
+
+namespace {
+
+using yvo::pipeline::ArrivalSchedule;
+using yvo::pipeline::kLiveMailboxFrames;
+using yvo::pipeline::LiveDecodeThread;
+using LiveClock = ArrivalSchedule::Clock;
+
+// Holds back `delay` frames like frame threading or reordering: frame k leaves after packet k + delay was sent, or after the
+// flush. Same call order as FfmpegDrmDecoder::next(): the gate runs before every read, also before the one that finds the end.
+struct FakeLiveDecoder {
+    std::int64_t delay = 0, total = 0, throw_at = -1;
+    std::function<bool(std::int64_t)> packet_gate;
+    std::int64_t sent = 0, out = 0;
+    bool flushed = false;
+
+    void set_packet_gate(std::function<bool(std::int64_t)> g) { packet_gate = std::move(g); }
+    std::int64_t packets_sent() const { return sent; }
+    bool input_flushed() const { return flushed; }
+    int thread_count() const { return static_cast<int>(delay) + 1; }
+    int reorder_frames() const { return 0; }
+    std::optional<int> next() {
+        for (;;) {
+            if (out < total && (flushed || sent - out > delay)) return static_cast<int>(out++);
+            if (flushed) return std::nullopt;
+            if (!packet_gate(sent)) return std::nullopt;
+            if (sent == throw_at) throw std::runtime_error("fake decoder failure");
+            if (sent == total) flushed = true;
+            else ++sent;
+        }
+    }
+};
+
+ArrivalSchedule started_schedule(double fps) {
+    ArrivalSchedule s(fps);
+    s.start(LiveClock::now());
+    return s;
+}
+
+TEST(LiveInput, EveryFrameLeavesAfterTheArrivalOfPacketKPlusDelayAlsoAfterTheFlush) {
+    constexpr std::int64_t kDelay = 2, kTotal = 6;
+    FakeLiveDecoder dec;
+    dec.delay = kDelay;
+    dec.total = kTotal;
+    const ArrivalSchedule sched = started_schedule(200.0);
+    std::atomic<int> wakes{0};
+    LiveDecodeThread<FakeLiveDecoder> live(dec, sched, [&wakes] { ++wakes; });
+
+    std::vector<LiveClock::time_point> left;
+    const auto deadline = LiveClock::now() + std::chrono::seconds(10);
+    for (;;) {
+        ASSERT_LT(LiveClock::now(), deadline);
+        std::optional<int> f;
+        LiveClock::time_point t0, t1;
+        if (!live.poll(f, t0, t1)) {
+            std::this_thread::sleep_for(std::chrono::microseconds(200));
+            continue;
+        }
+        if (!f) break;
+        EXPECT_EQ(*f, static_cast<int>(left.size()));   // order kept, nothing dropped
+        EXPECT_LE(t0, t1);
+        left.push_back(t1);
+    }
+    ASSERT_EQ(left.size(), static_cast<std::size_t>(kTotal));
+    for (std::size_t k = 0; k < left.size(); ++k)
+        EXPECT_GE(left[k], sched.arrival(static_cast<std::int64_t>(k) + kDelay)) << "frame " << k;
+    live.halt();
+    const auto st = live.stats();
+    EXPECT_EQ(st.packets, kTotal);
+    EXPECT_EQ(st.frames, kTotal);
+    EXPECT_EQ(st.output_delay_max, kDelay);
+    EXPECT_EQ(st.decoder_threads, kDelay + 1);
+    EXPECT_GE(wakes.load(), kTotal + 1);   // every frame + the end of the stream
+}
+
+TEST(LiveInput, PollNeverBlocksAndHaltInterruptsTheWaitForTheNextArrival) {
+    FakeLiveDecoder dec;
+    dec.total = 100;
+    const auto begin = LiveClock::now();
+    {
+        LiveDecodeThread<FakeLiveDecoder> live(dec, started_schedule(0.5), [] {});   // the next arrival is 2 s away
+        std::optional<int> f;
+        LiveClock::time_point t0, t1;
+        const auto deadline = begin + std::chrono::seconds(1);
+        while (!live.poll(f, t0, t1) && LiveClock::now() < deadline) std::this_thread::sleep_for(std::chrono::microseconds(200));
+        ASSERT_TRUE(f.has_value());
+        EXPECT_EQ(*f, 0);
+        f.reset();
+        EXPECT_FALSE(live.poll(f, t0, t1));   // frame 1 needs packet 1
+    }
+    EXPECT_LT(LiveClock::now() - begin, std::chrono::milliseconds(1900));
+}
+
+TEST(LiveInput, FullMailboxStopsDecodingInsteadOfDropping) {
+    FakeLiveDecoder dec;
+    dec.total = 1000;
+    LiveDecodeThread<FakeLiveDecoder> live(dec, started_schedule(240.0), [] {});
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));   // nobody collects
+    std::optional<int> f;
+    LiveClock::time_point t0, t1;
+    ASSERT_TRUE(live.poll(f, t0, t1));
+    ASSERT_TRUE(f.has_value());
+    EXPECT_EQ(*f, 0);                                              // the oldest frame was kept
+    live.halt();
+    const auto st = live.stats();
+    EXPECT_GE(st.mailbox_full_waits, 1);
+    EXPECT_LE(st.frames, kLiveMailboxFrames + 2);                  // mailbox + one blocked frame, + one after the single poll
+}
+
+TEST(LiveInput, ExceptionOnTheDecodeThreadReachesPoll) {
+    FakeLiveDecoder dec;
+    dec.total = 10;
+    dec.throw_at = 0;
+    LiveDecodeThread<FakeLiveDecoder> live(dec, started_schedule(240.0), [] {});
+    std::optional<int> f;
+    LiveClock::time_point t0, t1;
+    const auto deadline = LiveClock::now() + std::chrono::seconds(5);
+    bool thrown = false;
+    while (!thrown && LiveClock::now() < deadline) {
+        try {
+            live.poll(f, t0, t1);
+        } catch (const std::runtime_error&) {
+            thrown = true;
+        }
+        std::this_thread::sleep_for(std::chrono::microseconds(200));
+    }
+    EXPECT_TRUE(thrown);
+}
+
+TEST(LiveInput, StartupGateCountsTheMailbox) {
+    const int depth = yvo::pipeline::kMaxDecoderFramesHeld - 2;   // depth + queue 1 + 1 just decoded = the limit
+    EXPECT_EQ(yvo::pipeline::validate_input_queue(1, depth), "");
+    const std::string err = yvo::pipeline::validate_input_queue(1, depth, kLiveMailboxFrames);
+    EXPECT_NE(err.find("--input-live"), std::string::npos) << err;
+    EXPECT_EQ(yvo::pipeline::validate_input_queue(1, depth - kLiveMailboxFrames, kLiveMailboxFrames), "");
+}
+
+} // namespace

@@ -137,7 +137,7 @@ void FfmpegDrmDecoder::close() {
     stream_index_ = -1;
     input_done_ = false;
     eof_ = false;
-    frame_counter_ = 0; sw_pool_.reset(); software_ = false;  // SW frames still held keep the pool alive; sw_stats_ stays readable
+    packet_gate_ = nullptr; packets_sent_ = 0; frame_counter_ = 0; sw_pool_.reset(); software_ = false;  // SW frames still held keep the pool alive; sw_stats_ stays readable
 }
 
 bool FfmpegDrmDecoder::fail(const std::string& msg) {
@@ -190,7 +190,7 @@ bool FfmpegDrmDecoder::open(const std::string& path, const Options& opt) {
 
 std::optional<DrmFrame> FfmpegDrmDecoder::next() {
     if (!codec_ || eof_) return std::nullopt;
-    const auto wait_begin = software_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
+    auto wait_begin = software_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
 
     std::unique_ptr<AVFrame, void (*)(AVFrame*)> frame(av_frame_alloc(),
                                                         [](AVFrame* f) { av_frame_free(&f); });
@@ -216,6 +216,11 @@ std::optional<DrmFrame> FfmpegDrmDecoder::next() {
             return std::nullopt;
         }
         for (;;) {
+            if (packet_gate_) {   // live input: the packet does not exist before its arrival time
+                const auto g0 = std::chrono::steady_clock::now();
+                if (!packet_gate_(packets_sent_)) return std::nullopt;
+                if (software_) wait_begin += std::chrono::steady_clock::now() - g0;
+            }
             ret = av_read_frame(fmt_, pkt_);
             if (ret == AVERROR_EOF) {
                 input_done_ = true;
@@ -238,6 +243,7 @@ std::optional<DrmFrame> FfmpegDrmDecoder::next() {
                 fail_av("avcodec_send_packet", ret);
                 return std::nullopt;
             }
+            ++packets_sent_;
             break;
         }
     }
@@ -389,6 +395,8 @@ std::optional<DrmFrame> FfmpegDrmDecoder::sw_frame_to_drm(const AVFrame& frame, 
 
 int FfmpegDrmDecoder::width() const { return codec_ ? codec_->width : 0; }
 int FfmpegDrmDecoder::height() const { return codec_ ? codec_->height : 0; }
+int FfmpegDrmDecoder::thread_count() const { return codec_ ? codec_->thread_count : 0; }
+int FfmpegDrmDecoder::reorder_frames() const { return codec_ ? codec_->has_b_frames : 0; }
 
 double FfmpegDrmDecoder::frame_rate() const {
     if (!fmt_ || stream_index_ < 0) return 0.0;
