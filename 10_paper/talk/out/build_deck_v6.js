@@ -1,4 +1,4 @@
-// 발표 덱 생성 스크립트: NPU 기반 YOLO 추론에서 호스트 CPU 최소화 (16장, 16:9) — 버전 6: v5에서 최저 지연 운용 내용 삭제, 기술 넷 (명세 ../content_spec_v6.md)
+// 발표 덱 생성 스크립트: NPU 기반 YOLO 추론에서 호스트 CPU 최소화 (17장, 16:9) — 버전 6: v5에서 최저 지연 운용 내용 삭제, 기술 넷, 부록 A5 응답 속도 (명세 ../content_spec_v6.md)
 // 실행: NODE_PATH=<python-dev>/lib/node_modules <python-dev>/bin/node build_deck_v6.js
 // 내용 정본: ../content_spec.md (수치는 명세에 적힌 것만 쓴다)
 // 입력·출력 경로는 이 파일 위치 기준으로 고정한다. 날짜·난수를 쓰지 않는다.
@@ -207,7 +207,7 @@ async function build() {
   });
   tx(s, bullets([
     '추론만 NPU가 맡으면 나머지는 CPU가 하며, 프레임마다 수 MB를 읽고 쓴다',
-    '스마트폰·서버에서도 추론 밖 전·후처리와 데이터 이동이 종단간 성능을 좌우한다는 보고가 있다 [1][2]',
+    '스마트폰에서는 데이터 캡처와 전·후처리가 실행 시간의 최대 50%, 서버에서는 중간 크기 이미지에서 데이터 처리와 이동이 종단간 지연의 최대 56%를 차지한다는 보고가 있다 [1][2]',
   ], { fontSize: 16, paraSpaceAfter: 14 }), { x: M, y: 3.85, w: 7.3, h: 2.75, valign: 'middle', objectName: '본문' });
   // v6: 그림의 경로(전부 CPU) 값으로 바꾸고, 17.6 ms는 어떤 경로의 값인지 밝혀 함께 둔다
   card(s, '출발점 카드', 8.4, 3.85, W - M - 8.4, 2.6, C.background2);
@@ -364,11 +364,11 @@ async function build() {
     { text: ' ms/프레임', options: { fontSize: 20, bold: true, color: C.accent1 } },
     { text: '   (처리한 프레임 기준)', options: { fontSize: 14, color: C.text1 } },
   ], { x: M + 0.3, y: BY + 0.05, w: c10w - 0.5, h: c10h - 0.1, valign: 'middle', paraSpaceAfter: 2, objectName: '④ 결과 수치' });
-  footnote(s, '측정 조건: 기본 설정(GPU 1150 MHz · 디코더 1스레드 · 배치 1/슬롯 1 · 입력 페이싱 · 대기열 1). CPU는 처리한 프레임 기준', 6.6);
+  footnote(s, '측정 조건: 기본 설정(GPU 1150 MHz · 디코더 1스레드 · 배치 1/슬롯 1 · 입력 페이싱 · 대기열 1) · 표시 off. CPU는 처리한 프레임 기준. 표시·기록 on이면 1.49 ms', 6.6);
   const m10x = M + c10w + 0.4, m10w = W - M - m10x;
   s.addImage({ data: I.info, x: m10x, y: BY + 0.12, w: 0.35, h: 0.35, altText: '감소의 출처', objectName: '메시지 아이콘' });
   tx(s, '감소의 대부분은 ②·③의 몫이다', { x: m10x + 0.5, y: BY + 0.05, w: m10w - 0.5, h: 0.5, fontSize: 18, bold: true, color: C.text1, objectName: '한 줄 메시지' });
-  s.addNotes('위는 데이터가 하드웨어끼리 굵은 선으로 흐르고 CPU는 점선으로 지휘만 하는 구조이고, 아래는 일정 간격으로 확인하는 폴링 대신 완료 이벤트에 깨어나는 대기 방식을 쓴다는 대비다. 남은 CPU 일은 지휘뿐이다. 작업을 제출하고, 완료 이벤트가 오면 깨어나 다음 일을 넘긴다. 이렇게 해서 처리한 프레임당 약 1 ms가 남았고, 그 감소의 대부분은 앞의 ②·③ 덕분이다.');
+  s.addNotes('위는 데이터가 하드웨어끼리 굵은 선으로 흐르고 CPU는 점선으로 지휘만 하는 구조이고, 아래는 일정 간격으로 확인하는 폴링 대신 완료 이벤트에 깨어나는 대기 방식을 쓴다는 대비다. 남은 CPU 일은 지휘뿐이다. 작업을 제출하고, 완료 이벤트가 오면 깨어나 다음 일을 넘긴다. 이렇게 해서 표시를 끈 측정에서 처리한 프레임당 약 1 ms가 남았고(표시와 기록을 켠 측정은 1.49 ms), 그 감소의 대부분은 앞의 ②·③ 덕분이다.');
 
   // 10. 결과 요약 (v5의 11번) ----------------------------------------------------------
   pres.addSection({ title: '결과' });
@@ -392,9 +392,9 @@ async function build() {
   tx(s, '검출 결과는 기준 경로와 같다 (1,816프레임에서 9,457개)', { x: M, y: 4.5, w: CW, h: 0.35, fontSize: 14, objectName: '검출 결과' });
   tx(s, bullets([
     '1~2행: GPU 960 MHz · 디코더 자동 스레드 · 배치 1/슬롯 2 (1,816프레임 3회 중앙값). 3~4행: GPU 1150 MHz · 디코더 1스레드 · 배치 1/슬롯 1 (900프레임 3회 중앙값)',
-    '4행은 기본 설정(입력 페이싱 · 대기열 1)이다. CPU는 처리한 프레임 기준',
+    '4행은 기본 설정(입력 페이싱 · 대기열 1) · 표시 off. CPU는 처리한 프레임 기준. 표시·기록 on 비교는 전 단계 CPU 47.86 → 1.49 ms',
   ], { fontSize: 11, color: C.accent2, paraSpaceAfter: 3, bullet: { indent: 10 } }), { x: M, y: 5.05, w: CW, h: 1.2, objectName: '표 각주' });
-  s.addNotes('표는 기술별 응용 CPU 시간을 정리한 것이다. 위 두 행과 아래 두 행은 측정 조건이 다르고, 4행 CPU는 처리한 프레임 기준이다. 검출 결과는 기준 경로와 같았다.');
+  s.addNotes('표는 기술별 응용 CPU 시간을 정리한 것이다. 위 두 행과 아래 두 행은 측정 조건이 다르고, 4행 CPU는 표시를 끈 측정의 처리한 프레임 기준이고, 표시와 기록을 켠 측정은 1.49 ms다. 검출 결과는 기준 경로와 같았다.');
 
   // 11. 결론 (v5의 12번) -------------------------------------------------------------
   pres.addSection({ title: '결론' });
@@ -409,14 +409,14 @@ async function build() {
     { x: M + 0.9, y: 2.95, w: CW - 0.9, h: 0.6, fontSize: 15, color: C.background2, objectName: '근거 한 줄' });
   const pts11 = [
     [I.link, '디코더·GPU·NPU가 dma-buf로 직접 주고받고, 형식 생성과 결과 해석을 GPU에 맡기면 CPU에는 지휘만 남는다'],
-    [I.clock, '이렇게 응용 CPU는 처리한 프레임당 약 1 ms로 줄었다'],
+    [I.clock, '응용 CPU는 처리한 프레임당 약 1 ms(표시 off)로 줄었다.\n표시·기록 on 비교로는 전 단계 CPU 47.86\u00A0ms\u00A0→\u00A01.49\u00A0ms'],
   ];
   pts11.forEach(([ic, t], i) => {
     const y = 3.8 + i * 1.2;
     s.addImage({ data: ic, x: M + 0.08, y: y + 0.28, w: 0.45, h: 0.45, altText: '요점', objectName: `요점 아이콘 ${i + 1}` });
     tx(s, t, { x: M + 0.9, y, w: CW - 0.9, h: 1.0, fontSize: 18, color: C.background1, valign: 'middle', objectName: `요점 ${i + 1}` });
   });
-  s.addNotes('정리하면, CPU를 줄이는 열쇠는 연산을 빠르게 하는 것이 아니라 CPU가 데이터를 읽지 않게 하는 것이다. 디코더·GPU·NPU가 dma-buf로 직접 주고받고 형식 생성과 결과 해석을 GPU에 맡기면 CPU에는 지휘만 남는다. 이렇게 응용 CPU는 처리한 프레임당 약 1 ms로 줄었다.');
+  s.addNotes('정리하면, CPU를 줄이는 열쇠는 연산을 빠르게 하는 것이 아니라 CPU가 데이터를 읽지 않게 하는 것이다. 디코더·GPU·NPU가 dma-buf로 직접 주고받고 형식 생성과 결과 해석을 GPU에 맡기면 CPU에는 지휘만 남는다. 이렇게 응용 CPU는 표시를 끈 측정에서 처리한 프레임당 약 1 ms로 줄었다. 표시와 기록을 켠 비교에서는 모든 단계를 CPU가 하는 경로의 47.86 ms가 1.49 ms가 됐다. 별도의 비교 영상이 이 값을 보여 준다.');
 
   tx(s, '출처: 메모리 비대칭 측정(2026-10-27, V3D 1150 MHz, 1.2 MB, 3회 중앙값). CPU 1바이트 읽기 12.82 ms는 앞선 측정(2026-10-16 stride_read)', { x: M, y: 6.5, w: CW - 1, h: 0.4, fontSize: 10, color: C.accent4, objectName: '출처 각주' });
 
@@ -704,6 +704,29 @@ async function build() {
     '늦은 프레임 = 연속 두 장의 vblank 간격 > 2(앞 30장 제외). 게이트 = 30 fps 간격 33.3 ms − 여유. Vulkan 합성 경로에는 이 게이트가 없다',
   ], { fontSize: 10, color: C.accent2, paraSpaceAfter: 1, bullet: { indent: 10 } }), { x: M, y: 6.33, w: CW, h: 0.6, objectName: '각주' });
   s.addNotes('배치 2로 돌리면 NPU가 두 장을 묶어 처리하므로 결과가 약 66.7 ms마다 두 장씩 나온다. 화면은 30 fps 영상을 33.3 ms마다 한 장씩 보여야 하므로, 앱은 둘째 장을 잠시 붙잡는 커밋 게이트를 둔다. 게이트 여유를 줄이면 프레임이 대기열에 쌓여 박자가 고르게 되지만 그만큼 늦게 보이고, 여유를 늘리면 빨리 보이지만 몰림이 화면에 드러난다. 기본 8 ms에서 측정한 늦은 프레임은 모두 그 vblank 전에 처리가 끝나지 않은 프레임이었다. 즉 화면 동기 문제가 아니라 공급 박자 문제다. 여유를 0 ms로 줄이면 늦은 프레임은 2.1%로 줄고, 그 대부분은 게이트가 붙잡은 것이다. 기본 설정(배치 1)은 결과가 한 장씩 나오고 Vulkan 합성으로 표시한다. 배치 1을 평면 경로로 표시하는 경우는 슬롯 수에 따라 지연과 처리량이 맞바뀌며, 게이트의 영향은 재지 않았다.');
+
+  // ===== v6: 부록 A5 — 응답 속도 (17번). 수치 정본 07_results/demo_before_after/summary.md =====
+  s = pres.addSlide({ masterName: 'CONTENT', sectionTitle: '부록' });
+  s.addText('부록 A5 — 응답 속도: 이득의 중심은 CPU 절감이다', { placeholder: 'title', lang: LANG });
+  const r5 = (name, vals, extra) => [cell(name, 'left', extra)].concat(vals.map((v) => cell(v, 'right', extra)));
+  s.addTable([
+    ['조건', '평균', '중앙값', 'p90', '최대', '100 ms 초과', '응용 CPU'].map((t, i) => hdr(t, i ? 'right' : 'left')),
+    r5('적용 전 · 디코더 1스레드', ['135.9', '87.7', '367.9', '560.2', '27~29%', '47.86']),
+    r5('적용 전 · 디코더 자동 스레드', ['57.8', '57.8', '71.1', '74.7', '0%', '48.31']),
+    r5('적용 후', ['53.8', '53.6', '66.7', '72.8', '0%', '1.49'], hl),
+  ], {
+    x: M, y: 1.5, w: CW, colW: [3.98, 1.2, 1.2, 1.2, 1.2, 1.65, 1.7], fontSize: 15, color: C.text1, lang: LANG,
+    border: { type: 'solid', pt: 0.75, color: HEX.accent4 }, margin: [0.06, 0.12, 0.06, 0.12], valign: 'middle',
+    rowH: [0.55, 0.55, 0.55, 0.55], objectName: '표 A5 응답 속도',
+  });
+  tx(s, '도착 → 결과 (ms), 응용 CPU (ms/프레임)', { x: M, y: 3.85, w: CW, h: 0.3, fontSize: 12, color: C.accent2, objectName: '표 단위' });
+  tx(s, bullets([
+    '1스레드의 긴 꼬리는 소프트웨어 디코드가 고비트율 구간을 따라가지 못해 생긴다 (50~60초 구간 중앙값 337~413 ms)',
+    '자동 스레드와 비교하면 응답 이득은 평균 약 4 ms(약 7%)이고, CPU 차이는 그대로다',
+    '자동 스레드 값은 파일 입력이라 프레임을 미리 디코드해 유리하다. 실시간 입력은 재지 않았다',
+  ], { fontSize: 16, paraSpaceAfter: 10 }), { x: M, y: 4.3, w: CW, h: 2.2, valign: 'top', objectName: '본문' });
+  footnote(s, '출처: 2026-11-05, 표시 on · performance 거버너 · GPU 1150 MHz · 배치 1/슬롯 1 · 입력 페이싱 · 대기열 1, 1,816프레임 3회 중앙값, 처리한 프레임 기준. 끝점은 화면이 아니라 결과 처리', 6.6);
+  s.addNotes('이 방법의 이득은 응답 속도보다 CPU 절감에 있다. 적용 전 경로를 디코더 1스레드로 돌리면 고비트율 구간에서 소프트웨어 디코드가 밀려 평균 135.9 ms, p90 367.9 ms까지 늘어난다. 자동 스레드로 돌리면 57.8 ms로 적용 후 53.8 ms와 약 4 ms 차이다. 다만 이 값은 파일 입력이어서 프레임을 미리 디코드할 수 있어 유리하고, 카메라 같은 실시간 입력은 재지 않았다. 화면까지의 시간은 적용 전 기록이 shm 커밋까지만이어서 직접 비교하지 않는다. 그동안 응용 CPU는 약 48 ms와 1.49 ms로 크게 다르다.');
 
   // ---------------------------------------------------------------- 저장·후처리
   await pres.writeFile({ fileName: OUT });
