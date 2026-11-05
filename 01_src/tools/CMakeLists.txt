@@ -1,4 +1,4 @@
-# Registers the 13 built diagnostic/measurement tools in one place (2026-09-22; previously tools/ was scattered per domain folder).
+# Registers the 14 built diagnostic/measurement tools in one place (2026-09-22; previously tools/ was scattered per domain folder).
 # Folders are by **measured domain** (a tool spanning several domains goes by what it measures). File names keep their old names.
 # All executables go to build/bin/. If a library target is missing (e.g. no libpisp or wayland), REQUIRES silently skips the tool.
 #
@@ -18,17 +18,29 @@ yvo_add_tool(yvo_hailo_selftest hailo/hailo_selftest.cpp
 yvo_add_tool(yvo_hailo_raw_probe hailo/hailo_raw_probe.cpp
   LIBS yvo_hailo yvo_vulkan yvo_toolkit)
 
-# ── vulkan ─────────────────────────────────────────────────────────────────────
-# Performance/verification tool: full decode + GPU preprocessing
-# Optional libswscale (2026-10-27): --impl sws-rgb24|sws-gbrp CPU comparison. Missing -> only those modes are left out.
+# Optional libswscale (2026-10-27): yvo_preproc_bench --impl sws-rgb24|sws-gbrp CPU comparison and yvo_cpu_baseline.
+# Missing -> only those modes and that tool are left out.
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(YVO_SWSCALE QUIET IMPORTED_TARGET libswscale)
 if(YVO_SWSCALE_FOUND)
   add_library(yvo_swscale INTERFACE)
   target_link_libraries(yvo_swscale INTERFACE PkgConfig::YVO_SWSCALE)
 else()
-  message(STATUS "libswscale not found — yvo_preproc_bench is built without --impl sws-*")
+  message(STATUS "libswscale not found — yvo_preproc_bench is built without --impl sws-*, yvo_cpu_baseline is skipped")
 endif()
+
+# "Before" path of the before/after comparison (2026-11-05): software HEVC -> libswscale -> HailoRT NHWC + host NMS ->
+# CPU drawing -> wl_shm window. yvo_display is linked only for WaylandWindow (no Vulkan symbol): --as-needed keeps
+# libvulkan and libdrm out of DT_NEEDED, so `readelf -d` proves the process cannot use the GPU through them.
+yvo_add_tool(yvo_cpu_baseline hailo/cpu_baseline_pipeline.cpp
+  REQUIRES yvo_swscale yvo_hailo yvo_display
+  LIBS yvo_hailo yvo_display yvo_decoder yvo_swscale yvo_toolkit)
+if(TARGET yvo_cpu_baseline)
+  target_link_options(yvo_cpu_baseline PRIVATE LINKER:--as-needed)
+endif()
+
+# ── vulkan ─────────────────────────────────────────────────────────────────────
+# Performance/verification tool: full decode + GPU preprocessing
 yvo_add_tool(yvo_preproc_bench vulkan/preproc_bench.cpp
   LIBS yvo_vulkan yvo_decoder yvo_toolkit
   OPTIONAL yvo_opencv=YVO_HAVE_OPENCV yvo_swscale=YVO_HAVE_SWSCALE)

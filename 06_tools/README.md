@@ -1,13 +1,13 @@
 # 06_tools — 빌드 밖 자동화·도구
 
 CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_src/`](../01_src/) 에 있다
-(빌드되는 진단·측정 도구 13개는 [`01_src/tools/`](../01_src/tools/), 실행파일은 `build/bin/`).
+(빌드되는 진단·측정 도구 14개는 [`01_src/tools/`](../01_src/tools/), 실행파일은 `build/bin/`).
 
 2026-09-21 폴더 재배치에서 만들었다. 이전에는 `08_python/`(파이썬)과 `09_scripts/`(셸)로
 나뉘어 있었는데, 파이썬 파일 2개가 서로 다른 폴더에 흩어져 경계가 무너진 상태였다.
 실제 구분선은 "언어"가 아니라 **"빌드에 들어가는가"** 다.
 
-## `bench/` — 측정 자동화 셸 12개
+## `bench/` — 측정 자동화 셸 13개
 
 | 스크립트 | 무엇을 재나 | 출력 |
 |---|---|---|
@@ -21,6 +21,7 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 | `decode_bench.sh` | 디코드 경로 비교 | `07_results/decode_benchmark/` |
 | `backpressure_bench.sh` | 백프레셔 결함 전후 비교 | `07_results/raw_runner_backpressure/` |
 | `input_pace_bench.sh` | 입력 페이싱 + leaky 입력 큐 — b1s1·b2s3·b2s4 × {asap, `--input-pace source --input-queue` 1·2·3}, 도착 900프레임 × 3, 표시 off. `results_raw.csv` 47열(RESULT_CSV 22 + RESULT_CSV4 21 + 스크립트 4, asap 행의 CSV4 는 nan). 페이싱 행의 FPS·`cpu_ms_per_frame` 은 asap 과 비교 금지. `DRYRUN=1`·`CHECK_ONLY=1`. `FRAME_LOG=1` 이면 실행마다 `raw/<설정>_run<N>/frame_log.csv`(`--frame-log`, 분석은 `frame_log_stats.py`). **`DISPLAY_RUN=1`** = 페이싱 + 표시 on(큐 1): `dvk_b1s1`·`dwlp_b1s2`·`dwlp_b1s3`·`dvk_b2s4`·`dwlp_b2s6`(Vulkan 합성·wayland-planes, kms 없음), 실행마다 HDMI-A-1·labwc master 확인 + `timeout -s KILL $TIMEOUT_S`(90), `WARMUP`(30), raw 87열(+ RESULT_CSV5 6 + 표시 필드 31 + 스크립트 7), 기본 출력 `runs/display_on` | `07_results/input_pacing/` |
+| `demo_compare_bench.sh` | 적용 전/후 비교 영상용 실시간 기록(영상은 실행 뒤 합성). `before`(`yvo_cpu_baseline`: 소프트웨어 HEVC·swscale·HailoRT NMS·`wl_shm`) · `after`(`yvo_pipeline` O2 + Vulkan 합성), 전체 영상 × 1. 실행 폴더에 `frame_log.csv`·`detections.jsonl`·`cpu_samples.csv`(`proc_cpu_sampler.py`)·`stdout.log`·`hailort.log` | `07_results/demo_before_after/` |
 | `isp_bench.sh` | ISP 전처리 단독 | `07_results/isp_resize/` |
 | `isp_pipeline_bench.sh` | ISP 포함 전체 파이프라인 | `07_results/isp_resize/runs/pipeline/` |
 
@@ -37,7 +38,7 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 
 ### 벤치 락
 
-12개 스크립트 모두 시작할 때 `build/.bench_running` 에 자기 PID를 쓰고 `trap` 으로 지운다.
+13개 스크립트 모두 시작할 때 `build/.bench_running` 에 자기 PID를 쓰고 `trap` 으로 지운다.
 [`.claude/hooks/npu_guard.sh`](../.claude/hooks/npu_guard.sh) 가 이 파일을 보고 **측정 중에는
 빌드·테스트 명령을 막는다.** 측정 중에 다른 작업이 돌면 CPU 시간 측정이 **에러 없이 조용히
 오염되기** 때문이다. 훅이 PID 생존 여부를 보므로 비정상 종료로 남은 락은 자동 무효가 된다.
@@ -55,6 +56,8 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 | `hef_byte_model.py` | HEF 바이트 회계(`hef_bytes` 사용) + fw-actions 컨텍스트 시간·T(B)에 PCIe 전송 모델 적합. 입력 `<evidence 폴더(fwactions_probe_b{1,8}.json)> <hef>`, 출력은 표준 출력 또는 `--out` — **입력 폴더 안은 거부한다**(보관된 결과를 덮어쓰지 않게). `evidence/pcie_byte_model_fit.txt` §1~9 생성기. §5 T(B)·§8 Gen2 측정값과 제목의 HEF 이름이 하드코딩돼 있어 **다른 HEF에 쓰면 그 절은 맞지 않는다** | 시스템 python3 |
 | `frame_log_stats.py` | `yvo_pipeline --frame-log` CSV(프레임별 도착·디코드 끝·제출·NPU 완료·후처리 완료·완료 시각) 분석 — 지연(도착 기준·디코드 기준), 구간 분해, 완료 간격 분포·군집, NPU 완료 시각으로 추정한 배치 구성과 짝 위치별 지연, 상위 지연 프레임(시작·끝 표시). 10열 로그(표시 on)면 `present_ms` 로 도착 → 화면(a2p)·디코드 → 화면·표시 구간·present 간격(vsync 배수, `--vsync-ms`)도 낸다. 여러 회차를 파일별·합산으로, `--top`·`--startup`·`--csv`·`--json`. 사용례 [`input_pacing/runs/frame_log`](../07_results/input_pacing/runs/frame_log/summary.md) | 시스템 python3 |
 | `sys_cpu_window.py` | 앱의 CPU 측정 창(`YVO_PERF_CTL`/`YVO_PERF_ACK` FIFO, `tool_util.hpp` `perf_window`)에 맞춰 시스템 전체 CPU 를 잰다 — `/proc/stat`(tick)·`/proc/schedstat`(ns)·`/proc/interrupts`·전 프로세스 `/proc/<pid>/stat` 스냅샷 차분, 분류(app·labwc·커널 스레드·기타). `--duration S` 는 기준선. `display_bench.sh` 가 실행마다 부른다. 이 커널은 `IRQ_TIME_ACCOUNTING` 이 꺼져 idle 중 hardirq 는 잡히지 않는다 | 시스템 python3 |
+| `proc_cpu_sampler.py` | `demo_compare_bench.sh` 의 CPU 표집기(표준 라이브러리). 약 0.5초마다 대상 PID·시스템 전체·labwc tick 을 `CLOCK_MONOTONIC` 시각과 함께 CSV 로 남기고, `YVO_PERF_CTL` FIFO 로 대상의 t0(`enable`)·CPU 창 끝(`disable`)을 찍어 `--frame-log` 시간축과 맞춘다 | 시스템 `/usr/bin/python3` |
+| `demo_compose.py` | `demo_compare_bench.sh` 실행 폴더와 원본 영상으로 비교 영상(1080p30 mp4, libx264)을 합성한다. 출력 시각마다 그 시각까지 `present_ms` 로 화면에 올라간 최신 처리 프레임 + 검출 박스 + 한국어 OSD(약 1초 창의 FPS·CPU, 실행 평균 단계 표). 끝에 표시 프레임 수·OSD 평균 대 `stdout.log` 자기 검사를 stderr 로 낸다. `--max-seconds`·`--dump-frame T PATH` | `hailo-yolo`(numpy·PIL·cv2) + `/usr/bin/ffmpeg` |
 | `irq_time_window.py` | `display_bench.sh` `IRQ_TRACE=1` 가 앱 CPU 창에 맞춰 `sudo perf record`(irq·softirq tracepoint)로 남긴 `perf script` 텍스트를 읽어 hardirq/softirq **self time** 을 CPU 별로 짝지어 집계한다. 끊긴 태스크가 pid 0(idle)인 몫 = tick 계수(`IRQ_TIME_ACCOUNTING` 꺼짐)에서 빠지는 **미계수 몫**(`uncounted_ms_per_frame`). JSON + CSV 한 줄, 표준 라이브러리만(`/usr/bin/python3`) |
 | `fw_actions_breakdown.py` | `hailortcli run2 … measure-fw-actions` JSON 을 컨텍스트별 구간·액션 종류별 시간·전환 간격으로 나누고 배치 크기에 대해 T(B) = a + b·B 를 적합(기준 24.8 + 16.2·B). 액션 이름 해석은 추정. JSON 의 `fps` 는 중간 표본이라 주기는 stdout fps 로. 사용례 [`hef_context_profile`](../07_results/hef_context_profile/summary.md) | 시스템 python3 |
 | `hef_context_layers.py` | 다중 컨텍스트 HEF 의 컨텍스트(`dynamic_0..3`)가 계산하는 ONNX 블록(`/model.N/...`)을 대응시킨다. HEF 파일(과 선택적으로 `measure-fw-actions` JSON)만 읽고 장치는 열지 않는다. 출력 `context_layers.json`·`.txt`. [`hef_context_profile`](../07_results/hef_context_profile/summary.md) 의 `evidence/context_layers.*` 생성기 | 시스템 python3 (stdlib만) |

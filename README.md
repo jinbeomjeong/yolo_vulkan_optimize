@@ -315,7 +315,7 @@ bash 06_tools/bench/gst_pipeline_bench.sh # 앱 대 GStreamer 연구 경로(yvo_
 bash 06_tools/bench/input_pace_bench.sh  # 입력 페이싱 + leaky 큐 N=1·2·3 (b1s1·b2s3·b2s4 × asap 대조, 도착 900프레임). DISPLAY_RUN=1 = 표시 on(HDMI 필요)
 ```
 
-벤치 스크립트는 모두 12개다. 나머지(`backpressure`·`isp`·`isp_pipeline`·`display_planes`·`nms`·`input_pace`)까지 포함한 목록은
+벤치 스크립트는 모두 13개다. 나머지(`backpressure`·`isp`·`isp_pipeline`·`display_planes`·`nms`·`input_pace`·`demo_compare`)까지 포함한 목록은
 [`08_learn/09_code_map.md`](08_learn/09_code_map.md) §9.7.
 
 공통 환경변수: `RUNS`(기본 3), `FRAMES`, `ONLY`(설정 id grep), `APPEND=1`, `BIN`, `OUT_DIR`,
@@ -343,6 +343,7 @@ bash 06_tools/bench/input_pace_bench.sh  # 입력 페이싱 + leaky 큐 N=1·2·
 | `yvo_perf_counters` | V3D 성능 카운터 열거(93개, 1 pass 최대 32개)와 쿼리 동작 확인 (`--csv`, NPU 불필요) |
 | `yvo_hailo_raw_probe` | 원시 출력 경로 프로브 (`--probe f0` 이 입출력 dma-buf 동시 사용 관문) |
 | `yvo_hailo_selftest` | NPU 러너 단독 검증 |
+| `yvo_cpu_baseline` | 적용 전/후 비교의 "적용 전" 경로(소프트웨어 HEVC 디코드 → libswscale → HailoRT NMS → `wl_shm` 표시, GPU·Vulkan 미사용). 결과 [`demo_before_after`](07_results/demo_before_after/summary.md) |
 | `yvo_display_probe` | 표시 경로 프로브 (surface/present/convert/overlay) |
 | `yvo_display_pipeline_probe` | `DisplayPipeline` 단독 검증 (`yvo_pipeline` 미사용) |
 | `yvo_isp_*` | PiSP BE(ISP) 전처리 — **통합 보류 상태** |

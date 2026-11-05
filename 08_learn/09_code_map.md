@@ -23,7 +23,7 @@
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
 | | `04_data/` | 입력 영상(기본 `video_h265.mp4`, 혼잡 장면용 `mot20_{02,05}_h265.mp4`)과 테스트용 원시 텐서 픽스처 (git에 없음) |
 | **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 10개(`test_postproc_live` 를 따로 세면 11), ctest 항목 195개(NPU 없이 192) |
-| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 12개), `python/`(10개 + 논문 스크립트 `paper/` 11개 + 단위 테스트 `tests/` 141개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
+| | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 13개), `python/`(14개 + 논문 스크립트 `paper/` 11개 + 단위 테스트 `tests/` 141개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
 | | [`07_results/`](../07_results/) | 실험별 측정 원시 출력과 `summary.md` |
 | **문서** | [`08_learn/`](00_README.md) | 지금 읽고 있는 이 자습 교재 13장 |
 | | [`09_diagrams/`](../09_diagrams/) | yEd로 여는 파이프라인 다이어그램 3장(원본 2장 + 논문판 1장) |
@@ -56,7 +56,7 @@
 ├── isp/        ISP 전처리 — 구현됐지만 미사용
 ├── pipeline/   이 전부를 묶는 실행 파일 main.cpp + slot_exchange(슬롯 풀·슬롯 예산 검사)·input_pacer(입력 페이싱 leaky 큐) — 둘 다 단위 테스트 대상
 ├── gstelem/    (선택) GStreamer 연구 경로 — 레터박스 요소 + HailoRT 싱크(`yvohailosink`). 앱 본체는 쓰지 않는다
-└── tools/      빌드되는 진단·측정 도구 13개 ({hailo,vulkan,display,isp,decode,gst}/ — 측정 대상 도메인 기준)
+└── tools/      빌드되는 진단·측정 도구 14개 ({hailo,vulkan,display,isp,decode,gst}/ — 측정 대상 도메인 기준)
 ```
 
 ### 왜 일부러 갈라 뒀나
@@ -215,6 +215,7 @@ cmake -S . -B build -G Ninja && cmake --build build
 | `yvo_postproc_probe` | GPU 후처리. `--probe fixture`는 저장된 텐서로 검증, `--probe stages`는 디코딩 단계별 GPU 시간(차분법, `--variants`로 변형 선택), `--probe groups`는 그룹당 통과 앵커·프리필터 통과 수 분포(CPU 전용), `--probe sweep`은 local size 26조합, `--probe memasym`은 CPU↔GPU 메모리 접근 비대칭(GPU 대역폭·PTE 속성·일관성·CPU 쓰기, [`memory_asymmetry`](../07_results/memory_asymmetry/summary.md)) | `fixture`·`stages`·`groups`·`sweep`은 불필요 |
 | `yvo_perf_counters` | V3D 성능 카운터(`VK_KHR_performance_query`) 열거·pass 분석, 작은 dispatch로 쿼리 동작 확인 | 아니오 |
 | `yvo_hailo_selftest` | NPU 러너만 | 예 |
+| `yvo_cpu_baseline` | 적용 전/후 비교의 "적용 전" 경로 — 소프트웨어 HEVC·libswscale·HailoRT NMS·`wl_shm` 표시(GPU 미사용) | 예 |
 | `yvo_hailo_raw_probe` | 원시 출력 경로, dma-buf 동시 사용 관문 | 예 |
 | `yvo_display_probe` | 화면 경로만 | 아니오 |
 | `yvo_display_pipeline_probe` | 표시 상태기계만 | 아니오 |
@@ -279,7 +280,7 @@ C++ 테스트의 판정 규칙([`01_src/ref/detection_match.hpp`](../01_src/ref/
 
 ## 9.7 측정 스크립트
 
-[`06_tools/bench/`](../06_tools/bench/) 의 셸 스크립트 12개가 `07_results/` 의 결과를 만들어 낸다.
+[`06_tools/bench/`](../06_tools/bench/) 의 셸 스크립트 13개가 `07_results/` 의 결과를 만들어 낸다.
 
 | 스크립트 | 무엇을 재나 |
 |---|---|
@@ -293,6 +294,7 @@ C++ 테스트의 판정 규칙([`01_src/ref/detection_match.hpp`](../01_src/ref/
 | `nms_bench.sh` | **GPU NMS** 회귀 — `--nms cpu` 대 `gpu` 성능과 `MODE=verify` 검출 대조 |
 | `display_planes_bench.sh` | **HVS 평면 스캔아웃** 비교 — Vulkan 합성 대 wayland-planes 대 kms, 디코드→화면 지연과 V3D 엔진별 비용 |
 | `input_pace_bench.sh` | **입력 페이싱** — `--input-pace source` × `--input-queue` 1~3 과 asap 대조, 도착 시각부터 잰 e2e·버림. `FRAME_LOG=1` 이면 프레임별 시각 CSV 도 남긴다. `DISPLAY_RUN=1` 은 표시 on(Vulkan 합성·wayland-planes, 도착 → 화면) |
+| `demo_compare_bench.sh` | 적용 전(`yvo_cpu_baseline`)/후(`yvo_pipeline` O2) 비교 영상용 실시간 기록 |
 | `isp_bench.sh` / `isp_pipeline_bench.sh` | ISP 경로 |
 
 공통 규약(설정당 3회 중앙값, 냉각 게이트, 환경 스냅샷)은 [08_method.md](08_method.md)에서 다룬다.
@@ -300,7 +302,7 @@ C++ 테스트의 판정 규칙([`01_src/ref/detection_match.hpp`](../01_src/ref/
 > `pipeline_bench.sh`의 설정 형식은 **바꾸면 안 된다.** 다른 스크립트들이
 > 이걸 대조군 기준으로 쓴다.
 
-12개 스크립트 모두 시작할 때 `build/.bench_running` 에 자기 PID를 쓰고 끝날 때 지운다.
+13개 스크립트 모두 시작할 때 `build/.bench_running` 에 자기 PID를 쓰고 끝날 때 지운다.
 [`.claude/hooks/npu_guard.sh`](../.claude/hooks/npu_guard.sh) 가 이 파일을 보고 **측정 중에는
 빌드·테스트 명령을 막는다** — 측정 중 다른 작업이 돌면 CPU 시간이 에러 없이 오염되기 때문이다.
 Ctrl+C(INT)나 TERM을 받으면 락을 지우고 바로 끝난다(종료 코드 130·143, [`lib/common.sh`](../06_tools/bench/lib/common.sh)).
@@ -310,7 +312,7 @@ Ctrl+C(INT)나 TERM을 받으면 락을 지우고 바로 끝난다(종료 코드
 
 | 폴더 | 내용 |
 |---|---|
-| [`06_tools/python/`](../06_tools/python/) | `compare_detections.py`(검출 비교), `gen_glyph_font_8x16.py`(폰트 헤더 생성 — 빌드에 관여하지 않는 재현 기록), `check_links.py`(문서 링크·`file:line`·`--stale` 옛 경로), `check_structure.py`(폴더 배치 규칙), `relocate.py`(매핑표 기반 이동), `hef_bytes.py`·`hef_byte_model.py`(HEF 바이트 회계), `hef_context_layers.py`(HEF 컨텍스트 ↔ ONNX 블록 대응), `frame_log_stats.py`(`--frame-log` 분석), `fw_actions_breakdown.py`(NPU 컨텍스트별 시간 분해), `paper/`(논문 그림 `fig*`·`build_figures.py`와 docx `build_docx.py`·`make_reference_docx.py` 생성 스크립트), `tests/`(stdlib 단위 테스트) |
+| [`06_tools/python/`](../06_tools/python/) | `compare_detections.py`(검출 비교), `gen_glyph_font_8x16.py`(폰트 헤더 생성 — 빌드에 관여하지 않는 재현 기록), `check_links.py`(문서 링크·`file:line`·`--stale` 옛 경로), `check_structure.py`(폴더 배치 규칙), `relocate.py`(매핑표 기반 이동), `hef_bytes.py`·`hef_byte_model.py`(HEF 바이트 회계), `hef_context_layers.py`(HEF 컨텍스트 ↔ ONNX 블록 대응), `frame_log_stats.py`(`--frame-log` 분석), `fw_actions_breakdown.py`(NPU 컨텍스트별 시간 분해), `proc_cpu_sampler.py`(`demo_compare_bench.sh` CPU 표집기)·`demo_compose.py`(적용 전/후 비교 영상 합성), `paper/`(논문 그림 `fig*`·`build_figures.py`와 docx `build_docx.py`·`make_reference_docx.py` 생성 스크립트), `tests/`(stdlib 단위 테스트) |
 | [`06_tools/probes/`](../06_tools/probes/) | 일회성 프로브 소스. 빌드 대상이 아니며, 어떤 실험에서 쓴 것인지는 해당 `summary.md`에 적혀 있다. `hvs_probe/` 는 외부 저장소 헤더 기준이라 이 저장소에서 그대로는 빌드되지 않는다 |
 
 ---
