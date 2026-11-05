@@ -116,8 +116,8 @@ def main(out_dir: str | Path | None = None) -> list[Path]:
     ax.text((arrow_end + v["total_1"]) / 2, 1, ratio_text, ha="center", va="center",
             bbox={"boxstyle": "square,pad=0.15", "fc": "white", "ec": "none"})
 
-    for y, name, steps in ((0, "1번 파이프라인", "리사이즈 → dma-buf(NHWC)\n→ NHCW 변환"),
-                           (1, "2번 파이프라인", "리사이즈 → dma-buf(NHCW)")):
+    for y, name, steps in ((0, "기존 파이프라인", "리사이즈 → dma-buf(NHWC)\n→ NHCW 변환"),
+                           (1, "제안 파이프라인", "리사이즈 → dma-buf(NHCW)")):
         ax.text(ROW_NAME_X, y - STEP_OFFSET, name, transform=to_fig_data, ha="left", va="bottom", fontsize=ps.TITLE_SIZE,
                 fontweight="bold", clip_on=False)
         ax.text(ROW_NAME_X, y - STEP_OFFSET + 0.03, steps, transform=to_fig_data, ha="left", va="top", clip_on=False)
