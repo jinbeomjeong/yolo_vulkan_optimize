@@ -785,7 +785,7 @@ bool print_summary(const Args& a, const RunTotals& t, const GpuPostSnapshot& g, 
                                      .hailo_t1 = static_cast<double>(t.hailo_t1), .soc_t0 = t.soc_t0,
                                      .soc_t1 = t.soc_t1, .ok = !fail});
         // New metrics go on a **separate line**. The 22 fields of RESULT_CSV do not change order or count
-        // (06_tools/bench/pipeline_bench.sh:120 compares the header with grep -qx).
+        // (06_tools/bench/pipeline_bench.sh:77 compares the header with grep -qx).
         // label,postproc,alloc,gpu_post_mean,gpu_post_p90,cpu_nms_us_mean,cand_mean,cand_max,cand_overflow,ok
         // + display metrics are appended **only at the end** (the first 10 fields do not change order or count):
         //   display,sync,pace,disp_convert_mean,disp_convert_p90,disp_overlay_mean,present_interval_median,

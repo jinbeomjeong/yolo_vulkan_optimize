@@ -46,7 +46,7 @@ tools: Read, Grep, Glob, Bash
    (`.claude/hooks/npu_guard.py:7-8`에 실증으로 기록돼 있다). "아직 실행 중"이라는 오보고의 원인이다.
    → `pgrep -x <정확한 이름>` 또는 PID를 알 때 `ps -o pid,etime,args -p <PID>`를 쓴다.
 2. **락 파일이 있다고 측정 중인 것이 아니다.** 비정상 종료로 남은 stale 락이 있을 수 있다
-   (`06_tools/bench/lib/common.sh:148`). 파일 안의 PID가 **살아 있는지** 반드시 확인한다.
+   (`06_tools/bench/lib/common.sh:158`). 파일 안의 PID가 **살아 있는지** 반드시 확인한다.
 3. **`vcgencmd get_throttled`의 상위 비트는 부팅 후 이력이다.** 현재 상태는 하위 4비트다.
    예: `0xe0000`·`0x80000`은 "과거에 스로틀·캡이 있었다"는 뜻이고 하위 4비트가 0이면 **지금 스로틀 중이 아니다**
    (근거: 현재 비트는 하위 4비트라는 `.claude/skills/verify/SKILL.md` 알려진 경고 목록의 설명). 이력 비트를 현재 상태로 보고하면 오보고다.
