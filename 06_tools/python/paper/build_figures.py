@@ -25,6 +25,7 @@ FIGURES = (
     "fig07_arrival_to_present",
     "fig08_display_paths",
     "fig09_thermal_soak",
+    "fig11_decoder_sw_vs_hw",
 )
 
 
