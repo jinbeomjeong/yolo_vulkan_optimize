@@ -1,6 +1,7 @@
 """Figure 12: CPU removed per frame by each offload technique, in pipeline order. One linear horizontal bar panel.
 
-The values come from different experiments and conditions (letters A-F), so they must not be added; no total is drawn.
+The values come from different experiments and conditions (stated per row in the caption), so they must not be added;
+no total is drawn. The letters A-F below and in the report lines are for traceability only and are not drawn.
 Sources (under 07_results), all medians of 3 runs. Rows 1, 2, 7, 8 and 9 are differences of medians (stated in the caption):
   1  decode_benchmark/runs/pipeline_sw_hw (A): sw_auto app CPU - sw_copy_ms - hw_t1 app CPU, app CPU = sum of the
      "thread cpu" ms/arrived lines of raw/<setting>_run<N>/stdout.log (same reader as figure 11).
@@ -246,15 +247,11 @@ def main(out_dir: str | Path | None = None) -> list[Path]:
         if r.number:
             ax.text(NUMBER_X, y, r.number, transform=to_fig_data, ha="right", va="center", clip_on=False)
         ax.text(NAME_X, y, r.name, transform=to_fig_data, ha="left", va="center", clip_on=False)
-        ax.text(CONDITION_X, y, r.condition, transform=to_fig_data, ha="center", va="center",
-                color=ps.REFERENCE_COLOR, clip_on=False)
-    ax.text(CONDITION_X, -0.78, "조건", transform=to_fig_data, ha="center", va="center", color=ps.REFERENCE_COLOR,
-            clip_on=False)
 
     # Row 7: the same transform on cached memory (a different condition, so it carries its own letter).
     y7 = next(y for y, r in enumerate(rows) if r.number == "7")
     ax.plot(stages["transpose"], y7, ls="none", marker="o", ms=5, mfc="none", mec=ps.EDGE_COLOR, mew=0.9, zorder=3)
-    ax.text(stages["transpose"] + x_max * 0.02, y7, f"캐시 메모리 전치 {ps.fmt_half_up(stages['transpose'], 2)} (C)",
+    ax.text(stages["transpose"] + x_max * 0.02, y7, f"캐시 메모리 전치 {ps.fmt_half_up(stages['transpose'], 2)}",
             ha="left", va="center")
 
     _draw_sections(fig, ax, rows, to_fig_data)
