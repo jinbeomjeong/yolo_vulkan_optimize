@@ -1,17 +1,22 @@
-"""Figure 13: app CPU per frame of the two NPU input layouts, split into stages. Two stacked horizontal bars.
+"""Figure 13: app CPU per frame of three NPU input and post-processing paths, split into stages. Three stacked horizontal bars.
 
-Pipeline 1 is resize -> dma-buf (NHWC) -> NHWC->NHCW conversion on the CPU; pipeline 2 is resize -> dma-buf (NHCW).
+Row 1 is resize -> dma-buf (NHWC) -> NHWC->NHCW conversion on the CPU -> host post-processing; row 2 is resize -> dma-buf (NHCW)
+-> host post-processing; row 3 is resize -> dma-buf (NHCW) -> GPU post-processing.
+Only the totals are measured directly; the stages are differences. Per processed frame: the throughput differs per row, so the
+rows cover different frame counts. App CPU: GPU and NPU time are not included.
 Sources (under 07_results), all medians of 3 runs:
-  totals      technique_ablation: layout_nhwc (pipeline 1), post_host (pipeline 2), cpu_ms_per_frame_median. Both use host
-              post-processing and display on. App CPU: GPU time is not included.
+  totals      technique_ablation: layout_nhwc (row 1), post_host (row 2), base (row 3), cpu_ms_per_frame_median; display on.
+  fps         technique_ablation: fps_median of the same settings.
   GPU preproc preproc_cpu_vs_gpu/runs/stage_split: gpu cpu_mean (CPU submit and wait), checked against evidence/medians.txt.
               This run has no NPU and no display, so it is a different condition from the totals.
-  conversion  layout_nhwc - post_host (derived; pipeline 1 only).
-  rest        post_host - GPU preproc (derived; the same value in both bars).
-dma-buf hand-off: no CPU copy, so it has no bar segment and only a label.
+  conversion  layout_nhwc - post_host (derived; row 1 only).
+  host post   post_host - base (derived; rows 1 and 2). A net value: it is what host post-processing adds over GPU post-processing.
+  rest        base - GPU preproc (derived; the same value in all rows). In row 3 it contains the app CPU of GPU post-processing.
+dma-buf hand-off: no CPU copy, so it has no bar segment; one note below the axes says so.
 """
 from __future__ import annotations
 
+import statistics
 import sys
 from pathlib import Path
 
@@ -24,24 +29,35 @@ import paper_style as ps
 
 STEM = "fig13_input_layout_paths"
 SPLIT_CONFIG = "gpu"
-PIPELINE_1, PIPELINE_2 = "layout_nhwc", "post_host"
+# (setting, row name, steps), top to bottom
+ROWS = (("layout_nhwc", "기존 파이프라인", "리사이즈 → dma-buf(NHWC)\n→ NHCW 변환 → 호스트 후처리"),
+        ("post_host", "NHCW 직접 입력", "리사이즈 → dma-buf(NHCW)\n→ 호스트 후처리"),
+        ("base", "제안 파이프라인", "리사이즈 → dma-buf(NHCW)\n→ GPU 후처리"))
+ROW_STAGES = (("gpu", "conversion", "host_post", "rest"), ("gpu", "host_post", "rest"), ("gpu", "rest"))
 
 GPU_COLOR = ps.DEVICE_COLORS["gpu"]
-CONVERSION_COLOR = ps.PALETTE[3]     # not a processing-unit color: this is the one segment the figure is about
+CONVERSION_COLOR = fig12.READ_AVOID_COLOR   # not a processing-unit color: the same conversion as figure 12's row 7
+HOST_POST_COLOR = ps.PALETTE[4]      # the CPU color is too pale next to the rest segment; sky blue is the display color
 REST_COLOR = "#E6E6E6"
-GPU_LABEL = "리사이즈 등 GPU 전처리(CPU 제출·대기)"
+STAGE_COLORS = {"gpu": GPU_COLOR, "conversion": CONVERSION_COLOR, "host_post": HOST_POST_COLOR, "rest": REST_COLOR}
 CONVERSION_LABEL = "NHWC→NHCW 변환"
-REST_LABEL = "나머지(디코드 제어·호스트 후처리·표시)"
+HOST_POST_LABEL = "호스트 후처리"
+REST_LABEL = "나머지(디코드 제어·표시·GPU 제출)"
+DMABUF_NOTE = "dma-buf 전달은 CPU 복사 없음(막대 폭 없음)"
 
-BAR_HEIGHT = 0.34
-X_HEADROOM = 1.1                     # room for the bold total right of the long bar
+BAR_HEIGHT = 0.4
+X_HEADROOM = 1.22                    # room for the bold total and the fps right of the long bar
 X_TICK_STEP = 5.0
 LABEL_GAP = 0.009                    # share of x_max between a bar end and its label
-LEADER_ABOVE, LEADER_BELOW = 0.33, 0.33   # leader-line tip offsets from the bar center, in rows
-LEADER_X = 0.03                      # share of x_max: where a leader's label starts
+FPS_GAP_PT = 4.0                     # points between a bold total and its fps
+ARROW_X = 0.42                       # share of x_max: the step arrows, right of the short rows' labels
+ARROW_GAP = 0.12                     # rows kept free around the row centers where the arrows stop
+ARROW_TEXT_GAP = 0.012               # share of x_max between an arrow and its text
 ROW_NAME_X = 0.008                   # figure coordinates, left column
-STEP_OFFSET = 0.11                   # rows between a row name and its step sequence
-AXES_LEFT, AXES_RIGHT, AXES_BOTTOM, AXES_TOP = 0.255, 0.985, 0.165, 0.875
+STEP_OFFSET = 0.13                   # rows between a row name and its step sequence
+ROUNDING_TOLERANCE = 0.015           # 2-decimal stage labels may miss the 2-decimal total by rounding only
+AXES_LEFT, AXES_RIGHT, AXES_BOTTOM, AXES_TOP = 0.27, 0.985, 0.2, 0.92
+NOTE_Y = 0.008                       # figure coordinates, below the axis label
 
 
 def gpu_preproc_cpu() -> float:
@@ -53,94 +69,103 @@ def gpu_preproc_cpu() -> float:
     return value
 
 
+def load_throughput() -> tuple[dict[str, float], dict[str, float]]:
+    """fps_median per setting, and the median per-run CPU per arrived frame (cited by the caption, not drawn)."""
+    csv_path = fig12.ABLATION_DIR / "results.csv"
+    rows, raw = fig12._by_key(csv_path, "label"), ps.read_csv(fig12.ABLATION_DIR / "results_raw.csv")
+    fps: dict[str, float] = {}
+    per_arrived: dict[str, float] = {}
+    for label, _, _ in ROWS:
+        fps[label] = float(rows[label]["fps_median"])
+        per_arrived[label] = statistics.median(float(x["cpu_ms_per_frame"]) * int(x["processed"]) / int(x["arrived"])
+                                               for x in raw if x["label"] == label)
+    return fps, per_arrived
+
+
 def load() -> dict[str, float]:
     """Totals and stage values. load_ablation() raises ValueError when a run's ok, unreliable or warning column is off."""
     cpu = fig12.load_ablation()
     gpu = gpu_preproc_cpu()
-    total_1, total_2 = cpu[PIPELINE_1], cpu[PIPELINE_2]
-    conversion = round(total_1 - total_2, 3)   # 3-decimal inputs: no float tail for half-up
-    rest = round(total_2 - gpu, 4)             # 4-decimal input
-    if conversion <= 0.0 or rest <= 0.0:
-        raise ValueError(f"unexpected stage values: conversion {conversion}, rest {rest}")
-    return {"total_1": total_1, "total_2": total_2, "gpu": gpu, "conversion": conversion, "rest": rest,
-            "ratio": total_1 / total_2}
+    # 3- and 4-decimal inputs: rounding removes the float tail that half-up would see.
+    stages = {"gpu": gpu, "conversion": round(cpu["layout_nhwc"] - cpu["post_host"], 3),
+              "host_post": round(cpu["post_host"] - cpu["base"], 3), "rest": round(cpu["base"] - gpu, 4)}
+    if min(stages.values()) <= 0.0:
+        raise ValueError(f"unexpected stage values: {stages}")
+    for (label, _, _), names in zip(ROWS, ROW_STAGES):
+        fig12._check(f"{label} stages vs total", sum(stages[n] for n in names), cpu[label], fig12.MEDIANS_TOLERANCE)
+        labels = sum(float(ps.fmt_half_up(stages[n], 2)) for n in names)
+        fig12._check(f"{label} stage labels vs total label", labels, float(ps.fmt_half_up(cpu[label], 2)), ROUNDING_TOLERANCE)
+    return {**stages, **{label: cpu[label] for label, _, _ in ROWS}, "ratio": cpu["layout_nhwc"] / cpu["base"]}
 
 
-def _small_labels(ax, y: float, v: dict[str, float], x_max: float) -> None:
-    """Leader-line labels of the two stages too small to carry text: GPU preprocessing above, dma-buf below the bar."""
-    leader = {"arrowstyle": "-", "color": ps.EDGE_COLOR, "lw": 0.5, "shrinkA": 0, "shrinkB": 0}
-    text_x = x_max * LEADER_X
-    ax.annotate(f"GPU 전처리 {ps.fmt_half_up(v['gpu'], 2)}", xy=(v["gpu"] / 2, y - BAR_HEIGHT / 2),
-                xytext=(text_x, y - LEADER_ABOVE), ha="left", va="center", arrowprops=leader)
-    ax.annotate("dma-buf 전달: CPU 복사 없음 (0)", xy=(v["gpu"], y + BAR_HEIGHT / 2),
-                xytext=(text_x, y + LEADER_BELOW), ha="left", va="center", arrowprops=leader)
+def _draw_bar(ax, y: int, names: tuple[str, ...], v: dict[str, float]) -> None:
+    """One stacked bar. Label text is black everywhere; the segment colors carry the distinction."""
+    left = 0.0
+    for name in names:
+        ax.barh(y, v[name], BAR_HEIGHT, left=left, color=STAGE_COLORS[name], edgecolor=ps.EDGE_COLOR, lw=0.4)
+        if name != "gpu":   # too narrow to carry text; its value is in the legend
+            ax.text(left + v[name] / 2, y, ps.fmt_half_up(v[name], 2), ha="center", va="center")
+        left += v[name]
 
 
-def _segment(ax, y: int, left: float, width: float, color: str) -> None:
-    ax.barh(y, width, BAR_HEIGHT, left=left, color=color, edgecolor=ps.EDGE_COLOR, lw=0.4)
+def _draw_steps(ax, v: dict[str, float], x_max: float) -> None:
+    """Two downward arrows between the rows with the reduction of each step; the overall ratio ends the sequence."""
+    x = x_max * ARROW_X
+    text_x = x + x_max * ARROW_TEXT_GAP
+    steps = ((BAR_HEIGHT / 2, 1.0 - ARROW_GAP, v["conversion"]), (1.0 + ARROW_GAP, 2.0 - ARROW_GAP, v["host_post"]))
+    for top, bottom, reduction in steps:
+        ax.annotate("", xy=(x, bottom), xytext=(x, top),
+                    arrowprops={"arrowstyle": "->", "color": ps.REFERENCE_COLOR, "lw": 0.8, "shrinkA": 0, "shrinkB": 0})
+        ax.text(text_x, (top + bottom) / 2, f"{ps.fmt_half_up(reduction, 2)} 감소", ha="left", va="center",
+                bbox={"boxstyle": "square,pad=0.15", "fc": "white", "ec": "none"})
+    ax.text(x, 2.0, f"전체 약 1/{ps.fmt_half_up(v['ratio'], 0)}", ha="center", va="center", fontweight="bold",
+            bbox={"boxstyle": "square,pad=0.15", "fc": "white", "ec": "none"})
 
 
 def main(out_dir: str | Path | None = None) -> list[Path]:
     v = load()
-    fig, ax = ps.new_figure("double", 6.0, layout="none")
+    fps, per_arrived = load_throughput()
+    fig, ax = ps.new_figure("double", 8.0, layout="none")
     fig.subplots_adjust(left=AXES_LEFT, right=AXES_RIGHT, bottom=AXES_BOTTOM, top=AXES_TOP)
-    x_max = v["total_1"] * X_HEADROOM
+    x_max = v["layout_nhwc"] * X_HEADROOM
     to_fig_data = blended_transform_factory(fig.transFigure, ax.transData)
 
-    # Pipeline 1: GPU preprocessing, conversion, rest. Pipeline 2 has no conversion.
-    _segment(ax, 0, 0.0, v["gpu"], GPU_COLOR)
-    _segment(ax, 0, v["gpu"], v["conversion"], CONVERSION_COLOR)
-    _segment(ax, 0, v["gpu"] + v["conversion"], v["rest"], REST_COLOR)
-    _segment(ax, 1, 0.0, v["gpu"], GPU_COLOR)
-    _segment(ax, 1, v["gpu"], v["rest"], REST_COLOR)
-
-    # Label text is black everywhere; the segment colors carry the distinction.
-    ax.text(v["gpu"] + v["conversion"] / 2, 0, ps.fmt_half_up(v["conversion"], 2), ha="center", va="center")
-    ax.text(v["gpu"] + v["conversion"] + v["rest"] / 2, 0, ps.fmt_half_up(v["rest"], 2), ha="center", va="center")
-    ax.text(v["gpu"] + v["rest"] / 2, 1, ps.fmt_half_up(v["rest"], 2), ha="center", va="center")
-    for y in (0, 1):
-        _small_labels(ax, y, v, x_max)
-
-    gap = x_max * LABEL_GAP
-    ax.text(v["total_1"] + gap, 0, ps.fmt_half_up(v["total_1"], 2), ha="left", va="center", fontsize=ps.TITLE_SIZE,
-            fontweight="bold")
-    ax.text(v["total_2"] + gap, 1, ps.fmt_half_up(v["total_2"], 2), ha="left", va="center", fontsize=ps.TITLE_SIZE,
-            fontweight="bold")
-
-    # The difference sits on an arrow in the short row, from the end of the long bar to the short bar's total.
-    arrow_end = v["total_2"] + x_max * 0.065
-    ax.plot([v["total_1"], v["total_1"]], [BAR_HEIGHT / 2, 1], color=ps.REFERENCE_COLOR, lw=0.6, ls=":")
-    ax.annotate("", xy=(arrow_end, 1), xytext=(v["total_1"], 1),
-                arrowprops={"arrowstyle": "->", "color": ps.REFERENCE_COLOR, "lw": 0.8, "shrinkA": 0, "shrinkB": 0})
-    ratio_text = f"{ps.fmt_half_up(v['conversion'], 2)} 감소, 약 1/{ps.fmt_half_up(v['ratio'], 1)}"
-    ax.text((arrow_end + v["total_1"]) / 2, 1, ratio_text, ha="center", va="center",
-            bbox={"boxstyle": "square,pad=0.15", "fc": "white", "ec": "none"})
-
-    for y, name, steps in ((0, "기존 파이프라인", "리사이즈 → dma-buf(NHWC)\n→ NHCW 변환"),
-                           (1, "제안 파이프라인", "리사이즈 → dma-buf(NHCW)")):
+    for y, ((label, name, steps), names) in enumerate(zip(ROWS, ROW_STAGES)):
+        _draw_bar(ax, y, names, v)
+        total = ax.text(v[label] + x_max * LABEL_GAP, y, ps.fmt_half_up(v[label], 2), ha="left", va="center",
+                        fontsize=ps.TITLE_SIZE, fontweight="bold")
+        ax.annotate(f"{ps.fmt_half_up(fps[label], 2)} fps", xy=(1.0, 0.5), xycoords=total, xytext=(FPS_GAP_PT, 0.0),
+                    textcoords="offset points", ha="left", va="center")
         ax.text(ROW_NAME_X, y - STEP_OFFSET, name, transform=to_fig_data, ha="left", va="bottom", fontsize=ps.TITLE_SIZE,
                 fontweight="bold", clip_on=False)
         ax.text(ROW_NAME_X, y - STEP_OFFSET + 0.03, steps, transform=to_fig_data, ha="left", va="top", clip_on=False)
+    _draw_steps(ax, v, x_max)
 
     ax.set_xlim(0, x_max)
     ax.xaxis.set_major_locator(MultipleLocator(X_TICK_STEP))
-    ax.set_ylim(1.5, -0.5)   # first row on top
+    ax.set_ylim(len(ROWS) - 0.5, -0.5)   # first row on top
     ax.set_yticks([])
     ax.grid(axis="y", visible=False)
     ax.set_xlabel("응용 CPU (ms/프레임)")
-    handles = [Patch(fc=GPU_COLOR, ec=ps.EDGE_COLOR, lw=0.6, label=GPU_LABEL),
-               Patch(fc=CONVERSION_COLOR, ec=ps.EDGE_COLOR, lw=0.6, label=CONVERSION_LABEL),
-               Patch(fc=REST_COLOR, ec=ps.EDGE_COLOR, lw=0.6, label=REST_LABEL)]
-    fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 1.0), ncols=3, fontsize=ps.FONT_SIZE,
-               columnspacing=1.4, handlelength=1.6)
+    gpu_label = f"GPU 전처리 {ps.fmt_half_up(v['gpu'], 2)}(CPU 제출·대기, 공통)"
+    handles = [Patch(fc=STAGE_COLORS[key], ec=ps.EDGE_COLOR, lw=0.6, label=text)
+               for key, text in (("gpu", gpu_label), ("conversion", CONVERSION_LABEL), ("host_post", HOST_POST_LABEL),
+                                 ("rest", REST_LABEL))]
+    fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 1.0), ncols=4, fontsize=ps.FONT_SIZE,
+               columnspacing=1.2, handlelength=1.6)
+    fig.text(AXES_LEFT, NOTE_Y, DMABUF_NOTE, ha="left", va="bottom")
 
-    lines = [
-        f"pipeline 1 {PIPELINE_1}: total {v['total_1']:.3f} -> {ps.fmt_half_up(v['total_1'], 2)}",
-        f"pipeline 2 {PIPELINE_2}: total {v['total_2']:.3f} -> {ps.fmt_half_up(v['total_2'], 2)}",
+    lines = [f"{label}: total {v[label]:.3f} -> {ps.fmt_half_up(v[label], 2)}, fps {fps[label]:.2f}, "
+             f"CPU per arrived frame {per_arrived[label]:.3f} (caption only)" for label, _, _ in ROWS]
+    for (label, _, _), names in zip(ROWS, ROW_STAGES):
+        parts = [ps.fmt_half_up(v[n], 2) for n in names]
+        lines.append(f"{label}: {' + '.join(parts)} = {sum(float(p) for p in parts):.2f} (total {ps.fmt_half_up(v[label], 2)})")
+    lines += [
         f"GPU preproc {SPLIT_CONFIG} cpu_mean {v['gpu']:.4f} -> {ps.fmt_half_up(v['gpu'], 2)}",
-        f"conversion {PIPELINE_1} - {PIPELINE_2} = {v['conversion']:.3f} -> {ps.fmt_half_up(v['conversion'], 2)}",
-        f"rest {PIPELINE_2} - GPU preproc = {v['rest']:.4f} -> {ps.fmt_half_up(v['rest'], 2)}",
-        f"ratio {PIPELINE_1} / {PIPELINE_2} = {v['ratio']:.3f} -> 1/{ps.fmt_half_up(v['ratio'], 1)}",
+        f"conversion layout_nhwc - post_host = {v['conversion']:.3f} -> {ps.fmt_half_up(v['conversion'], 2)}",
+        f"host post post_host - base = {v['host_post']:.3f} -> {ps.fmt_half_up(v['host_post'], 2)}",
+        f"rest base - GPU preproc = {v['rest']:.4f} -> {ps.fmt_half_up(v['rest'], 2)}",
+        f"ratio layout_nhwc / base = {v['ratio']:.3f} -> 1/{ps.fmt_half_up(v['ratio'], 0)}",
     ]
     paths = ps.save(fig, ps.resolve_out_dir(out_dir), STEM)
     ps.report(STEM, [fig12.ABLATION_DIR / "results.csv", fig12.ABLATION_DIR / "results_raw.csv",

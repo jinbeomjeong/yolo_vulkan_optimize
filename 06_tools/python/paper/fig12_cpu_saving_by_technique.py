@@ -1,10 +1,12 @@
-"""Figure 12: CPU time added per frame if one offload technique alone is removed from the final pipeline. Horizontal bars.
+"""Figure 12: CPU time saved per frame by each offload technique, from the closest available measurement. Horizontal bars.
 
-Definition: each bar is the CPU time that would be added if only that technique were taken out of the final pipeline.
-The percent label is the reduction, saving / (CPU of the configuration without the technique); a negative value means that
-the technique costs CPU. The residual is not a technique and has no percent. The values come from different experiments
-and conditions (stated per row in the caption), and some ranges overlap (2 and 3, 10 and 11), so they must not be added;
-no total is drawn. The letters A-D below and in the report lines are for traceability only and are not drawn.
+Definition: each bar gathers the CPU saving of one technique from the closest available measurement. Only rows 8, 10 and 11
+are the difference from removing that one technique in the same session.
+The percent label is the reduction, saving / (CPU of the configuration without the technique). It is drawn only on rows 1, 7,
+8 and 10, which have that configuration measured. Rows 2-6 and 9 do not, row 11 is negative, and the residual is not a technique.
+The values come from different experiments and conditions (stated per row in the caption), and some ranges overlap (2 and 3,
+10 and 11), so they must not be added; no total is drawn. The letters A-D below and in the report lines are for traceability
+only and are not drawn.
 Sources (under 07_results), all medians of 3 runs. Rows 1, 2, 7, 8, 9, 10 and 11 are differences of medians:
   1  decode_benchmark/runs/pipeline_sw_hw (A): sw_auto app CPU - hw_t1 app CPU, app CPU = sum of the "thread cpu"
      ms/arrived lines of raw/<setting>_run<N>/stdout.log (same reader as figure 11). The SW path's CPU copy to SAND128 stays
@@ -12,15 +14,14 @@ Sources (under 07_results), all medians of 3 runs. Rows 1, 2, 7, 8, 9, 10 and 11
   2  decode_benchmark/runs/ffmpeg_outfmt (B): user+sys per frame of the median-fps run (summary.md's definition) of drm_S1
      (CPU download to yuv420p) minus outfmt_drmprime_S1 (DRM_PRIME kept). This download includes the SAND->planar copy, so it overlaps row 3.
   3-6, residual  preproc_cpu_vs_gpu/runs/stage_split (C): cpuref_t1 flatten; cpuref_split_t1 color, resize, pad;
-     residual = -parts_minus_full of evidence/medians.txt (median of per-run differences, partly explained: the cost of
-     the single-loop code shape, see the residual_cause run).
+     residual = -parts_minus_full of evidence/medians.txt (median of per-run differences, partly explained: the extra cost of
+     the single-loop implementation, see the residual_cause run).
   7  technique_ablation (D): layout_nhwc - post_host. GPU post-processing is NHCW-only, so this is the difference under
      host post-processing, not a single removal from base. Percent base: layout_nhwc.
   8  technique_ablation (D): input_copy - base, the real GPU->NPU copy path. Percent base: input_copy.
   9  stage_split (C): handoff CPU of rawout_copy_t1 - rawout_import_t1. Synthetic: the pipeline has no copy path.
   10 technique_ablation (D): post_host - base, the whole post-processing, so it contains row 11. Percent base: post_host.
-  11 technique_ablation (D): nms_cpu - base. Negative: GPU NMS adds CPU in this configuration. Percent base: nms_cpu.
-Rows 2-6 and 9 have no matching run in technique_ablation, so their percent base is base + saving.
+  11 technique_ablation (D): nms_cpu - base. Negative: GPU NMS adds CPU in this configuration.
 """
 from __future__ import annotations
 
@@ -46,6 +47,7 @@ ABLATION_DIR = ps.RESULTS / "technique_ablation"
 ABLATION_SETTINGS = ("base", "post_host", "layout_nhwc", "nms_cpu", "input_copy")
 
 COPY_COLOR = "#BDBDBD"               # neutral: a copy was removed, the work did not move to another unit
+READ_AVOID_COLOR = ps.PALETTE[3]     # row 7 avoids CPU reads of GPU memory; figure 13 uses it for the same conversion
 BAR_HEIGHT = 0.62
 MEDIANS_TOLERANCE = 1e-4             # results.csv and medians.txt print the same 4-decimal medians
 DERIVED_TOLERANCE = 0.01             # a difference of medians vs a median of differences
@@ -58,7 +60,7 @@ AXES_LEFT, AXES_RIGHT, AXES_BOTTOM, AXES_TOP = 0.37, 0.962, 0.125, 0.94
 
 @dataclass(frozen=True)
 class Row:
-    """One bar. number is empty and percent_base is None for the residual, which is not a technique."""
+    """One bar. number is empty for the residual, which is not a technique. percent_base is the measured CPU without it."""
     section: str
     number: str
     name: str
@@ -203,30 +205,28 @@ def build_rows(decoder: dict[str, float], ffmpeg: dict[str, float], stages: dict
                cpu: dict[str, float]) -> list[Row]:
     """Rows from top to bottom in pipeline order."""
     gpu, moved = ps.DEVICE_COLORS["gpu"], ps.DEVICE_COLORS["decoder"]
-    base = cpu["base"]
     return [
-        Row("디코드", "1", "하드웨어 디코더", decoder["saving"], moved, "A", decoder["sw_auto"]),
-        Row("디코드", "2", "dma-buf (디코더→GPU, 명령행 대리)", ffmpeg["saving"], COPY_COLOR, "B", base + ffmpeg["saving"]),
-        Row("전처리", "3", "SAND→선형", stages["flatten"], gpu, "C", base + stages["flatten"]),
-        Row("전처리", "4", "YUV→RGB", stages["color"], gpu, "C", base + stages["color"]),
-        Row("전처리", "5", "1080p→640×360 리사이즈", stages["resize"], gpu, "C", base + stages["resize"]),
-        Row("전처리", "6", "패딩", stages["pad"], gpu, "C", base + stages["pad"]),
-        Row("전처리", "", "한 루프의 코드 형태 비용 (일부 규명)", stages["residual"], "white", "C", hatch="////"),
-        Row("NPU 입출력", "7", "NHWC→NHCW (호스트 후처리 조건)", layout_saving(cpu), gpu, "D", cpu["layout_nhwc"]),
+        Row("디코드", "1", "하드웨어 디코더 (도착 프레임 기준)", decoder["saving"], moved, "A", decoder["sw_auto"]),
+        Row("디코드", "2", "dma-buf (디코더→GPU, 명령행 대리)", ffmpeg["saving"], COPY_COLOR, "B"),
+        Row("전처리", "3", "SAND→선형", stages["flatten"], gpu, "C"),
+        Row("전처리", "4", "YUV→RGB", stages["color"], gpu, "C"),
+        Row("전처리", "5", "1080p→640×360 리사이즈", stages["resize"], gpu, "C"),
+        Row("전처리", "6", "패딩", stages["pad"], gpu, "C"),
+        Row("전처리", "", "단일 루프 구현의 추가 비용 (일부 규명)", stages["residual"], "white", "C", hatch="////"),
+        Row("NPU 입출력", "7", "NHWC→NHCW (호스트 후처리 조건)", layout_saving(cpu), READ_AVOID_COLOR, "D", cpu["layout_nhwc"]),
         Row("NPU 입출력", "8", "dma-buf (GPU→NPU)", gpu_to_npu_saving(cpu), COPY_COLOR, "D", cpu["input_copy"]),
-        Row("NPU 입출력", "9", "dma-buf (NPU→GPU, 합성)", stages["copy_saving"], COPY_COLOR, "C", base + stages["copy_saving"]),
+        Row("NPU 입출력", "9", "dma-buf (NPU→GPU, 합성)", stages["copy_saving"], COPY_COLOR, "C"),
         Row("후처리", "10", "GPU 박스 파싱 (후처리 전체)", postproc_saving(cpu), gpu, "D", cpu["post_host"]),
-        Row("후처리", "11", "GPU NMS", nms_saving(cpu), gpu, "D", cpu["nms_cpu"]),
+        Row("후처리", "11", "GPU NMS", nms_saving(cpu), gpu, "D"),
     ]
 
 
 def _value_label(row: Row) -> str:
-    """"saving (reduction%)". The reduction is relative to the CPU without the technique; the residual has none."""
+    """"saving (reduction%)" on the rows with a measured configuration without the technique, otherwise the value alone."""
     value = ps.fmt_half_up(row.value, 2)
     if row.percent_base is None:
         return value
-    percent = row.value / row.percent_base * 100.0
-    return f"{value} ({ps.fmt_half_up(percent, 0 if abs(percent) >= 1.0 else 1)}%)"
+    return f"{value} ({ps.fmt_half_up(row.value / row.percent_base * 100.0, 0)}%)"
 
 
 def _draw_sections(fig, ax, rows: list[Row], to_fig_data) -> None:
@@ -245,8 +245,9 @@ def _legend(ax) -> None:
     handles = [
         Patch(fc=ps.DEVICE_COLORS["decoder"], ec=ps.EDGE_COLOR, lw=0.6, label="하드웨어 디코더 처리"),
         Patch(fc=ps.DEVICE_COLORS["gpu"], ec=ps.EDGE_COLOR, lw=0.6, label="GPU 처리"),
+        Patch(fc=READ_AVOID_COLOR, ec=ps.EDGE_COLOR, lw=0.6, label="GPU 메모리 읽기 회피"),
         Patch(fc=COPY_COLOR, ec=ps.EDGE_COLOR, lw=0.6, label="복사 제거 (dma-buf)"),
-        Patch(fc="white", ec=ps.EDGE_COLOR, lw=0.6, hatch="////", label="기법이 아님: 한 루프의 코드 형태 비용"),
+        Patch(fc="white", ec=ps.EDGE_COLOR, lw=0.6, hatch="////", label="기법이 아님: 단일 루프 구현의 추가 비용"),
     ]
     # Vertically centered on the preprocessing section, whose short bars leave the right side free.
     # The opaque, borderless frame keeps the vertical grid lines out of the legend text.
