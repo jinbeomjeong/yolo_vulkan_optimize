@@ -148,7 +148,7 @@ L 455.428345 15.307087
      </g>
     </g>
     <g id="text_8">
-     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="316.73622" y="249.868346" transform="rotate(-0 316.73622 249.868346)">없앤 CPU (ms/프레임)</text>
+     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="316.73622" y="249.868346" transform="rotate(-0 316.73622 249.868346)">CPU 시간 절감량 (ms/프레임)</text>
     </g>
    </g>
    <g id="matplotlib.axis_2"/>

@@ -260,7 +260,7 @@ def main(out_dir: str | Path | None = None) -> list[Path]:
     ax.set_ylim(len(rows) - 0.5, -0.5)   # first row on top
     ax.set_yticks([])
     ax.grid(axis="y", visible=False)
-    ax.set_xlabel("없앤 CPU (ms/프레임)")
+    ax.set_xlabel("CPU 시간 절감량 (ms/프레임)")
 
     lines = [f"{(r.number or '-'):>2} {r.condition} {r.value:.6f} -> {_value_label(r)}  {r.name}" for r in rows]
     lines += [
