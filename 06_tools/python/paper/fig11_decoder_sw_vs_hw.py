@@ -136,8 +136,8 @@ def main(out_dir: str | Path | None = None) -> list[Path]:
     ax2.tick_params(axis="y", length=0)
     ax3.tick_params(axis="y", length=0)
 
-    ax1.set_title("(a) 앱 CPU", loc="left")
-    ax1.set_xlabel("앱 CPU (ms/도착 프레임)")
+    ax1.set_title("(a) 응용 CPU", loc="left")
+    ax1.set_xlabel("응용 CPU (ms/도착 프레임)")
     ax1.set_xlim(0, cpu_max)
     ax2.set_title("(b) 처리 FPS", loc="left")
     ax2.set_xlabel("처리 FPS (프레임/초)")

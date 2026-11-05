@@ -118,7 +118,7 @@ L 196.804687 16.65024
      </g>
     </g>
     <g id="text_6">
-     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="130.888899" y="150.865272" transform="rotate(-0 130.888899 150.865272)">앱 CPU (ms/도착 프레임)</text>
+     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="130.888899" y="150.865272" transform="rotate(-0 130.888899 150.865272)">응용 CPU (ms/도착 프레임)</text>
     </g>
    </g>
    <g id="matplotlib.axis_2">
@@ -277,7 +277,7 @@ z
     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="130.352121" y="36.959412" transform="rotate(-0 130.352121 36.959412)">약 1/26</text>
    </g>
    <g id="text_14">
-    <text style="font-size: 9px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="62.91149" y="10.65024" transform="rotate(-0 62.91149 10.65024)">(a) 앱 CPU</text>
+    <text style="font-size: 9px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="62.91149" y="10.65024" transform="rotate(-0 62.91149 10.65024)">(a) 응용 CPU</text>
    </g>
   </g>
   <g id="axes_2">
