@@ -729,41 +729,16 @@ bool write_outputs(const Args& a, const std::vector<std::unique_ptr<FrameRec>>& 
 // ── On-CPU time per thread ─────────────────────────────────────────────────────────────────────
 // With frame threads the decode call only collects a finished frame (about 0.1 ms): the decoding itself runs on
 // libavcodec's threads and shows up nowhere else. Likewise HailoRT's transpose and NMS. So the run is also split by
-// thread name, from /proc/self/task/<tid>/schedstat (first field: ns on CPU). Read only right before t0 and after the run.
-using ThreadCpu = std::map<std::string, double>;   // tid -> ms on CPU
-
-ThreadCpu thread_cpu_snapshot() {
-    ThreadCpu out;
-    std::error_code ec;
-    for (const auto& e : std::filesystem::directory_iterator("/proc/self/task", ec)) {
-        std::ifstream sched(e.path() / "schedstat");
-        double ns = 0.0;
-        if (sched >> ns) out[e.path().filename().string()] = ns / 1e6;
-    }
-    return out;
-}
+// thread name (toolkit/tool_util.hpp). Read only right before t0 and after the run.
+using yvo::tool::thread_cpu_groups;
+using yvo::tool::thread_cpu_snapshot;
+using yvo::tool::ThreadCpu;
+using yvo::tool::ThreadGroups;
 
 double this_thread_cpu_ms() {
     timespec ts{};
     clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts);
     return static_cast<double>(ts.tv_sec) * 1e3 + static_cast<double>(ts.tv_nsec) / 1e6;
-}
-
-// Thread name without trailing digits -> (ms on CPU since `before`, threads). Call while the threads still exist.
-using ThreadGroups = std::map<std::string, std::pair<double, int>>;
-ThreadGroups thread_cpu_groups(const ThreadCpu& before) {
-    ThreadGroups groups;
-    for (const auto& [tid, ms] : thread_cpu_snapshot()) {
-        std::ifstream comm("/proc/self/task/" + tid + "/comm");
-        std::string name;
-        std::getline(comm, name);
-        while (!name.empty() && std::isdigit(static_cast<unsigned char>(name.back())) != 0) name.pop_back();
-        const auto it = before.find(tid);
-        auto& g = groups[name.empty() ? "?" : name];
-        g.first += ms - (it == before.end() ? 0.0 : it->second);
-        ++g.second;
-    }
-    return groups;
 }
 
 // ── Run ────────────────────────────────────────────────────────────────────────────────────────

@@ -8,6 +8,9 @@
 // On failure, GPU / CPU / diff (x32) images are saved to build/05_tests/preproc_diff/ (NHCW is converted back to packed before saving).
 // SandRefVsFfmpeg.* (no GPU): desand_nv12 (ref/sand.hpp) vs rpi-ffmpeg's own SAND→NV12 (av_hwframe_transfer_data),
 // byte-identical over the visible frame. Closes the chain GPU shader ↔ ref/ ↔ rpi-ffmpeg (promoted from yvo_drm_dump --desand).
+// I420ToSand.* (no device): the --decoder sw copy (decode/sw_sand_frames.hpp) against explicit SAND128 addresses and desand_nv12.
+// SandFramePool.* (dma-heap only, skipped without it): fd reuse, exhaustion, frames outliving the pool owner.
+// SwDecode.* (HW HEVC decoder for the comparison, no GPU): SW frames vs HW frames, same layout fields and same visible bytes.
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
@@ -17,9 +20,11 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
+#include <unistd.h>
 
 extern "C" {
 #include <libavutil/frame.h>
@@ -36,6 +41,7 @@ extern "C" {
 #include "core/dmabuf_map.hpp"
 #include "ref/sand.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
+#include "decode/sw_sand_frames.hpp"
 #include "vulkan/sand_letterbox.hpp"
 #include "vulkan/vulkan_context.hpp"
 
@@ -476,5 +482,320 @@ TEST_P(SandRefVsFfmpeg, ByteIdentical) {
 
 INSTANTIATE_TEST_SUITE_P(Frames, SandRefVsFfmpeg, ::testing::ValuesIn(kTestFrames),
                          [](const ::testing::TestParamInfo<int>& i) { return "frame" + std::to_string(i.param); });
+
+// ── I420ToSand: yvo::i420_to_sand128 ──────────────────────────────────────────────────────────────────────────────
+// Every source byte is a function of plane and position, so a byte in the wrong place is caught. Strides have padding.
+struct I420Image {
+    int w, h;
+    std::size_t y_stride, c_stride;
+    std::vector<std::uint8_t> y, u, v;
+    static std::uint8_t y_at(std::size_t x, std::size_t r) { return static_cast<std::uint8_t>(x * 3 + r * 7 + 1); }
+    static std::uint8_t u_at(std::size_t x, std::size_t r) { return static_cast<std::uint8_t>(x * 5 + r * 11 + 2); }
+    static std::uint8_t v_at(std::size_t x, std::size_t r) { return static_cast<std::uint8_t>(x * 13 + r * 17 + 3); }
+    I420Image(int width, int height)
+        : w(width), h(height), y_stride(static_cast<std::size_t>(width) + 32), c_stride(static_cast<std::size_t>(width) / 2 + 16) {
+        const std::size_t rows = static_cast<std::size_t>(h), crows = rows / 2;
+        y.assign(y_stride * rows, 0xAA);
+        u.assign(c_stride * crows, 0xAA);
+        v.assign(c_stride * crows, 0xAA);
+        for (std::size_t r = 0; r < rows; ++r)
+            for (std::size_t x = 0; x < static_cast<std::size_t>(w); ++x) y[r * y_stride + x] = y_at(x, r);
+        for (std::size_t r = 0; r < crows; ++r)
+            for (std::size_t x = 0; x < static_cast<std::size_t>(w) / 2; ++x) {
+                u[r * c_stride + x] = u_at(x, r);
+                v[r * c_stride + x] = v_at(x, r);
+            }
+    }
+};
+
+constexpr std::uint8_t kUntouched = 0xEE;
+
+struct SandDst {
+    std::size_t y_col, uv_col;
+    std::vector<std::uint8_t> y, uv;
+    SandDst(int w, int h)
+        : y_col(yvo::sand_y_col_height(h)), uv_col(yvo::sand_uv_col_height(h)), y(yvo::sand_plane_bytes(w, y_col), kUntouched),
+          uv(yvo::sand_plane_bytes(w, uv_col), kUntouched) {}
+    std::uint8_t y_byte(std::size_t x, std::size_t r) const { return y.at((x / 128) * 128 * y_col + r * 128 + x % 128); }
+    std::uint8_t uv_byte(std::size_t x, std::size_t r) const { return uv.at((x / 128) * 128 * uv_col + r * 128 + x % 128); }
+};
+
+bool convert(const I420Image& s, SandDst& d) {
+    return yvo::i420_to_sand128(s.y.data(), s.y_stride, s.u.data(), s.c_stride, s.v.data(), s.c_stride, s.w, s.h, d.y.data(), d.y.size(),
+                                d.y_col, d.uv.data(), d.uv.size(), d.uv_col);
+}
+
+TEST(I420ToSand, ColumnHeightsMatchTheHwDecoder) {
+    EXPECT_EQ(yvo::sand_y_col_height(1080), 1088u);    // ffmpeg_drm_decoder.cpp measured layout: pitch Y=1088 / UV=544
+    EXPECT_EQ(yvo::sand_uv_col_height(1080), 544u);
+    EXPECT_EQ(yvo::sand_y_col_height(1088), 1088u);
+    EXPECT_EQ(yvo::sand_plane_bytes(1920, 1088), 15u * 128u * 1088u);
+    EXPECT_EQ(yvo::sand_plane_bytes(1921, 1088), 16u * 128u * 1088u);
+    EXPECT_EQ(yvo::sand_plane_bytes(1920, 544), 15u * 128u * 544u);
+}
+
+TEST(I420ToSand, ColumnBoundaryAndOddColumns) {
+    const I420Image s(512, 8);   // 4 full columns
+    SandDst d(512, 8);
+    ASSERT_TRUE(convert(s, d));
+    for (std::size_t r = 0; r < 8; ++r)
+        for (const std::size_t x : {0u, 127u, 128u, 255u, 256u, 383u, 384u, 511u})
+            EXPECT_EQ(d.y_byte(x, r), I420Image::y_at(x, r)) << "x " << x << " row " << r;
+    // Column 1 starts one column stride after column 0, not one row after it.
+    EXPECT_EQ(d.y[128 * d.y_col], I420Image::y_at(128, 0));
+    EXPECT_EQ(d.uv[128 * d.uv_col], I420Image::u_at(64, 0));
+    EXPECT_EQ(d.uv[128 * d.uv_col + 1], I420Image::v_at(64, 0));
+}
+
+TEST(I420ToSand, UvIsInterleavedUFirst) {
+    const I420Image s(512, 8);
+    SandDst d(512, 8);
+    ASSERT_TRUE(convert(s, d));
+    for (std::size_t r = 0; r < 4; ++r)
+        for (std::size_t cx = 0; cx < 256; ++cx) {
+            ASSERT_EQ(d.uv_byte(cx * 2, r), I420Image::u_at(cx, r)) << "U cx " << cx << " row " << r;
+            ASSERT_EQ(d.uv_byte(cx * 2 + 1, r), I420Image::v_at(cx, r)) << "V cx " << cx << " row " << r;
+        }
+}
+
+TEST(I420ToSand, LastColumnEndsInsideTheColumn) {
+    const I420Image s(300, 8);   // columns 0, 1 full; column 2 holds 44 bytes
+    SandDst d(300, 8);
+    ASSERT_TRUE(convert(s, d));
+    for (std::size_t r = 0; r < 8; ++r) {
+        EXPECT_EQ(d.y_byte(299, r), I420Image::y_at(299, r));
+        EXPECT_EQ(d.y_byte(300, r), kUntouched) << "past the width, row " << r;
+        EXPECT_EQ(d.y_byte(383, r), kUntouched) << "end of the last column, row " << r;
+    }
+    for (std::size_t r = 0; r < 4; ++r) {
+        EXPECT_EQ(d.uv_byte(298, r), I420Image::u_at(149, r));
+        EXPECT_EQ(d.uv_byte(299, r), I420Image::v_at(149, r));
+        EXPECT_EQ(d.uv_byte(300, r), kUntouched) << "past the width, row " << r;
+    }
+}
+
+TEST(I420ToSand, RowsBeyondTheHeightStayUntouched) {
+    const I420Image s(256, 18);   // column height 32 / 16, so 14 Y rows and 7 UV rows stay out of the copy
+    SandDst d(256, 18);
+    ASSERT_EQ(d.y_col, 32u);
+    ASSERT_EQ(d.uv_col, 16u);
+    ASSERT_TRUE(convert(s, d));
+    for (const std::size_t x : {0u, 127u, 128u, 255u}) {
+        EXPECT_EQ(d.y_byte(x, 17), I420Image::y_at(x, 17));
+        EXPECT_EQ(d.y_byte(x, 18), kUntouched);
+        EXPECT_EQ(d.y_byte(x, 31), kUntouched);
+        EXPECT_EQ(d.uv_byte(x, 9), kUntouched);
+        EXPECT_EQ(d.uv_byte(x, 15), kUntouched);
+    }
+    EXPECT_EQ(d.uv_byte(128, 8), I420Image::u_at(64, 8));
+}
+
+TEST(I420ToSand, RoundTripThroughTheReferenceDesand) {
+    for (const auto& [w, h] : std::vector<std::pair<int, int>>{{1920, 1080}, {1280, 720}, {300, 34}}) {
+        const I420Image s(w, h);
+        SandDst d(w, h);
+        ASSERT_TRUE(convert(s, d));
+        yvo::SandNv12Layout l;
+        l.y_col_stride = 128 * d.y_col;
+        l.uv_col_stride = 128 * d.uv_col;
+        l.width = w;
+        l.height = h;
+        const std::size_t uw = static_cast<std::size_t>(w), uh = static_cast<std::size_t>(h);
+        std::vector<std::uint8_t> ny(uw * uh), nuv(uw * uh / 2);
+        ASSERT_TRUE(yvo::desand_nv12(d.y.data(), d.y.size(), d.uv.data(), d.uv.size(), l, ny.data(), uw, nuv.data(), uw));
+        for (std::size_t r = 0; r < uh; ++r)
+            for (std::size_t x = 0; x < uw; ++x) ASSERT_EQ(ny[r * uw + x], I420Image::y_at(x, r)) << w << "x" << h << " x " << x << " row " << r;
+        for (std::size_t r = 0; r < uh / 2; ++r)
+            for (std::size_t cx = 0; cx < uw / 2; ++cx) {
+                ASSERT_EQ(nuv[r * uw + cx * 2], I420Image::u_at(cx, r)) << w << "x" << h;
+                ASSERT_EQ(nuv[r * uw + cx * 2 + 1], I420Image::v_at(cx, r)) << w << "x" << h;
+            }
+    }
+}
+
+TEST(I420ToSand, RejectsWhatDoesNotFitAndWritesNothing) {
+    const I420Image s(256, 16);   // height = column height: the last rows need the last bytes
+    SandDst d(256, 16);
+    const auto call = [&](int w, int h, std::size_t y_size, std::size_t uv_size, std::size_t y_col, std::size_t uv_col, std::size_t y_stride) {
+        return yvo::i420_to_sand128(s.y.data(), y_stride, s.u.data(), s.c_stride, s.v.data(), s.c_stride, w, h, d.y.data(), y_size, y_col,
+                                    d.uv.data(), uv_size, uv_col);
+    };
+    EXPECT_FALSE(call(255, 16, d.y.size(), d.uv.size(), d.y_col, d.uv_col, s.y_stride));      // odd width
+    EXPECT_FALSE(call(256, 15, d.y.size(), d.uv.size(), d.y_col, d.uv_col, s.y_stride));      // odd height
+    EXPECT_FALSE(call(0, 16, d.y.size(), d.uv.size(), d.y_col, d.uv_col, s.y_stride));
+    EXPECT_FALSE(call(256, 16, d.y.size() - 1, d.uv.size(), d.y_col, d.uv_col, s.y_stride));  // Y does not fit
+    EXPECT_FALSE(call(256, 16, d.y.size(), d.uv.size() - 1, d.y_col, d.uv_col, s.y_stride));  // UV does not fit
+    EXPECT_FALSE(call(256, 16, d.y.size(), d.uv.size(), 4, d.uv_col, s.y_stride));            // column shorter than the plane
+    EXPECT_FALSE(call(256, 16, d.y.size(), d.uv.size(), d.y_col, 2, s.y_stride));
+    EXPECT_FALSE(call(256, 16, d.y.size(), d.uv.size(), d.y_col, d.uv_col, 255));             // stride shorter than the width
+    for (const std::uint8_t b : d.y) ASSERT_EQ(b, kUntouched);
+    for (const std::uint8_t b : d.uv) ASSERT_EQ(b, kUntouched);
+}
+
+// ── SandFramePool ─────────────────────────────────────────────────────────────────────────────────────────────────
+std::shared_ptr<yvo::SandFramePool> make_pool_or_null(int count) {
+    yvo::SandFramePool::Config cfg;
+    cfg.width = 256;
+    cfg.height = 16;
+    cfg.count = count;
+    try {
+        return std::make_shared<yvo::SandFramePool>(cfg);
+    } catch (const std::runtime_error&) {
+        return nullptr;   // no dma-heap node on this machine
+    }
+}
+
+TEST(SandFramePool, ReusedBufferKeepsItsFds) {
+    const auto pool = make_pool_or_null(2);
+    if (!pool) GTEST_SKIP() << "dma-heap not available";
+    auto a = pool->acquire();
+    ASSERT_TRUE(a.has_value());
+    const int y_fd = a->y_fd, uv_fd = a->uv_fd;
+    EXPECT_NE(y_fd, uv_fd);
+    EXPECT_GE(a->y_size, 2u * 128u * 16u);
+    EXPECT_GE(a->uv_size, 2u * 128u * 8u);
+    EXPECT_EQ(pool->in_use(), 1);
+    a.reset();   // Lease destroyed -> keepalive released
+    EXPECT_EQ(pool->in_use(), 0);
+    auto b = pool->acquire();
+    ASSERT_TRUE(b.has_value());
+    EXPECT_EQ(b->y_fd, y_fd);   // the same fd reaches DmaBufImportCache, which hits on fstat(st_dev, st_ino) + size
+    EXPECT_EQ(b->uv_fd, uv_fd);
+    EXPECT_TRUE(static_cast<bool>(b->keepalive));
+}
+
+TEST(SandFramePool, ExhaustionReturnsNulloptWithoutBlocking) {
+    const auto pool = make_pool_or_null(2);
+    if (!pool) GTEST_SKIP() << "dma-heap not available";
+    auto a = pool->acquire();
+    auto b = pool->acquire();
+    ASSERT_TRUE(a.has_value());
+    ASSERT_TRUE(b.has_value());
+    EXPECT_NE(a->y_fd, b->y_fd);
+    EXPECT_FALSE(pool->acquire().has_value());
+    EXPECT_EQ(pool->peak_in_use(), 2);
+    const std::shared_ptr<void> held = a->keepalive;   // a copy keeps the buffer out of the free list
+    a.reset();
+    EXPECT_FALSE(pool->acquire().has_value());
+}
+
+TEST(SandFramePool, FrameOutlivesTheOwnerOfThePool) {
+    auto pool = make_pool_or_null(1);
+    if (!pool) GTEST_SKIP() << "dma-heap not available";
+    auto a = pool->acquire();
+    ASSERT_TRUE(a.has_value());
+    const std::weak_ptr<yvo::SandFramePool> watch = pool;
+    pool.reset();                 // the decoder closed
+    ASSERT_FALSE(watch.expired());
+    a->y[0] = 7;                  // mapping and fd are still valid
+    EXPECT_GE(::lseek(a->y_fd, 0, SEEK_END), 0);
+    a.reset();                    // last frame released: the pool goes with it
+    EXPECT_TRUE(watch.expired());
+}
+
+// ── SwDecode: --decoder sw frames vs HW frames ────────────────────────────────────────────────────────────────────
+struct VisiblePlanes {
+    std::vector<std::uint8_t> y, uv;
+};
+
+bool read_visible(const yvo::DrmFrame& f, VisiblePlanes& out) {
+    const std::size_t w = static_cast<std::size_t>(f.width), h = static_cast<std::size_t>(f.height);
+    out.y.resize(w * h);
+    out.uv.resize(w * h / 2);
+    const DmaBufReadMap my(f.fd, f.size), muv(f.uv_fd, f.uv_size);
+    if (!my.data() || !muv.data()) return false;
+    return yvo::desand_nv12(my.data(), f.size, muv.data(), f.uv_size, yvo::make_sand_layout(f), out.y.data(), w, out.uv.data(), w);
+}
+
+std::uint64_t fnv1a(const std::vector<std::uint8_t>& v) {
+    std::uint64_t h = 0xcbf29ce484222325ull;
+    for (const std::uint8_t b : v) h = (h ^ b) * 0x100000001b3ull;
+    return h;
+}
+
+TEST(SwDecode, SameLayoutAndVisibleBytesAsHwFrames) {
+    const std::string video = YVO_TEST_VIDEO;
+    if (!std::filesystem::exists(video)) GTEST_SKIP() << "video not found: " << video;
+    yvo::FfmpegDrmDecoder hw, sw;
+    yvo::FfmpegDrmDecoder::Options hopt, sopt;
+    hopt.threads = 1;
+    sopt.threads = 1;
+    sopt.software = true;
+    if (!hw.open(video, hopt)) GTEST_SKIP() << "HW HEVC decoder unavailable (open failed): " << hw.error();
+    ASSERT_TRUE(sw.open(video, sopt)) << sw.error();
+    constexpr int kFrames = 8;
+    for (int i = 0; i < kFrames; ++i) {
+        auto a = hw.next();
+        if (!a) GTEST_SKIP() << "HW HEVC decoder produced no frame: " << hw.error();
+        auto b = sw.next();
+        ASSERT_TRUE(b.has_value()) << sw.error();
+        EXPECT_EQ(b->size, a->size);
+        EXPECT_EQ(b->uv_size, a->uv_size);
+        EXPECT_EQ(b->modifier, a->modifier);
+        EXPECT_EQ(b->drm_format, a->drm_format);
+        EXPECT_EQ(b->width, a->width);
+        EXPECT_EQ(b->height, a->height);
+        EXPECT_EQ(b->coded_height, a->coded_height);
+        EXPECT_EQ(b->y_offset, a->y_offset);
+        EXPECT_EQ(b->uv_offset, a->uv_offset);
+        EXPECT_EQ(b->y_pitch, a->y_pitch);
+        EXPECT_EQ(b->uv_pitch, a->uv_pitch);
+        EXPECT_EQ(b->sand_col_height, a->sand_col_height);
+        EXPECT_EQ(b->uv_sand_col_height, a->uv_sand_col_height);
+        EXPECT_EQ(b->pts, a->pts);
+        EXPECT_NE(b->fd, b->uv_fd);
+        VisiblePlanes pa, pb;
+        ASSERT_TRUE(read_visible(*a, pa));
+        ASSERT_TRUE(read_visible(*b, pb));
+        std::printf("[frame %d] hw Y %016llx UV %016llx  sw Y %016llx UV %016llx\n", i, static_cast<unsigned long long>(fnv1a(pa.y)),
+                    static_cast<unsigned long long>(fnv1a(pa.uv)), static_cast<unsigned long long>(fnv1a(pb.y)),
+                    static_cast<unsigned long long>(fnv1a(pb.uv)));
+        EXPECT_TRUE(pa.y == pb.y) << "Y differs at frame " << i;
+        EXPECT_TRUE(pa.uv == pb.uv) << "UV differs at frame " << i;
+    }
+    const auto& st = sw.sw_stats();
+    EXPECT_EQ(st.frames, kFrames);
+    EXPECT_GT(st.memcpy_ms, 0.0);
+    EXPECT_GT(st.sync_ms, 0.0);
+}
+
+TEST(SwDecode, PoolExhaustionIsAnErrorNotAStall) {
+    const std::string video = YVO_TEST_VIDEO;
+    if (!std::filesystem::exists(video)) GTEST_SKIP() << "video not found: " << video;
+    yvo::FfmpegDrmDecoder sw;
+    yvo::FfmpegDrmDecoder::Options opt;
+    opt.threads = 1;
+    opt.software = true;
+    opt.extra_hw_frames = 0;   // pool of 4
+    if (!sw.open(video, opt)) GTEST_SKIP() << "dma-heap not available: " << sw.error();
+    std::vector<yvo::DrmFrame> held;
+    for (int i = 0; i < 4; ++i) {
+        auto f = sw.next();
+        ASSERT_TRUE(f.has_value()) << sw.error();
+        held.push_back(std::move(*f));
+    }
+    EXPECT_FALSE(sw.next().has_value());
+    EXPECT_NE(sw.error().find("frame pool exhausted"), std::string::npos) << sw.error();
+    EXPECT_FALSE(sw.eof());
+}
+
+TEST(SwDecode, FramesStayReadableAfterTheDecoderCloses) {
+    const std::string video = YVO_TEST_VIDEO;
+    if (!std::filesystem::exists(video)) GTEST_SKIP() << "video not found: " << video;
+    yvo::FfmpegDrmDecoder sw;
+    yvo::FfmpegDrmDecoder::Options opt;
+    opt.threads = 1;
+    opt.software = true;
+    if (!sw.open(video, opt)) GTEST_SKIP() << "dma-heap not available: " << sw.error();
+    auto f = sw.next();
+    ASSERT_TRUE(f.has_value()) << sw.error();
+    VisiblePlanes before, after;
+    ASSERT_TRUE(read_visible(*f, before));
+    sw.close();   // main.cpp's shutdown order can release frames after this point
+    ASSERT_TRUE(read_visible(*f, after));
+    EXPECT_TRUE(before.y == after.y);
+    EXPECT_TRUE(before.uv == after.uv);
+    EXPECT_EQ(sw.sw_stats().frames, 1);   // the stats stay readable after close()
+}
 
 } // namespace

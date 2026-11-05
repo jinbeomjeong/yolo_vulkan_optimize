@@ -12,7 +12,7 @@ extern "C" {
 
 #include <cstdio>
 #include <memory>
-
+#include "decode/sw_sand_frames.hpp"
 namespace yvo {
 
 namespace {
@@ -137,7 +137,7 @@ void FfmpegDrmDecoder::close() {
     stream_index_ = -1;
     input_done_ = false;
     eof_ = false;
-    frame_counter_ = 0;
+    frame_counter_ = 0; sw_pool_.reset(); software_ = false;  // SW frames still held keep the pool alive; sw_stats_ stays readable
 }
 
 bool FfmpegDrmDecoder::fail(const std::string& msg) {
@@ -165,31 +165,32 @@ bool FfmpegDrmDecoder::open(const std::string& path, const Options& opt) {
     const AVStream* st = fmt_->streams[stream_index_];
     if (st->codecpar->codec_id != AV_CODEC_ID_HEVC) return fail("video stream is not HEVC");
 
-    codec_ = avcodec_alloc_context3(dec);
+    codec_ = avcodec_alloc_context3(opt.software ? avcodec_find_decoder_by_name("hevc") : dec);
     if (!codec_) return fail("avcodec_alloc_context3 failed");
     ret = avcodec_parameters_to_context(codec_, st->codecpar);
     if (ret < 0) return fail_av("avcodec_parameters_to_context", ret);
 
-    ret = av_hwdevice_ctx_create(&hw_device_, AV_HWDEVICE_TYPE_DRM, nullptr, nullptr, 0);
-    if (ret < 0) return fail_av("av_hwdevice_ctx_create(DRM)", ret);
-    codec_->hw_device_ctx = av_buffer_ref(hw_device_);
-    if (!codec_->hw_device_ctx) return fail("av_buffer_ref(hw_device) failed");
-    codec_->get_format = pick_drm_prime;
-    codec_->extra_hw_frames = opt.extra_hw_frames;
+    // HW: DRM hw device, get_format accepts DRM_PRIME only. SW: no hw device, native libavcodec HEVC; next() copies each frame to
+    // a dma-heap SAND128 buffer. Neither path falls back to the other.
+    const bool backend_ok = opt.software ? configure_sw_codec() : configure_hw_codec(opt);
+    if (!backend_ok) return false;
+    software_ = opt.software;
+    sw_stats_ = {};
     codec_->pkt_timebase = st->time_base;
     // The library default is 1 thread. Enabling frame threading greatly raises HW decode throughput (1 thread 266 → 4 threads ~400 FPS).
     codec_->thread_count = opt.threads > 0 ? opt.threads : 0;
 
-    ret = avcodec_open2(codec_, dec, nullptr);
+    ret = avcodec_open2(codec_, nullptr, nullptr);
     if (ret < 0) return fail_av("avcodec_open2", ret);
 
     pkt_ = av_packet_alloc();
     if (!pkt_) return fail("av_packet_alloc failed");
-    return true;
+    return !software_ || create_sw_pool(opt);
 }
 
 std::optional<DrmFrame> FfmpegDrmDecoder::next() {
     if (!codec_ || eof_) return std::nullopt;
+    const auto wait_begin = software_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
 
     std::unique_ptr<AVFrame, void (*)(AVFrame*)> frame(av_frame_alloc(),
                                                         [](AVFrame* f) { av_frame_free(&f); });
@@ -241,6 +242,8 @@ std::optional<DrmFrame> FfmpegDrmDecoder::next() {
         }
     }
 
+    if (software_) return sw_frame_to_drm(*frame, wait_begin);
+
     if (frame->format != AV_PIX_FMT_DRM_PRIME || !frame->data[0]) {
         const char* name = av_get_pix_fmt_name(static_cast<AVPixelFormat>(frame->format));
         fail(std::string("unexpected frame format: ") + (name ? name : "?"));
@@ -262,6 +265,126 @@ std::optional<DrmFrame> FfmpegDrmDecoder::next() {
         av_frame_free(&f);
     });
     return out;
+}
+
+namespace {
+// get_format callback of the SW path: never lets a hwaccel format win (first format without AV_PIX_FMT_FLAG_HWACCEL).
+AVPixelFormat pick_software_format(AVCodecContext* /*ctx*/, const AVPixelFormat* fmts) {
+    for (; *fmts != AV_PIX_FMT_NONE; ++fmts) {
+        const AVPixFmtDescriptor* d = av_pix_fmt_desc_get(*fmts);
+        if (d && !(d->flags & AV_PIX_FMT_FLAG_HWACCEL)) return *fmts;
+    }
+    return AV_PIX_FMT_NONE;
+}
+} // namespace
+
+bool FfmpegDrmDecoder::configure_hw_codec(const Options& opt) {
+    const int ret = av_hwdevice_ctx_create(&hw_device_, AV_HWDEVICE_TYPE_DRM, nullptr, nullptr, 0);
+    if (ret < 0) return fail_av("av_hwdevice_ctx_create(DRM)", ret);
+    codec_->hw_device_ctx = av_buffer_ref(hw_device_);
+    if (!codec_->hw_device_ctx) return fail("av_buffer_ref(hw_device) failed");
+    codec_->get_format = pick_drm_prime;
+    codec_->extra_hw_frames = opt.extra_hw_frames;
+    return true;
+}
+
+bool FfmpegDrmDecoder::configure_sw_codec() {
+    codec_->get_format = pick_software_format;
+    codec_->thread_type = FF_THREAD_FRAME | FF_THREAD_SLICE;
+    return true;
+}
+
+bool FfmpegDrmDecoder::create_sw_pool(const Options& opt) {
+    if (codec_->width <= 0 || codec_->height <= 0) return fail("--decoder sw: stream size is unknown after avcodec_open2");
+    SandFramePool::Config cfg;
+    cfg.width = codec_->width;
+    cfg.height = codec_->height;
+    // The same number of frames the HW pool lets the user hold (Options::extra_hw_frames comment: about extra + 4).
+    cfg.count = (opt.extra_hw_frames >= 0 ? opt.extra_hw_frames : 2 * kNumSlots) + 4;
+    cfg.heaps = opt.sw_heaps;
+    try {
+        sw_pool_ = std::make_shared<SandFramePool>(cfg);
+    } catch (const std::exception& e) {
+        return fail(std::string("--decoder sw: frame pool: ") + e.what());
+    }
+    sw_stats_.pool_buffers = sw_pool_->count();
+    sw_stats_.heap = sw_pool_->heap();
+    sw_stats_.threads = codec_->thread_count;
+    sw_stats_.thread_type = codec_->active_thread_type == FF_THREAD_FRAME   ? "frame"
+                            : codec_->active_thread_type == FF_THREAD_SLICE ? "slice"
+                                                                            : "none";
+    return true;
+}
+
+std::optional<DrmFrame> FfmpegDrmDecoder::sw_frame_to_drm(const AVFrame& frame, std::chrono::steady_clock::time_point wait_begin) {
+    using Clock = std::chrono::steady_clock;
+    const auto ms_of = [](Clock::duration d) { return std::chrono::duration<double, std::milli>(d).count(); };
+    const auto t_decoded = Clock::now();
+    if (frame.format != AV_PIX_FMT_YUV420P) {
+        const char* name = av_get_pix_fmt_name(static_cast<AVPixelFormat>(frame.format));
+        fail(std::string("--decoder sw: only 8-bit yuv420p is supported, stream decodes to ") + (name ? name : "?"));
+        return std::nullopt;
+    }
+    if (frame.width != codec_->width || frame.height != codec_->height || frame.linesize[0] <= 0 || frame.linesize[1] <= 0 ||
+        frame.linesize[2] <= 0) {
+        fail("--decoder sw: frame " + std::to_string(frame.width) + "x" + std::to_string(frame.height) +
+             " does not fit the pool or has a negative stride (mid-stream size changes are not supported)");
+        return std::nullopt;
+    }
+    auto lease = sw_pool_->acquire();
+    if (!lease) {
+        fail("--decoder sw: frame pool exhausted, all " + std::to_string(sw_pool_->count()) +
+             " buffers are held downstream (raise Options::extra_hw_frames)");
+        return std::nullopt;
+    }
+    try {
+        // dma_sync_begin/end instead of DmaCpuAccess: the two sections wrap one copy, and a failure must reach this catch.
+        dma_sync_begin(lease->y_fd, DmaSyncDir::Write);
+        dma_sync_begin(lease->uv_fd, DmaSyncDir::Write);
+        const auto t_copy0 = Clock::now();
+        const std::size_t y_col = sand_y_col_height(frame.height), uv_col = sand_uv_col_height(frame.height);
+        const bool copied = i420_to_sand128(frame.data[0], static_cast<std::size_t>(frame.linesize[0]), frame.data[1],
+                                            static_cast<std::size_t>(frame.linesize[1]), frame.data[2],
+                                            static_cast<std::size_t>(frame.linesize[2]), frame.width, frame.height, lease->y,
+                                            lease->y_size, y_col, lease->uv, lease->uv_size, uv_col);
+        const auto t_copy1 = Clock::now();
+        dma_sync_end(lease->y_fd, DmaSyncDir::Write);
+        dma_sync_end(lease->uv_fd, DmaSyncDir::Write);
+        const auto t_end = Clock::now();
+        if (!copied) {
+            fail("--decoder sw: I420 to SAND128 copy rejected the frame layout");
+            return std::nullopt;
+        }
+
+        // Same validation as a HW frame: what fails here would fail there.
+        AVDRMFrameDescriptor desc{};
+        desc.nb_objects = 2;
+        desc.objects[0] = {lease->y_fd, lease->y_size, DRM_FORMAT_MOD_BROADCOM_SAND128};
+        desc.objects[1] = {lease->uv_fd, lease->uv_size, DRM_FORMAT_MOD_BROADCOM_SAND128};
+        desc.nb_layers = 1;
+        desc.layers[0].format = DRM_FORMAT_NV12;
+        desc.layers[0].nb_planes = 2;
+        desc.layers[0].planes[0] = {0, 0, static_cast<std::ptrdiff_t>(y_col)};   // object, offset, pitch = column height (param 0)
+        desc.layers[0].planes[1] = {1, 0, static_cast<std::ptrdiff_t>(uv_col)};
+        DrmFrame out;
+        std::string why;
+        if (!drm_descriptor_to_frame(desc, frame.width, frame.height, codec_->coded_height, out, &why)) {
+            fail("--decoder sw: bad frame layout: " + why + "\n" + describe_drm_descriptor(desc));
+            return std::nullopt;
+        }
+        out.pts = frame_counter_++;
+        out.keepalive = std::move(lease->keepalive);
+
+        ++sw_stats_.frames;
+        sw_stats_.decode_wait_ms += ms_of(t_decoded - wait_begin);
+        sw_stats_.memcpy_ms += ms_of(t_copy1 - t_copy0);
+        sw_stats_.sync_ms += ms_of((t_copy0 - t_decoded) + (t_end - t_copy1));
+        sw_stats_.pool_peak_in_use = sw_pool_->peak_in_use();
+        return out;
+    } catch (const std::exception& e) {
+        fail(std::string("--decoder sw: ") + e.what());
+        return std::nullopt;
+    }
 }
 
 int FfmpegDrmDecoder::width() const { return codec_ ? codec_->width : 0; }

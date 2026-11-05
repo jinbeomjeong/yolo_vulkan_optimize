@@ -193,7 +193,7 @@ struct Args {
     bool quiet = false;
     std::string csv_label;  // if set, print one CSV line (RESULT_CSV,...) at the end
     // Decoder frame threads: 1 (07_results/dec_threads). Research knob YVO_DEC_THREADS (environment); 0 -> FFmpeg auto.
-    int dec_threads = 1;
+    int dec_threads = 1;  bool sw_decoder = false;   // sw_decoder: --decoder sw, software HEVC copied to dma-heap SAND128 buffers
     InputPace input_pace = InputPace::Source;   // O2 default (user decision 2026-10-27); asap was the default before
     int input_queue = 1;               // leaky queue capacity, --input-pace source only (user decision 2026-10-12: 1)
     bool input_queue_explicit = false;
@@ -212,7 +212,7 @@ void usage(const char* a0) {
                  "usage: %s [--video PATH] [--hef PATH] [--frames N] [--mode ptr|dmabuf] [--layout nhwc|nhcw]\n"
                  "          [--batch N] [--slots N] [--postproc host|gpu] [--postproc-alloc export|heap]\n"
                  "          [--nms gpu|cpu|verify] [--gpu-depth N] [--score T] [--dump-dir DIR] [--dump-every K]\n"
-                 "          [--quiet] [--csv-label L] [--input-pace asap|source] [--input-queue N] [--frame-log PATH]\n"
+                 "          [--quiet] [--csv-label L] [--input-pace asap|source] [--input-queue N] [--frame-log PATH] [--decoder hw|sw]\n"
                  "  --layout     preprocessing output / NPU input tensor layout (default nhcw with the default --mode dmabuf; nhwc under --mode ptr)\n"
                  "               nhcw removes HailoRT's CPU input conversion (about 14 ms/frame). --mode dmabuf only\n"
                  "  --batch N / --slots N  NPU batch size (default 1) / slots shared by GPU and NPU (default 1 with batch 1 + --input-pace source, else max(4, batch*2))\n"
@@ -230,7 +230,7 @@ void usage(const char* a0) {
                  "               slots free up (throughput benches). --frames counts arrived frames; dropped frames get no jsonl line / PNG (\"frame\" stays the source index)\n"
                  "  --input-queue N  leaky queue size for --input-pace source, 1..3 (default 1)\n"
                  "               paced cpu ms/frame and FPS are per processed frame: not comparable to asap\n"
-                 "  --frame-log PATH  one CSV row per frame at the end (ms since start; dropped 1 = queue drop, 2 = abandoned)\n"
+                 "  --frame-log PATH  one CSV row per frame at the end (ms since start; dropped 1 = queue drop, 2 = abandoned)\n  --decoder    hw = V4L2 HEVC dma-buf (default). sw = libavcodec software HEVC, the CPU copies each frame to a SAND128 dma-buf; the rest of the pipeline is the same. Threads: YVO_DEC_THREADS\n"
 #ifdef YVO_HAVE_DISPLAY
                  "  --display {off,on}                       real-time HDMI display (default off)\n"
                  "  --display-backend {auto,wayland,offscreen,wayland-planes,kms}  default auto. wayland is strict (no silent fallback)\n"
@@ -303,7 +303,7 @@ bool parse(int argc, char** argv, Args& a) {
         else if (s == "--dump-every" && (v = next())) a.dump_every = arg_number<int>(argv[0], s, v);
         else if (s == "--csv-label" && (v = next())) a.csv_label = v;
         else if (s == "--frame-log" && (v = next())) a.frame_log = v;
-        else if (s == "--quiet") a.quiet = true;
+        else if (s == "--quiet") a.quiet = true; else if (s == "--decoder" && (v = next())) { if (std::string(v) != "hw" && std::string(v) != "sw") return false; a.sw_decoder = std::string(v) == "sw"; }
         else if (s == "--input-pace" && (v = next())) {
             const std::string p = v;
             if (p == "asap") a.input_pace = InputPace::Asap;
@@ -989,7 +989,7 @@ int run(const Args& a) {
 
     yvo::FfmpegDrmDecoder dec;
     yvo::FfmpegDrmDecoder::Options dopt;
-    dopt.threads = a.dec_threads;  // 1 frame thread (07_results/dec_threads); YVO_DEC_THREADS=0 -> FFmpeg auto
+    dopt.threads = a.dec_threads; dopt.software = a.sw_decoder; if (const char* e = std::getenv("YVO_SW_HEAP")) dopt.sw_heaps = {e};  // 1 frame thread (07_results/dec_threads); YVO_DEC_THREADS=0 -> FFmpeg auto; YVO_SW_HEAP: research knob, dma-heap node of --decoder sw
     dopt.extra_hw_frames = std::max(2 * yvo::kNumSlots, a.gpu_depth + 4);
     const bool paced = a.input_pace == InputPace::Source;
     // Paced: the leaky queue holds up to input_queue more frames (+1 decoded while it is full). parse() checked the sum.
@@ -1283,6 +1283,7 @@ int run(const Args& a) {
                 }
                 ++arrived;
                 queue_depth_max = std::max(queue_depth_max, static_cast<long>(in_q.size()));
+                if (a.sw_decoder) break;   // software decode can lag arrivals: one frame, then let the loop submit
             }
         };
         while (true) {
@@ -1369,7 +1370,7 @@ int run(const Args& a) {
         }
     };
 
-    const double c0 = cpu_ms(); yvo::tool::perf_window(true);  // perf -D -1 --control window opens here
+    const auto thr0 = yvo::tool::thread_cpu_snapshot(); const double c0 = cpu_ms(); yvo::tool::perf_window(true);  // perf -D -1 --control window opens here
     const auto t0 = Clock::now();
     long n = 0;
     bool fail = false;
@@ -1500,7 +1501,7 @@ int run(const Args& a) {
     if (interrupted) fail = true;  // ok in RESULT_CSV/RESULT_CSV2 becomes 0 (must not mix into bench aggregation)
 
     const auto t1 = Clock::now();
-    yvo::tool::perf_window(false); const double c1 = cpu_ms();  // ...and closes here
+    yvo::tool::perf_window(false); const double c1 = cpu_ms(); const auto thr_groups = yvo::tool::thread_cpu_groups(thr0);  // ...and closes here (decoder threads still alive)
 
     if (!dec.error().empty()) {
         std::fprintf(stderr, "decode error after %ld frames: %s\n", n, dec.error().c_str());
@@ -1595,6 +1596,18 @@ int run(const Args& a) {
                                              .sq = stats(queue_wait_ms), .sl = stats(decode_late_ms)})
                                        : std::nullopt};
     fail = print_summary(a, tot, gpu_post, disp, ctx, fail);
+    // Printed with --quiet too: the benches read these lines from stdout.log. Thread CPU covers the same window as cpu ms/frame.
+    const long seen = paced ? arrived : n;
+    for (const auto& [name, g] : thr_groups)
+        std::printf("thread cpu      %-20s threads %2d  %9.1f ms  %7.3f ms/arrived  %7.3f ms/processed\n", name.c_str(), g.second, g.first,
+                    seen ? g.first / static_cast<double>(seen) : 0.0, n ? g.first / static_cast<double>(n) : 0.0);
+    if (const auto& sw = dec.sw_stats(); a.sw_decoder && sw.frames > 0) {
+        const double frames = static_cast<double>(sw.frames);
+        std::printf("sw decode copy: mean %.3f ms/frame (memcpy %.3f + cache sync %.3f), decode wait mean %.3f ms/frame, %ld frames\n",
+                    (sw.memcpy_ms + sw.sync_ms) / frames, sw.memcpy_ms / frames, sw.sync_ms / frames, sw.decode_wait_ms / frames, sw.frames);
+        std::printf("sw decode pool: %d buffers (peak in use %d), heap %s, libavcodec threads %d (%s)\n", sw.pool_buffers,
+                    sw.pool_peak_in_use, sw.heap.c_str(), sw.threads, sw.thread_type.c_str());
+    }
     std::fflush(stdout);
     if (ctx.debug_messenger_active() && ctx.validation_errors() > 0) fail = true;
     // An interrupted run returns 128+signo per shell convention (SIGINT 130, SIGTERM 143).

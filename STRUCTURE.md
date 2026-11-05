@@ -54,7 +54,7 @@
 | `ref/` | `yvo_ref` (INTERFACE) | **CPU 기준 구현**: 셰이더 수식의 원문과 판정 규칙(letterbox, SAND, YOLO 디코드, 검출 매칭, 오버레이, 글리프) | 성능용 코드 |
 | `toolkit/` | `yvo_toolkit` (INTERFACE) | 도구 전용 헬퍼(인자 파싱, 이미지 저장, 통계) | 라이브러리가 include하는 것 |
 | `testkit/` | `yvo_testkit_*` (INTERFACE) | 테스트와 프로브가 **함께** 쓰는 하네스·판정 로직 | 테스트 하나만 쓰는 헬퍼(그 테스트 파일에 둔다) |
-| `decode/` | `yvo_decoder` | FFmpeg + DRM PRIME 디코더 | |
+| `decode/` | `yvo_decoder` | FFmpeg + DRM PRIME 디코더, 비교용 SW 디코드(SAND128 dma-buf로 복사) | |
 | `hailo/` | `yvo_hailo` | HailoRT 래퍼 | Vulkan 의존 |
 | `vulkan/` | `yvo_vulkan` | Vulkan 컨텍스트, dma-buf import/export, 전처리·후처리 호스트 코드 | HailoRT 의존 |
 | `display/` | `yvo_display` | 표시: Vulkan 합성(Wayland 창, 스왑체인, 표시 변환, 오버레이)과 HVS 평면 스캔아웃(`PlaneDisplay`, Wayland linux-dmabuf / KMS atomic, 박스 평면, debugfs 판정) | |

@@ -1,9 +1,12 @@
-// libavcodec HW HEVC decoder (V4L2 stateless, DRM_PRIME output) → DrmFrame
+// libavcodec HEVC decoder → DrmFrame. HW (V4L2 stateless, DRM_PRIME output) or SW (CPU copy into dma-heap SAND128 buffers)
 #pragma once
 
+#include <chrono>
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "core/frame_types.hpp"
 
@@ -16,6 +19,8 @@ struct AVDRMFrameDescriptor;
 
 namespace yvo {
 
+class SandFramePool;
+
 class FfmpegDrmDecoder {
 public:
     struct Options {
@@ -24,6 +29,24 @@ public:
         // Holding more than that makes the decoder stall waiting for a free buffer (hangs without an error). -1 lets the pool grow as needed.
         int extra_hw_frames = 2 * kNumSlots;
         int threads = 0; // 0 = auto (core count), 1 = frame threading off
+        // Software HEVC, no hw device: each frame is copied by the CPU to a dma-heap SAND128 NV12 buffer with the layout of the
+        // HW output, so consumers cannot tell the two apart. Pool = extra_hw_frames + 4 pairs (-1 uses 2 * kNumSlots), fixed:
+        // holding them all fails next() with an error instead of stalling. decode/sw_sand_frames.hpp has the reasons.
+        bool software = false;
+        std::vector<std::string> sw_heaps;  // dma-heap nodes tried in order; empty = DmaHeapConfig default (system heap)
+    };
+
+    // Software path only (zero on the HW path). Stays readable after close() until the next open().
+    struct SwStats {
+        long frames = 0;             // frames returned by next()
+        double decode_wait_ms = 0;   // total: entering next() until the decoded frame is in hand (read, send, receive)
+        double memcpy_ms = 0;        // total: i420_to_sand128 alone
+        double sync_ms = 0;          // total: DMA_BUF_IOCTL_SYNC START + END of both planes (the cache maintenance)
+        int pool_buffers = 0;
+        int pool_peak_in_use = 0;
+        int threads = 0;             // resolved libavcodec thread count
+        std::string thread_type;     // frame / slice / none
+        std::string heap;            // dma-heap node in use
     };
 
     FfmpegDrmDecoder() = default;
@@ -46,12 +69,18 @@ public:
     double frame_rate() const;      // stream avg_frame_rate
     std::int64_t nb_frames() const; // frame count reported by the container (0 if unknown)
 
-    // Extract the AVFrame (DRM_PRIME) held in keepalive. For inspection tools.
+    const SwStats& sw_stats() const { return sw_stats_; }
+
+    // Extract the AVFrame (DRM_PRIME) held in keepalive. For inspection tools. HW path only: an SW frame holds no AVFrame.
     static AVFrame* av_frame(const DrmFrame& f) { return static_cast<AVFrame*>(f.keepalive.get()); }
 
 private:
     bool fail(const std::string& msg);
     bool fail_av(const char* what, int err);
+    bool configure_hw_codec(const Options& opt);
+    bool configure_sw_codec();
+    bool create_sw_pool(const Options& opt);
+    std::optional<DrmFrame> sw_frame_to_drm(const AVFrame& frame, std::chrono::steady_clock::time_point wait_begin);
 
     AVFormatContext* fmt_ = nullptr;
     AVCodecContext* codec_ = nullptr;
@@ -62,6 +91,9 @@ private:
     bool eof_ = false;
     std::int64_t frame_counter_ = 0;
     std::string error_;
+    bool software_ = false;
+    std::shared_ptr<SandFramePool> sw_pool_;
+    SwStats sw_stats_;
 };
 
 // AVDRMFrameDescriptor → DrmFrame fields (except keepalive/pts). Handles Y/UV in one object or two.

@@ -12,6 +12,7 @@
 // Callers: pipeline/main.cpp (c0..c1) · tools/gst/gst_pipeline.cpp (c0..cpu_total).
 //
 // Library code does not include this header — it is for tools only.
+#include <cctype>
 #include <cerrno>
 #include <chrono>
 #include <cmath>
@@ -22,9 +23,12 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
+#include <map>
 #include <stdexcept>
 #include <string>
 #include <system_error>
+#include <utility>
 #include <vector>
 
 #include <fcntl.h>
@@ -188,6 +192,39 @@ inline std::vector<Nv12Frame> read_nv12_frames(const std::string& video, int n, 
     }
     pclose(p);
     return out;
+}
+
+// On-CPU time per thread, from /proc/self/task/<tid>/schedstat (first field: ns on CPU). With frame threads the decode call only
+// collects a finished frame: the decoding itself runs on libavcodec's threads and shows up nowhere else. Likewise HailoRT's
+// threads. Read only outside the measured window. Callers: tools/hailo/cpu_baseline_pipeline.cpp, pipeline/main.cpp.
+using ThreadCpu = std::map<std::string, double>;   // tid -> ms on CPU
+
+inline ThreadCpu thread_cpu_snapshot() {
+    ThreadCpu out;
+    std::error_code ec;
+    for (const auto& e : std::filesystem::directory_iterator("/proc/self/task", ec)) {
+        std::ifstream sched(e.path() / "schedstat");
+        double ns = 0.0;
+        if (sched >> ns) out[e.path().filename().string()] = ns / 1e6;
+    }
+    return out;
+}
+
+// Thread name without trailing digits -> (ms on CPU since `before`, threads). Call while the threads still exist.
+using ThreadGroups = std::map<std::string, std::pair<double, int>>;
+inline ThreadGroups thread_cpu_groups(const ThreadCpu& before) {
+    ThreadGroups groups;
+    for (const auto& [tid, ms] : thread_cpu_snapshot()) {
+        std::ifstream comm("/proc/self/task/" + tid + "/comm");
+        std::string name;
+        std::getline(comm, name);
+        while (!name.empty() && std::isdigit(static_cast<unsigned char>(name.back())) != 0) name.pop_back();
+        const auto it = before.find(tid);
+        auto& g = groups[name.empty() ? "?" : name];
+        g.first += ms - (it == before.end() ? 0.0 : it->second);
+        ++g.second;
+    }
+    return groups;
 }
 
 }  // namespace yvo::tool

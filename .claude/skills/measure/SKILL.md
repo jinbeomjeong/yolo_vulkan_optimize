@@ -21,7 +21,7 @@ description: >
 
 새로 짜기 전에 확인한다. 대개 `configs` 배열에 행 하나를 더하는 것으로 끝난다.
 
-`06_tools/bench/` 에 **13개**가 있다. 목록·환경변수는 [`06_tools/README.md`](../../../06_tools/README.md).
+`06_tools/bench/` 에 **14개**가 있다. 목록·환경변수는 [`06_tools/README.md`](../../../06_tools/README.md).
 
 | 스크립트 | 대상 | 출력 |
 |---|---|---|
@@ -29,6 +29,7 @@ description: >
 | `op_point_bench.sh` | 운용점 스윕(batch·slots·gpu_depth·postproc·display) | `07_results/op_point/` |
 | `display_bench.sh` | 표시 통합 e2e (RESULT_CSV + RESULT_CSV2 병합, 70열 — `labwc_cpu_ms`·`labwc_cpu_ms_per_frame` = 컴포지터 labwc CPU(표시 off 포함 매 실행, `raw/<run>/labwc_stat_{pre,post}.txt`), 그 뒤 sys_* 9열 = 앱 CPU 창(c0..c1)에 맞춘 시스템 전체 CPU(`06_tools/python/sys_cpu_window.py`, 냉각 뒤 idle 기준선 `IDLE_S`, `raw/<run>/syscpu*.{json,csv}`; `sys_net_ms_per_frame` = 창 sched_run − 기준선 비례분). 48·53·59·61열 옛 CSV 와 섞지 않는다. 앞 프레임 제외 없음 = `--display-warmup 0`) | `07_results/display_e2e/` |
 | `decode_bench.sh` | 디코드 경로 비교 | `07_results/decode_benchmark/` |
+| `decode_pipeline_bench.sh` | `yvo_pipeline` O2 표시 on에서 디코더만 변경: `hw_t1`·`sw_t1`·`sw_auto`, 전체 영상 × 3, 58열 raw(`sw_copy_ms` 등 복사 4열, hw는 nan). HDMI 화면 사용. 디코더 비용 비교는 `stdout.log`의 `thread cpu` ms/arrived를 본다 | `07_results/decode_benchmark/runs/pipeline_sw_hw/` |
 | `backpressure_bench.sh` | 백프레셔 전후 비교 | `07_results/raw_runner_backpressure/` |
 | `isp_bench.sh` | ISP 전처리 단독(NPU 미사용) | `07_results/isp_resize/` |
 | `isp_pipeline_bench.sh` | ISP 포함 전체 파이프라인 | `07_results/isp_resize/runs/pipeline/` |
@@ -90,7 +91,7 @@ Hailo 칩 온도는 `hailo_platform`으로 읽는다(`06_tools/bench/lib/common.
 **CPU 거버너** — 거버너가 다르면 CPU ms와 감소율이 함께 달라진다. 같은 날 같은 코드에서 `ondemand` 회차는 3.189 → 2.505 ms/f(−21%),
 `performance` 고정 + `lxtask` 종료 회차는 2.444 → 2.044 ms/f(−16.4%)였다([`v3d1150_quiet_perfgov_20261016`](../../../07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md)).
 
-- **모든 측정에서 거버너를 기록한다.** `06_tools/bench/`의 13개는 환경 스냅샷에 자동으로 남긴다(`common.sh`의 `cpu_governor`. `decode_bench.sh`는 자체 형식 `governor: …`). 다른 드라이버로 잴 때는 직접 `env_bench.txt`에 적는다.
+- **모든 측정에서 거버너를 기록한다.** `06_tools/bench/`의 14개는 환경 스냅샷에 자동으로 남긴다(`common.sh`의 `cpu_governor`. `decode_bench.sh`는 자체 형식 `governor: …`). 다른 드라이버로 잴 때는 직접 `env_bench.txt`에 적는다.
 - **CPU ms를 다른 회차·헤드라인과 비교할 측정은 `performance`로 고정한다.** 측정 동안만 바꾸고 `trap`으로 원복한다(측정·진단용 sudo라 사전 승인이 필요 없고, 명령·목적·원복 여부를 보고한다. 실행 형식은 `CLAUDE.md` §사용자 확인).
 - FPS·GPU ms만 보는 측정은 고정하지 않아도 되지만 기록은 한다. 이 경우의 거버너 영향은 정량화하지 않았다.
 - **거버너가 다른 회차의 CPU ms는 직접 비교하지 않는다.**

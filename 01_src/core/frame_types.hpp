@@ -33,7 +33,7 @@ struct DrmFrame {
     std::size_t uv_size = 0;           // total size of the uv_fd object (bytes)
     std::uint32_t uv_sand_col_height = 0; // UV plane SAND column height (row count), interpreted value
     std::int64_t pts = 0;         // frame sequence number or pts
-    std::shared_ptr<void> keepalive; // AVFrame reference. Kept until GPU use is finished
+    std::shared_ptr<void> keepalive; // AVFrame reference (SW decode: pool buffer). Kept until GPU use is finished
 };
 
 // letterbox parameters: source coordinate = (letterbox coordinate - pad) / scale

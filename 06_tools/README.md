@@ -7,7 +7,7 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 나뉘어 있었는데, 파이썬 파일 2개가 서로 다른 폴더에 흩어져 경계가 무너진 상태였다.
 실제 구분선은 "언어"가 아니라 **"빌드에 들어가는가"** 다.
 
-## `bench/` — 측정 자동화 셸 13개
+## `bench/` — 측정 자동화 셸 14개
 
 | 스크립트 | 무엇을 재나 | 출력 |
 |---|---|---|
@@ -22,6 +22,7 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 | `backpressure_bench.sh` | 백프레셔 결함 전후 비교 | `07_results/raw_runner_backpressure/` |
 | `input_pace_bench.sh` | 입력 페이싱 + leaky 입력 큐 — b1s1·b2s3·b2s4 × {asap, `--input-pace source --input-queue` 1·2·3}, 도착 900프레임 × 3, 표시 off. `results_raw.csv` 47열(RESULT_CSV 22 + RESULT_CSV4 21 + 스크립트 4, asap 행의 CSV4 는 nan). 페이싱 행의 FPS·`cpu_ms_per_frame` 은 asap 과 비교 금지. `DRYRUN=1`·`CHECK_ONLY=1`. `FRAME_LOG=1` 이면 실행마다 `raw/<설정>_run<N>/frame_log.csv`(`--frame-log`, 분석은 `frame_log_stats.py`). **`DISPLAY_RUN=1`** = 페이싱 + 표시 on(큐 1): `dvk_b1s1`·`dwlp_b1s2`·`dwlp_b1s3`·`dvk_b2s4`·`dwlp_b2s6`(Vulkan 합성·wayland-planes, kms 없음), 실행마다 HDMI-A-1·labwc master 확인 + `timeout -s KILL $TIMEOUT_S`(90), `WARMUP`(30), raw 87열(+ RESULT_CSV5 6 + 표시 필드 31 + 스크립트 7), 기본 출력 `runs/display_on` | `07_results/input_pacing/` |
 | `demo_compare_bench.sh` | 적용 전/후 비교 영상용 실시간 기록(영상은 실행 뒤 합성). `before`(`yvo_cpu_baseline`: 소프트웨어 HEVC·swscale·HailoRT NMS·`wl_shm`) · `after`(`yvo_pipeline` O2 + Vulkan 합성), 전체 영상 × 1. 실행 폴더에 `frame_log.csv`·`detections.jsonl`·`cpu_samples.csv`(`proc_cpu_sampler.py`)·`stdout.log`·`hailort.log` | `07_results/demo_before_after/` |
+| `decode_pipeline_bench.sh` | 결정된 파이프라인(`yvo_pipeline` O2 + Vulkan 합성)에서 디코더만 바꾼 비교: `hw_t1`(`--decoder hw`) · `sw_t1`(`--decoder sw`, `YVO_DEC_THREADS=1`) · `sw_auto`(`--decoder sw`, 자동 스레드), 전체 영상 × 3, 인자는 `demo_compare_bench.sh` 의 `after` 와 같다. `results_raw.csv` 58열(RESULT_CSV 22 + RESULT_CSV4 21 + 스크립트 15, `sw_copy_ms` 등 복사 시간 4열은 hw 에서 nan), 실행 폴더는 `demo_compare_bench.sh` 와 같고 `stdout.log` 에 `thread cpu`·`sw decode copy` 줄이 남는다. `BIN_PIPELINE`, `DRYRUN=1`·`CHECK_ONLY=1` | `07_results/decode_benchmark/runs/pipeline_sw_hw/` |
 | `isp_bench.sh` | ISP 전처리 단독 | `07_results/isp_resize/` |
 | `isp_pipeline_bench.sh` | ISP 포함 전체 파이프라인 | `07_results/isp_resize/runs/pipeline/` |
 
@@ -38,7 +39,7 @@ CMake 빌드에 들어가지 않는 것들이다. 빌드 대상 코드는 [`01_s
 
 ### 벤치 락
 
-13개 스크립트 모두 시작할 때 `build/.bench_running` 에 자기 PID를 쓰고 `trap` 으로 지운다.
+14개 스크립트 모두 시작할 때 `build/.bench_running` 에 자기 PID를 쓰고 `trap` 으로 지운다.
 [`.claude/hooks/npu_guard.sh`](../.claude/hooks/npu_guard.sh) 가 이 파일을 보고 **측정 중에는
 빌드·테스트 명령을 막는다.** 측정 중에 다른 작업이 돌면 CPU 시간 측정이 **에러 없이 조용히
 오염되기** 때문이다. 훅이 PID 생존 여부를 보므로 비정상 종료로 남은 락은 자동 무효가 된다.
