@@ -1,0 +1,33 @@
+[decoder] codec=hevc (HEVC (High Efficiency Video Coding)) software=1 hw_device_ctx=none threads=5 thread_type=frame fps=30.000
+[decoder] first frame: pix_fmt=yuv420p 1920x1080 hw_frames_ctx=none range=tv colorspace=bt709 chroma=left
+[npu] HailoRunner host pointer NHWC, batch 1, slots 1, HailoRT NMS, input 1228800 B, output 160320 B
+[preproc] libswscale 1920x1080 yuv420p -> 640x360 rgb24 at (0,140) in 640x640 (pad 114), sws_flags=0x00002001 threads=4, libswscale 8.3.100
+[display] wl_shm XBGR8888 window: outputs HDMI-A-1, requested HDMI-A-1, fullscreen
+[gpu] not used: this process creates no Vulkan instance and opens no DRM device
+== yvo_cpu_baseline (software HEVC, libswscale, ptr, NHWC, batch 1, slots 1, postproc host) ==
+frames          1479 (decoded 1479, errors 0)
+wall            60.568 s, 24.42 FPS
+cpu             48.199 ms/frame (process user+sys 71286.3 ms, 118% of one core)
+decode call ms  mean 0.122  median 0.102  p90 0.190  max 1.313
+swscale ms      mean 3.000  median 2.985  p90 4.008  max 7.147  (640x640 letterbox, main thread)
+npu latency ms  mean 37.904  median 37.927  p90 38.759  max 45.376  (submit -> completion callback: HailoRT transpose + NPU + HailoRT NMS)
+post ms         mean 0.017  median 0.016  p90 0.021  max 0.120  (callback entered -> main thread has the parsed detections)
+e2e latency ms  mean 57.612  median 57.643  p90 70.940  max 74.407  (decode return → NPU completion callback)
+input pace      source @ 30.000 fps, input queue 1 (leaky: full -> drop the oldest)
+arrived         1816 (processed 1479, dropped 337 = 18.56%, abandoned 0, longest drop run 1, queue depth max 1)
+e2e arrival ms  mean 57.775  median 57.800  p90 71.105  max 74.629  (source arrival → NPU completion callback)
+queue wait ms   mean 16.686  p90 29.987  max 33.273  (decode return → swscale start)
+decode late ms  mean 0.239  p90 0.271  max 2.650  (source arrival → decode return)
+disp convert ms mean 2.985  median 2.863  p90 3.764  max 7.145  (libswscale -> RGBA in the shm buffer)
+disp overlay ms mean 0.112  median 0.104  p90 0.169  max 0.317  (ref/overlay_reference.hpp)
+display         presented 1479, display dropped 0
+detections      7826 total
+thread cpu      (decode thread)      threads  1      248.6 ms    0.137 ms/arrived    0.168 ms/processed
+thread cpu      (display thread)     threads  1     2232.1 ms    1.229 ms/arrived    1.509 ms/processed
+thread cpu      av:hevc:df           threads  5    52212.5 ms   28.751 ms/arrived   35.303 ms/processed
+thread cpu      yvo_cpu_baselin      threads 16    16593.3 ms    9.137 ms/arrived   11.219 ms/processed
+t0_monotonic_ms 10703595.013  (time base of --frame-log on CLOCK_MONOTONIC)
+hailo chip temp 64.0 -> 68.4 C
+soc temp        71.9 -> 70.8 C
+RESULT_CSV,before,ptr,nhwc,1,1,1479,60.568,24.42,48.199,0.122,nan,nan,37.90,38.76,57.61,70.94,7826,64.0,68.4,71.9,70.8,1
+RESULT_CSV4,before,1,30.000,1816,1479,337,0,0.1856,1,1,57.77,57.80,71.11,74.63,16.686,29.987,33.273,0.239,0.271,2.650,0,1

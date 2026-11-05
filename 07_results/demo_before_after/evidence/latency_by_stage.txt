@@ -1,0 +1,173 @@
+=== before_1t (3 runs) ===
+
+-- run before_run1
+metric [ms]               n    mean  median     p90     p99     max
+arrival_to_decode_end  1479   80.84   30.44  312.35  475.00  497.95
+decode_end_to_submit   1479   17.26   16.41   30.81   41.17   44.21
+submit_to_npu_done     1479   37.81   37.78   38.83   40.01   45.60
+npu_done_to_complete   1479    0.02    0.02    0.02    0.04    6.17
+complete_to_present    1479    3.20    3.14    3.90    5.26    9.06
+arrival_to_complete    1479  135.93   87.60  367.94  536.08  569.04
+arrival_to_present     1479  139.13   90.86  371.52  539.04  571.81
+
+-- run before_run2
+metric [ms]               n    mean  median     p90     p99     max
+arrival_to_decode_end  1479   81.09   30.63  313.26  475.63  498.43
+decode_end_to_submit   1479   17.41   16.26   31.46   41.64   45.22
+submit_to_npu_done     1479   37.79   37.81   38.78   40.00   45.58
+npu_done_to_complete   1479    0.02    0.01    0.02    0.05    3.34
+complete_to_present    1479    3.23    3.14    3.93    5.99   10.26
+arrival_to_complete    1479  136.31   88.18  371.77  532.24  560.15
+arrival_to_present     1479  139.54   91.35  375.48  535.92  563.51
+
+-- run before_run3
+metric [ms]               n    mean  median     p90     p99     max
+arrival_to_decode_end  1477   67.67   30.73  233.31  389.17  426.22
+decode_end_to_submit   1477   17.40   16.72   31.48   41.11   44.12
+submit_to_npu_done     1477   37.84   37.83   38.84   39.96   45.57
+npu_done_to_complete   1477    0.02    0.02    0.02    0.04    3.60
+complete_to_present    1477    3.26    3.18    3.96    5.18    9.96
+arrival_to_complete    1477  122.92   87.73  285.21  449.62  493.37
+arrival_to_present     1477  126.19   91.09  290.97  453.20  497.01
+
+-- median of runs
+metric [ms]               n    mean  median     p90     p99     max   mean min~max
+arrival_to_decode_end  1479   80.84   30.63  312.35  475.00  497.95    67.67~81.09
+decode_end_to_submit   1479   17.40   16.41   31.46   41.17   44.21    17.26~17.41
+submit_to_npu_done     1479   37.81   37.81   38.83   40.00   45.58    37.79~37.84
+npu_done_to_complete   1479    0.02    0.02    0.02    0.04    3.60      0.02~0.02
+complete_to_present    1479    3.23    3.14    3.93    5.26    9.96      3.20~3.26
+arrival_to_complete    1479  135.93   87.73  367.94  532.24  560.15  122.92~136.31
+arrival_to_present     1479  139.13   91.09  371.52  535.92  563.51  126.19~139.54
+
+-- arrival_to_complete over threshold (share of processed frames)
+run          frames      > 100 ms      > 200 ms
+before_run1    1479  27.79% (411)  14.47% (214)
+before_run2    1479  28.53% (422)  14.60% (216)
+before_run3    1477  27.15% (401)  12.25% (181)
+
+-- arrival_to_complete median [ms] per 10 s of arrival time
+arrival [s]  before_run1  before_run2  before_run3
+0-10               82.95        83.97        83.73
+10-20              82.73        82.96        83.07
+20-30              81.92        82.33        81.96
+30-40              81.45        81.98        81.22
+40-50              94.32        94.61        96.05
+50-60             413.01       408.16       337.14
+60-70             212.51       215.42        84.60
+
+=== before_auto (3 runs) ===
+
+-- run before_run1
+metric [ms]               n   mean  median    p90    p99    max
+arrival_to_decode_end  1479   0.17    0.16   0.19   0.26   0.68
+decode_end_to_submit   1479  19.74   19.87  33.00  36.23  39.03
+submit_to_npu_done     1479  37.93   37.98  38.77  39.98  45.58
+npu_done_to_complete   1479   0.02    0.02   0.02   0.04   0.12
+complete_to_present    1479   3.25    3.09   3.97   6.18  10.46
+arrival_to_complete    1479  57.86   57.83  71.16  74.20  81.26
+arrival_to_present     1479  61.11   60.99  74.68  77.62  90.36
+
+-- run before_run2
+metric [ms]               n   mean  median    p90    p99    max
+arrival_to_decode_end  1479   0.16    0.16   0.19   0.24   0.34
+decode_end_to_submit   1479  19.69   19.87  32.76  35.96  39.49
+submit_to_npu_done     1479  37.93   37.95  38.78  39.99  45.39
+npu_done_to_complete   1479   0.02    0.02   0.02   0.04   0.12
+complete_to_present    1479   3.24    3.10   4.06   5.62   8.05
+arrival_to_complete    1479  57.79   57.81  71.12  74.11  74.65
+arrival_to_present     1479  61.03   60.80  74.55  77.72  80.32
+
+-- run before_run3
+metric [ms]               n   mean  median    p90    p99    max
+arrival_to_decode_end  1478   0.17    0.16   0.19   0.26   3.75
+decode_end_to_submit   1478  19.70   19.73  32.77  36.06  38.91
+submit_to_npu_done     1478  37.88   37.86  38.74  39.98  46.10
+npu_done_to_complete   1478   0.02    0.02   0.02   0.04   6.06
+complete_to_present    1478   3.26    3.09   4.10   6.59   8.69
+arrival_to_complete    1478  57.77   57.83  71.13  74.11  74.70
+arrival_to_present     1478  61.04   60.76  74.65  77.86  82.25
+
+-- median of runs
+metric [ms]               n   mean  median    p90    p99    max  mean min~max
+arrival_to_decode_end  1479   0.17    0.16   0.19   0.26   0.68     0.16~0.17
+decode_end_to_submit   1479  19.70   19.87  32.77  36.06  39.03   19.69~19.74
+submit_to_npu_done     1479  37.93   37.95  38.77  39.98  45.58   37.88~37.93
+npu_done_to_complete   1479   0.02    0.02   0.02   0.04   0.12     0.02~0.02
+complete_to_present    1479   3.25    3.09   4.06   6.18   8.69     3.24~3.26
+arrival_to_complete    1479  57.79   57.83  71.13  74.11  74.70   57.77~57.86
+arrival_to_present     1479  61.04   60.80  74.65  77.72  82.25   61.03~61.11
+
+-- arrival_to_complete over threshold (share of processed frames)
+run          frames   > 100 ms   > 200 ms
+before_run1    1479  0.00% (0)  0.00% (0)
+before_run2    1479  0.00% (0)  0.00% (0)
+before_run3    1478  0.00% (0)  0.00% (0)
+
+-- arrival_to_complete median [ms] per 10 s of arrival time
+arrival [s]  before_run1  before_run2  before_run3
+0-10               57.83        57.81        57.74
+10-20              57.88        57.64        57.74
+20-30              57.66        58.00        57.94
+30-40              57.73        57.99        57.77
+40-50              57.72        57.79        57.67
+50-60              57.75        57.65        58.03
+60-70              57.30        58.63        57.03
+
+=== after (3 runs) ===
+
+-- run after_run1
+metric [ms]               n   mean  median    p90    p99    max
+arrival_to_decode_end  1472   2.86    3.66   4.96   6.51  21.55
+decode_end_to_submit   1472  14.58   14.49  27.13  32.69  33.06
+submit_to_npu_done     1472  35.52   35.91  35.99  36.22  46.23
+npu_done_to_complete   1472   0.79    0.64   0.76   3.49   6.46
+complete_to_present    1472  16.46   16.29  23.44  25.27  33.95
+arrival_to_complete    1472  53.75   53.58  66.70  71.88  72.47
+arrival_to_present     1472  70.21   75.06  76.90  92.00  92.13
+
+-- run after_run2
+metric [ms]               n   mean  median    p90    p99     max
+arrival_to_decode_end  1473   2.87    3.66   4.95   6.83   21.47
+decode_end_to_submit   1473  14.52   14.46  27.08  32.38   32.88
+submit_to_npu_done     1473  35.53   35.92  35.99  36.33   46.22
+npu_done_to_complete   1473   0.77    0.64   0.75   3.42    7.93
+complete_to_present    1473  16.37   16.18  22.96  25.54   44.73
+arrival_to_complete    1473  53.70   53.69  66.51  71.71   72.82
+arrival_to_present     1473  70.06   75.20  77.48  92.62  103.70
+
+-- run after_run3
+metric [ms]               n   mean  median    p90    p99     max
+arrival_to_decode_end  1473   2.87    3.67   4.96   6.74   20.85
+decode_end_to_submit   1473  14.55   14.43  27.19  32.75   33.04
+submit_to_npu_done     1473  35.54   35.91  35.98  36.28   46.20
+npu_done_to_complete   1473   0.79    0.64   0.74   3.48   16.97
+complete_to_present    1473  16.38   16.23  23.34  25.26   44.81
+arrival_to_complete    1473  53.75   53.63  66.70  71.87   86.78
+arrival_to_present     1473  70.12   63.05  80.21  95.63  112.63
+
+-- median of runs
+metric [ms]               n   mean  median    p90    p99     max  mean min~max
+arrival_to_decode_end  1473   2.87    3.66   4.96   6.74   21.47     2.86~2.87
+decode_end_to_submit   1473  14.55   14.46  27.13  32.69   33.04   14.52~14.58
+submit_to_npu_done     1473  35.53   35.91  35.99  36.28   46.22   35.52~35.54
+npu_done_to_complete   1473   0.79    0.64   0.75   3.48    7.93     0.77~0.79
+complete_to_present    1473  16.38   16.23  23.34  25.27   44.73   16.37~16.46
+arrival_to_complete    1473  53.75   53.63  66.70  71.87   72.82   53.70~53.75
+arrival_to_present     1473  70.12   75.06  77.48  92.62  103.70   70.06~70.21
+
+-- arrival_to_complete over threshold (share of processed frames)
+run         frames   > 100 ms   > 200 ms
+after_run1    1472  0.00% (0)  0.00% (0)
+after_run2    1473  0.00% (0)  0.00% (0)
+after_run3    1473  0.00% (0)  0.00% (0)
+
+-- arrival_to_complete median [ms] per 10 s of arrival time
+arrival [s]  after_run1  after_run2  after_run3
+0-10              53.60       53.60       53.43
+10-20             53.66       53.53       53.50
+20-30             53.35       53.62       53.67
+30-40             53.38       53.45       53.42
+40-50             53.70       53.97       54.03
+50-60             54.47       54.00       54.20
+60-70             54.64       53.96       53.78
