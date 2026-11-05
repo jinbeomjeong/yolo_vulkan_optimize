@@ -4,7 +4,8 @@
 Inputs: <out_dir>/raw/<cfg>_run<N>/{stdout.log,run_env.txt} ([RESULT] key=value line of yvo_preproc_bench --impl) and
 <out_dir>/evidence/accuracy/<name>.log ([ACCURACY] line). results.csv = per setting, median over runs of every
 per-run value (per-run values are themselves medians / means over the timed frames), plus min/max of wall_med and
-cpu_mean. Usage: python3 preproc_cmp_aggregate.py <out_dir>
+cpu_mean. Settings of CONFIG_SET=stage_split also get derived tables on stdout (see print_stage_split).
+Usage: python3 preproc_cmp_aggregate.py <out_dir>
 """
 import collections
 import csv
@@ -25,6 +26,43 @@ def num(v):
         return float(v)
     except ValueError:
         return None
+
+
+def per_run(rows, cfg, key):
+    return {r["run"]: float(r[key]) for r in rows if r["config"] == cfg and num(r.get(key, "")) is not None}
+
+
+def print_stage_split(rows):
+    """Letterbox parts of cpuref_split_t1 against the whole letterbox of cpuref_t1 (paired by run), and the raw output
+    hand-off of rawout_copy_t1 against rawout_import_t1. All values are medians over runs of per-run medians, ms."""
+    full = per_run(rows, "cpuref_t1", "resize_med")
+    resize = per_run(rows, "cpuref_split_t1", "resize_med")
+    color = per_run(rows, "cpuref_split_t1", "color_med")
+    pad = per_run(rows, "cpuref_split_t1", "pad_med")
+    runs = sorted(set(full) & set(resize))
+    if runs:
+        med = lambda f: f"{statistics.median(f(r) for r in runs):.4f}"
+        print("\n# Letterbox split: full = cpuref_t1 resize stage (ref loop, padding included). "
+              "color_by_diff = full - resize - pad. parts_minus_full = resize + color + pad - full.")
+        print("runs\tfull\tresize\tcolor_direct\tpad\tcolor_by_diff\tparts_sum\tparts_minus_full")
+        print("\t".join([str(len(runs)), med(lambda r: full[r]), med(lambda r: resize[r]), med(lambda r: color[r]),
+                         med(lambda r: pad[r]), med(lambda r: full[r] - resize[r] - pad[r]),
+                         med(lambda r: resize[r] + color[r] + pad[r]),
+                         med(lambda r: resize[r] + color[r] + pad[r] - full[r])]))
+    cfgs = [c for c in ("rawout_copy_t1", "rawout_import_t1") if per_run(rows, c, "wall_med")]
+    if cfgs:
+        keys = ("handoff_wall_med", "handoff_cpu_med", "copy_med", "src_sync_med", "wall_med", "cpu_mean", "submit_med",
+                "wait_med", "gpu_med")
+        print("\n# Raw output hand-off: handoff_* = copy + DMA_BUF_SYNC window (empty for import); wall/cpu = whole cycle "
+              "with the GPU pass.")
+        print("\t".join(("config", "runs") + keys))
+        for c in cfgs:
+            cols = [statistics.median(per_run(rows, c, k).values()) for k in keys]
+            print("\t".join([c, str(len(per_run(rows, c, "wall_med")))] + [f"{v:.4f}" for v in cols]))
+        if len(cfgs) == 2:
+            a, b = (per_run(rows, c, "cpu_mean") for c in cfgs)
+            common = sorted(set(a) & set(b))
+            print(f"cycle cpu_mean copy - import (paired by run): {statistics.median(a[r] - b[r] for r in common):.4f}")
 
 
 def main():
@@ -99,6 +137,7 @@ def main():
                          g("map_med", ""), g("flatten_med", ""), g("resize_med", ""), g("pad_med", ""),
                          g("transpose_med", ""), g("sync_med", ""), g("submit_med", ""), g("wait_med", ""),
                          g("gpu_med", "")]))
+    print_stage_split(rows)
 
     acc_dir = out / "evidence" / "accuracy"
     if acc_dir.is_dir():
@@ -113,6 +152,9 @@ def main():
                 print(f"{log.stem}\t(no [ACCURACY] line)")
                 continue
             m = re.search(r"content: (.*?) whole: (.*?) hash=(\w+)(.*)$", line)
+            if not m:  # rawout-*: copy check and GPU result fingerprint
+                print(f"{log.stem}\t{line}")
+                continue
             c = dict(t.split("=", 1) for t in m.group(1).split())
             wh = dict(t.split("=", 1) for t in m.group(2).split())
             kv = parse_kv(line)

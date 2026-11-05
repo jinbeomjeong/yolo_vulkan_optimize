@@ -211,7 +211,7 @@ cmake -S . -B build -G Ninja && cmake --build build
 | 도구 | 무엇을 따로 보나 | NPU 필요? |
 |---|---|---|
 | `yvo_drm_dump` | 디코더가 내놓는 버퍼의 실제 모양 | 아니오 |
-| `yvo_preproc_bench` | GPU 전처리만, 워크그룹 크기 스윕. `--impl cpuref\|sws-rgb24\|sws-gbrp\|gpu` 는 같은 디코드 프레임에서 CPU 구현과 GPU 셰이더를 비교([`preproc_cpu_vs_gpu`](../07_results/preproc_cpu_vs_gpu/summary.md)) | 아니오 |
+| `yvo_preproc_bench` | GPU 전처리만, 워크그룹 크기 스윕. `--impl cpuref\|sws-rgb24\|sws-gbrp\|gpu\|cpuref-split\|rawout-copy\|rawout-import` 는 같은 디코드 프레임에서 CPU 구현과 GPU 셰이더를 비교([`preproc_cpu_vs_gpu`](../07_results/preproc_cpu_vs_gpu/summary.md)) | 아니오 |
 | `yvo_postproc_probe` | GPU 후처리. `--probe fixture`는 저장된 텐서로 검증, `--probe stages`는 디코딩 단계별 GPU 시간(차분법, `--variants`로 변형 선택), `--probe groups`는 그룹당 통과 앵커·프리필터 통과 수 분포(CPU 전용), `--probe sweep`은 local size 26조합, `--probe memasym`은 CPU↔GPU 메모리 접근 비대칭(GPU 대역폭·PTE 속성·일관성·CPU 쓰기, [`memory_asymmetry`](../07_results/memory_asymmetry/summary.md)) | `fixture`·`stages`·`groups`·`sweep`은 불필요 |
 | `yvo_perf_counters` | V3D 성능 카운터(`VK_KHR_performance_query`) 열거·pass 분석, 작은 dispatch로 쿼리 동작 확인 | 아니오 |
 | `yvo_hailo_selftest` | NPU 러너만 | 예 |

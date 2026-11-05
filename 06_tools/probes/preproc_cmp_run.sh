@@ -17,11 +17,19 @@
 # Env: OUT_DIR (default 07_results/preproc_cpu_vs_gpu), RUNS (3), FRAMES (600), WARMUP (60), COOL_C (70),
 #      COOL_MAX_S (300), ONLY (grep on setting), ACC_FRAMES (660), SKIP_ACC=1, SKIP_VALIDATION=1,
 #      EXPECT_GOVERNOR, FORCE=1 to write into a non-empty OUT_DIR, DRYRUN=1 to print the commands only.
+# CONFIG_SET=stage_split (2026-11-05) replaces the settings: CPU-ref with resize / color / pad timed separately, the
+#   reproduction rows cpuref_t1 and gpu, the NPU raw output copy and its dma-buf import control (1 thread, core 3).
+#   Default OUT_DIR 07_results/preproc_cpu_vs_gpu/runs/stage_split. Validation also covers the rawout settings.
 set -euo pipefail
 PROJ="$(cd "$(dirname "$0")/../.." && pwd)"
 source "$PROJ/06_tools/bench/lib/common.sh"
 
-OUT_DIR="${OUT_DIR:-$PROJ/07_results/preproc_cpu_vs_gpu}"
+CONFIG_SET="${CONFIG_SET:-}"
+case "$CONFIG_SET" in
+  "") OUT_DIR="${OUT_DIR:-$PROJ/07_results/preproc_cpu_vs_gpu}" ;;
+  stage_split) OUT_DIR="${OUT_DIR:-$PROJ/07_results/preproc_cpu_vs_gpu/runs/stage_split}" ;;
+  *) echo "unknown CONFIG_SET: $CONFIG_SET" >&2; exit 2 ;;
+esac
 RUNS="${RUNS:-3}"
 FRAMES="${FRAMES:-600}"
 WARMUP="${WARMUP:-60}"
@@ -62,6 +70,22 @@ ACC=(
   "sws_fastbil_t4|--impl sws-rgb24 --sws-flags fast_bilinear --threads 4 --mem-threads 1"
   "gpu|--impl gpu"
 )
+VALIDATE=(gpu)
+if [[ "$CONFIG_SET" == "stage_split" ]]; then
+  CONFIGS=(
+    "cpuref_t1|3|--impl cpuref"
+    "cpuref_split_t1|3|--impl cpuref-split"
+    "gpu|3|--impl gpu"
+    "rawout_copy_t1|3|--impl rawout-copy"
+    "rawout_import_t1|3|--impl rawout-import"
+  )
+  ACC=(
+    "cpuref_split_t1|--impl cpuref-split"
+    "rawout_copy_t1|--impl rawout-copy"
+    "rawout_import_t1|--impl rawout-import"
+  )
+  VALIDATE=(gpu rawout-copy rawout-import)
+fi
 COMMON=(--frames "$FRAMES" --warmup "$WARMUP")
 
 if [[ "${DRYRUN:-0}" == "1" ]]; then
@@ -138,10 +162,13 @@ fi
 
 if [[ "${SKIP_VALIDATION:-0}" != "1" ]]; then
   mkdir -p "$OUT_DIR/verification"
-  echo "== validation layer: gpu setting"
-  (cd "$OUT_DIR/raw/_session" && VK_LOADER_LAYERS_ENABLE='*validation' "$BIN" --impl gpu --frames 200 --warmup 10) \
-    > "$OUT_DIR/verification/validation_impl_gpu_200f.log" 2>&1 || echo "   validation rc $?"
-  grep -E '^validation:' "$OUT_DIR/verification/validation_impl_gpu_200f.log" | sed 's/^/   /' || true
+  for impl in "${VALIDATE[@]}"; do
+    echo "== validation layer: $impl setting"
+    vlog="$OUT_DIR/verification/validation_impl_${impl//-/_}_200f.log"
+    (cd "$OUT_DIR/raw/_session" && VK_LOADER_LAYERS_ENABLE='*validation' "$BIN" --impl "$impl" --frames 200 --warmup 10) \
+      > "$vlog" 2>&1 || echo "   validation rc $?"
+    grep -E '^validation:' "$vlog" | sed 's/^/   /' || true
+  done
 fi
 [[ -s "$OUT_DIR/raw/_session/hailort.log" ]] || rm -f "$OUT_DIR/raw/_session/hailort.log"
 rmdir "$OUT_DIR/raw/_session" 2>/dev/null || true

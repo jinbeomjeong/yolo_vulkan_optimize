@@ -1,0 +1,1 @@
+soc_pre 68.1 soc_post 67.5 cooled_s 0 throttled 0xe0000 governor performance cpus 3 rc 0

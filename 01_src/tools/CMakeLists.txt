@@ -42,7 +42,7 @@ endif()
 # ── vulkan ─────────────────────────────────────────────────────────────────────
 # Performance/verification tool: full decode + GPU preprocessing
 yvo_add_tool(yvo_preproc_bench vulkan/preproc_bench.cpp
-  LIBS yvo_vulkan yvo_decoder yvo_toolkit
+  LIBS yvo_vulkan yvo_decoder yvo_toolkit yvo_testkit_postproc
   OPTIONAL yvo_opencv=YVO_HAVE_OPENCV yvo_swscale=YVO_HAVE_SWSCALE)
 
 # Postprocessing probe (plan §6.2 P3).

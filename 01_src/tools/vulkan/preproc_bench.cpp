@@ -4,6 +4,7 @@
 //       import cache statistics, validation layer error/warning counts, one sample letterbox PNG.
 // Validation layer: enable with VK_LOADER_LAYERS_ENABLE='*validation' or --validation.
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -41,6 +42,8 @@
 #include "toolkit/tool_image.hpp"
 #include "toolkit/cpu_preproc.hpp"
 #include "core/dma_heap_alloc.hpp"
+#include "testkit/postproc_fixture.hpp"
+#include "vulkan/yolo_postproc.hpp"
 #ifdef YVO_HAVE_SWSCALE
 #include "toolkit/sws_preproc.hpp"
 #endif
@@ -69,7 +72,7 @@ struct Args {
     bool cpu_baseline = false; // time the CPU reference path (dma-buf mmap → de-SAND → cpu_letterbox)
     int repeat = 1;
     // --impl: same-condition CPU vs GPU preprocessing comparison (frame -> 640x640 NHCW uint8, decode excluded)
-    std::string impl;               // cpuref | sws-rgb24 | sws-gbrp | gpu (empty = legacy modes)
+    std::string impl;               // cpuref | cpuref-split | sws-rgb24 | sws-gbrp | gpu | rawout-copy | rawout-import (empty = legacy modes)
     int threads = 1;                // CPU worker threads (cpuref bands, sws slice threads + band helpers)
     int mem_threads = 0;            // threads for the memory-bound stages (flatten, transpose); 0 = same as --threads
     int warmup = 60;                // frames excluded from the statistics
@@ -85,7 +88,7 @@ void usage(const char* a0) {
                  "usage: %s [--video PATH] [--frames N] [--slots N] [--depth N] [--local X Y] [--png-dir DIR]\n"
                  "          [--png-frame K] [--layout nhwc|nhcw] [--validation] [--sync-validation] [--no-gpu]\n"
                  "          [--sweep] [--export-test] [--repeat N] [--cpu-baseline]\n"
-                 "       %s --impl cpuref|sws-rgb24|sws-gbrp|gpu [--threads N] [--mem-threads N] [--frames N] [--warmup N]\n"
+                 "       %s --impl cpuref|cpuref-split|sws-rgb24|sws-gbrp|gpu|rawout-copy|rawout-import [--threads N] [--mem-threads N] [--frames N] [--warmup N]\n"
                  "          [--cpu-out heap|malloc] [--cpu-map cached|perframe] [--sws-flags F] [--accuracy]\n"
                  "          [--frame-csv PATH] [--validation]\n",
                  a0,
@@ -130,8 +133,12 @@ bool parse(int argc, char** argv, Args& a) {
         else if (s == "--frame-csv" && (v = next())) a.frame_csv = v;
         else return false;
     }
-    if (!a.impl.empty() && a.impl != "cpuref" && a.impl != "sws-rgb24" && a.impl != "sws-gbrp" && a.impl != "gpu")
+    if (!a.impl.empty() && a.impl != "cpuref" && a.impl != "cpuref-split" && a.impl != "sws-rgb24" &&
+        a.impl != "sws-gbrp" && a.impl != "gpu" && a.impl != "rawout-copy" && a.impl != "rawout-import")
         return false;
+    if ((a.impl == "cpuref-split" || a.impl == "rawout-copy" || a.impl == "rawout-import") &&
+        (a.threads != 1 || a.mem_threads > 1))
+        return false; // single-thread measurements only
     if (a.cpu_out != "heap" && a.cpu_out != "malloc") return false;
     if (a.cpu_map != "cached" && a.cpu_map != "perframe") return false;
     return a.slots > 0 && a.depth > 0 && a.depth <= a.slots && a.threads >= 1 && a.threads <= 16 && a.mem_threads >= 0 &&
@@ -269,6 +276,13 @@ int run_cpu_baseline(const Args& a) {
 //   user/sys = getrusage(RUSAGE_SELF) deltas. Stages (ms): map (decoder dma-buf mmap + DMA_BUF_SYNC READ start/end),
 //   flatten (SAND -> planar), resize (letterbox resize + color conversion), pad, transpose (packed -> NHCW),
 //   sync (output DMA_BUF_SYNC WRITE start/end). GPU: submit / wait (fence) and the shader timestamp.
+// Stage-split additions (2026-11-05):
+//   cpuref-split  CPU-ref with resize, color and pad timed separately (toolkit/cpu_preproc.hpp split_*).
+//   rawout-copy   NPU raw output hand-off when GPU postprocessing does not get the dma-buf: 6 fixture tensors in cached
+//                 dma-heap buffers -> memcpy into V3D host-visible buffers, with DMA_BUF_SYNC READ -> yolo_decode + NMS.
+//   rawout-import the same GPU pass on the imported dma-heap buffers. The hand-off has no CPU work; its window is empty.
+//   No NPU runs: the heap buffers are imported into V3D so DMA_BUF_SYNC has a device attachment and does real cache
+//   maintenance, as it does with HailoRT's attachment. The decoder keeps running as in the other settings.
 namespace impl {
 
 using Clock = std::chrono::steady_clock;
@@ -292,6 +306,9 @@ void user_sys_ms(double& u, double& s) {
 
 struct StageMs {
     double map = 0, flatten = 0, resize = 0, pad = 0, transpose = 0, sync = 0;
+    double color = 0;                                  // cpuref-split
+    double copy = 0, src_sync = 0, handoff_cpu = 0;    // rawout-*
+    double handoff_wall = 0;                           // rawout-*
 };
 
 // CPU output ring: cached dma-heap buffers (the kind HailoRT gets as NHCW input) or malloc.
@@ -478,6 +495,170 @@ private:
     std::vector<char> ok_;
 };
 
+// CPU-ref with the letterbox split into resize, color conversion and padding (see toolkit/cpu_preproc.hpp). Everything
+// else (input map, de-SAND, transpose, output sync) is the same as RefImpl with one thread.
+class RefSplitImpl final : public CpuImpl {
+public:
+    explicit RefSplitImpl(bool cached_map) : in_(cached_map) {}
+    void process(const yvo::DrmFrame& f, const OutRing& out, int slot, StageMs& st) override {
+        const int w = f.width, h = f.height;
+        const std::size_t sw = static_cast<std::size_t>(w);
+        y_.resize(sw * static_cast<std::size_t>(h));
+        uv_.resize(sw * static_cast<std::size_t>(h) / 2);
+        const yvo::LetterboxParams lb = yvo::make_letterbox(w, h);
+        if (lb.pad_x != 0) throw std::runtime_error("cpuref-split: only letterboxes with top/bottom padding");
+        rgb_.resize(static_cast<std::size_t>(lb.dst_w) * lb.dst_h * 3);
+        const int new_w = static_cast<int>(w * lb.scale + 0.5f), new_h = static_cast<int>(h * lb.scale + 0.5f);
+        const std::size_t n = static_cast<std::size_t>(new_w) * new_h;
+        py_.resize(n);
+        pu_.resize(n);
+        pv_.resize(n);
+        const yvo::SandNv12Layout l = yvo::make_sand_layout(f);
+
+        const auto t0 = Clock::now();
+        const InputView v = in_.open(f);
+        const auto t1 = Clock::now();
+        const bool ok = yvo::tool::ref_desand_rows(v.y, f.size, v.uv, f.uv_fd >= 0 && f.uv_fd != f.fd ? f.uv_size : f.size,
+                                                   l, 0, h, y_.data(), uv_.data(), sw);
+        const auto t2 = Clock::now();
+        in_.close(f, v);
+        const auto t3 = Clock::now();
+        if (!ok) throw std::runtime_error("desand_nv12: layout out of bounds");
+        yvo::tool::split_resize(y_.data(), sw, uv_.data(), sw, w, h, lb, py_.data(), pu_.data(), pv_.data());
+        const auto t4 = Clock::now();
+        yvo::tool::split_color(py_.data(), pu_.data(), pv_.data(), new_w, new_h, lb, rgb_.data());
+        const auto t5 = Clock::now();
+        yvo::tool::ref_letterbox_rows(y_.data(), sw, uv_.data(), sw, w, h, lb, 0, lb.pad_y, rgb_.data());
+        yvo::tool::ref_letterbox_rows(y_.data(), sw, uv_.data(), sw, w, h, lb, lb.pad_y + new_h, lb.dst_h, rgb_.data());
+        const auto t6 = Clock::now();
+        out.begin(slot);
+        const auto t7 = Clock::now();
+        yvo::tool::ref_nhcw_rows(rgb_.data(), lb.dst_w, 0, lb.dst_h, out.ptr(slot));
+        const auto t8 = Clock::now();
+        out.end(slot);
+        const auto t9 = Clock::now();
+        st.map = ms_between(t0, t1) + ms_between(t2, t3);
+        st.flatten = ms_between(t1, t2);
+        st.resize = ms_between(t3, t4);
+        st.color = ms_between(t4, t5);
+        st.pad = ms_between(t5, t6);
+        st.transpose = ms_between(t7, t8);
+        st.sync = ms_between(t6, t7) + ms_between(t8, t9);
+    }
+    std::string describe() const override { return "cpuref-split threads=1 map=" + in_.stats(); }
+    void clear() override { in_.clear(); }
+
+private:
+    InputMapper in_;
+    std::vector<std::uint8_t> y_, uv_, rgb_;
+    std::vector<float> py_, pu_, pv_;
+};
+
+// NPU raw output hand-off to GPU postprocessing. Sources are the slot's 6 tensors (fixture contents) in cached dma-heap
+// buffers imported into V3D, like YoloInputAlloc::ImportHeap in the pipeline. copy = true adds V3D host-visible
+// destinations (YoloInputAlloc::Plain) and runs the GPU pass on those.
+class RawOutImpl {
+public:
+    RawOutImpl(yvo::vk::VulkanContext& ctx, bool copy, int slots) : copy_(copy) {
+        const yvo::fixture::FixtureSet fs = yvo::fixture::load_fixtures(YVO_FIXTURE_DIR);
+        const yvo::vk::YoloTensorLayout layout = yvo::fixture::layout_from_fixtures(fs);
+        lb_ = fs.lb;
+        src_w_ = fs.src_w;
+        src_h_ = fs.src_h;
+        yvo::vk::YoloPostprocConfig pc;
+        pc.num_slots = slots;
+        pc.enable_nms = !copy;
+        pc.input_alloc = yvo::vk::YoloInputAlloc::ImportHeap;
+        pc.input_sync = yvo::vk::YoloInputSync::Foreign;
+        src_ = std::make_unique<yvo::vk::YoloPostproc>(ctx, layout, pc);
+        if (copy_) {
+            pc.enable_nms = true;
+            pc.input_alloc = yvo::vk::YoloInputAlloc::Plain;
+            pc.input_sync = yvo::vk::YoloInputSync::HostWrite;
+            dst_ = std::make_unique<yvo::vk::YoloPostproc>(ctx, layout, pc);
+        }
+        for (int t = 0; t < yvo::vk::kYoloNumTensors; ++t) {
+            sizes_[static_cast<std::size_t>(t)] = src_->raw_size(t);
+            total_ += src_->raw_size(t);
+        }
+        for (int s = 0; s < slots; ++s) {
+            const yvo::fixture::FrameTensors ft = yvo::fixture::load_frame(fs, s % fs.frames);
+            src_->raw_cpu_sync_begin(s, yvo::DmaSyncDir::Write);
+            for (int t = 0; t < yvo::vk::kYoloNumTensors; ++t)
+                std::memcpy(src_->raw_host_ptr(s, t), ft[static_cast<std::size_t>(t)].data(),
+                            sizes_[static_cast<std::size_t>(t)]);
+            src_->raw_cpu_sync_end(s, yvo::DmaSyncDir::Write);
+        }
+    }
+    void process(int slot, StageMs& st, double& s_ms, double& w_ms, double& g_ms) {
+        yvo::vk::YoloPostproc& gpu = copy_ ? *dst_ : *src_;
+        const double c0 = proc_cpu_ms();
+        const auto t0 = Clock::now();
+        auto t1 = t0, t2 = t0;
+        if (copy_) {
+            src_->raw_cpu_sync_begin(slot, yvo::DmaSyncDir::Read);
+            t1 = Clock::now();
+            for (int t = 0; t < yvo::vk::kYoloNumTensors; ++t)
+                std::memcpy(dst_->raw_host_ptr(slot, t), src_->raw_host_ptr(slot, t), sizes_[static_cast<std::size_t>(t)]);
+            asm volatile("dsb sy" ::: "memory"); // the destination is non-cacheable: stores complete inside the window
+            t2 = Clock::now();
+            src_->raw_cpu_sync_end(slot, yvo::DmaSyncDir::Read);
+        }
+        const auto t3 = Clock::now();
+        const double c1 = proc_cpu_ms();
+        gpu.submit(slot, lb_, src_w_, src_h_);
+        const auto t4 = Clock::now();
+        gpu.wait(slot);
+        const auto t5 = Clock::now();
+        st.src_sync = ms_between(t0, t1) + ms_between(t2, t3);
+        st.copy = ms_between(t1, t2);
+        st.handoff_wall = ms_between(t0, t3);
+        st.handoff_cpu = c1 - c0;
+        s_ms = ms_between(t3, t4);
+        w_ms = ms_between(t4, t5);
+        g_ms = gpu.last_total_ms();
+    }
+    // Untimed check after process(): destination bytes vs source, and a fingerprint of the GPU result.
+    void check(int slot, std::uint64_t& diff_bytes, std::uint64_t& hash, std::uint64_t& dets) const {
+        if (copy_) {
+            src_->raw_cpu_sync_begin(slot, yvo::DmaSyncDir::Read);
+            for (int t = 0; t < yvo::vk::kYoloNumTensors; ++t) {
+                const std::size_t n = sizes_[static_cast<std::size_t>(t)];
+                std::vector<std::uint8_t> d(n);
+                std::memcpy(d.data(), dst_->raw_host_ptr(slot, t), n);
+                const std::uint8_t* a = src_->raw_host_ptr(slot, t);
+                for (std::size_t i = 0; i < n; ++i) diff_bytes += a[i] != d[i];
+            }
+            src_->raw_cpu_sync_end(slot, yvo::DmaSyncDir::Read);
+        }
+        std::vector<yvo::DetectionKeyed> out;
+        const yvo::vk::YoloPostproc& gpu = copy_ ? *dst_ : *src_;
+        if (!gpu.read_nms(slot, out)) out = gpu.read_candidates(slot); // NMS fallback frame: hash the candidates
+        dets += out.size();
+        for (const yvo::DetectionKeyed& d : out) {
+            const float v[5] = {d.x1, d.y1, d.x2, d.y2, d.score};
+            const std::uint32_t k[2] = {static_cast<std::uint32_t>(d.class_id), d.anchor_key};
+            hash = yvo::tool::fnv1a64(reinterpret_cast<const std::uint8_t*>(v), sizeof(v), hash);
+            hash = yvo::tool::fnv1a64(reinterpret_cast<const std::uint8_t*>(k), sizeof(k), hash);
+        }
+    }
+    std::size_t total_bytes() const { return total_; }
+    std::string describe() const {
+        std::string s = copy_ ? "rawout-copy dma-heap -> V3D host-visible, tensors" : "rawout-import dma-heap, tensors";
+        for (const std::size_t b : sizes_) s += " " + std::to_string(b);
+        return s + " total=" + std::to_string(total_) +
+               " src_exp_name=" + yvo::tool::dmabuf_exporter(src_->raw_dmabuf_fd(0, 0)) + " + yolo_decode + NMS";
+    }
+
+private:
+    bool copy_;
+    yvo::LetterboxParams lb_;
+    int src_w_ = 0, src_h_ = 0;
+    std::array<std::size_t, yvo::vk::kYoloNumTensors> sizes_{};
+    std::size_t total_ = 0;
+    std::unique_ptr<yvo::vk::YoloPostproc> src_, dst_;
+};
+
 #ifdef YVO_HAVE_SWSCALE
 // CPU-swscale: rpi-ffmpeg av_rpi_sand_to_planar_{y8,c8} (SAND -> YUV420P) + libswscale resize/color conversion at the
 // content size (640x360) + pad + NHCW. rgb24: packed RGB24 temp -> NEON transpose. gbrp: planar G/B/R written straight
@@ -617,6 +798,8 @@ std::string affinity_list() {
 int run_impl(const Args& a) {
     using namespace impl;
     const bool gpu = a.impl == "gpu";
+    const bool split = a.impl == "cpuref-split";
+    const bool rawout = a.impl == "rawout-copy" || a.impl == "rawout-import";
 #ifndef YVO_HAVE_SWSCALE
     if (a.impl == "sws-rgb24" || a.impl == "sws-gbrp") {
         std::fprintf(stderr, "--impl %s: built without libswscale (optional dependency)\n", a.impl.c_str());
@@ -639,14 +822,19 @@ int run_impl(const Args& a) {
     std::unique_ptr<yvo::vk::SandLetterbox> pre;
     std::unique_ptr<CpuImpl> cpu;
     std::unique_ptr<OutRing> out;
+    std::unique_ptr<RawOutImpl> raw;
     const yvo::LetterboxParams lb0 = yvo::make_letterbox(dec.width(), dec.height());
     const std::size_t out_size = static_cast<std::size_t>(lb0.dst_w) * lb0.dst_h * 3;
-    if (gpu) {
+    if (gpu || rawout) {
         yvo::vk::VulkanContextOptions copt;
         copt.enable_validation = a.validation;
         copt.validation_sync = a.sync_validation;
         copt.verbose = true;
         ctx = std::make_unique<yvo::vk::VulkanContext>(copt);
+    }
+    if (rawout) {
+        raw = std::make_unique<RawOutImpl>(*ctx, a.impl == "rawout-copy", a.slots);
+    } else if (gpu) {
         yvo::vk::SandLetterboxConfig cfg;
         cfg.num_slots = a.slots;
         cfg.out_layout = yvo::TensorLayout::Nhcw;
@@ -658,6 +846,7 @@ int run_impl(const Args& a) {
         out = std::make_unique<OutRing>(a.cpu_out == "heap", out_size, 4);
         const bool cached = a.cpu_map == "cached";
         if (a.impl == "cpuref") cpu = std::make_unique<RefImpl>(a.threads, a.mem_threads, cached);
+        else if (split) cpu = std::make_unique<RefSplitImpl>(cached);
 #ifdef YVO_HAVE_SWSCALE
         else cpu = std::make_unique<SwsImpl>(a.impl == "sws-gbrp", a.threads, a.mem_threads, cached, a.sws_flags);
 #endif
@@ -665,7 +854,7 @@ int run_impl(const Args& a) {
     // Accuracy reference: CPU-ref, 1 thread, malloc output
     std::unique_ptr<RefImpl> ref;
     std::unique_ptr<OutRing> ref_out;
-    if (a.accuracy) {
+    if (a.accuracy && !rawout) {
         ref = std::make_unique<RefImpl>(1, 1, true);
         ref_out = std::make_unique<OutRing>(false, out_size, 1);
     }
@@ -678,10 +867,13 @@ int run_impl(const Args& a) {
             return 1;
         }
         std::fprintf(csv, "frame,wall_ms,cpu_ms,user_ms,sys_ms,map_ms,flatten_ms,resize_ms,pad_ms,transpose_ms,sync_ms,"
-                          "submit_ms,wait_ms,gpu_ms\n");
+                          "submit_ms,wait_ms,gpu_ms%s\n",
+                     split || rawout ? ",color_ms,copy_ms,src_sync_ms,handoff_wall_ms,handoff_cpu_ms" : "");
     }
 
     std::vector<double> wall, cpums, mapv, flat, rsz, padv, trn, syn, sub, wai, gms;
+    std::vector<double> colv, copyv, srcsyncv, handwallv, handcpuv;
+    std::uint64_t raw_diff = 0, raw_hash = 1469598103934665603ULL, raw_dets = 0;
     double user_sum = 0, sys_sum = 0;
     yvo::tool::DiffStats d_content, d_whole;
     long identical_frames = 0;
@@ -705,7 +897,7 @@ int run_impl(const Args& a) {
         StageMs st;
         double s_ms = 0, w_ms = 0, g_ms = -1;
         const std::uint8_t* result = nullptr;
-        const int slot = static_cast<int>(n % (gpu ? a.slots : 4));
+        const int slot = static_cast<int>(n % (gpu || rawout ? a.slots : 4));
 
         double u0, s0, u1, s1;
         user_sys_ms(u0, s0);
@@ -720,6 +912,8 @@ int run_impl(const Args& a) {
             w_ms = ms_between(ts, tw);
             g_ms = pre->last_gpu_ms();
             result = po.host_ptr;
+        } else if (rawout) {
+            raw->process(slot, st, s_ms, w_ms, g_ms);
         } else {
             cpu->process(*f, *out, slot, st);
             result = out->ptr(slot);
@@ -728,6 +922,10 @@ int run_impl(const Args& a) {
         const double c1 = proc_cpu_ms();
         user_sys_ms(u1, s1);
 
+        if (a.accuracy && rawout) {
+            raw->check(slot, raw_diff, raw_hash, raw_dets);
+            continue;
+        }
         if (a.accuracy) {
             StageMs rs;
             ref->process(*f, *ref_out, 0, rs);
@@ -742,7 +940,7 @@ int run_impl(const Args& a) {
             compare_nhcw(got, ref_out->ptr(0), lb, new_w, new_h, fc, fw);
             if (fw.identical == fw.n) {
                 ++identical_frames;
-            } else if (a.impl == "gpu" || a.impl == "cpuref") { // expected identical: list where it is not
+            } else if (a.impl == "gpu" || a.impl == "cpuref" || split) { // expected identical: list where it is not
                 const std::uint8_t* rp = ref_out->ptr(0);
                 long shown = 0;
                 for (std::size_t i = 0; i < out_size && shown < 8; ++i)
@@ -785,11 +983,18 @@ int run_impl(const Args& a) {
         cpums.push_back(cms);
         user_sum += u1 - u0;
         sys_sum += s1 - s0;
-        if (gpu) {
+        if (rawout) {
+            copyv.push_back(st.copy);
+            srcsyncv.push_back(st.src_sync);
+            handwallv.push_back(st.handoff_wall);
+            handcpuv.push_back(st.handoff_cpu);
+        }
+        if (gpu || rawout) {
             sub.push_back(s_ms);
             wai.push_back(w_ms);
             if (g_ms >= 0) gms.push_back(g_ms);
         } else {
+            colv.push_back(st.color);
             mapv.push_back(st.map);
             flat.push_back(st.flatten);
             rsz.push_back(st.resize);
@@ -797,18 +1002,24 @@ int run_impl(const Args& a) {
             trn.push_back(st.transpose);
             syn.push_back(st.sync);
         }
-        if (csv)
-            std::fprintf(csv, "%ld,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n", n, wms, cms,
+        if (csv) {
+            std::fprintf(csv, "%ld,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", n, wms, cms,
                          u1 - u0, s1 - s0, st.map, st.flatten, st.resize, st.pad, st.transpose, st.sync, s_ms, w_ms,
                          g_ms);
+            if (split || rawout)
+                std::fprintf(csv, ",%.4f,%.4f,%.4f,%.4f,%.4f", st.color, st.copy, st.src_sync, st.handoff_wall,
+                             st.handoff_cpu);
+            std::fprintf(csv, "\n");
+        }
     }
     if (csv) std::fclose(csv);
     if (pre) pre->clear_import_cache();
     if (ref) ref->clear();
-    const std::string desc = gpu ? "gpu sand_letterbox.comp local=" + std::to_string(a.lx) + "x" +
-                                       std::to_string(a.ly) + " slots=" + std::to_string(a.slots) +
-                                       " out=V3D exported dma-buf (NHCW)"
-                                 : cpu->describe() + " out=" + out->describe();
+    const std::string desc = rawout ? raw->describe() + " slots=" + std::to_string(a.slots)
+                             : gpu  ? "gpu sand_letterbox.comp local=" + std::to_string(a.lx) + "x" +
+                                         std::to_string(a.ly) + " slots=" + std::to_string(a.slots) +
+                                         " out=V3D exported dma-buf (NHCW)"
+                                    : cpu->describe() + " out=" + out->describe();
     if (cpu) cpu->clear();
     if (!dec.error().empty()) {
         std::fprintf(stderr, "decode error after %ld frames: %s\n", n, dec.error().c_str());
@@ -816,7 +1027,11 @@ int run_impl(const Args& a) {
     }
     std::printf("[impl] %s\n[impl] affinity=%s video=%s\n", desc.c_str(), affinity_list().c_str(), a.video.c_str());
     int rc = 0;
-    if (a.accuracy) {
+    if (a.accuracy && rawout) {
+        std::printf("[ACCURACY] impl=%s frames=%ld bytes_per_frame=%zu copy_diff_bytes=%llu dets=%llu gpu_result_hash=%016llx\n",
+                    a.impl.c_str(), n, raw->total_bytes(), static_cast<unsigned long long>(raw_diff),
+                    static_cast<unsigned long long>(raw_dets), static_cast<unsigned long long>(raw_hash));
+    } else if (a.accuracy) {
         std::printf("[ACCURACY] impl=%s threads=%d frames=%ld identical_frames=%ld", a.impl.c_str(), a.threads, n,
                     identical_frames);
         print_diff("content", d_content);
@@ -831,14 +1046,22 @@ int run_impl(const Args& a) {
         std::printf("[RESULT] impl=%s threads=%d mem_threads=%d cpu_out=%s cpu_map=%s frames=%zu warmup=%d wall_med=%.4f "
                     "wall_p90=%.4f wall_mean=%.4f cpu_med=%.4f cpu_p90=%.4f cpu_mean=%.4f user_mean=%.4f "
                     "sys_mean=%.4f",
-                    a.impl.c_str(), a.threads, a.mem_threads > 0 ? a.mem_threads : a.threads, gpu ? "v3d" : a.cpu_out.c_str(), gpu ? "-" : a.cpu_map.c_str(),
+                    a.impl.c_str(), a.threads, a.mem_threads > 0 ? a.mem_threads : a.threads,
+                    gpu ? "v3d" : rawout ? (a.impl == "rawout-copy" ? "heap->v3d" : "heap-import") : a.cpu_out.c_str(),
+                    gpu || rawout ? "-" : a.cpu_map.c_str(),
                     wall.size(), a.warmup, W.median, W.p90, W.mean, C.median, C.p90, C.mean,
                     nf > 0 ? user_sum / nf : 0.0, nf > 0 ? sys_sum / nf : 0.0);
         const auto pr = [&](const char* k, const std::vector<double>& v) {
             const Stats s = m(v);
             std::printf(" %s_med=%.4f %s_p90=%.4f", k, s.median, k, s.p90);
         };
-        if (gpu) {
+        if (rawout) {
+            pr("copy", copyv);
+            pr("src_sync", srcsyncv);
+            pr("handoff_wall", handwallv);
+            pr("handoff_cpu", handcpuv);
+        }
+        if (gpu || rawout) {
             pr("submit", sub);
             pr("wait", wai);
             pr("gpu", gms);
@@ -849,6 +1072,7 @@ int run_impl(const Args& a) {
             pr("pad", padv);
             pr("transpose", trn);
             pr("sync", syn);
+            if (split) pr("color", colv);
         }
         std::printf("\n");
         if (wall.empty()) rc = 1;

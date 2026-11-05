@@ -1,0 +1,23 @@
+# Median over runs (per-run: median/p90/mean over the timed frames). ms per frame.
+config	runs	wall_med	wall_p90	range(wall_med)	cpu_mean	range(cpu_mean)	user	sys	map	flatten	resize	pad	transpose	sync	submit	wait	gpu
+cpuref_split_t1	3	9.2168	9.3506	9.2033..9.2357	9.2501	9.2394..9.2648	8.9961	0.2579	0.1192	1.3087	5.0637	0.1908	0.4445	0.0044			
+cpuref_t1	3	10.5617	10.6743	10.4930..10.5772	10.5890	10.5175..10.6316	10.3049	0.2290	0.1228	1.1441	8.8464	0.0000	0.4215	0.0041			
+gpu	3	1.7992	1.8150	1.7989..1.8075	0.0762	0.0761..0.0813	0.0395	0.0383							0.0659	1.7326	1.7475
+rawout_copy_t1	3	0.8742	0.9097	0.8625..0.8838	0.4324	0.4225..0.4485	0.2910	0.1591							0.1303	0.4511	0.4858
+rawout_import_t1	3	0.5863	0.6143	0.5777..0.5877	0.1436	0.1392..0.1452	0.0702	0.0750							0.1271	0.4561	0.4907
+
+# Letterbox split: full = cpuref_t1 resize stage (ref loop, padding included). color_by_diff = full - resize - pad. parts_minus_full = resize + color + pad - full.
+runs	full	resize	color_direct	pad	color_by_diff	parts_sum	parts_minus_full
+3	8.8464	5.0637	2.0716	0.1908	3.5948	7.3273	-1.5258
+
+# Raw output hand-off: handoff_* = copy + DMA_BUF_SYNC window (empty for import); wall/cpu = whole cycle with the GPU pass.
+config	runs	handoff_wall_med	handoff_cpu_med	copy_med	src_sync_med	wall_med	cpu_mean	submit_med	wait_med	gpu_med
+rawout_copy_t1	3	0.2784	0.2788	0.2248	0.0531	0.8742	0.4324	0.1303	0.4511	0.4858
+rawout_import_t1	3	0.0000	0.0004	0.0000	0.0000	0.5863	0.1436	0.1271	0.4561	0.4907
+cycle cpu_mean copy - import (paired by run): 0.2888
+
+# Accuracy vs CPU-ref (1 thread), every frame of the pass. content = 640x360x3 picture bytes, whole = 640x640x3.
+name	frames	identical_frames	content_identical	content_max_abs	content_mean_abs	content_psnr_db	whole_psnr_db	hash	flatten_vs_ref_desand_diff_bytes
+cpuref_split_t1	660	660	1.000000	0	0.0000	inf	inf	33c8e2d5940fe6c7	-
+rawout_copy_t1	[ACCURACY] impl=rawout-copy frames=660 bytes_per_frame=1221120 copy_diff_bytes=0 dets=2146 gpu_result_hash=0c29f00110ec36d8
+rawout_import_t1	[ACCURACY] impl=rawout-import frames=660 bytes_per_frame=1221120 copy_diff_bytes=0 dets=2146 gpu_result_hash=0c29f00110ec36d8

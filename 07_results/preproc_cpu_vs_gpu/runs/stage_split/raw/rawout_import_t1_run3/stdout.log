@@ -1,0 +1,8 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[hevc @ 0x55566e323ae0] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[vulkan] device: V3D 7.1.10.2 (api 1.3.354, driver 0x6802002), queue family 0, timestamps yes (period 1.000 ns, 64 bits), dma-buf import=1 export=1 dedicated_only=0, external qf=FOREIGN_EXT, validation=off
+input 1920x1080 y_fd exp_name=system size=2097152 uv_fd exp_name=system size=1048576 sand_col_h=1088/544
+[impl] rawout-import dma-heap, tensors 512000 409600 128000 102400 38400 30720 total=1221120 src_exp_name=system + yolo_decode + NMS slots=8
+[impl] affinity=3 video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4
+[RESULT] impl=rawout-import threads=1 mem_threads=1 cpu_out=heap-import cpu_map=- frames=600 warmup=60 wall_med=0.5863 wall_p90=0.6143 wall_mean=0.5915 cpu_med=0.1414 cpu_p90=0.1497 cpu_mean=0.1436 user_mean=0.0702 sys_mean=0.0750 copy_med=0.0000 copy_p90=0.0000 src_sync_med=0.0000 src_sync_p90=0.0000 handoff_wall_med=0.0000 handoff_wall_p90=0.0000 handoff_cpu_med=0.0004 handoff_cpu_p90=0.0004 submit_med=0.1271 submit_p90=0.1356 wait_med=0.4571 wait_p90=0.5232 gpu_med=0.4909 gpu_p90=0.5212
+validation: layer=off messenger=on errors=0 warnings=1

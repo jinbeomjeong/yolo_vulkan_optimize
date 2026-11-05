@@ -11,7 +11,7 @@
 //   DmaBufMapCache      persistent read-only mmap of decoder dma-bufs, keyed by inode (the Vulkan path uses an import
 //                       cache too, so per-frame mmap is not charged to the optimized CPU paths)
 //   dmabuf_exporter()   exporter name from /proc/self/fdinfo (which allocator backs a dma-buf)
-//   DiffStats           byte comparison metrics (identical fraction, max/mean abs error, PSNR)
+//   DiffStats           byte comparison metrics (identical fraction, max/mean abs error, PSNR); split_* at the end
 #include <algorithm>
 #include <cmath>
 #include <condition_variable>
@@ -301,6 +301,61 @@ inline std::uint64_t fnv1a64(const std::uint8_t* p, std::size_t len, std::uint64
         h *= 1099511628211ULL;
     }
     return h;
+}
+
+// ── Stage split of cpu_letterbox_nv12_bt709 (yvo_preproc_bench --impl cpuref-split, 2026-11-05) ─────────────────
+// ref runs bilinear Y/U/V, BT.709 and the pad test per pixel in one loop. These pieces run the same arithmetic one
+// stage at a time so each can be timed; together their output is byte-identical to the ref (checked with --accuracy):
+//   split_resize  ref formulas 2)-4): letterbox_src_coord + detail::bilinear_u8. The planes hold floats because the ref
+//                 never rounds between sampling and color conversion (u8 planes would change the output)
+//   split_color   ref formula 5) + detail::to_u8 on those floats, content rectangle only
+//   padding       ref_letterbox_rows on the rows above and below the content: the unmodified ref code, whose pad test is
+//                 always true there (needs lb.pad_x == 0, which the caller checks)
+// The inner loops stay scalar like the ref loop: GCC -O3 could otherwise vectorize the now branch-free float loops and
+// the stage would no longer price the scalar reference.
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 14
+#define YVO_SCALAR_LOOP _Pragma("GCC novector")
+#else
+#define YVO_SCALAR_LOOP
+#endif
+
+[[gnu::noinline]] inline void split_resize(const std::uint8_t* y_plane, std::size_t y_pitch,
+                                           const std::uint8_t* uv_plane, std::size_t uv_pitch, int src_w, int src_h,
+                                           const LetterboxParams& lb, float* out_y, float* out_u, float* out_v) {
+    const int new_w = static_cast<int>(src_w * lb.scale + 0.5f);
+    const int new_h = static_cast<int>(src_h * lb.scale + 0.5f);
+    const float inv = 1.0f / lb.scale;
+    const int cw = src_w / 2, ch = src_h / 2;
+    for (int dy = lb.pad_y; dy < lb.pad_y + new_h; ++dy) {
+        const float sy = letterbox_src_coord(dy, lb.pad_y, inv);
+        const float cy = (sy + 0.5f) * 0.5f - 0.5f;
+        const std::size_t row = static_cast<std::size_t>(dy - lb.pad_y) * new_w;
+        YVO_SCALAR_LOOP
+        for (int c = 0; c < new_w; ++c) {
+            const float sx = letterbox_src_coord(lb.pad_x + c, lb.pad_x, inv);
+            const float cx = sx * 0.5f;
+            out_y[row + c] = detail::bilinear_u8(y_plane, y_pitch, src_w, src_h, sx, sy);
+            out_u[row + c] = detail::bilinear_u8(uv_plane, uv_pitch, cw, ch, cx, cy, 2, 0);
+            out_v[row + c] = detail::bilinear_u8(uv_plane, uv_pitch, cw, ch, cx, cy, 2, 1);
+        }
+    }
+}
+
+[[gnu::noinline]] inline void split_color(const float* in_y, const float* in_u, const float* in_v, int new_w, int new_h,
+                                          const LetterboxParams& lb, std::uint8_t* dst) {
+    for (int r = 0; r < new_h; ++r) {
+        const std::size_t row = static_cast<std::size_t>(r) * new_w;
+        std::uint8_t* px = dst + (static_cast<std::size_t>(lb.pad_y + r) * lb.dst_w + lb.pad_x) * 3;
+        YVO_SCALAR_LOOP
+        for (int c = 0; c < new_w; ++c) {
+            const float yf = (in_y[row + c] - 16.0f) * (255.0f / 219.0f);
+            const float uf = (in_u[row + c] - 128.0f) * (255.0f / 224.0f);
+            const float vf = (in_v[row + c] - 128.0f) * (255.0f / 224.0f);
+            px[c * 3 + 0] = detail::to_u8(yf + 1.5748f * vf);
+            px[c * 3 + 1] = detail::to_u8(yf - 0.187324f * uf - 0.468124f * vf);
+            px[c * 3 + 2] = detail::to_u8(yf + 1.8556f * uf);
+        }
+    }
 }
 
 } // namespace yvo::tool

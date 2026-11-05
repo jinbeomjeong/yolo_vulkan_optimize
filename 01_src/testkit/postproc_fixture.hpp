@@ -2,7 +2,7 @@
 // Reading and comparison of the GPU postprocessing fixtures (04_data/raw_tensors/) — **the single implementation for tests and probes**.
 //
 // Used by: 05_tests/test_postproc.cpp (PostprocFixture.* gate),
-//          01_src/tools/vulkan/postproc_probe.cpp (--probe fixture/sweep/gpuab/live).
+//          01_src/tools/vulkan/postproc_probe.cpp (--probe fixture/sweep/gpuab/live), preproc_bench.cpp (--impl rawout-*).
 //
 // Before 2026-09-21 this code (JSON parser · fixture loader · G5 comparison · G6 canonical form, about 200 lines) existed separately in two files
 // and **had already diverged**: the test-side JSON parser did not handle string escapes
