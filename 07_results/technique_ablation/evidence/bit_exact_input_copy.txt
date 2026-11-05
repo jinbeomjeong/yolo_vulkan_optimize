@@ -1,0 +1,6 @@
+# detections.jsonl md5, 300 frames, --input-pace asap --batch 1 --slots 2 --display off, 2026-11-06
+53434f97a270931dcdb0bae77bfb4033  a/detections.jsonl
+53434f97a270931dcdb0bae77bfb4033  b/detections.jsonl
+f842f51dd4c45da57092f7b51a104e1b  h/detections.jsonl
+f842f51dd4c45da57092f7b51a104e1b  i/detections.jsonl
+# a = GPU post, b = GPU post + --input-copy, h = host post, i = host post + --input-copy

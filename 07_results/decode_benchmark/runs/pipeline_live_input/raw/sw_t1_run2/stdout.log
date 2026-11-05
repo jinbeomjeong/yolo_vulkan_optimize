@@ -1,0 +1,47 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+== yvo_pipeline (dmabuf, nhcw, batch 1, slots 1, gpu_depth 1, postproc gpu/export) ==
+frames          1469 (decoded 1469, errors 0)
+wall            60.608 s, 24.24 FPS
+cpu             37.227 ms/frame (process user+sys 54686.5 ms, 90% of one core)
+decode call ms  mean 28.763  median 27.984  p90 37.329  max 88.849
+gpu shader ms   mean 0.051  median 0.006  p90 0.013  max 2.266
+npu latency ms  mean 32.383  median 32.499  p90 32.635  max 42.708
+e2e latency ms  mean 53.246  median 52.713  p90 67.767  max 77.835  (decode return → NPU completion callback)
+slot wait ms    mean 22.737  p90 36.761  (time the main thread waited for a free slot)
+input pace      source @ 30.000 fps, input queue 1 (leaky: full -> drop the oldest)
+arrived         1816 (processed 1469, dropped 347 = 19.11%, abandoned 0, longest drop run 1, queue depth max 1)
+e2e arrival ms  mean 157.519  median 118.997  p90 343.476  max 553.468  (source arrival → NPU completion callback)
+queue wait ms   mean 16.716  p90 31.110  max 41.066  (decode return → GPU submit)
+decode late ms  mean 104.944  p90 284.026  max 490.941  (source arrival → decode return)
+note            paced: FPS and cpu ms/frame are per processed frame (plus polling) — not comparable to asap
+gpu post ms     mean 0.458  median 0.450  p90 0.500  max 2.220  (yolo_decode.comp pass 1)
+cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+nms backend     gpu
+gpu nms ms      mean 0.0579  median 0.0557  p90 0.0760  max 0.1226  (efficient_nms.comp)
+nms fallback    0 frames (capacity 0, iou guard 0)
+candidates      mean 26.09  max 78  overflow frames 0
+slot hold ms    mean 0.766  median 0.747  p90 0.836  max 3.400  (NPU completion callback → slot return)
+disp convert ms mean 3.692  median 3.657  p90 3.845  (display_convert.comp)
+disp overlay ms mean 0.129  median 0.130  p90 0.167  (overlay_boxes.comp)
+present interval ms median 34.290  p90 50.773  (n=1467)
+glass-to-glass  mean 53.55  median 53.62  p90 60.35  (n=1469, slot acquired → reaches screen)
+decode-to-screen mean 70.27  median 69.48  p90 85.42  (n=1469, decode return → reaches screen, includes slot wait)
+arrival-to-present mean 174.55  median 141.57  p90 358.54  max 576.16  (n=1469, scheduled source arrival → reaches screen)
+display         presented 1469, dropped 0, recreates 1, overlay overflow 0
+display warmup  0 presentations excluded from glass / decode-to-screen / present interval / late frames (glass n 1469 of 1469, glass median 53.62)
+held frames max 3 (decoder limit about 13), slot timeout 0
+detections      7667 total, 5.22 / frame
+hailo chip temp 64.4 -> 70.2 C
+soc temp        68.6 -> 70.8 C
+vk validation   errors 0, warnings 1
+RESULT_CSV,sw_t1,dmabuf,nhcw,1,1,1469,60.608,24.24,37.227,28.763,0.051,0.013,32.38,32.64,53.25,67.77,7667,64.4,70.2,68.6,70.8,1
+RESULT_CSV2,sw_t1,gpu,export,0.4578,0.5002,0.000,26.09,78,0,1,wayland,matched,source,3.6922,3.8449,0.1295,34.290,53.55,60.35,1469,0,1,3,0,gpu,0.0579,0.0760,0,0,-,-,-,-,-,-
+RESULT_CSV3,sw_t1,0,53.62,1469,50.773,1467,-,-,-,-,-,-,-,1,70.27,69.48,85.42,1469
+RESULT_CSV4,sw_t1,1,30.000,1816,1469,347,0,0.1911,1,1,157.52,119.00,343.48,553.47,16.716,31.110,41.066,104.944,284.026,490.941,3,1
+RESULT_CSV5,sw_t1,174.55,141.57,358.54,576.16,1469,1
+thread cpu      yvo-live-dec         threads  1    52219.3 ms   28.755 ms/arrived   35.548 ms/processed
+thread cpu      yvo_pip:disk$        threads  1        0.0 ms    0.000 ms/arrived    0.000 ms/processed
+thread cpu      yvo_pipeline         threads 11     2467.4 ms    1.359 ms/arrived    1.680 ms/processed
+sw decode copy: mean 1.321 ms/frame (memcpy 1.250 + cache sync 0.071), decode wait mean 27.437 ms/frame, 1816 frames
+sw decode pool: 13 buffers (peak in use 3), heap /dev/dma_heap/vidbuf_cached, libavcodec threads 1 (none)
+input live: packets 1816, frames 1816, output delay max 1 packets (decoder threads 1, stream reorder 1), send late mean 42.848 max 424.305 ms, mailbox full waits 0

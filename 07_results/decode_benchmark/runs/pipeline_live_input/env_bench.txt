@@ -1,0 +1,29 @@
+# live_input_bench 2026-11-06T02:24:37+09:00
+kernel: 6.18.50+rpt-rpi-2712
+soc temp: 66.4 C, hailo temp: 72.9 C
+throttled=0xe0000
+frequency(0)=2400030464
+v3d_freq=1150
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+cpufreq policy0: governor performance cur_khz 2400000
+libavcodec61: 8:7.1.5-0+deb13u1+rpt2
+hailort: 4.24.0
+mesa-vulkan-drivers: 26.2.2-1~bpo13+0~rpt1
+labwc: 0.20.2-1~bpo13+1
+libwlroots-0.20: 0.20.2-1+rpt4
+git HEAD: 45935294033eab57d1e8dd29a404ecd056530ef4 (tracked changes)
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_pipeline md5 c8515629c17b1714f54c02c4021f9c76 mtime 2026-11-06 01:47:43.189015322 +0900
+video: /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 md5 f04e7047fed4e1c6d84ea24ec5dc6be9 frames: 0 (0 = all) runs: 3
+timeout -s KILL 180s, connector HDMI-A-1, sampler interval 0.5s, clk_tck 100
+wlr-randr HDMI-A-1: Enabled; labwc DRM master: y
+mode:     1920x1080 px, 60.000000 Hz (preferred, current)
+env: WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/1000
+args: --mode dmabuf --layout nhcw --postproc gpu --nms gpu --batch 1 --slots 1 --input-pace source --input-queue 1 --input-live --display on --display-backend wayland --display-fullscreen --display-sync matched --display-pace source --dump-dir . --dump-every 100000000
+configs (id|YVO_DEC_THREADS|decoder):
+  hw_t1|1|hw
+  sw_t1|1|sw
+  sw_auto|0|sw
+# after 2026-11-06T02:39:21+09:00
+soc temp: 73.0 C, hailo temp: 71.1 C
+bin md5 (after measurement): c8515629c17b1714f54c02c4021f9c76
+throttled=0xe0000

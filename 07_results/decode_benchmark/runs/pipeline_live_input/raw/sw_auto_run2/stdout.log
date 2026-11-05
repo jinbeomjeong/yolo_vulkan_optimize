@@ -1,0 +1,48 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+== yvo_pipeline (dmabuf, nhcw, batch 1, slots 1, gpu_depth 1, postproc gpu/export) ==
+frames          1470 (decoded 1470, errors 0)
+wall            60.732 s, 24.20 FPS
+cpu             38.512 ms/frame (process user+sys 56612.4 ms, 93% of one core)
+decode call ms  mean 1.677  median 1.632  p90 1.963  max 3.500
+gpu shader ms   mean 0.024  median 0.007  p90 0.015  max 2.164
+npu latency ms  mean 32.307  median 32.499  p90 32.718  max 42.776
+e2e latency ms  mean 53.556  median 53.639  p90 67.195  max 77.034  (decode return → NPU completion callback)
+slot wait ms    mean 24.532  p90 36.907  (time the main thread waited for a free slot)
+input pace      source @ 30.000 fps, input queue 1 (leaky: full -> drop the oldest)
+arrived         1816 (processed 1470, dropped 346 = 19.05%, abandoned 0, longest drop run 1, queue depth max 1)
+e2e arrival ms  mean 221.921  median 221.936  p90 235.575  max 245.519  (source arrival → NPU completion callback)
+queue wait ms   mean 16.984  p90 29.997  max 33.909  (decode return → GPU submit)
+decode late ms  mean 168.408  p90 168.697  max 175.238  (source arrival → decode return)
+note            paced: FPS and cpu ms/frame are per processed frame (plus polling) — not comparable to asap
+gpu post ms     mean 0.469  median 0.449  p90 0.510  max 5.816  (yolo_decode.comp pass 1)
+cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+nms backend     gpu
+gpu nms ms      mean 0.0577  median 0.0556  p90 0.0757  max 0.1162  (efficient_nms.comp)
+nms fallback    0 frames (capacity 0, iou guard 0)
+candidates      mean 26.06  max 78  overflow frames 0
+slot hold ms    mean 0.809  median 0.758  p90 0.872  max 6.971  (NPU completion callback → slot return)
+disp convert ms mean 3.733  median 3.656  p90 4.039  (display_convert.comp)
+disp overlay ms mean 0.132  median 0.131  p90 0.167  (overlay_boxes.comp)
+present interval ms median 33.670  p90 50.448  (n=1468)
+glass-to-glass  mean 53.47  median 53.40  p90 59.89  (n=1470, slot acquired → reaches screen)
+decode-to-screen mean 70.46  median 64.47  p90 81.41  (n=1470, decode return → reaches screen, includes slot wait)
+arrival-to-present mean 238.82  median 232.79  p90 249.68  max 280.60  (n=1470, scheduled source arrival → reaches screen)
+display         presented 1470, dropped 0, recreates 1, overlay overflow 0
+display warmup  0 presentations excluded from glass / decode-to-screen / present interval / late frames (glass n 1470 of 1470, glass median 53.40)
+held frames max 3 (decoder limit about 13), slot timeout 0
+detections      7653 total, 5.21 / frame
+hailo chip temp 64.5 -> 73.1 C
+soc temp        67.5 -> 73.6 C
+vk validation   errors 0, warnings 1
+RESULT_CSV,sw_auto,dmabuf,nhcw,1,1,1470,60.732,24.20,38.512,1.677,0.024,0.015,32.31,32.72,53.56,67.20,7653,64.5,73.1,67.5,73.6,1
+RESULT_CSV2,sw_auto,gpu,export,0.4685,0.5099,0.000,26.06,78,0,1,wayland,matched,source,3.7328,4.0394,0.1322,33.670,53.47,59.89,1470,0,1,3,0,gpu,0.0577,0.0757,0,0,-,-,-,-,-,-
+RESULT_CSV3,sw_auto,0,53.40,1470,50.448,1468,-,-,-,-,-,-,-,1,70.46,64.47,81.41,1470
+RESULT_CSV4,sw_auto,1,30.000,1816,1470,346,0,0.1905,1,1,221.92,221.94,235.57,245.52,16.984,29.997,33.909,168.408,168.697,175.238,3,1
+RESULT_CSV5,sw_auto,238.82,232.79,249.68,280.60,1470,1
+thread cpu      av:hevc:df           threads  5    50907.3 ms   28.033 ms/arrived   34.631 ms/processed
+thread cpu      yvo-live-dec         threads  1     3088.8 ms    1.701 ms/arrived    2.101 ms/processed
+thread cpu      yvo_pip:disk$        threads  1        0.0 ms    0.000 ms/arrived    0.000 ms/processed
+thread cpu      yvo_pipeline         threads 11     2616.5 ms    1.441 ms/arrived    1.780 ms/processed
+sw decode copy: mean 1.560 ms/frame (memcpy 1.486 + cache sync 0.074), decode wait mean 0.111 ms/frame, 1816 frames
+sw decode pool: 13 buffers (peak in use 3), heap /dev/dma_heap/vidbuf_cached, libavcodec threads 5 (frame)
+input live: packets 1816, frames 1816, output delay max 5 packets (decoder threads 5, stream reorder 1), send late mean 0.060 max 3.980 ms, mailbox full waits 0
