@@ -5,7 +5,7 @@
     ... build_figures.py --only fig04 fig08           # a subset (stem prefix or full stem)
 
 Each figure module is imported and its main(out_dir) is called; the figure's key numbers go to stdout.
-No hardware is used. Figures drawn elsewhere (fig03 yEd pipeline diagram, fig06 O2 latency breakdown — pending) are not listed here.
+No hardware is used. Figures drawn elsewhere (fig03 yEd pipeline diagram) are not listed here.
 """
 from __future__ import annotations
 
@@ -22,12 +22,14 @@ FIGURES = (
     "fig02_npu_context_cost",
     "fig04_op_point_grid",
     "fig05_input_queue",
+    "fig06_o2_breakdown",
     "fig07_arrival_to_present",
     "fig08_display_paths",
     "fig09_thermal_soak",
     "fig11_decoder_sw_vs_hw",
     "fig12_cpu_saving_by_technique",
     "fig13_input_layout_paths",
+    "fig14_memory_read_cost",
 )
 
 

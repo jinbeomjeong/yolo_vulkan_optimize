@@ -7,7 +7,7 @@
 |---|---|---:|
 | [`pipeline_overview.graphml`](pipeline_overview.graphml) | 개요 1장. 소스 → 디코드 → GPU 전처리 → NPU → GPU 후처리 → GPU NMS → 오버레이 → present → HDMI 와 **표시 분기·재합류**, 구간별 실측 지연, **대안 표시 경로(HVS 평면 스캔아웃)** | 29 / 19 |
 | [`pipeline_detail.graphml`](pipeline_detail.graphml) | 상세 1장. **스레드 경계**(메인 / HailoRT 콜백), **dma-buf 소유권 3그룹**(+ 평면 백엔드의 ④ AB24 박스 dma-buf), 슬롯 수명, 제약·전제·함정·종료 순서, 대안 표시 경로(`PlaneDisplay`), 미연결 경로 | 39 / 22 |
-| [`pipeline_paper.graphml`](pipeline_paper.graphml) | **논문판** 1장(폭 17.5 cm 그림용 단순화판, `10_paper/paper_ko.md` §4.1 의 ASCII 그림을 대체). HEVC 파일 → HW 디코더 → GPU 전처리 → NPU → GPU 후처리(디코드 + NMS) → Vulkan 합성 → present → HDMI, **대안 표시 경로(HVS 평면, 청색 점선)**, dma-buf 전달을 간선 라벨로, CPU 의 몫(제어만, 복사 0)을 띠 노드로. 번호 ①~⑦ 은 §4.1 그대로. **구간 시간 수치는 넣지 않았다**(조건에 따라 달라짐 — 수치는 위 두 장과 07_results). 내보내기: `yed-auto export`(아래 §내보내기) → `10_paper/figures/fig03_pipeline.svg` / `.png` | 20 / 12 |
+| [`pipeline_paper.graphml`](pipeline_paper.graphml) | **논문판** 1장(그림 3, 폭 17.5 cm, `10_paper/paper_ko.md` §4.1). 프레임 데이터 경로와 CPU가 데이터에 닿는 세 지점(디먹스·전달, 최종 검출 읽기, 오버레이 정보 쓰기)을 표시한다. 크기·형식만 적고 시간 수치는 넣지 않는다. 검출 크기는 `video_h265.mp4` 전체 기준 계산값: 읽기 8 B + 5.21 × 28 B, 쓰기 152 B + 5.21 × 32 B. 내보내기: `yed-auto export`(아래 §내보내기) → `10_paper/figures/fig03_pipeline.svg` / `.png` | 29 / 22 |
 | [`brief_cpu_offload.graphml`](brief_cpu_offload.graphml) | **단편 원고 그림**(노드 24·간선 12). 영상 입력 → HW 디코더 → GPU 전처리(NHCW 직접 생성) → NPU → GPU 후처리(NMS) → 결과/화면을 거시적으로 그리고, CPU 는 아래쪽 "거의 지휘만" 상자에서 점선 제어만 한다. 기술 번호 ①~⑤ 배지, 범례 3종(굵은 실선 = dma-buf, 가는 실선 = 작은 데이터, 점선 = 제어). 내보내기 → `10_paper/figures/fig10_brief_cpu_offload.{svg,png}`(2700×1223 px). 결정: 최저 지연 기준 단편 원고의 대표 그림으로 만든다 (사용자 결정, 2026-10-16) |
 
 세 장 모두 **좌표를 직접 지정**해 두었으므로 yEd 에서 레이아웃을 다시 돌릴 필요가 없다.
@@ -58,6 +58,7 @@ File ▸ Export 를 대신 눌러 준다. 사용자 화면을 건드리지 않�
 | `#B39DDB` | HW 디코더 — libavcodec DRM_PRIME |
 | `#4DB6E2` | 표시 — Wayland 스왑체인 present · HVS 평면 스캔아웃 |
 | `#FF0000` | 소스 · 싱크 |
+| `#C2185B` | CPU가 데이터에 닿는 지점의 강조(논문판만) |
 | `#FFFFCC` | 데이터 — dma-buf 버퍼 (복사 0) |
 | 회색 + 점선 테두리 | 미연결 경로 (코드에는 있으나 파이프라인에 연결돼 있지 않음) |
 | 청색 `#1E6FA8` 점선 간선 + 청색 굵은 테두리 | **대안 경로** — 연결돼 있고 옵션으로 고른다(`--display-backend wayland-planes` / `kms`). 기본 경로(검정 실선)와 나란히 그린다 |

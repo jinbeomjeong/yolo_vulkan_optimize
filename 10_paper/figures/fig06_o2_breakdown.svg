@@ -1,0 +1,553 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="496.062992pt" height="226.771654pt" viewBox="0 0 496.062992 226.771654" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 226.771654 
+L 496.062992 226.771654 
+L 496.062992 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 66.968504 180.283465 
+L 488.622047 180.283465 
+L 488.622047 36.283465 
+L 66.968504 36.283465 
+z
+" style="fill: #ffffff"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1">
+      <path d="M 66.968504 180.283465 
+L 66.968504 36.283465 
+" clip-path="url(#c879b60ab42)" style="fill: none; stroke: #d9d9d9; stroke-width: 0.4; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_2">
+      <defs>
+       <path id="mfd4e453d5d" d="M 0 0 
+L 0 3.5 
+" style="stroke: #000000; stroke-width: 0.6"/>
+      </defs>
+      <g>
+       <use xlink:href="#mfd4e453d5d" x="66.968504" y="180.283465" style="stroke: #000000; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_1">
+      <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="66.968504" y="194.083465" transform="rotate(-0 66.968504 194.083465)">0</text>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_3">
+      <path d="M 137.253559 180.283465 
+L 137.253559 36.283465 
+" clip-path="url(#c879b60ab42)" style="fill: none; stroke: #d9d9d9; stroke-width: 0.4; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_4">
+      <g>
+       <use xlink:href="#mfd4e453d5d" x="137.253559" y="180.283465" style="stroke: #000000; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_2">
+      <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="137.253559" y="194.083465" transform="rotate(-0 137.253559 194.083465)">20</text>
+     </g>
+    </g>
+    <g id="xtick_3">
+     <g id="line2d_5">
+      <path d="M 207.538614 180.283465 
+L 207.538614 36.283465 
+" clip-path="url(#c879b60ab42)" style="fill: none; stroke: #d9d9d9; stroke-width: 0.4; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_6">
+      <g>
+       <use xlink:href="#mfd4e453d5d" x="207.538614" y="180.283465" style="stroke: #000000; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_3">
+      <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="207.538614" y="194.083465" transform="rotate(-0 207.538614 194.083465)">40</text>
+     </g>
+    </g>
+    <g id="xtick_4">
+     <g id="line2d_7">
+      <path d="M 277.823669 180.283465 
+L 277.823669 36.283465 
+" clip-path="url(#c879b60ab42)" style="fill: none; stroke: #d9d9d9; stroke-width: 0.4; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_8">
+      <g>
+       <use xlink:href="#mfd4e453d5d" x="277.823669" y="180.283465" style="stroke: #000000; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_4">
+      <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="277.823669" y="194.083465" transform="rotate(-0 277.823669 194.083465)">60</text>
+     </g>
+    </g>
+    <g id="xtick_5">
+     <g id="line2d_9">
+      <path d="M 348.108724 180.283465 
+L 348.108724 36.283465 
+" clip-path="url(#c879b60ab42)" style="fill: none; stroke: #d9d9d9; stroke-width: 0.4; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_10">
+      <g>
+       <use xlink:href="#mfd4e453d5d" x="348.108724" y="180.283465" style="stroke: #000000; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_5">
+      <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="348.108724" y="194.083465" transform="rotate(-0 348.108724 194.083465)">80</text>
+     </g>
+    </g>
+    <g id="xtick_6">
+     <g id="line2d_11">
+      <path d="M 418.393779 180.283465 
+L 418.393779 36.283465 
+" clip-path="url(#c879b60ab42)" style="fill: none; stroke: #d9d9d9; stroke-width: 0.4; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_12">
+      <g>
+       <use xlink:href="#mfd4e453d5d" x="418.393779" y="180.283465" style="stroke: #000000; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_6">
+      <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="418.393779" y="194.083465" transform="rotate(-0 418.393779 194.083465)">100</text>
+     </g>
+    </g>
+    <g id="text_7">
+     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="277.795276" y="206.923465" transform="rotate(-0 277.795276 206.923465)">도착 이후 시간 (ms)</text>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_13">
+      <defs>
+       <path id="m87a8d191d4" d="M 0 0 
+L -3.5 0 
+" style="stroke: #000000; stroke-width: 0.6"/>
+      </defs>
+      <g>
+       <use xlink:href="#m87a8d191d4" x="66.968504" y="78.396672" style="stroke: #000000; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_8">
+      <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(28.848504 72.049985)">파일 입력</text>
+      <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(21.568504 82.232235)">다음 패킷을</text>
+      <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(3.008504 92.361985)">미리 읽을 수 있음</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_14">
+      <g>
+       <use xlink:href="#m87a8d191d4" x="66.968504" y="146.3212" style="stroke: #000000; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_9">
+      <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(5.008504 139.996388)">실시간 입력 모사</text>
+      <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(21.568504 150.214888)">패킷을 도착</text>
+      <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(21.568504 160.264638)">시각에 전송</text>
+     </g>
+    </g>
+   </g>
+   <g id="patch_3">
+    <path d="M 66.968504 66.170257 
+L 77.081661 66.170257 
+L 77.081661 90.623087 
+L 66.968504 90.623087 
+z
+" clip-path="url(#c879b60ab42)" style="fill: #b39ddb; stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 77.081661 66.170257 
+L 128.244433 66.170257 
+L 128.244433 90.623087 
+L 77.081661 90.623087 
+z
+" clip-path="url(#c879b60ab42)" style="fill: url(#ha59737c8a4); stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 128.244433 66.170257 
+L 253.087027 66.170257 
+L 253.087027 90.623087 
+L 128.244433 90.623087 
+z
+" clip-path="url(#c879b60ab42)" style="fill: #ffcc00; stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 253.087027 66.170257 
+L 255.915036 66.170257 
+L 255.915036 90.623087 
+L 253.087027 90.623087 
+z
+" clip-path="url(#c879b60ab42)" style="fill: #99cc00; stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 255.915036 66.170257 
+L 313.865727 66.170257 
+L 313.865727 90.623087 
+L 255.915036 90.623087 
+z
+" clip-path="url(#c879b60ab42)" style="fill: #4db6e2; stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 66.968504 134.094785 
+L 193.258436 134.094785 
+L 193.258436 158.547616 
+L 66.968504 158.547616 
+z
+" clip-path="url(#c879b60ab42)" style="fill: url(#he5da9efee9); stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 193.258436 134.094785 
+L 253.753665 134.094785 
+L 253.753665 158.547616 
+L 193.258436 158.547616 
+z
+" clip-path="url(#c879b60ab42)" style="fill: url(#ha59737c8a4); stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 253.753665 134.094785 
+L 379.799394 134.094785 
+L 379.799394 158.547616 
+L 253.753665 158.547616 
+z
+" clip-path="url(#c879b60ab42)" style="fill: #ffcc00; stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 379.799394 134.094785 
+L 382.104221 134.094785 
+L 382.104221 158.547616 
+L 379.799394 158.547616 
+z
+" clip-path="url(#c879b60ab42)" style="fill: #99cc00; stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 382.104221 134.094785 
+L 440.113233 134.094785 
+L 440.113233 158.547616 
+L 382.104221 158.547616 
+z
+" clip-path="url(#c879b60ab42)" style="fill: #4db6e2; stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="line2d_15">
+    <path d="M 255.915036 66.170257 
+L 255.915036 95.377804 
+" style="fill: none; stroke: #333333; stroke-width: 0.9; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_16">
+    <path d="M 382.104221 134.094785 
+L 382.104221 163.302332 
+" style="fill: none; stroke: #333333; stroke-width: 0.9; stroke-linecap: square"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 66.968504 180.283465 
+L 66.968504 36.283465 
+" style="fill: none; stroke: #333333; stroke-width: 0.6; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 66.968504 180.283465 
+L 488.622047 180.283465 
+" style="fill: none; stroke: #333333; stroke-width: 0.6; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_15">
+    <path d="M 72.025083 61.377043 
+Q 72.025083 63.77365 72.025083 66.170257 
+" style="fill: none; stroke: #7f7f7f; stroke-width: 0.5; stroke-linecap: round"/>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="72.025083" y="57.337804" transform="rotate(-0 72.025083 57.337804)">2.9</text>
+   </g>
+   <g id="text_11">
+    <g id="patch_16">
+     <path d="M 93.206797 83.776672 
+L 112.119297 83.776672 
+L 112.119297 73.016672 
+L 93.206797 73.016672 
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-weight: 700; font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="102.663047" y="80.776672" transform="rotate(-0 102.663047 80.776672)">14.6</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="190.66573" y="80.776672" transform="rotate(-0 190.66573 80.776672)">35.5</text>
+   </g>
+   <g id="patch_17">
+    <path d="M 254.501032 61.377043 
+Q 254.501032 63.77365 254.501032 66.170257 
+" style="fill: none; stroke: #7f7f7f; stroke-width: 0.5; stroke-linecap: round"/>
+   </g>
+   <g id="text_13">
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="254.501032" y="57.337804" transform="rotate(-0 254.501032 57.337804)">0.8</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="284.890382" y="80.776672" transform="rotate(-0 284.890382 80.776672)">16.5</text>
+   </g>
+   <g id="text_15">
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(80.595914 50.388031)">입력 큐 대기(30 fps 도착↔NPU 주기)</text>
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(80.595914 59.775781)">p90 27.3 ms</text>
+   </g>
+   <g id="text_16">
+    <text style="font-weight: 700; font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="255.915036" y="102.857049" transform="rotate(-0 255.915036 102.857049)">도착→결과 53.77</text>
+   </g>
+   <g id="text_17">
+    <text style="font-weight: 700; font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(317.37998 76.110297)">도착→화면</text>
+    <text style="font-weight: 700; font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(317.37998 85.814297)">70.26</text>
+   </g>
+   <g id="text_18">
+    <g id="patch_18">
+     <path d="M 120.65722 151.7012 
+L 139.56972 151.7012 
+L 139.56972 140.9412 
+L 120.65722 140.9412 
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-weight: 700; font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="130.11347" y="148.7012" transform="rotate(-0 130.11347 148.7012)">35.9</text>
+   </g>
+   <g id="text_19">
+    <g id="patch_19">
+     <path d="M 214.0498 151.7012 
+L 232.9623 151.7012 
+L 232.9623 140.9412 
+L 214.0498 140.9412 
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-weight: 700; font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="223.50605" y="148.7012" transform="rotate(-0 223.50605 148.7012)">17.2</text>
+   </g>
+   <g id="text_20">
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="316.77653" y="148.7012" transform="rotate(-0 316.77653 148.7012)">35.9</text>
+   </g>
+   <g id="patch_20">
+    <path d="M 380.951808 129.301571 
+Q 380.951808 131.698178 380.951808 134.094785 
+" style="fill: none; stroke: #7f7f7f; stroke-width: 0.5; stroke-linecap: round"/>
+   </g>
+   <g id="text_21">
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="380.951808" y="125.262332" transform="rotate(-0 380.951808 125.262332)">0.7</text>
+   </g>
+   <g id="text_22">
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="411.108727" y="148.7012" transform="rotate(-0 411.108727 148.7012)">16.5</text>
+   </g>
+   <g id="text_23">
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(196.772689 118.312559)">입력 큐 대기(30 fps 도착↔NPU 주기)</text>
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(196.772689 127.700309)">p90 30.6 ms</text>
+   </g>
+   <g id="text_24">
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(94.717845 118.544434)">재정렬 1패킷(33 ms)</text>
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(114.55347 128.456559)">대기 포함</text>
+   </g>
+   <g id="text_25">
+    <text style="font-weight: 700; font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="382.104221" y="170.781578" transform="rotate(-0 382.104221 170.781578)">도착→결과 89.73</text>
+   </g>
+   <g id="text_26">
+    <text style="font-weight: 700; font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(443.627485 144.034825)">도착→화면</text>
+    <text style="font-weight: 700; font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(443.627485 153.738825)">106.24</text>
+   </g>
+  </g>
+  <g id="text_27">
+   <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="3.968504" y="222.010394" transform="rotate(-0 3.968504 222.010394)">처리된 프레임의 구간별 평균(실행별 평균의 3회 중앙값). 굵은 전체 값은 전체 평균의 3회 중앙값이라 구간 합과 최대 0.06 ms 다르다.</text>
+  </g>
+  <g id="legend_1">
+   <g id="patch_21">
+    <path d="M 48.007668 13.125 
+L 60.007668 13.125 
+L 60.007668 7.875 
+L 48.007668 7.875 
+z
+" style="fill: #b39ddb; stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_28">
+    <text style="font-size: 7.5px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="66.007668" y="13.125" transform="rotate(-0 66.007668 13.125)">도착→디코드 끝(디코더)</text>
+   </g>
+   <g id="patch_22">
+    <path d="M 48.007668 25.1625 
+L 60.007668 25.1625 
+L 60.007668 19.9125 
+L 48.007668 19.9125 
+z
+" style="fill: url(#he5da9efee9); stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_29">
+    <text style="font-size: 7.5px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="66.007668" y="25.1625" transform="rotate(-0 66.007668 25.1625)">도착→디코드 끝(재정렬 대기 포함)</text>
+   </g>
+   <g id="patch_23">
+    <path d="M 180.877199 13.125 
+L 192.877199 13.125 
+L 192.877199 7.875 
+L 180.877199 7.875 
+z
+" style="fill: url(#ha59737c8a4); stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_30">
+    <text style="font-size: 7.5px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="198.877199" y="13.125" transform="rotate(-0 198.877199 13.125)">디코드 끝→제출(입력 큐 대기)</text>
+   </g>
+   <g id="patch_24">
+    <path d="M 180.877199 25.1625 
+L 192.877199 25.1625 
+L 192.877199 19.9125 
+L 180.877199 19.9125 
+z
+" style="fill: #ffcc00; stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_31">
+    <text style="font-size: 7.5px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="198.877199" y="25.1625" transform="rotate(-0 198.877199 25.1625)">제출→NPU 완료(GPU 전처리 포함)</text>
+   </g>
+   <g id="patch_25">
+    <path d="M 315.523293 13.125 
+L 327.523293 13.125 
+L 327.523293 7.875 
+L 315.523293 7.875 
+z
+" style="fill: #99cc00; stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_32">
+    <text style="font-size: 7.5px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="333.523293" y="13.125" transform="rotate(-0 333.523293 13.125)">NPU 완료→결과(GPU 후처리)</text>
+   </g>
+   <g id="patch_26">
+    <path d="M 315.523293 25.1625 
+L 327.523293 25.1625 
+L 327.523293 19.9125 
+L 315.523293 19.9125 
+z
+" style="fill: #4db6e2; stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_33">
+    <text style="font-size: 7.5px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="333.523293" y="25.1625" transform="rotate(-0 333.523293 25.1625)">결과→화면(표시, 수직동기 대기 포함)</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="c879b60ab42">
+   <rect x="66.968504" y="36.283465" width="421.653543" height="144"/>
+  </clipPath>
+ </defs>
+ <defs>
+  <pattern id="ha59737c8a4" patternUnits="userSpaceOnUse" x="0" y="0" width="72" height="72">
+   <rect x="0" y="0" width="73" height="73" fill="#bdbdbd"/>
+   <path d="M -36 36 
+L 36 -36 
+M -33 39 
+L 39 -33 
+M -30 42 
+L 42 -30 
+M -27 45 
+L 45 -27 
+M -24 48 
+L 48 -24 
+M -21 51 
+L 51 -21 
+M -18 54 
+L 54 -18 
+M -15 57 
+L 57 -15 
+M -12 60 
+L 60 -12 
+M -9 63 
+L 63 -9 
+M -6 66 
+L 66 -6 
+M -3 69 
+L 69 -3 
+M 0 72 
+L 72 0 
+M 3 75 
+L 75 3 
+M 6 78 
+L 78 6 
+M 9 81 
+L 81 9 
+M 12 84 
+L 84 12 
+M 15 87 
+L 87 15 
+M 18 90 
+L 90 18 
+M 21 93 
+L 93 21 
+M 24 96 
+L 96 24 
+M 27 99 
+L 99 27 
+M 30 102 
+L 102 30 
+M 33 105 
+L 105 33 
+M 36 108 
+L 108 36 
+" style="fill: #333333; stroke: #333333; stroke-width: 0.45; stroke-linecap: butt; stroke-linejoin: miter"/>
+  </pattern>
+  <pattern id="he5da9efee9" patternUnits="userSpaceOnUse" x="0" y="0" width="72" height="72">
+   <rect x="0" y="0" width="73" height="73" fill="#b39ddb"/>
+   <path d="M -36 36 
+L 36 -36 
+M -33 39 
+L 39 -33 
+M -30 42 
+L 42 -30 
+M -27 45 
+L 45 -27 
+M -24 48 
+L 48 -24 
+M -21 51 
+L 51 -21 
+M -18 54 
+L 54 -18 
+M -15 57 
+L 57 -15 
+M -12 60 
+L 60 -12 
+M -9 63 
+L 63 -9 
+M -6 66 
+L 66 -6 
+M -3 69 
+L 69 -3 
+M 0 72 
+L 72 0 
+M 3 75 
+L 75 3 
+M 6 78 
+L 78 6 
+M 9 81 
+L 81 9 
+M 12 84 
+L 84 12 
+M 15 87 
+L 87 15 
+M 18 90 
+L 90 18 
+M 21 93 
+L 93 21 
+M 24 96 
+L 96 24 
+M 27 99 
+L 99 27 
+M 30 102 
+L 102 30 
+M 33 105 
+L 105 33 
+M 36 108 
+L 108 36 
+" style="fill: #333333; stroke: #333333; stroke-width: 0.45; stroke-linecap: butt; stroke-linejoin: miter"/>
+  </pattern>
+ </defs>
+</svg>
