@@ -26,6 +26,7 @@ FIGURES = (
     "fig08_display_paths",
     "fig09_thermal_soak",
     "fig11_decoder_sw_vs_hw",
+    "fig12_cpu_saving_by_technique",
 )
 
 
