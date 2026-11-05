@@ -1,0 +1,23 @@
+[hevc @ 0x5555c6677510] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[RESULT] variant=nobranch frames=600 lb_total=7.8919 flatten=1.1158 transpose=0.4179 sync=0.0042 map=0.0584 content=7.6890 pad_bot=0.1006 pad_top=0.1029
+[COUNT] variant=nobranch set=1 content.br_mis_pred_retired mean_per_frame=374 median=371
+[COUNT] variant=nobranch set=1 content.br_retired mean_per_frame=230897 median=230897
+[COUNT] variant=nobranch set=1 content.cycles mean_per_frame=18405992 median=18401639
+[COUNT] variant=nobranch set=1 content.inst_retired mean_per_frame=24667588 median=24667587
+[COUNT] variant=nobranch set=1 content.inst_spec mean_per_frame=24670476 median=24670433
+[COUNT] variant=nobranch set=1 content.stall_backend mean_per_frame=11709465 median=11705137
+[COUNT] variant=nobranch set=1 content.stall_frontend mean_per_frame=5399 median=4985
+[COUNT] variant=nobranch set=1 pad_bot.br_mis_pred_retired mean_per_frame=152 median=148
+[COUNT] variant=nobranch set=1 pad_bot.br_retired mean_per_frame=90425 median=90425
+[COUNT] variant=nobranch set=1 pad_bot.cycles mean_per_frame=232593 median=231725
+[COUNT] variant=nobranch set=1 pad_bot.inst_retired mean_per_frame=721262 median=721261
+[COUNT] variant=nobranch set=1 pad_bot.inst_spec mean_per_frame=727501 median=727397
+[COUNT] variant=nobranch set=1 pad_bot.stall_backend mean_per_frame=2190 median=2058
+[COUNT] variant=nobranch set=1 pad_bot.stall_frontend mean_per_frame=4082 median=3431
+[COUNT] variant=nobranch set=1 pad_top.br_mis_pred_retired mean_per_frame=162 median=162
+[COUNT] variant=nobranch set=1 pad_top.br_retired mean_per_frame=90296 median=90296
+[COUNT] variant=nobranch set=1 pad_top.cycles mean_per_frame=233591 median=233488
+[COUNT] variant=nobranch set=1 pad_top.inst_retired mean_per_frame=720050 median=720050
+[COUNT] variant=nobranch set=1 pad_top.inst_spec mean_per_frame=726433 median=726420
+[COUNT] variant=nobranch set=1 pad_top.stall_backend mean_per_frame=2291 median=2206
+[COUNT] variant=nobranch set=1 pad_top.stall_frontend mean_per_frame=4933 median=4845

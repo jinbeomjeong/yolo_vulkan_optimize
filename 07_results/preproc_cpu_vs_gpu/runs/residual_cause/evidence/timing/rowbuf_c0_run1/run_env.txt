@@ -1,0 +1,1 @@
+soc_pre 69.7 soc_post 72.5 throttled throttled=0xe0000 governor performance rc 0 run 1

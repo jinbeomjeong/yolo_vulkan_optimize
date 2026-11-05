@@ -1,0 +1,23 @@
+[hevc @ 0x555624397510] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[RESULT] variant=split frames=600 lb_total=7.3530 flatten=1.3022 transpose=0.4436 sync=0.0045 map=0.0588 color=2.0788 pad=0.1933 resize=5.0817
+[COUNT] variant=split set=1 color.br_mis_pred_retired mean_per_frame=372 median=370
+[COUNT] variant=split set=1 color.br_retired mean_per_frame=230880 median=230880
+[COUNT] variant=split set=1 color.cycles mean_per_frame=4962593 median=4961737
+[COUNT] variant=split set=1 color.inst_retired mean_per_frame=9221308 median=9221307
+[COUNT] variant=split set=1 color.inst_spec mean_per_frame=9227032 median=9227004
+[COUNT] variant=split set=1 color.stall_backend mean_per_frame=2652077 median=2651233
+[COUNT] variant=split set=1 color.stall_frontend mean_per_frame=3630 median=3546
+[COUNT] variant=split set=1 pad.br_mis_pred_retired mean_per_frame=292 median=292
+[COUNT] variant=split set=1 pad.br_retired mean_per_frame=180591 median=180591
+[COUNT] variant=split set=1 pad.cycles mean_per_frame=459301 median=459173
+[COUNT] variant=split set=1 pad.inst_retired mean_per_frame=1440673 median=1440672
+[COUNT] variant=split set=1 pad.inst_spec mean_per_frame=1452906 median=1452901
+[COUNT] variant=split set=1 pad.stall_backend mean_per_frame=3907 median=3736
+[COUNT] variant=split set=1 pad.stall_frontend mean_per_frame=3032 median=2889
+[COUNT] variant=split set=1 resize.br_mis_pred_retired mean_per_frame=381 median=380
+[COUNT] variant=split set=1 resize.br_retired mean_per_frame=230875 median=230875
+[COUNT] variant=split set=1 resize.cycles mean_per_frame=12145755 median=12133077
+[COUNT] variant=split set=1 resize.inst_retired mean_per_frame=17525766 median=17525766
+[COUNT] variant=split set=1 resize.inst_spec mean_per_frame=17529253 median=17529213
+[COUNT] variant=split set=1 resize.stall_backend mean_per_frame=6716077 median=6704799
+[COUNT] variant=split set=1 resize.stall_frontend mean_per_frame=6171 median=5442

@@ -1,0 +1,17 @@
+[ACCURACY] variant=ref frames=660 identical_rgb=660 identical_nhcw=660
+[ACCURACY] variant=ref3 frames=660 identical_rgb=660 identical_nhcw=660
+[ACCURACY] variant=split frames=660 identical_rgb=660 identical_nhcw=660
+[ACCURACY] variant=split_nohoist frames=660 identical_rgb=660 identical_nhcw=660
+[ACCURACY] variant=nobranch frames=660 identical_rgb=660 identical_nhcw=660
+[ACCURACY] variant=nobranch_nohoist frames=660 identical_rgb=660 identical_nhcw=660
+[ACCURACY] variant=rowbuf frames=660 identical_rgb=660 identical_nhcw=660
+[ACCURACY] variant=local_params frames=660 identical_rgb=660 identical_nhcw=660
+[ACCURACY] variant=hoist_y frames=660 identical_rgb=660 identical_nhcw=660
+[ACCURACY] variant=hoist_all frames=660 identical_rgb=660 identical_nhcw=660
+[ACCURACY] variant=local_hoist frames=660 identical_rgb=660 identical_nhcw=660
+[ACCURACY] variant=rowsplit frames=660 identical_rgb=660 identical_nhcw=660
+[ACCURACY] variant=ref_notrap frames=660 identical_rgb=660 identical_nhcw=660
+[ACCURACY] variant=ref_copy0 frames=660 identical_rgb=660 identical_nhcw=660
+[ACCURACY] variant=ref_copy1 frames=660 identical_rgb=660 identical_nhcw=660
+[ACCURACY] variant=ref_copy2 frames=660 identical_rgb=660 identical_nhcw=660
+[ACCURACY] variant=ref_copy3 frames=660 identical_rgb=660 identical_nhcw=660

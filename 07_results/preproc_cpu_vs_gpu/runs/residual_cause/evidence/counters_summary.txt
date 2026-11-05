@@ -1,0 +1,316 @@
+variant               n letterbox med (range)         flatten transpose    sync  stages
+hoist_all             6    7.799 (7.787~7.809)         1.112     0.421   0.010  
+hoist_y               6    8.171 (8.159~8.184)         1.123     0.425   0.010  
+local_hoist           6    7.764 (7.760~7.787)         1.139     0.420   0.010  
+local_params          6    9.304 (9.294~9.311)         1.121     0.419   0.010  
+nobranch              6    7.896 (7.892~7.899)         1.121     0.414   0.004  content=7.693 pad_bot=0.100 pad_top=0.103
+nobranch_nohoist      6    9.238 (9.233~9.285)         1.124     0.422   0.004  content=9.034 pad_bot=0.100 pad_top=0.104
+ref                   6    8.857 (8.841~8.872)         1.135     0.425   0.010  
+ref_notrap            6    8.317 (8.310~8.329)         1.128     0.416   0.010  
+rowbuf                6    7.423 (7.410~7.438)         1.161     0.414   0.004  content=7.219 pad_bot=0.101 pad_top=0.104
+rowsplit              6    9.243 (9.231~9.280)         1.137     0.424   0.011  
+split                 6    7.352 (7.346~7.406)         1.310     0.437   0.005  color=2.078 pad=0.193 resize=5.080
+split_nohoist         6    8.356 (8.335~8.367)         1.316     0.433   0.005  color=2.078 pad=0.193 resize=6.085
+
+-- hoist_all
+   all.br_mis_pred_retired                     677  per_px=    0.00  range 676~677 n=3
+   all.br_retired                          1104537  per_px=    4.79  range 1104537~1104537 n=3
+   all.cycles                             18661526  per_px=   81.00  range 18634449~18684030 n=6
+   all.inst_retired                       29108541  per_px=  126.34  range 29108541~29108541 n=3
+   all.inst_spec                          29128495  per_px=  126.43  range 29128449~29128512 n=3
+   all.l1d_cache                           4818161  per_px=   20.91  range 4818153~4818163 n=3
+   all.l1d_cache_refill                      29376  per_px=    0.13  range 29338~29403 n=3
+   all.l1d_tlb_refill                          295  per_px=    0.00  range 295~296 n=3
+   all.l1i_cache_refill                        161  per_px=    0.00  range 154~162 n=3
+   all.l2d_cache                            108681  per_px=    0.47  range 108593~108724 n=3
+   all.l2d_cache_refill                       6633  per_px=    0.03  range 6378~6826 n=3
+   all.stall_backend                      10685514  per_px=   46.38  range 10680693~10696957 n=3
+   all.stall_frontend                         9497  per_px=    0.04  range 9229~9591 n=3
+-- hoist_y
+   all.br_mis_pred_retired                     679  per_px=    0.00  range 678~679 n=3
+   all.br_retired                           874129  per_px=    3.79  range 874129~874129 n=3
+   all.cycles                             19551362  per_px=   84.86  range 19525064~19585770 n=6
+   all.inst_retired                       28418008  per_px=  123.34  range 28418008~28418008 n=3
+   all.inst_spec                          28437326  per_px=  123.43  range 28437310~28437367 n=3
+   all.l1d_cache                           4818149  per_px=   20.91  range 4818146~4818153 n=3
+   all.l1d_cache_refill                      28316  per_px=    0.12  range 28281~28326 n=3
+   all.l1d_tlb_refill                          295  per_px=    0.00  range 295~296 n=3
+   all.l1i_cache_refill                        150  per_px=    0.00  range 146~152 n=3
+   all.l2d_cache                            108878  per_px=    0.47  range 108878~108879 n=3
+   all.l2d_cache_refill                       6829  per_px=    0.03  range 6212~7160 n=3
+   all.stall_backend                      11393234  per_px=   49.45  range 11369600~11406319 n=3
+   all.stall_frontend                         8396  per_px=    0.04  range 8348~8713 n=3
+-- local_hoist
+   all.br_mis_pred_retired                     680  per_px=    0.00  range 680~682 n=3
+   all.br_retired                          1054267  per_px=    4.58  range 1054267~1054267 n=3
+   all.cycles                             18576594  per_px=   80.63  range 18566610~18615492 n=6
+   all.inst_retired                       28740954  per_px=  124.74  range 28740954~28740954 n=3
+   all.inst_spec                          28751476  per_px=  124.79  range 28750912~28751563 n=3
+   all.l1d_cache                           4001740  per_px=   17.37  range 4001684~4001752 n=3
+   all.l1d_cache_refill                      28781  per_px=    0.12  range 28568~28993 n=3
+   all.l1d_tlb_refill                          295  per_px=    0.00  range 294~298 n=3
+   all.l1i_cache_refill                        144  per_px=    0.00  range 142~144 n=3
+   all.l2d_cache                            109224  per_px=    0.47  range 108991~109322 n=3
+   all.l2d_cache_refill                       6827  per_px=    0.03  range 6756~7423 n=3
+   all.stall_backend                      10831776  per_px=   47.01  range 10820985~10868908 n=3
+   all.stall_frontend                         8236  per_px=    0.04  range 8081~8357 n=3
+-- local_params
+   all.br_mis_pred_retired                     681  per_px=    0.00  range 681~681 n=3
+   all.br_retired                           823201  per_px=    3.57  range 823201~823201 n=3
+   all.cycles                             22271788  per_px=   96.67  range 22247715~22285000 n=6
+   all.inst_retired                       34946390  per_px=  151.68  range 34946390~34946390 n=3
+   all.inst_spec                          34956559  per_px=  151.72  range 34956506~34956598 n=3
+   all.l1d_cache                           4001322  per_px=   17.37  range 4001308~4001422 n=3
+   all.l1d_cache_refill                      28864  per_px=    0.13  range 28619~28913 n=3
+   all.l1d_tlb_refill                          294  per_px=    0.00  range 293~295 n=3
+   all.l1i_cache_refill                        165  per_px=    0.00  range 161~178 n=3
+   all.l2d_cache                            108676  per_px=    0.47  range 108377~108711 n=3
+   all.l2d_cache_refill                       6024  per_px=    0.03  range 5859~6939 n=3
+   all.stall_backend                      12032242  per_px=   52.22  range 12023897~12041653 n=3
+   all.stall_frontend                         8586  per_px=    0.04  range 8511~8930 n=3
+-- nobranch
+   content.br_mis_pred_retired                 374  per_px=    0.00  range 372~374 n=3
+   content.br_retired                       230897  per_px=    1.00  range 230897~230897 n=3
+   content.cycles                         18419958  per_px=   79.95  range 18405992~18432086 n=6
+   content.inst_retired                   24667588  per_px=  107.06  range 24667588~24667588 n=3
+   content.inst_spec                      24670472  per_px=  107.08  range 24670417~24670476 n=3
+   content.l1d_cache                       3456251  per_px=   15.00  range 3456249~3456252 n=3
+   content.l1d_cache_refill                  30120  per_px=    0.13  range 30072~30144 n=3
+   content.l1d_tlb_refill                      263  per_px=    0.00  range 262~263 n=3
+   content.l1i_cache_refill                    107  per_px=    0.00  range 104~108 n=3
+   content.l2d_cache                        100589  per_px=    0.44  range 100576~100592 n=3
+   content.l2d_cache_refill                   6370  per_px=    0.03  range 6219~6370 n=3
+   content.stall_backend                  11724392  per_px=   50.89  range 11709465~11732804 n=3
+   content.stall_frontend                     4496  per_px=    0.02  range 4454~5399 n=3
+   pad_bot.br_mis_pred_retired                 152  per_px=    0.00  range 151~152 n=3
+   pad_bot.br_retired                        90425  per_px=    0.39  range 90425~90425 n=3
+   pad_bot.cycles                           232028  per_px=    1.01  range 231805~232593 n=6
+   pad_bot.inst_retired                     721262  per_px=    3.13  range 721262~721262 n=3
+   pad_bot.inst_spec                        727497  per_px=    3.16  range 727487~727501 n=3
+   pad_bot.l1d_cache                        450189  per_px=    1.95  range 450185~450191 n=3
+   pad_bot.l1d_cache_refill                     41  per_px=    0.00  range 40~41 n=3
+   pad_bot.l1d_tlb_refill                       28  per_px=    0.00  range 28~29 n=3
+   pad_bot.l1i_cache_refill                     71  per_px=    0.00  range 68~72 n=3
+   pad_bot.l2d_cache                          4347  per_px=    0.02  range 4344~4351 n=3
+   pad_bot.l2d_cache_refill                     98  per_px=    0.00  range 90~103 n=3
+   pad_bot.stall_backend                      2353  per_px=    0.01  range 2190~2520 n=3
+   pad_bot.stall_frontend                     3449  per_px=    0.01  range 3124~4082 n=3
+   pad_top.br_mis_pred_retired                 162  per_px=    0.00  range 162~162 n=3
+   pad_top.br_retired                        90296  per_px=    0.39  range 90296~90296 n=3
+   pad_top.cycles                           233548  per_px=    1.01  range 233319~233883 n=6
+   pad_top.inst_retired                     720050  per_px=    3.13  range 720050~720050 n=3
+   pad_top.inst_spec                        726476  per_px=    3.15  range 726433~726491 n=3
+   pad_top.l1d_cache                        450209  per_px=    1.95  range 450203~450218 n=3
+   pad_top.l1d_cache_refill                     40  per_px=    0.00  range 40~40 n=3
+   pad_top.l1d_tlb_refill                       28  per_px=    0.00  range 28~28 n=3
+   pad_top.l1i_cache_refill                     99  per_px=    0.00  range 97~102 n=3
+   pad_top.l2d_cache                          4363  per_px=    0.02  range 4363~4363 n=3
+   pad_top.l2d_cache_refill                    130  per_px=    0.00  range 127~132 n=3
+   pad_top.stall_backend                      2423  per_px=    0.01  range 2291~2582 n=3
+   pad_top.stall_frontend                     4895  per_px=    0.02  range 4721~4933 n=3
+-- nobranch_nohoist
+   content.br_mis_pred_retired                 374  per_px=    0.00  range 373~375 n=3
+   content.br_retired                       230907  per_px=    1.00  range 230907~230907 n=3
+   content.cycles                         21632932  per_px=   93.89  range 21621313~21703551 n=6
+   content.inst_retired                   34334713  per_px=  149.02  range 34334713~34334713 n=3
+   content.inst_spec                      34337621  per_px=  149.03  range 34337591~34337638 n=3
+   content.l1d_cache                       3456253  per_px=   15.00  range 3456253~3456255 n=3
+   content.l1d_cache_refill                  28858  per_px=    0.13  range 28818~28901 n=3
+   content.l1d_tlb_refill                      262  per_px=    0.00  range 262~264 n=3
+   content.l1i_cache_refill                    112  per_px=    0.00  range 110~118 n=3
+   content.l2d_cache                        100085  per_px=    0.43  range 100077~100153 n=3
+   content.l2d_cache_refill                   6625  per_px=    0.03  range 6416~6715 n=3
+   content.stall_backend                  11689976  per_px=   50.74  range 11686295~11696524 n=3
+   content.stall_frontend                     4725  per_px=    0.02  range 4440~5101 n=3
+   pad_bot.br_mis_pred_retired                 152  per_px=    0.00  range 151~152 n=3
+   pad_bot.br_retired                        90425  per_px=    0.39  range 90425~90425 n=3
+   pad_bot.cycles                           232326  per_px=    1.01  range 231870~233208 n=6
+   pad_bot.inst_retired                     721262  per_px=    3.13  range 721262~721262 n=3
+   pad_bot.inst_spec                        727502  per_px=    3.16  range 727498~727507 n=3
+   pad_bot.l1d_cache                        450190  per_px=    1.95  range 450190~450191 n=3
+   pad_bot.l1d_cache_refill                     41  per_px=    0.00  range 40~41 n=3
+   pad_bot.l1d_tlb_refill                       28  per_px=    0.00  range 27~29 n=3
+   pad_bot.l1i_cache_refill                     74  per_px=    0.00  range 72~74 n=3
+   pad_bot.l2d_cache                          4351  per_px=    0.02  range 4348~4359 n=3
+   pad_bot.l2d_cache_refill                    103  per_px=    0.00  range 100~103 n=3
+   pad_bot.stall_backend                      2397  per_px=    0.01  range 2361~2532 n=3
+   pad_bot.stall_frontend                     3487  per_px=    0.02  range 3191~3611 n=3
+   pad_top.br_mis_pred_retired                 165  per_px=    0.00  range 164~165 n=3
+   pad_top.br_retired                        90305  per_px=    0.39  range 90305~90305 n=3
+   pad_top.cycles                           234618  per_px=    1.02  range 234215~235302 n=6
+   pad_top.inst_retired                     720104  per_px=    3.13  range 720104~720104 n=3
+   pad_top.inst_spec                        726719  per_px=    3.15  range 726689~726740 n=3
+   pad_top.l1d_cache                        450249  per_px=    1.95  range 450247~450255 n=3
+   pad_top.l1d_cache_refill                     42  per_px=    0.00  range 41~43 n=3
+   pad_top.l1d_tlb_refill                       29  per_px=    0.00  range 29~30 n=3
+   pad_top.l1i_cache_refill                    109  per_px=    0.00  range 108~109 n=3
+   pad_top.l2d_cache                          4373  per_px=    0.02  range 4369~4381 n=3
+   pad_top.l2d_cache_refill                    142  per_px=    0.00  range 139~142 n=3
+   pad_top.stall_backend                      2533  per_px=    0.01  range 2451~2543 n=3
+   pad_top.stall_frontend                     5617  per_px=    0.02  range 5352~5697 n=3
+-- ref
+   all.br_mis_pred_retired                     678  per_px=    0.00  range 668~679 n=3
+   all.br_retired                           873569  per_px=    3.79  range 873569~873569 n=3
+   all.cycles                             21192078  per_px=   91.98  range 21155630~21222889 n=6
+   all.inst_retired                       35319711  per_px=  153.30  range 35319711~35319711 n=3
+   all.inst_spec                          35338486  per_px=  153.38  range 35338221~35338503 n=3
+   all.l1d_cache                           4818159  per_px=   20.91  range 4818087~4818279 n=3
+   all.l1d_cache_refill                      27731  per_px=    0.12  range 27723~27859 n=3
+   all.l1d_tlb_refill                          295  per_px=    0.00  range 294~296 n=3
+   all.l1i_cache_refill                        127  per_px=    0.00  range 126~132 n=3
+   all.l2d_cache                            108247  per_px=    0.47  range 108247~108349 n=3
+   all.l2d_cache_refill                       6712  per_px=    0.03  range 6561~6828 n=3
+   all.stall_backend                      10622608  per_px=   46.11  range 10606667~10626803 n=3
+   all.stall_frontend                         8307  per_px=    0.04  range 7797~8320 n=3
+-- ref_notrap
+   all.br_mis_pred_retired                     680  per_px=    0.00  range 680~680 n=3
+   all.br_retired                           874164  per_px=    3.79  range 874164~874164 n=3
+   all.cycles                             19904982  per_px=   86.39  range 19889331~19923198 n=6
+   all.inst_retired                       27958109  per_px=  121.35  range 27958109~27958109 n=3
+   all.inst_spec                          27978229  per_px=  121.43  range 27978217~27978284 n=3
+   all.l1d_cache                           4818189  per_px=   20.91  range 4818186~4818201 n=3
+   all.l1d_cache_refill                      28855  per_px=    0.13  range 28852~28921 n=3
+   all.l1d_tlb_refill                          296  per_px=    0.00  range 295~297 n=3
+   all.l1i_cache_refill                        152  per_px=    0.00  range 149~154 n=3
+   all.l2d_cache                            108986  per_px=    0.47  range 108983~109028 n=3
+   all.l2d_cache_refill                       7000  per_px=    0.03  range 6410~7095 n=3
+   all.stall_backend                      11881118  per_px=   51.57  range 11869314~11884908 n=3
+   all.stall_frontend                         8813  per_px=    0.04  range 8513~9210 n=3
+-- rowbuf
+   content.br_mis_pred_retired                 736  per_px=    0.00  range 735~742 n=3
+   content.br_retired                       463458  per_px=    2.01  range 463458~463458 n=3
+   content.cycles                         17278626  per_px=   74.99  range 17248863~17300517 n=6
+   content.inst_retired                   26765300  per_px=  116.17  range 26765300~26765300 n=3
+   content.inst_spec                      26772955  per_px=  116.20  range 26772902~26773086 n=3
+   content.l1d_cache                       4841181  per_px=   21.01  range 4841180~4841199 n=3
+   content.l1d_cache_refill                  33494  per_px=    0.15  range 32906~33548 n=3
+   content.l1d_tlb_refill                      272  per_px=    0.00  range 272~275 n=3
+   content.l1i_cache_refill                    109  per_px=    0.00  range 106~115 n=3
+   content.l2d_cache                        116348  per_px=    0.50  range 115341~117498 n=3
+   content.l2d_cache_refill                   8177  per_px=    0.04  range 8130~8467 n=3
+   content.stall_backend                   9541324  per_px=   41.41  range 9513697~9564431 n=3
+   content.stall_frontend                     5226  per_px=    0.02  range 4875~5591 n=3
+   pad_bot.br_mis_pred_retired                 152  per_px=    0.00  range 151~152 n=3
+   pad_bot.br_retired                        90425  per_px=    0.39  range 90425~90425 n=3
+   pad_bot.cycles                           232304  per_px=    1.01  range 232108~232888 n=6
+   pad_bot.inst_retired                     721262  per_px=    3.13  range 721262~721262 n=3
+   pad_bot.inst_spec                        727503  per_px=    3.16  range 727493~727506 n=3
+   pad_bot.l1d_cache                        450189  per_px=    1.95  range 450184~450189 n=3
+   pad_bot.l1d_cache_refill                     40  per_px=    0.00  range 39~41 n=3
+   pad_bot.l1d_tlb_refill                       28  per_px=    0.00  range 28~29 n=3
+   pad_bot.l1i_cache_refill                     68  per_px=    0.00  range 67~69 n=3
+   pad_bot.l2d_cache                          4343  per_px=    0.02  range 4340~4345 n=3
+   pad_bot.l2d_cache_refill                    101  per_px=    0.00  range 96~101 n=3
+   pad_bot.stall_backend                      2841  per_px=    0.01  range 2503~2970 n=3
+   pad_bot.stall_frontend                     3399  per_px=    0.01  range 3304~3710 n=3
+   pad_top.br_mis_pred_retired                 165  per_px=    0.00  range 165~165 n=3
+   pad_top.br_retired                        90316  per_px=    0.39  range 90316~90316 n=3
+   pad_top.cycles                           234263  per_px=    1.02  range 233926~234664 n=6
+   pad_top.inst_retired                     720154  per_px=    3.13  range 720154~720154 n=3
+   pad_top.inst_spec                        726668  per_px=    3.15  range 726616~726693 n=3
+   pad_top.l1d_cache                        450241  per_px=    1.95  range 450233~450241 n=3
+   pad_top.l1d_cache_refill                     39  per_px=    0.00  range 38~40 n=3
+   pad_top.l1d_tlb_refill                       28  per_px=    0.00  range 28~28 n=3
+   pad_top.l1i_cache_refill                    107  per_px=    0.00  range 102~111 n=3
+   pad_top.l2d_cache                          4366  per_px=    0.02  range 4365~4375 n=3
+   pad_top.l2d_cache_refill                    136  per_px=    0.00  range 134~140 n=3
+   pad_top.stall_backend                      2748  per_px=    0.01  range 2671~2792 n=3
+   pad_top.stall_frontend                     5221  per_px=    0.02  range 5129~5560 n=3
+-- rowsplit
+   all.br_mis_pred_retired                     677  per_px=    0.00  range 676~679 n=3
+   all.br_retired                           873664  per_px=    3.79  range 873664~873664 n=3
+   all.cycles                             22118208  per_px=   96.00  range 22088719~22167339 n=6
+   all.inst_retired                       35318093  per_px=  153.29  range 35318093~35318093 n=3
+   all.inst_spec                          35337420  per_px=  153.37  range 35337414~35337447 n=3
+   all.l1d_cache                           4818152  per_px=   20.91  range 4818151~4818157 n=3
+   all.l1d_cache_refill                      27550  per_px=    0.12  range 27534~27584 n=3
+   all.l1d_tlb_refill                          294  per_px=    0.00  range 294~295 n=3
+   all.l1i_cache_refill                        158  per_px=    0.00  range 149~161 n=3
+   all.l2d_cache                            108211  per_px=    0.47  range 108181~108230 n=3
+   all.l2d_cache_refill                       7449  per_px=    0.03  range 7436~7604 n=3
+   all.stall_backend                      11904836  per_px=   51.67  range 11901920~11979682 n=3
+   all.stall_frontend                         9185  per_px=    0.04  range 8941~9811 n=3
+-- split
+   color.br_mis_pred_retired                   372  per_px=    0.00  range 371~372 n=3
+   color.br_retired                         230880  per_px=    1.00  range 230880~230880 n=3
+   color.cycles                            4963160  per_px=   21.54  range 4961660~4971153 n=6
+   color.inst_retired                      9221308  per_px=   40.02  range 9221308~9221308 n=3
+   color.inst_spec                         9227032  per_px=   40.05  range 9227020~9227047 n=3
+   color.l1d_cache                         1383688  per_px=    6.01  range 1383686~1383689 n=3
+   color.l1d_cache_refill                     2477  per_px=    0.01  range 2474~2508 n=3
+   color.l1d_tlb_refill                        231  per_px=    0.00  range 230~231 n=3
+   color.l1i_cache_refill                       75  per_px=    0.00  range 73~76 n=3
+   color.l2d_cache                           97466  per_px=    0.42  range 97461~97497 n=3
+   color.l2d_cache_refill                    10573  per_px=    0.05  range 9828~12070 n=3
+   color.stall_backend                     2652077  per_px=   11.51  range 2651520~2652894 n=3
+   color.stall_frontend                       3630  per_px=    0.02  range 3268~3958 n=3
+   pad.br_mis_pred_retired                     292  per_px=    0.00  range 292~293 n=3
+   pad.br_retired                           180591  per_px=    0.78  range 180591~180591 n=3
+   pad.cycles                               459474  per_px=    1.99  range 459081~460013 n=6
+   pad.inst_retired                        1440673  per_px=    6.25  range 1440673~1440673 n=3
+   pad.inst_spec                           1452911  per_px=    6.31  range 1452906~1452914 n=3
+   pad.l1d_cache                            900172  per_px=    3.91  range 900167~900175 n=3
+   pad.l1d_cache_refill                         52  per_px=    0.00  range 51~52 n=3
+   pad.l1d_tlb_refill                           49  per_px=    0.00  range 49~49 n=3
+   pad.l1i_cache_refill                         39  per_px=    0.00  range 39~41 n=3
+   pad.l2d_cache                              8534  per_px=    0.04  range 8528~8550 n=3
+   pad.l2d_cache_refill                         78  per_px=    0.00  range 76~79 n=3
+   pad.stall_backend                          3907  per_px=    0.02  range 3715~4017 n=3
+   pad.stall_frontend                         3032  per_px=    0.01  range 2975~3083 n=3
+   resize.br_mis_pred_retired                  381  per_px=    0.00  range 381~381 n=3
+   resize.br_retired                        230875  per_px=    1.00  range 230875~230875 n=3
+   resize.cycles                          12143830  per_px=   52.71  range 12134877~12194445 n=6
+   resize.inst_retired                    17525766  per_px=   76.07  range 17525766~17525766 n=3
+   resize.inst_spec                       17529276  per_px=   76.08  range 17529253~17529344 n=3
+   resize.l1d_cache                        3456239  per_px=   15.00  range 3456231~3456266 n=3
+   resize.l1d_cache_refill                   61193  per_px=    0.27  range 61171~61234 n=3
+   resize.l1d_tlb_refill                       389  per_px=    0.00  range 389~390 n=3
+   resize.l1i_cache_refill                     100  per_px=    0.00  range 96~105 n=3
+   resize.l2d_cache                         165917  per_px=    0.72  range 165914~165969 n=3
+   resize.l2d_cache_refill                   14955  per_px=    0.06  range 14445~16002 n=3
+   resize.stall_backend                    6716077  per_px=   29.15  range 6704968~6736925 n=3
+   resize.stall_frontend                      6171  per_px=    0.03  range 6079~6899 n=3
+-- split_nohoist
+   color.br_mis_pred_retired                   372  per_px=    0.00  range 371~372 n=3
+   color.br_retired                         230880  per_px=    1.00  range 230880~230880 n=3
+   color.cycles                            4966460  per_px=   21.56  range 4959745~4978590 n=6
+   color.inst_retired                      9221308  per_px=   40.02  range 9221308~9221308 n=3
+   color.inst_spec                         9227031  per_px=   40.05  range 9227027~9227079 n=3
+   color.l1d_cache                         1383686  per_px=    6.01  range 1383685~1383688 n=3
+   color.l1d_cache_refill                     2477  per_px=    0.01  range 2475~2542 n=3
+   color.l1d_tlb_refill                        231  per_px=    0.00  range 230~231 n=3
+   color.l1i_cache_refill                       75  per_px=    0.00  range 73~76 n=3
+   color.l2d_cache                           97467  per_px=    0.42  range 97463~97475 n=3
+   color.l2d_cache_refill                    10212  per_px=    0.04  range 9568~11267 n=3
+   color.stall_backend                     2657005  per_px=   11.53  range 2654569~2657532 n=3
+   color.stall_frontend                       3562  per_px=    0.02  range 3495~4212 n=3
+   pad.br_mis_pred_retired                     293  per_px=    0.00  range 292~293 n=3
+   pad.br_retired                           180591  per_px=    0.78  range 180591~180591 n=3
+   pad.cycles                               459354  per_px=    1.99  range 459269~459682 n=6
+   pad.inst_retired                        1440673  per_px=    6.25  range 1440673~1440673 n=3
+   pad.inst_spec                           1452916  per_px=    6.31  range 1452912~1452928 n=3
+   pad.l1d_cache                            900172  per_px=    3.91  range 900171~900176 n=3
+   pad.l1d_cache_refill                         51  per_px=    0.00  range 51~51 n=3
+   pad.l1d_tlb_refill                           50  per_px=    0.00  range 48~50 n=3
+   pad.l1i_cache_refill                         38  per_px=    0.00  range 38~38 n=3
+   pad.l2d_cache                              8532  per_px=    0.04  range 8525~8532 n=3
+   pad.l2d_cache_refill                         77  per_px=    0.00  range 75~77 n=3
+   pad.stall_backend                          4184  per_px=    0.02  range 4069~4338 n=3
+   pad.stall_frontend                         2985  per_px=    0.01  range 2913~3074 n=3
+   resize.br_mis_pred_retired                  385  per_px=    0.00  range 384~386 n=3
+   resize.br_retired                        230886  per_px=    1.00  range 230886~230886 n=3
+   resize.cycles                          14535231  per_px=   63.09  range 14505878~14553118 n=6
+   resize.inst_retired                    27193245  per_px=  118.03  range 27193245~27193245 n=3
+   resize.inst_spec                       27198363  per_px=  118.05  range 27198228~27198459 n=3
+   resize.l1d_cache                        3456269  per_px=   15.00  range 3456266~3456274 n=3
+   resize.l1d_cache_refill                   61676  per_px=    0.27  range 61638~61696 n=3
+   resize.l1d_tlb_refill                       391  per_px=    0.00  range 390~392 n=3
+   resize.l1i_cache_refill                     139  per_px=    0.00  range 139~146 n=3
+   resize.l2d_cache                         165931  per_px=    0.72  range 165876~165939 n=3
+   resize.l2d_cache_refill                   13864  per_px=    0.06  range 13506~14290 n=3
+   resize.stall_backend                    6063233  per_px=   26.32  range 6053046~6076552 n=3
+   resize.stall_frontend                      8704  per_px=    0.04  range 8161~9585 n=3
+
+runs: 72  non-zero rc: 0
+SoC pre 65.9~71.4 post 68.6~72.5
+governors: {'performance'}

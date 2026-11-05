@@ -1,0 +1,23 @@
+[hevc @ 0x5555edf27510] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[RESULT] variant=split_nohoist frames=600 lb_total=8.3577 flatten=1.3621 transpose=0.4114 sync=0.0048 map=0.0596 color=2.0798 pad=0.1928 resize=6.0850
+[COUNT] variant=split_nohoist set=1 color.br_mis_pred_retired mean_per_frame=372 median=371
+[COUNT] variant=split_nohoist set=1 color.br_retired mean_per_frame=230880 median=230880
+[COUNT] variant=split_nohoist set=1 color.cycles mean_per_frame=4968088 median=4967334
+[COUNT] variant=split_nohoist set=1 color.inst_retired mean_per_frame=9221308 median=9221307
+[COUNT] variant=split_nohoist set=1 color.inst_spec mean_per_frame=9227079 median=9227029
+[COUNT] variant=split_nohoist set=1 color.stall_backend mean_per_frame=2657005 median=2656386
+[COUNT] variant=split_nohoist set=1 color.stall_frontend mean_per_frame=4212 median=4134
+[COUNT] variant=split_nohoist set=1 pad.br_mis_pred_retired mean_per_frame=293 median=293
+[COUNT] variant=split_nohoist set=1 pad.br_retired mean_per_frame=180591 median=180591
+[COUNT] variant=split_nohoist set=1 pad.cycles mean_per_frame=459343 median=459189
+[COUNT] variant=split_nohoist set=1 pad.inst_retired mean_per_frame=1440673 median=1440672
+[COUNT] variant=split_nohoist set=1 pad.inst_spec mean_per_frame=1452916 median=1452908
+[COUNT] variant=split_nohoist set=1 pad.stall_backend mean_per_frame=4184 median=4060
+[COUNT] variant=split_nohoist set=1 pad.stall_frontend mean_per_frame=2913 median=2825
+[COUNT] variant=split_nohoist set=1 resize.br_mis_pred_retired mean_per_frame=386 median=385
+[COUNT] variant=split_nohoist set=1 resize.br_retired mean_per_frame=230886 median=230886
+[COUNT] variant=split_nohoist set=1 resize.cycles mean_per_frame=14531039 median=14520981
+[COUNT] variant=split_nohoist set=1 resize.inst_retired mean_per_frame=27193245 median=27193245
+[COUNT] variant=split_nohoist set=1 resize.inst_spec mean_per_frame=27198228 median=27198195
+[COUNT] variant=split_nohoist set=1 resize.stall_backend mean_per_frame=6053046 median=6043815
+[COUNT] variant=split_nohoist set=1 resize.stall_frontend mean_per_frame=9585 median=9171

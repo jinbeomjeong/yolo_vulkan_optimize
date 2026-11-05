@@ -1,0 +1,2 @@
+[hevc @ 0x55561e37f510] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[RESULT] variant=rowsplit frames=600 lb_total=9.2345 flatten=1.1371 transpose=0.4302 sync=0.0039 map=0.0586 all=9.2345

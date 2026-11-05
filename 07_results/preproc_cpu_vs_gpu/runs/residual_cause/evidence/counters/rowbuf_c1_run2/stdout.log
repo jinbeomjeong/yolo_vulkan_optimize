@@ -1,0 +1,23 @@
+[hevc @ 0x5555b95fb510] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[RESULT] variant=rowbuf frames=600 lb_total=7.4222 flatten=1.1685 transpose=0.4320 sync=0.0042 map=0.0603 content=7.2178 pad_bot=0.1011 pad_top=0.1039
+[COUNT] variant=rowbuf set=1 content.br_mis_pred_retired mean_per_frame=742 median=733
+[COUNT] variant=rowbuf set=1 content.br_retired mean_per_frame=463458 median=463458
+[COUNT] variant=rowbuf set=1 content.cycles mean_per_frame=17277689 median=17271000
+[COUNT] variant=rowbuf set=1 content.inst_retired mean_per_frame=26765300 median=26765299
+[COUNT] variant=rowbuf set=1 content.inst_spec mean_per_frame=26773086 median=26772921
+[COUNT] variant=rowbuf set=1 content.stall_backend mean_per_frame=9541324 median=9534957
+[COUNT] variant=rowbuf set=1 content.stall_frontend mean_per_frame=5591 median=5085
+[COUNT] variant=rowbuf set=1 pad_bot.br_mis_pred_retired mean_per_frame=152 median=148
+[COUNT] variant=rowbuf set=1 pad_bot.br_retired mean_per_frame=90425 median=90425
+[COUNT] variant=rowbuf set=1 pad_bot.cycles mean_per_frame=232888 median=232054
+[COUNT] variant=rowbuf set=1 pad_bot.inst_retired mean_per_frame=721262 median=721261
+[COUNT] variant=rowbuf set=1 pad_bot.inst_spec mean_per_frame=727506 median=727408
+[COUNT] variant=rowbuf set=1 pad_bot.stall_backend mean_per_frame=2841 median=2714
+[COUNT] variant=rowbuf set=1 pad_bot.stall_frontend mean_per_frame=3710 median=2865
+[COUNT] variant=rowbuf set=1 pad_top.br_mis_pred_retired mean_per_frame=165 median=165
+[COUNT] variant=rowbuf set=1 pad_top.br_retired mean_per_frame=90316 median=90316
+[COUNT] variant=rowbuf set=1 pad_top.cycles mean_per_frame=234664 median=234612
+[COUNT] variant=rowbuf set=1 pad_top.inst_retired mean_per_frame=720154 median=720154
+[COUNT] variant=rowbuf set=1 pad_top.inst_spec mean_per_frame=726668 median=726674
+[COUNT] variant=rowbuf set=1 pad_top.stall_backend mean_per_frame=2748 median=2607
+[COUNT] variant=rowbuf set=1 pad_top.stall_frontend mean_per_frame=5560 median=5559

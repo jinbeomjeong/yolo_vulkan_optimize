@@ -1,0 +1,23 @@
+[hevc @ 0x55561810f540] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[RESULT] variant=nobranch_nohoist frames=600 lb_total=9.2389 flatten=1.1238 transpose=0.4188 sync=0.0042 map=0.0584 content=9.0348 pad_bot=0.1004 pad_top=0.1034
+[COUNT] variant=nobranch_nohoist set=2 content.cycles mean_per_frame=21634854 median=21630582
+[COUNT] variant=nobranch_nohoist set=2 content.l1d_cache mean_per_frame=3456253 median=3456250
+[COUNT] variant=nobranch_nohoist set=2 content.l1d_cache_refill mean_per_frame=28818 median=28821
+[COUNT] variant=nobranch_nohoist set=2 content.l1d_tlb_refill mean_per_frame=262 median=262
+[COUNT] variant=nobranch_nohoist set=2 content.l1i_cache_refill mean_per_frame=110 median=89
+[COUNT] variant=nobranch_nohoist set=2 content.l2d_cache mean_per_frame=100085 median=100073
+[COUNT] variant=nobranch_nohoist set=2 content.l2d_cache_refill mean_per_frame=6416 median=6413
+[COUNT] variant=nobranch_nohoist set=2 pad_bot.cycles mean_per_frame=232033 median=231166
+[COUNT] variant=nobranch_nohoist set=2 pad_bot.l1d_cache mean_per_frame=450190 median=450187
+[COUNT] variant=nobranch_nohoist set=2 pad_bot.l1d_cache_refill mean_per_frame=41 median=40
+[COUNT] variant=nobranch_nohoist set=2 pad_bot.l1d_tlb_refill mean_per_frame=28 median=27
+[COUNT] variant=nobranch_nohoist set=2 pad_bot.l1i_cache_refill mean_per_frame=72 median=47
+[COUNT] variant=nobranch_nohoist set=2 pad_bot.l2d_cache mean_per_frame=4351 median=4324
+[COUNT] variant=nobranch_nohoist set=2 pad_bot.l2d_cache_refill mean_per_frame=103 median=79
+[COUNT] variant=nobranch_nohoist set=2 pad_top.cycles mean_per_frame=234240 median=234155
+[COUNT] variant=nobranch_nohoist set=2 pad_top.l1d_cache mean_per_frame=450247 median=450245
+[COUNT] variant=nobranch_nohoist set=2 pad_top.l1d_cache_refill mean_per_frame=42 median=42
+[COUNT] variant=nobranch_nohoist set=2 pad_top.l1d_tlb_refill mean_per_frame=30 median=29
+[COUNT] variant=nobranch_nohoist set=2 pad_top.l1i_cache_refill mean_per_frame=109 median=107
+[COUNT] variant=nobranch_nohoist set=2 pad_top.l2d_cache mean_per_frame=4373 median=4371
+[COUNT] variant=nobranch_nohoist set=2 pad_top.l2d_cache_refill mean_per_frame=142 median=140

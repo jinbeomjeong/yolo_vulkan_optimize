@@ -1,0 +1,77 @@
+governor now: performance 
+core done
+01:18:27 ref c1 run1 rc=0 soc=68.1 [RESULT] variant=ref frames=600 lb_total=8.8527 flatten=1.1203 transpose=0.4321 sync=0.0099 map=0.0581 all=8.8527
+01:18:46 ref c2 run1 rc=0 soc=67.5 [RESULT] variant=ref frames=600 lb_total=8.8446 flatten=1.1333 transpose=0.4109 sync=0.0094 map=0.0578 all=8.8446
+01:19:05 rowsplit c1 run1 rc=0 soc=66.4 [RESULT] variant=rowsplit frames=600 lb_total=9.2310 flatten=1.0955 transpose=0.4180 sync=0.0098 map=0.0578 all=9.2310
+01:19:14 rowsplit c2 run1 rc=0 soc=69.7 [RESULT] variant=rowsplit frames=600 lb_total=9.2429 flatten=1.1370 transpose=0.4204 sync=0.0104 map=0.0602 all=9.2429
+01:19:33 local_params c1 run1 rc=0 soc=67.5 [RESULT] variant=local_params frames=600 lb_total=9.3025 flatten=1.1076 transpose=0.4177 sync=0.0097 map=0.0581 all=9.30
+01:19:52 local_params c2 run1 rc=0 soc=66.4 [RESULT] variant=local_params frames=600 lb_total=9.2938 flatten=1.0994 transpose=0.4168 sync=0.0097 map=0.0582 all=9.29
+01:20:01 nobranch_nohoist c1 run1 rc=0 soc=70.8 [RESULT] variant=nobranch_nohoist frames=600 lb_total=9.2335 flatten=1.1055 transpose=0.4097 sync=0.0043 map=0.0599 cont
+01:20:10 nobranch_nohoist c2 run1 rc=0 soc=69.7 [RESULT] variant=nobranch_nohoist frames=600 lb_total=9.2440 flatten=1.1525 transpose=0.4312 sync=0.0046 map=0.0602 cont
+01:20:29 hoist_y c1 run1 rc=0 soc=67.5 [RESULT] variant=hoist_y frames=600 lb_total=8.1784 flatten=1.1220 transpose=0.4205 sync=0.0098 map=0.0580 all=8.1784
+01:20:37 hoist_y c2 run1 rc=0 soc=70.3 [RESULT] variant=hoist_y frames=600 lb_total=8.1725 flatten=1.1524 transpose=0.4307 sync=0.0102 map=0.0606 all=8.1725
+01:20:45 hoist_all c1 run1 rc=0 soc=70.3 [RESULT] variant=hoist_all frames=600 lb_total=7.8087 flatten=1.1523 transpose=0.4260 sync=0.0100 map=0.0609 all=7.8087
+01:21:03 hoist_all c2 run1 rc=0 soc=67.5 [RESULT] variant=hoist_all frames=600 lb_total=7.7899 flatten=1.1157 transpose=0.4386 sync=0.0101 map=0.0588 all=7.7899
+01:21:21 local_hoist c1 run1 rc=0 soc=68.6 [RESULT] variant=local_hoist frames=600 lb_total=7.7599 flatten=1.1119 transpose=0.4225 sync=0.0099 map=0.0587 all=7.759
+01:21:40 local_hoist c2 run1 rc=0 soc=67.0 [RESULT] variant=local_hoist frames=600 lb_total=7.7645 flatten=1.1421 transpose=0.4083 sync=0.0094 map=0.0584 all=7.764
+01:21:48 ref_notrap c1 run1 rc=0 soc=69.7 [RESULT] variant=ref_notrap frames=600 lb_total=8.3114 flatten=1.1224 transpose=0.4097 sync=0.0103 map=0.0594 all=8.3114
+01:22:07 ref_notrap c2 run1 rc=0 soc=66.4 [RESULT] variant=ref_notrap frames=600 lb_total=8.3098 flatten=1.1062 transpose=0.4161 sync=0.0098 map=0.0581 all=8.3098
+01:22:25 nobranch c1 run1 rc=0 soc=65.9 [RESULT] variant=nobranch frames=600 lb_total=7.8984 flatten=1.1082 transpose=0.4102 sync=0.0042 map=0.0584 content=7.69
+01:22:43 nobranch c2 run1 rc=0 soc=66.4 [RESULT] variant=nobranch frames=600 lb_total=7.8969 flatten=1.1378 transpose=0.4105 sync=0.0043 map=0.0586 content=7.69
+01:22:51 rowbuf c1 run1 rc=0 soc=69.7 [RESULT] variant=rowbuf frames=600 lb_total=7.4103 flatten=1.1464 transpose=0.4134 sync=0.0042 map=0.0606 content=7.2065
+01:22:59 rowbuf c2 run1 rc=0 soc=69.2 [RESULT] variant=rowbuf frames=600 lb_total=7.4247 flatten=1.1570 transpose=0.4091 sync=0.0044 map=0.0598 content=7.2204
+01:23:17 split c1 run1 rc=0 soc=66.4 [RESULT] variant=split frames=600 lb_total=7.3530 flatten=1.3022 transpose=0.4436 sync=0.0045 map=0.0588 color=2.0788 pa
+01:23:25 split c2 run1 rc=0 soc=70.8 [RESULT] variant=split frames=600 lb_total=7.3477 flatten=1.3008 transpose=0.4414 sync=0.0046 map=0.0609 color=2.0764 pa
+01:23:43 split_nohoist c1 run1 rc=0 soc=68.6 [RESULT] variant=split_nohoist frames=600 lb_total=8.3544 flatten=1.3033 transpose=0.4344 sync=0.0045 map=0.0587 color=2
+01:24:02 split_nohoist c2 run1 rc=0 soc=67.5 [RESULT] variant=split_nohoist frames=600 lb_total=8.3451 flatten=1.2895 transpose=0.4354 sync=0.0044 map=0.0593 color=2
+01:24:20 ref_notrap c1 run2 rc=0 soc=67.0 [RESULT] variant=ref_notrap frames=600 lb_total=8.3162 flatten=1.1036 transpose=0.4153 sync=0.0102 map=0.0578 all=8.3162
+01:24:29 ref_notrap c2 run2 rc=0 soc=70.8 [RESULT] variant=ref_notrap frames=600 lb_total=8.3180 flatten=1.1514 transpose=0.4130 sync=0.0096 map=0.0596 all=8.3180
+01:24:47 nobranch c1 run2 rc=0 soc=66.4 [RESULT] variant=nobranch frames=600 lb_total=7.8959 flatten=1.1053 transpose=0.4144 sync=0.0044 map=0.0592 content=7.69
+01:24:55 nobranch c2 run2 rc=0 soc=69.7 [RESULT] variant=nobranch frames=600 lb_total=7.8918 flatten=1.1260 transpose=0.4196 sync=0.0044 map=0.0608 content=7.68
+01:25:03 rowbuf c1 run2 rc=0 soc=69.7 [RESULT] variant=rowbuf frames=600 lb_total=7.4222 flatten=1.1685 transpose=0.4320 sync=0.0042 map=0.0603 content=7.2178
+01:25:21 rowbuf c2 run2 rc=0 soc=68.6 [RESULT] variant=rowbuf frames=600 lb_total=7.4153 flatten=1.1561 transpose=0.4137 sync=0.0043 map=0.0583 content=7.2106
+01:25:39 split c1 run2 rc=0 soc=67.0 [RESULT] variant=split frames=600 lb_total=7.3460 flatten=1.3069 transpose=0.4397 sync=0.0044 map=0.0589 color=2.0768 pa
+01:25:57 split c2 run2 rc=0 soc=66.4 [RESULT] variant=split frames=600 lb_total=7.3515 flatten=1.3137 transpose=0.4343 sync=0.0044 map=0.0589 color=2.0788 pa
+01:26:16 split_nohoist c1 run2 rc=0 soc=67.0 [RESULT] variant=split_nohoist frames=600 lb_total=8.3577 flatten=1.3621 transpose=0.4114 sync=0.0048 map=0.0596 color=2
+01:26:35 split_nohoist c2 run2 rc=0 soc=67.0 [RESULT] variant=split_nohoist frames=600 lb_total=8.3349 flatten=1.2875 transpose=0.4278 sync=0.0045 map=0.0592 color=2
+01:26:53 ref c1 run2 rc=0 soc=67.0 [RESULT] variant=ref frames=600 lb_total=8.8619 flatten=1.1368 transpose=0.4173 sync=0.0099 map=0.0589 all=8.8619
+01:27:12 ref c2 run2 rc=0 soc=67.5 [RESULT] variant=ref frames=600 lb_total=8.8412 flatten=1.1234 transpose=0.4163 sync=0.0096 map=0.0579 all=8.8412
+01:27:21 rowsplit c1 run2 rc=0 soc=70.3 [RESULT] variant=rowsplit frames=600 lb_total=9.2330 flatten=1.1297 transpose=0.4070 sync=0.0102 map=0.0605 all=9.2330
+01:27:31 rowsplit c2 run2 rc=0 soc=71.4 [RESULT] variant=rowsplit frames=600 lb_total=9.2430 flatten=1.1374 transpose=0.4278 sync=0.0110 map=0.0611 all=9.2430
+01:27:50 local_params c1 run2 rc=0 soc=68.1 [RESULT] variant=local_params frames=600 lb_total=9.2984 flatten=1.1221 transpose=0.4097 sync=0.0095 map=0.0588 all=9.29
+01:27:59 local_params c2 run2 rc=0 soc=70.3 [RESULT] variant=local_params frames=600 lb_total=9.3058 flatten=1.1622 transpose=0.4263 sync=0.0099 map=0.0615 all=9.30
+01:28:18 nobranch_nohoist c1 run2 rc=0 soc=67.5 [RESULT] variant=nobranch_nohoist frames=600 lb_total=9.2369 flatten=1.1240 transpose=0.4173 sync=0.0043 map=0.0589 cont
+01:28:37 nobranch_nohoist c2 run2 rc=0 soc=67.5 [RESULT] variant=nobranch_nohoist frames=600 lb_total=9.2389 flatten=1.1238 transpose=0.4188 sync=0.0042 map=0.0584 cont
+01:28:45 hoist_y c1 run2 rc=0 soc=69.7 [RESULT] variant=hoist_y frames=600 lb_total=8.1841 flatten=1.1371 transpose=0.4268 sync=0.0102 map=0.0604 all=8.1841
+01:29:04 hoist_y c2 run2 rc=0 soc=65.9 [RESULT] variant=hoist_y frames=600 lb_total=8.1587 flatten=1.1128 transpose=0.4142 sync=0.0096 map=0.0590 all=8.1587
+01:29:22 hoist_all c1 run2 rc=0 soc=66.4 [RESULT] variant=hoist_all frames=600 lb_total=7.8032 flatten=1.1062 transpose=0.4141 sync=0.0096 map=0.0586 all=7.8032
+01:29:30 hoist_all c2 run2 rc=0 soc=69.7 [RESULT] variant=hoist_all frames=600 lb_total=7.7958 flatten=1.1066 transpose=0.4126 sync=0.0097 map=0.0600 all=7.7958
+01:29:38 local_hoist c1 run2 rc=0 soc=69.7 [RESULT] variant=local_hoist frames=600 lb_total=7.7633 flatten=1.1352 transpose=0.4272 sync=0.0099 map=0.0606 all=7.763
+01:29:56 local_hoist c2 run2 rc=0 soc=67.0 [RESULT] variant=local_hoist frames=600 lb_total=7.7614 flatten=1.1091 transpose=0.4169 sync=0.0098 map=0.0586 all=7.761
+01:30:05 local_params c1 run3 rc=0 soc=70.3 [RESULT] variant=local_params frames=600 lb_total=9.3068 flatten=1.1443 transpose=0.4238 sync=0.0097 map=0.0602 all=9.30
+01:30:25 local_params c2 run3 rc=0 soc=67.0 [RESULT] variant=local_params frames=600 lb_total=9.3109 flatten=1.1205 transpose=0.4198 sync=0.0093 map=0.0592 all=9.31
+01:30:34 nobranch_nohoist c1 run3 rc=0 soc=70.8 [RESULT] variant=nobranch_nohoist frames=600 lb_total=9.2349 flatten=1.1238 transpose=0.4254 sync=0.0044 map=0.0605 cont
+01:30:53 nobranch_nohoist c2 run3 rc=0 soc=68.1 [RESULT] variant=nobranch_nohoist frames=600 lb_total=9.2848 flatten=1.2725 transpose=0.4491 sync=0.0048 map=0.0603 cont
+01:31:12 hoist_y c1 run3 rc=0 soc=68.6 [RESULT] variant=hoist_y frames=600 lb_total=8.1693 flatten=1.1236 transpose=0.4264 sync=0.0101 map=0.0585 all=8.1693
+01:31:30 hoist_y c2 run3 rc=0 soc=67.5 [RESULT] variant=hoist_y frames=600 lb_total=8.1636 flatten=1.1172 transpose=0.4233 sync=0.0100 map=0.0577 all=8.1636
+01:31:38 hoist_all c1 run3 rc=0 soc=70.3 [RESULT] variant=hoist_all frames=600 lb_total=7.8029 flatten=1.1281 transpose=0.4349 sync=0.0102 map=0.0601 all=7.8029
+01:31:56 hoist_all c2 run3 rc=0 soc=67.5 [RESULT] variant=hoist_all frames=600 lb_total=7.7865 flatten=1.1076 transpose=0.4156 sync=0.0099 map=0.0581 all=7.7865
+01:32:14 local_hoist c1 run3 rc=0 soc=67.0 [RESULT] variant=local_hoist frames=600 lb_total=7.7872 flatten=1.1620 transpose=0.4171 sync=0.0104 map=0.0586 all=7.787
+01:32:23 local_hoist c2 run3 rc=0 soc=69.7 [RESULT] variant=local_hoist frames=600 lb_total=7.7739 flatten=1.1892 transpose=0.4343 sync=0.0103 map=0.0614 all=7.773
+01:32:41 ref_notrap c1 run3 rc=0 soc=67.0 [RESULT] variant=ref_notrap frames=600 lb_total=8.3288 flatten=1.1934 transpose=0.4193 sync=0.0112 map=0.0595 all=8.3288
+01:33:00 ref_notrap c2 run3 rc=0 soc=67.0 [RESULT] variant=ref_notrap frames=600 lb_total=8.3265 flatten=1.1335 transpose=0.4186 sync=0.0103 map=0.0587 all=8.3265
+01:33:18 nobranch c1 run3 rc=0 soc=67.0 [RESULT] variant=nobranch frames=600 lb_total=7.8919 flatten=1.1158 transpose=0.4179 sync=0.0042 map=0.0584 content=7.68
+01:33:36 nobranch c2 run3 rc=0 soc=69.7 [RESULT] variant=nobranch frames=600 lb_total=7.8990 flatten=1.1380 transpose=0.4145 sync=0.0043 map=0.0587 content=7.69
+01:33:54 rowbuf c1 run3 rc=0 soc=67.0 [RESULT] variant=rowbuf frames=600 lb_total=7.4374 flatten=1.1656 transpose=0.4118 sync=0.0045 map=0.0587 content=7.2327
+01:34:02 rowbuf c2 run3 rc=0 soc=69.7 [RESULT] variant=rowbuf frames=600 lb_total=7.4377 flatten=1.1802 transpose=0.4208 sync=0.0045 map=0.0606 content=7.2318
+01:34:20 split c1 run3 rc=0 soc=67.0 [RESULT] variant=split frames=600 lb_total=7.3723 flatten=1.3440 transpose=0.4232 sync=0.0047 map=0.0592 color=2.0779 pa
+01:34:49 split c2 run3 rc=0 soc=69.2 [RESULT] variant=split frames=600 lb_total=7.4057 flatten=1.3755 transpose=0.4328 sync=0.0050 map=0.0591 color=2.0812 pa
+01:35:07 split_nohoist c1 run3 rc=0 soc=69.2 [RESULT] variant=split_nohoist frames=600 lb_total=8.3636 flatten=1.3284 transpose=0.4457 sync=0.0049 map=0.0594 color=2
+01:35:26 split_nohoist c2 run3 rc=0 soc=68.6 [RESULT] variant=split_nohoist frames=600 lb_total=8.3675 flatten=1.3738 transpose=0.4318 sync=0.0052 map=0.0598 color=2
+01:35:45 ref c1 run3 rc=0 soc=69.2 [RESULT] variant=ref frames=600 lb_total=8.8682 flatten=1.1727 transpose=0.4369 sync=0.0107 map=0.0581 all=8.8682
+01:36:04 ref c2 run3 rc=0 soc=68.1 [RESULT] variant=ref frames=600 lb_total=8.8723 flatten=1.1872 transpose=0.4328 sync=0.0108 map=0.0586 all=8.8723
+01:36:23 rowsplit c1 run3 rc=0 soc=68.1 [RESULT] variant=rowsplit frames=600 lb_total=9.2798 flatten=1.2150 transpose=0.4320 sync=0.0113 map=0.0588 all=9.2798
+01:36:42 rowsplit c2 run3 rc=0 soc=68.1 [RESULT] variant=rowsplit frames=600 lb_total=9.2641 flatten=1.2045 transpose=0.4334 sync=0.0109 map=0.0595 all=9.2641
+finished
+phase2 finished
+governor restored: ondemand 

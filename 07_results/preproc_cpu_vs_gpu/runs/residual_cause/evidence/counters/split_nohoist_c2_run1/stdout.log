@@ -1,0 +1,23 @@
+[hevc @ 0x5555d29fb510] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[RESULT] variant=split_nohoist frames=600 lb_total=8.3451 flatten=1.2895 transpose=0.4354 sync=0.0044 map=0.0593 color=2.0771 pad=0.1934 resize=6.0763
+[COUNT] variant=split_nohoist set=2 color.cycles mean_per_frame=4963117 median=4962434
+[COUNT] variant=split_nohoist set=2 color.l1d_cache mean_per_frame=1383685 median=1383684
+[COUNT] variant=split_nohoist set=2 color.l1d_cache_refill mean_per_frame=2477 median=2466
+[COUNT] variant=split_nohoist set=2 color.l1d_tlb_refill mean_per_frame=230 median=229
+[COUNT] variant=split_nohoist set=2 color.l1i_cache_refill mean_per_frame=75 median=68
+[COUNT] variant=split_nohoist set=2 color.l2d_cache mean_per_frame=97467 median=97462
+[COUNT] variant=split_nohoist set=2 color.l2d_cache_refill mean_per_frame=11267 median=11257
+[COUNT] variant=split_nohoist set=2 pad.cycles mean_per_frame=459335 median=459248
+[COUNT] variant=split_nohoist set=2 pad.l1d_cache mean_per_frame=900172 median=900169
+[COUNT] variant=split_nohoist set=2 pad.l1d_cache_refill mean_per_frame=51 median=50
+[COUNT] variant=split_nohoist set=2 pad.l1d_tlb_refill mean_per_frame=48 median=49
+[COUNT] variant=split_nohoist set=2 pad.l1i_cache_refill mean_per_frame=38 median=37
+[COUNT] variant=split_nohoist set=2 pad.l2d_cache mean_per_frame=8525 median=8525
+[COUNT] variant=split_nohoist set=2 pad.l2d_cache_refill mean_per_frame=77 median=77
+[COUNT] variant=split_nohoist set=2 resize.cycles mean_per_frame=14524958 median=14516832
+[COUNT] variant=split_nohoist set=2 resize.l1d_cache mean_per_frame=3456269 median=3456267
+[COUNT] variant=split_nohoist set=2 resize.l1d_cache_refill mean_per_frame=61676 median=61674
+[COUNT] variant=split_nohoist set=2 resize.l1d_tlb_refill mean_per_frame=391 median=390
+[COUNT] variant=split_nohoist set=2 resize.l1i_cache_refill mean_per_frame=139 median=123
+[COUNT] variant=split_nohoist set=2 resize.l2d_cache mean_per_frame=165876 median=165867
+[COUNT] variant=split_nohoist set=2 resize.l2d_cache_refill mean_per_frame=14290 median=14312

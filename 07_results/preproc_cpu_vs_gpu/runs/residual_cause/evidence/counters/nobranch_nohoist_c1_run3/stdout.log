@@ -1,0 +1,23 @@
+[hevc @ 0x5556338d7540] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[RESULT] variant=nobranch_nohoist frames=600 lb_total=9.2349 flatten=1.1238 transpose=0.4254 sync=0.0044 map=0.0605 content=9.0304 pad_bot=0.1004 pad_top=0.1040
+[COUNT] variant=nobranch_nohoist set=1 content.br_mis_pred_retired mean_per_frame=375 median=373
+[COUNT] variant=nobranch_nohoist set=1 content.br_retired mean_per_frame=230907 median=230907
+[COUNT] variant=nobranch_nohoist set=1 content.cycles mean_per_frame=21621313 median=21616219
+[COUNT] variant=nobranch_nohoist set=1 content.inst_retired mean_per_frame=34334713 median=34334712
+[COUNT] variant=nobranch_nohoist set=1 content.inst_spec mean_per_frame=34337638 median=34337603
+[COUNT] variant=nobranch_nohoist set=1 content.stall_backend mean_per_frame=11686295 median=11681598
+[COUNT] variant=nobranch_nohoist set=1 content.stall_frontend mean_per_frame=5101 median=4846
+[COUNT] variant=nobranch_nohoist set=1 pad_bot.br_mis_pred_retired mean_per_frame=152 median=149
+[COUNT] variant=nobranch_nohoist set=1 pad_bot.br_retired mean_per_frame=90425 median=90425
+[COUNT] variant=nobranch_nohoist set=1 pad_bot.cycles mean_per_frame=232317 median=231622
+[COUNT] variant=nobranch_nohoist set=1 pad_bot.inst_retired mean_per_frame=721262 median=721261
+[COUNT] variant=nobranch_nohoist set=1 pad_bot.inst_spec mean_per_frame=727507 median=727421
+[COUNT] variant=nobranch_nohoist set=1 pad_bot.stall_backend mean_per_frame=2397 median=2287
+[COUNT] variant=nobranch_nohoist set=1 pad_bot.stall_frontend mean_per_frame=3611 median=2936
+[COUNT] variant=nobranch_nohoist set=1 pad_top.br_mis_pred_retired mean_per_frame=165 median=165
+[COUNT] variant=nobranch_nohoist set=1 pad_top.br_retired mean_per_frame=90305 median=90305
+[COUNT] variant=nobranch_nohoist set=1 pad_top.cycles mean_per_frame=234711 median=234663
+[COUNT] variant=nobranch_nohoist set=1 pad_top.inst_retired mean_per_frame=720104 median=720104
+[COUNT] variant=nobranch_nohoist set=1 pad_top.inst_spec mean_per_frame=726719 median=726728
+[COUNT] variant=nobranch_nohoist set=1 pad_top.stall_backend mean_per_frame=2543 median=2448
+[COUNT] variant=nobranch_nohoist set=1 pad_top.stall_frontend mean_per_frame=5697 median=5647

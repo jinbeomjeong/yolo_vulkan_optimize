@@ -1,0 +1,23 @@
+[hevc @ 0x5555cf36b510] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[RESULT] variant=split frames=600 lb_total=7.4057 flatten=1.3755 transpose=0.4328 sync=0.0050 map=0.0591 color=2.0812 pad=0.1935 resize=5.1244
+[COUNT] variant=split set=2 color.cycles mean_per_frame=4971153 median=4963999
+[COUNT] variant=split set=2 color.l1d_cache mean_per_frame=1383689 median=1383687
+[COUNT] variant=split set=2 color.l1d_cache_refill mean_per_frame=2508 median=2481
+[COUNT] variant=split set=2 color.l1d_tlb_refill mean_per_frame=231 median=230
+[COUNT] variant=split set=2 color.l1i_cache_refill mean_per_frame=76 median=67
+[COUNT] variant=split set=2 color.l2d_cache mean_per_frame=97497 median=97471
+[COUNT] variant=split set=2 color.l2d_cache_refill mean_per_frame=10573 median=10785
+[COUNT] variant=split set=2 pad.cycles mean_per_frame=460013 median=459472
+[COUNT] variant=split set=2 pad.l1d_cache mean_per_frame=900175 median=900171
+[COUNT] variant=split set=2 pad.l1d_cache_refill mean_per_frame=52 median=51
+[COUNT] variant=split set=2 pad.l1d_tlb_refill mean_per_frame=49 median=49
+[COUNT] variant=split set=2 pad.l1i_cache_refill mean_per_frame=41 median=37
+[COUNT] variant=split set=2 pad.l2d_cache mean_per_frame=8550 median=8531
+[COUNT] variant=split set=2 pad.l2d_cache_refill mean_per_frame=78 median=75
+[COUNT] variant=split set=2 resize.cycles mean_per_frame=12194445 median=12160486
+[COUNT] variant=split set=2 resize.l1d_cache mean_per_frame=3456231 median=3456226
+[COUNT] variant=split set=2 resize.l1d_cache_refill mean_per_frame=61171 median=61163
+[COUNT] variant=split set=2 resize.l1d_tlb_refill mean_per_frame=389 median=387
+[COUNT] variant=split set=2 resize.l1i_cache_refill mean_per_frame=105 median=87
+[COUNT] variant=split set=2 resize.l2d_cache mean_per_frame=165969 median=165913
+[COUNT] variant=split set=2 resize.l2d_cache_refill mean_per_frame=14955 median=15409

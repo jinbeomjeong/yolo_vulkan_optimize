@@ -1,0 +1,23 @@
+[hevc @ 0x555621a83510] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[RESULT] variant=split frames=600 lb_total=7.3723 flatten=1.3440 transpose=0.4232 sync=0.0047 map=0.0592 color=2.0779 pad=0.1933 resize=5.0981
+[COUNT] variant=split set=1 color.br_mis_pred_retired mean_per_frame=372 median=371
+[COUNT] variant=split set=1 color.br_retired mean_per_frame=230880 median=230880
+[COUNT] variant=split set=1 color.cycles mean_per_frame=4963728 median=4961734
+[COUNT] variant=split set=1 color.inst_retired mean_per_frame=9221308 median=9221307
+[COUNT] variant=split set=1 color.inst_spec mean_per_frame=9227047 median=9227011
+[COUNT] variant=split set=1 color.stall_backend mean_per_frame=2652894 median=2651027
+[COUNT] variant=split set=1 color.stall_frontend mean_per_frame=3958 median=3805
+[COUNT] variant=split set=1 pad.br_mis_pred_retired mean_per_frame=293 median=292
+[COUNT] variant=split set=1 pad.br_retired mean_per_frame=180591 median=180591
+[COUNT] variant=split set=1 pad.cycles mean_per_frame=459426 median=459165
+[COUNT] variant=split set=1 pad.inst_retired mean_per_frame=1440673 median=1440672
+[COUNT] variant=split set=1 pad.inst_spec mean_per_frame=1452914 median=1452907
+[COUNT] variant=split set=1 pad.stall_backend mean_per_frame=4017 median=3751
+[COUNT] variant=split set=1 pad.stall_frontend mean_per_frame=3083 median=2886
+[COUNT] variant=split set=1 resize.br_mis_pred_retired mean_per_frame=381 median=380
+[COUNT] variant=split set=1 resize.br_retired mean_per_frame=230875 median=230875
+[COUNT] variant=split set=1 resize.cycles mean_per_frame=12167516 median=12152930
+[COUNT] variant=split set=1 resize.inst_retired mean_per_frame=17525766 median=17525766
+[COUNT] variant=split set=1 resize.inst_spec mean_per_frame=17529344 median=17529321
+[COUNT] variant=split set=1 resize.stall_backend mean_per_frame=6736925 median=6722709
+[COUNT] variant=split set=1 resize.stall_frontend mean_per_frame=6899 median=6179

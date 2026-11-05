@@ -1,0 +1,23 @@
+[hevc @ 0x5556543af510] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[RESULT] variant=nobranch frames=600 lb_total=7.8990 flatten=1.1380 transpose=0.4145 sync=0.0043 map=0.0587 content=7.6946 pad_bot=0.1008 pad_top=0.1032
+[COUNT] variant=nobranch set=2 content.cycles mean_per_frame=18432086 median=18410759
+[COUNT] variant=nobranch set=2 content.l1d_cache mean_per_frame=3456252 median=3456247
+[COUNT] variant=nobranch set=2 content.l1d_cache_refill mean_per_frame=30144 median=30149
+[COUNT] variant=nobranch set=2 content.l1d_tlb_refill mean_per_frame=263 median=262
+[COUNT] variant=nobranch set=2 content.l1i_cache_refill mean_per_frame=107 median=86
+[COUNT] variant=nobranch set=2 content.l2d_cache mean_per_frame=100576 median=100538
+[COUNT] variant=nobranch set=2 content.l2d_cache_refill mean_per_frame=6219 median=6199
+[COUNT] variant=nobranch set=2 pad_bot.cycles mean_per_frame=232353 median=231546
+[COUNT] variant=nobranch set=2 pad_bot.l1d_cache mean_per_frame=450189 median=450185
+[COUNT] variant=nobranch set=2 pad_bot.l1d_cache_refill mean_per_frame=41 median=41
+[COUNT] variant=nobranch set=2 pad_bot.l1d_tlb_refill mean_per_frame=28 median=28
+[COUNT] variant=nobranch set=2 pad_bot.l1i_cache_refill mean_per_frame=71 median=47
+[COUNT] variant=nobranch set=2 pad_bot.l2d_cache mean_per_frame=4351 median=4324
+[COUNT] variant=nobranch set=2 pad_bot.l2d_cache_refill mean_per_frame=98 median=76
+[COUNT] variant=nobranch set=2 pad_top.cycles mean_per_frame=233883 median=233624
+[COUNT] variant=nobranch set=2 pad_top.l1d_cache mean_per_frame=450218 median=450215
+[COUNT] variant=nobranch set=2 pad_top.l1d_cache_refill mean_per_frame=40 median=39
+[COUNT] variant=nobranch set=2 pad_top.l1d_tlb_refill mean_per_frame=28 median=28
+[COUNT] variant=nobranch set=2 pad_top.l1i_cache_refill mean_per_frame=99 median=97
+[COUNT] variant=nobranch set=2 pad_top.l2d_cache mean_per_frame=4363 median=4361
+[COUNT] variant=nobranch set=2 pad_top.l2d_cache_refill mean_per_frame=130 median=128

@@ -1,0 +1,23 @@
+[hevc @ 0x5555ce4af510] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[RESULT] variant=rowbuf frames=600 lb_total=7.4377 flatten=1.1802 transpose=0.4208 sync=0.0045 map=0.0606 content=7.2318 pad_bot=0.1010 pad_top=0.1038
+[COUNT] variant=rowbuf set=2 content.cycles mean_per_frame=17291129 median=17280363
+[COUNT] variant=rowbuf set=2 content.l1d_cache mean_per_frame=4841181 median=4841177
+[COUNT] variant=rowbuf set=2 content.l1d_cache_refill mean_per_frame=33494 median=33467
+[COUNT] variant=rowbuf set=2 content.l1d_tlb_refill mean_per_frame=272 median=270
+[COUNT] variant=rowbuf set=2 content.l1i_cache_refill mean_per_frame=109 median=91
+[COUNT] variant=rowbuf set=2 content.l2d_cache mean_per_frame=116348 median=116332
+[COUNT] variant=rowbuf set=2 content.l2d_cache_refill mean_per_frame=8130 median=8132
+[COUNT] variant=rowbuf set=2 pad_bot.cycles mean_per_frame=232281 median=231665
+[COUNT] variant=rowbuf set=2 pad_bot.l1d_cache mean_per_frame=450189 median=450188
+[COUNT] variant=rowbuf set=2 pad_bot.l1d_cache_refill mean_per_frame=39 median=39
+[COUNT] variant=rowbuf set=2 pad_bot.l1d_tlb_refill mean_per_frame=28 median=28
+[COUNT] variant=rowbuf set=2 pad_bot.l1i_cache_refill mean_per_frame=67 median=45
+[COUNT] variant=rowbuf set=2 pad_bot.l2d_cache mean_per_frame=4340 median=4318
+[COUNT] variant=rowbuf set=2 pad_bot.l2d_cache_refill mean_per_frame=96 median=76
+[COUNT] variant=rowbuf set=2 pad_top.cycles mean_per_frame=234269 median=234160
+[COUNT] variant=rowbuf set=2 pad_top.l1d_cache mean_per_frame=450233 median=450230
+[COUNT] variant=rowbuf set=2 pad_top.l1d_cache_refill mean_per_frame=39 median=38
+[COUNT] variant=rowbuf set=2 pad_top.l1d_tlb_refill mean_per_frame=28 median=28
+[COUNT] variant=rowbuf set=2 pad_top.l1i_cache_refill mean_per_frame=111 median=110
+[COUNT] variant=rowbuf set=2 pad_top.l2d_cache mean_per_frame=4375 median=4373
+[COUNT] variant=rowbuf set=2 pad_top.l2d_cache_refill mean_per_frame=140 median=140

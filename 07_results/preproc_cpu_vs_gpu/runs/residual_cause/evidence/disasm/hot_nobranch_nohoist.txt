@@ -1,0 +1,147 @@
+fmov	s30, s23
+fmov	s31, s21
+mov	w1, w4
+mov	w6, w5
+mov	w9, w13
+mov	w8, w14
+scvtf	s6, w11
+sub	w1, w1, #0x1
+sub	w6, w6, #0x1
+sub	w9, w9, #0x1
+sub	w8, w8, #0x1
+scvtf	s5, w1
+scvtf	s2, w6
+add	w11, w11, #0x1
+scvtf	s15, w9
+scvtf	s3, w8
+add	x10, x10, #0x3
+fadd	s6, s6, s28
+fmadd	s6, s22, s6, s20
+fcmpe	s6, #0.0
+fmul	s0, s6, s28
+fcsel	s6, s29, s6, mi
+fcmpe	s6, s5
+fcsel	s5, s5, s6, gt
+fcmpe	s30, #0.0
+fcvtzs	w21, s5
+fcsel	s30, s29, s30, mi
+add	w20, w21, #0x1
+scvtf	s14, w21
+fcmpe	s30, s2
+fsub	s5, s5, s14
+fcsel	s2, s2, s30, gt
+fcvtzs	w19, s2
+add	x22, x0, w19, sxtw
+ldr	b4, [x22, w21, sxtw]
+add	w30, w19, #0x1
+scvtf	s6, w19
+ucvtf	s4, s4
+cmp	w30, w6
+csel	w6, w30, w6, le
+add	x6, x0, w6, sxtw
+cmp	w20, w1
+csel	w1, w20, w1, le
+ldr	b30, [x6, w21, sxtw]
+fcmpe	s0, #0.0
+ldr	b1, [x6, w1, sxtw]
+fsub	s2, s2, s6
+ldr	b14, [x22, w1, sxtw]
+ucvtf	s30, s30
+fcsel	s6, s29, s0, mi
+ucvtf	s1, s1
+ucvtf	s14, s14
+fcmpe	s15, s6
+fsub	s1, s1, s30
+fsub	s14, s14, s4
+fcsel	s6, s15, s6, mi
+fcmpe	s31, #0.0
+fmadd	s30, s5, s1, s30
+fmadd	s4, s5, s14, s4
+fcvtzs	w1, s6
+fcsel	s31, s29, s31, mi
+lsl	w20, w1, #1
+scvtf	s15, w1
+add	w6, w1, #0x1
+fcmpe	s3, s31
+add	w21, w20, #0x1
+fsub	s30, s30, s4
+fsub	s6, s6, s15
+fcsel	s3, s3, s31, mi
+fmadd	s4, s2, s30, s4
+fcvtzs	w19, s3
+add	w1, w19, #0x1
+sxtw	x30, w19
+scvtf	s31, w19
+cmp	w1, w8
+csel	w1, w1, w8, le
+sxtw	x1, w1
+madd	x8, x30, x3, x2
+cmp	w6, w9
+csel	w6, w6, w9, le
+madd	x1, x1, x3, x2
+lsl	w6, w6, #1
+fsub	s4, s4, s7
+add	w9, w6, #0x1
+ldr	b5, [x8, w21, sxtw]
+fsub	s3, s3, s31
+ldr	b2, [x1, w21, sxtw]
+ldr	b14, [x1, w9, sxtw]
+ldr	b15, [x8, w9, sxtw]
+ucvtf	s5, s5
+ucvtf	s2, s2
+ldr	b1, [x1, w6, sxtw]
+ucvtf	s14, s14
+ldr	b0, [x8, w6, sxtw]
+ucvtf	s15, s15
+ldr	b31, [x8, w20, sxtw]
+ldr	b30, [x1, w20, sxtw]
+ucvtf	s1, s1
+fsub	s14, s14, s2
+ucvtf	s0, s0
+fsub	s15, s15, s5
+ucvtf	s31, s31
+ucvtf	s30, s30
+fmadd	s2, s6, s14, s2
+fmadd	s5, s6, s15, s5
+fsub	s0, s0, s31
+fsub	s1, s1, s30
+fmadd	s31, s6, s0, s31
+fmadd	s30, s6, s1, s30
+fsub	s2, s2, s5
+fmadd	s5, s3, s2, s5
+fsub	s30, s30, s31
+fmadd	s31, s3, s30, s31
+fsub	s5, s5, s24
+fmul	s5, s5, s25
+fsub	s31, s31, s24
+fmul	s6, s5, s16
+fmul	s31, s31, s25
+fmadd	s6, s4, s26, s6
+fmul	s30, s31, s17
+fmul	s31, s31, s19
+fnmsub	s30, s4, s26, s30
+fmadd	s31, s4, s26, s31
+fcmpe	s6, #0.0
+fmsub	s30, s5, s18, s30
+fcsel	s6, s29, s6, mi
+fcmpe	s6, s27
+fcsel	s6, s27, s6, gt
+fcmpe	s30, #0.0
+fadd	s6, s6, s28
+fcsel	s30, s29, s30, mi
+fcvtzu	s6, s6
+fcmpe	s30, s27
+stur	b6, [x10, #-3]
+fcsel	s30, s27, s30, gt
+fcmpe	s31, #0.0
+fadd	s30, s30, s28
+fcsel	s31, s29, s31, mi
+fcvtzu	s30, s30
+fcmpe	s31, s27
+stur	b30, [x10, #-2]
+fcsel	s31, s27, s31, gt
+fadd	s31, s31, s28
+fcvtzu	s31, s31
+stur	b31, [x10, #-1]
+cmp	w12, w11
+b.ne	f588

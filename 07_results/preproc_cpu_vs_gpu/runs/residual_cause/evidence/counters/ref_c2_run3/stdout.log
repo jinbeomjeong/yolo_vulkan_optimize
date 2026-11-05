@@ -1,0 +1,9 @@
+[hevc @ 0x5555bb883510] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+[RESULT] variant=ref frames=600 lb_total=8.8723 flatten=1.1872 transpose=0.4328 sync=0.0108 map=0.0586 all=8.8723
+[COUNT] variant=ref set=2 all.cycles mean_per_frame=21222889 median=21196324
+[COUNT] variant=ref set=2 all.l1d_cache mean_per_frame=4818087 median=4818059
+[COUNT] variant=ref set=2 all.l1d_cache_refill mean_per_frame=27859 median=27850
+[COUNT] variant=ref set=2 all.l1d_tlb_refill mean_per_frame=295 median=294
+[COUNT] variant=ref set=2 all.l1i_cache_refill mean_per_frame=132 median=114
+[COUNT] variant=ref set=2 all.l2d_cache mean_per_frame=108349 median=108312
+[COUNT] variant=ref set=2 all.l2d_cache_refill mean_per_frame=6561 median=6566

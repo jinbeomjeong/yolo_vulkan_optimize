@@ -1,0 +1,8 @@
+date: 2026-11-06T00:47:37+09:00
+soc: 69.7 throttled=0xe0000
+arm: frequency(0)=2400037120
+tool md5: 6ac80e88af6c0f5473032bb0e3b9beb4
+probe md5: 34e16ba74be270036a8524896e283519
+git: 5223a26e4c6089b30b6149fbe8a8fb45c68e5ce7 dirty: 0
+variants: tool_ref tool_split ref ref3 split split_nohoist nobranch nobranch_nohoist rowbuf local_params hoist_y hoist_all local_hoist rowsplit ref_notrap ref_copy0 ref_copy1 ref_copy2 ref_copy3  runs: 5  counters: 
+soc end: 70.3 throttled=0xe0000
