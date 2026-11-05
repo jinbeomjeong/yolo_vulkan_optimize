@@ -81,6 +81,7 @@ configs=(
   "post_host|--layout nhcw --postproc host"
   "nms_cpu|--layout nhcw --postproc gpu --nms cpu"
   "input_copy|--layout nhcw --postproc gpu --nms gpu --input-copy"
+  "display_off|--layout nhcw --postproc gpu --nms gpu --display off"   # base without display (later --display wins); no RESULT_CSV5
 )
 
 # Read-only display guards, same as input_pace_bench.sh.

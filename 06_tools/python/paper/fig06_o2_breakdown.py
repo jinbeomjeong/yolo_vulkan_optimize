@@ -11,6 +11,9 @@ Segments are time-point differences of frame_log.csv (01_src/toolkit/frame_log.h
   display  present - complete        display conversion, display queue and the vblank wait.
 A segment value is the median over the 3 runs of the per-run frame mean. The bold totals are the canonical numbers (median of the
 per-run totals). A sum of medians is not the median of the sums, so the two can differ slightly; load_row() bounds the gap.
+The small text under each total is the min-max of the 3 per-run totals (results_raw.csv e2e_arr_mean, RESULT_CSV5 a2p_mean);
+the arrival-to-screen range is also drawn as a whisker at the bar's end. The processing period in the wait note is 1000 / fps_median
+of the same row; has_b_frames is the "stream reorder N" of each run's stdout.log (FfmpegDrmDecoder::reorder_frames()).
 """
 from __future__ import annotations
 
@@ -41,9 +44,12 @@ SEGMENT_COLORS = {"decode": ps.DEVICE_COLORS["decoder"], "wait": WAIT_COLOR, "np
                   "post": ps.DEVICE_COLORS["gpu"], "display": ps.DEVICE_COLORS["display"]}
 
 BAR_HEIGHT = 0.36
-X_HEADROOM = 1.13                    # room for the bold arrival-to-screen total
+X_HEADROOM = 1.15                    # room for the bold arrival-to-screen total and its range
+RANGE_FONT_SIZE = ps.FONT_SIZE - 1.5 # the 3-run min-max under each total
+WHISKER_CAP = 0.07                   # half height of the whisker caps, y data units
 INSIDE_LABEL_MIN_MS = 4.0            # narrower segments get their label above the bar
-AXES_LEFT, AXES_RIGHT, AXES_BOTTOM, AXES_TOP = 0.135, 0.985, 0.205, 0.84
+FIG_HEIGHT_CM = 9.0
+AXES_LEFT, AXES_RIGHT, AXES_BOTTOM, AXES_TOP = 0.135, 0.985, 0.225, 0.858
 HATCH_WIDTH = 0.45
 NOTE_X = 0.008
 WAIT_NOTE_GAP = 1.0                  # ms between a wait segment's start and its note
@@ -117,6 +123,12 @@ def read_csv5(path: Path, label: str) -> tuple[float, float, int]:
     return float(m.group(1)), float(m.group(2)), int(m.group(3))
 
 
+def read_stream_reorder(path: Path) -> int | None:
+    """has_b_frames of the stream from the '--input-live' summary line of stdout.log, None without live input."""
+    m = re.search(r"^input live: .*\(.*stream reorder (\d+)\)", path.read_text(encoding="utf-8"), re.M)
+    return int(m.group(1)) if m else None
+
+
 def load_row(src: Source) -> dict:
     """Segment medians, canonical totals and the checks of one row. Raises ValueError when a check fails."""
     raw = {int(r["run"]): r for r in ps.read_csv(src.run_dir / "results_raw.csv") if r["label"] == src.label}
@@ -127,6 +139,7 @@ def load_row(src: Source) -> dict:
     a2p_means: list[float] = []
     a2p_medians: list[float] = []
     peaks: list[str] = []
+    stream_reorder: set[int | None] = set()
     for run in RUNS:
         folder = src.run_dir / "raw" / f"{src.prefix}_run{run}"
         row = raw[run]
@@ -144,6 +157,9 @@ def load_row(src: Source) -> dict:
         a2p_means.append(a2p_mean)
         a2p_medians.append(a2p_median)
         peaks.append(histogram_peaks(folder / "frame_log.csv"))
+        stream_reorder.add(read_stream_reorder(folder / "stdout.log"))
+    if len(stream_reorder) != 1:
+        raise ValueError(f"{src.key}: stream reorder differs between runs: {stream_reorder}")
 
     out = {name: statistics.median(m[name] for m in per_run) for name, _, _ in SEGMENTS}
     out["to_result"] = float(summary["e2e_arr_mean_median"])
@@ -155,7 +171,8 @@ def load_row(src: Source) -> dict:
     _check(f"{src.key} segment medians vs arrival-to-result", out["gap_result"], 0.0, MEDIAN_SUM_TOLERANCE)
     _check(f"{src.key} segment medians vs arrival-to-screen", out["gap_present"], 0.0, MEDIAN_SUM_TOLERANCE)
     out.update(
-        result_range=(min(m["to_result"] for m in per_run), max(m["to_result"] for m in per_run)),
+        frame_log_result_range=(min(m["to_result"] for m in per_run), max(m["to_result"] for m in per_run)),
+        result_range=(min(float(raw[r]["e2e_arr_mean"]) for r in RUNS), max(float(raw[r]["e2e_arr_mean"]) for r in RUNS)),
         present_range=(min(a2p_means), max(a2p_means)),
         a2p_medians=a2p_medians,
         peaks=peaks,
@@ -166,7 +183,10 @@ def load_row(src: Source) -> dict:
         wait_p90=float(summary["queue_wait_p90_median"]),
         src_fps=float(summary["src_fps_median"]),
         reorder=int(float(summary["live_reorder_median"])) if "live_reorder_median" in summary else 0,
+        has_b_frames=stream_reorder.pop(),
     )
+    if out["reorder"] > 0 and out["has_b_frames"] is None:
+        raise ValueError(f"{src.key}: live reorder {out['reorder']} but no 'stream reorder' in stdout.log")
     return out
 
 
@@ -191,23 +211,39 @@ def _draw_row(ax, y: int, v: dict) -> None:
 def _annotate_row(ax, y: int, v: dict) -> None:
     """The result marker below the bar, the screen total at the bar's end, the wait notes above the bar."""
     top = y - BAR_HEIGHT / 2 - 0.05
-    ax.text(v["decode"] + WAIT_NOTE_GAP, top, f"입력 큐 대기(30 fps 도착↔NPU 주기)\np90 {ps.fmt_half_up(v['wait_p90'], 1)} ms",
+    arrival_period, processing_period = 1000.0 / v["src_fps"], 1000.0 / v["fps"]
+    ax.text(v["decode"] + WAIT_NOTE_GAP, top,
+            f"입력 큐 대기: {ps.fmt_half_up(v['src_fps'], 0)} fps 도착({ps.fmt_half_up(arrival_period, 1)} ms)↔"
+            f"처리 주기(약 {ps.fmt_half_up(processing_period, 0)} ms)\np90 {ps.fmt_half_up(v['wait_p90'], 1)} ms",
             ha="left", va="bottom", linespacing=1.1)
     if v["reorder"] > 0:
-        period = 1000.0 / v["src_fps"]
-        ax.text(v["decode"] / 2, top, f"재정렬 {v['reorder']}패킷({ps.fmt_half_up(period, 0)} ms)\n대기 포함",
+        ax.text(v["decode"] / 2, top, f"재정렬 지연 {v['reorder']}패킷\n(has_b_frames = {v['has_b_frames']}) 포함",
                 ha="center", va="bottom", linespacing=1.1)
     result_x = sum(v[n] for n in RESULT_SEGMENTS)
     bottom = y + BAR_HEIGHT / 2
     ax.plot([result_x, result_x], [y - BAR_HEIGHT / 2, bottom + 0.07], color=ps.EDGE_COLOR, lw=0.9, clip_on=False)
-    ax.text(result_x, bottom + 0.08, f"도착→결과 {ps.fmt_half_up(v['to_result'], 2)}", ha="center", va="top", fontweight="bold")
-    ax.text(result_x + v["display"] + 1.0, y, f"도착→화면\n{ps.fmt_half_up(v['to_present'], 2)}", ha="left", va="center",
-            fontweight="bold", linespacing=1.1)
+    result_text = ax.text(result_x, bottom + 0.08, f"도착→결과 {ps.fmt_half_up(v['to_result'], 2)}", ha="center", va="top",
+                          fontweight="bold")
+    ax.annotate(f"3회 {_range_text(v['result_range'])}", xy=(0.5, 0.0), xycoords=result_text, xytext=(0, -1),
+                textcoords="offset points", ha="center", va="top", fontsize=RANGE_FONT_SIZE)
+    end_x = result_x + v["display"]
+    low, high = v["present_range"]
+    ax.plot([low, high], [y, y], color=ps.EDGE_COLOR, lw=0.7, solid_capstyle="butt")
+    for x in (low, high):
+        ax.plot([x, x], [y - WHISKER_CAP, y + WHISKER_CAP], color=ps.EDGE_COLOR, lw=0.7)
+    present_text = ax.text(max(end_x, high) + 1.0, y, f"도착→화면\n{ps.fmt_half_up(v['to_present'], 2)}", ha="left", va="center",
+                           fontweight="bold", linespacing=1.1)
+    ax.annotate(f"3회 {_range_text(v['present_range'])}", xy=(0.0, 0.0), xycoords=present_text, xytext=(0, -1),
+                textcoords="offset points", ha="left", va="top", fontsize=RANGE_FONT_SIZE)
+
+
+def _range_text(r: tuple[float, float]) -> str:
+    return f"{ps.fmt_half_up(r[0], 2)}~{ps.fmt_half_up(r[1], 2)}"
 
 
 def main(out_dir: str | Path | None = None) -> list[Path]:
     rows = [load_row(src) for src in SOURCES]
-    fig, ax = ps.new_figure("double", 8.0, layout="none")
+    fig, ax = ps.new_figure("double", FIG_HEIGHT_CM, layout="none")
     plt.rcParams["hatch.linewidth"] = HATCH_WIDTH
     fig.subplots_adjust(left=AXES_LEFT, right=AXES_RIGHT, bottom=AXES_BOTTOM, top=AXES_TOP)
     for y, v in enumerate(rows):
@@ -228,19 +264,23 @@ def main(out_dir: str | Path | None = None) -> list[Path]:
                Patch(fc=SEGMENT_COLORS["display"], ec=ps.EDGE_COLOR, lw=0.4, label="결과→화면(표시, 수직동기 대기 포함)")]
     fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 1.0), ncols=3, columnspacing=1.2, handlelength=1.6)
     note = ("처리된 프레임의 구간별 평균(실행별 평균의 3회 중앙값). 굵은 전체 값은 전체 평균의 3회 중앙값이라 구간 합과 "
-            f"최대 {ps.fmt_half_up(max(abs(v[k]) for v in rows for k in ('gap_result', 'gap_present')), 2)} ms 다르다.")
-    fig.text(NOTE_X, NOTE_Y, note, ha="left", va="bottom")
+            f"최대 {ps.fmt_half_up(max(abs(v[k]) for v in rows for k in ('gap_result', 'gap_present')), 2)} ms 다르다.\n"
+            "작은 글씨와 막대 끝 수염은 전체 평균의 3회 최소~최대.")
+    fig.text(NOTE_X, NOTE_Y, note, ha="left", va="bottom", linespacing=1.2)
 
     lines: list[str] = []
     for src, v in zip(SOURCES, rows):
         parts = [f"{n} {v[n]:.3f}" for n, _, _ in SEGMENTS]
         lines += [f"{src.key}: {', '.join(parts)}",
-                  f"{src.key}: arrival-to-result {v['to_result']:.2f} range {v['result_range'][0]:.3f}..{v['result_range'][1]:.3f}, "
+                  f"{src.key}: arrival-to-result {v['to_result']:.2f} range {v['result_range'][0]:.2f}..{v['result_range'][1]:.2f} "
+                  f"(frame logs {v['frame_log_result_range'][0]:.3f}..{v['frame_log_result_range'][1]:.3f}), "
                   f"segment-median sum gap {v['gap_result']:+.3f}",
                   f"{src.key}: arrival-to-screen {v['to_present']:.2f} range {v['present_range'][0]:.2f}..{v['present_range'][1]:.2f}, "
                   f"segment-median sum gap {v['gap_present']:+.3f}",
                   f"{src.key}: per-run a2p medians {v['a2p_medians']}, processed {v['processed']} of {v['arrived']}, "
-                  f"fps {v['fps']:.2f}, npu_ms_mean {v['npu_call']:.2f}, wait p90 {v['wait_p90']:.3f}, reorder {v['reorder']}"]
+                  f"fps {v['fps']:.2f} (period {1000.0 / v['fps']:.2f} ms), src_fps {v['src_fps']:.2f}, "
+                  f"npu_ms_mean {v['npu_call']:.2f}, wait p90 {v['wait_p90']:.3f}, reorder {v['reorder']}, "
+                  f"has_b_frames {v['has_b_frames']}"]
         lines += [f"{src.key}: run {r} a2p bins ({HIST_BIN_MS} ms, >= {HIST_MIN_FRAMES} frames) {p}" for r, p in zip(RUNS, v["peaks"])]
     paths = ps.save(fig, ps.resolve_out_dir(out_dir), STEM)
     sources = [s.run_dir / "results.csv" for s in SOURCES] + [s.run_dir / "results_raw.csv" for s in SOURCES] + \

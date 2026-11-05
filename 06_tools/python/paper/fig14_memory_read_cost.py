@@ -4,16 +4,19 @@ The cost is in small CPU loads from non-cached memory; CPU writes to that memory
 Linear axis, so the size of the difference stays visible. Bars are medians of per-run medians with a min-max range over 3 runs.
 Sources (under 07_results):
   CPU reads   gpu_postprocess/runs/stride_read/evidence/stride_run{1,2,3}.txt: per-run median_ms of the fixed-format table.
-              Rows v3d seq_byte, v3d seq_memcpy, v3d and malloc stride3_byte; heap stride3_byte goes into a label because
+              Rows v3d seq_byte, v3d seq_memcpy, v3d and malloc stride3_byte, v3d stride3_auto (the same transpose
+              auto-vectorized to NEON ld3, stride_read/summary.md §2.1); heap stride3_byte goes into a label because
               summary.md §4 calls malloc an optimistic reference.
   CPU writes  memory_asymmetry/raw/cpuwrite_run{1,2,3}/stdout.log: v3d memcpy, v3d seq_byte; checked against evidence/medians.txt §4.
-  GPU read    memory_asymmetry/raw/bw_r256x3_run{1,2,3}/stdout.log: v3d read_v4 at 1,228,800 B, raw GB/s (with the per-dispatch
-              fixed cost), checked against evidence/medians.txt §1. Converted to ms: it was measured as a bandwidth.
-              The bandwidth depends strongly on the dispatch shape (memory_asymmetry/summary.md §4); the caption says so.
+  GPU read    memory_asymmetry/raw/bw_r256x3_run{1,2,3}/stdout.log: v3d read_u32 and read_v4 at 1,228,800 B, raw GB/s (with the
+              per-dispatch fixed cost), checked against evidence/medians.txt §1. Converted to ms: it was measured as a bandwidth.
+              The bandwidth depends strongly on the dispatch shape (memory_asymmetry/summary.md §4); the note gives the min-max
+              of the read rows at this size in the exploratory sweep evidence/bw_shape_sweep.tsv.
 The dates, governors and V3D clocks of the two sessions are read from each env_bench.txt.
 """
 from __future__ import annotations
 
+import csv
 import re
 import sys
 from dataclasses import dataclass
@@ -29,21 +32,26 @@ STEM = "fig14_memory_read_cost"
 STRIDE_DIR = ps.RESULTS / "gpu_postprocess" / "runs" / "stride_read"
 ASYM_DIR = ps.RESULTS / "memory_asymmetry"
 MEDIANS = ASYM_DIR / "evidence" / "medians.txt"
+SHAPE_SWEEP = ASYM_DIR / "evidence" / "bw_shape_sweep.tsv"
 RUNS = (1, 2, 3)
 BUFFER_BYTES = 1228800               # checked against both sessions in load()
 
 GPU_MEM_COLOR = ps.PALETTE[3]        # memory types are not processing units: Okabe-Ito, not the device colors
 CACHED_MEM_COLOR = ps.PALETTE[0]
-GPU_MEM_LABEL = "GPU 메모리(V3D, 비캐시 매핑)"
+GPU_MEM_LABEL = "V3D 메모리(CPU 매핑은 비캐시)"
 CACHED_MEM_LABEL = "일반 캐시 메모리(malloc, 낙관적 기준)"
 CONVERTED_HATCH = "////"
+CONVERTED_LABEL = "대역폭 환산값"
+GPU_KERNELS = (("read_u32", "uint"), ("read_v4", "uvec4"))   # medians.txt kernel name, access width in the label
 
 BAR_HEIGHT = 0.56
 PAIR_HEIGHT = 0.34                   # the two bars of the transpose row
 X_HEADROOM = 1.3                     # room for the labels and the date column right of the longest bar
 X_TICK_STEP = 2.0
 LABEL_GAP = 0.008                    # share of x_max between a whisker end and its value label
-AXES_LEFT, AXES_RIGHT, AXES_BOTTOM, AXES_TOP = 0.2, 0.985, 0.25, 0.93
+FIG_HEIGHT_CM = 10.8
+AXES_LEFT, AXES_RIGHT, AXES_BOTTOM, AXES_TOP = 0.2, 0.985, 0.22, 0.947
+LEGEND_ANCHOR = (0.84, 0.378)        # axes coordinates of the legend's right edge, between the two separators
 HATCH_WIDTH = 0.45
 NOTE_X = 0.008
 NOTE_Y = 0.012                       # figure coordinates
@@ -82,9 +90,9 @@ def load_stride() -> dict[tuple[str, str], Value]:
         _search(path, r"^\[RESULT\] stride PASS$", text)
         _search(path, r"^\[validation\] errors=0 ", text)
         _check(f"{ps.rel(path)} buffer", int(_search(path, r"= (\d+) B ", text).group(1)), BUFFER_BYTES, 0)
-        rows = re.findall(r"^(v3d|malloc|heap)\s+(seq_memcpy|seq_byte|stride3_byte)\s+([\d.]+)\s", text, re.M)
-        if len(rows) != 9:
-            raise ValueError(f"{ps.rel(path)}: expected 9 table rows, found {len(rows)}")
+        rows = re.findall(r"^(v3d|malloc|heap)\s+(seq_memcpy|seq_byte|stride3_byte|stride3_auto)\s+([\d.]+)\s", text, re.M)
+        if len(rows) != 12:
+            raise ValueError(f"{ps.rel(path)}: expected 12 table rows, found {len(rows)}")
         for alloc, pattern, ms in rows:
             samples.setdefault((alloc, pattern), []).append(float(ms))
     return {key: _stats(v) for key, v in samples.items()}
@@ -133,17 +141,28 @@ def _two(x: float) -> str:
     return ps.fmt_half_up(x, 2)
 
 
-def load_gpu_read() -> tuple[Value, Value, float]:
-    """V3D read_v4 of the 1.2 MB buffer: (time in ms from raw GB/s, the raw GB/s, the net GB/s median for the caption)."""
+def load_gpu_read(kernel: str) -> tuple[Value, Value, float]:
+    """V3D read of the 1.2 MB buffer by one kernel: (time in ms from raw GB/s, the raw GB/s, the net GB/s median for the audit)."""
     raw: list[float] = []
     for run in RUNS:
         path = ASYM_DIR / "raw" / f"bw_r256x3_run{run}" / "stdout.log"
-        raw.append(float(_search(path, rf"^{BUFFER_BYTES}\s+read_v4\s+v3d\s+([\d.]+)\s").group(1)))
+        raw.append(float(_search(path, rf"^{BUFFER_BYTES}\s+{kernel}\s+v3d\s+([\d.]+)\s").group(1)))
     gbps = _stats(raw)
-    m = _search(MEDIANS, rf"^bw_r256x3\s+{BUFFER_BYTES}\s+read_v4\s+v3d\s+([\d.]+) \[[\d.]+\.\.[\d.]+\]\s+([\d.]+)",
+    m = _search(MEDIANS, rf"^bw_r256x3\s+{BUFFER_BYTES}\s+{kernel}\s+v3d\s+([\d.]+) \[[\d.]+\.\.[\d.]+\]\s+([\d.]+)",
                 _medians_section("1. GPU bandwidth"))
-    _check("medians.txt v3d read_v4", gbps.median, float(m.group(1)), MEDIANS_TOLERANCE)
+    _check(f"medians.txt v3d {kernel}", gbps.median, float(m.group(1)), MEDIANS_TOLERANCE)
     return Value(_gbps_to_ms(gbps.median), _gbps_to_ms(gbps.high), _gbps_to_ms(gbps.low)), gbps, float(m.group(2))
+
+
+def load_shape_sweep() -> tuple[float, float, int]:
+    """(min, max, rows) of the GPU read bandwidths at BUFFER_BYTES over all kernels and shapes of the exploratory sweep."""
+    lines = [ln for ln in SHAPE_SWEEP.read_text(encoding="utf-8").splitlines() if ln and not ln.startswith("#")]
+    table = list(csv.DictReader(lines, delimiter="\t"))
+    rows = [r for r in table if int(r["size_B"]) == BUFFER_BYTES and r["kernel"].startswith("read_")]
+    if not rows:
+        raise ValueError(f"{ps.rel(SHAPE_SWEEP)}: no read rows at {BUFFER_BYTES} B")
+    values = [float(r["GBps_median"]) for r in rows]
+    return min(values), max(values), len(rows)
 
 
 def load_sessions() -> dict[str, dict[str, str]]:
@@ -164,46 +183,58 @@ def _bar(ax, y: float, height: float, v: Value, color: str, x_max: float, text: 
     ax.text(v.high + x_max * LABEL_GAP, y, text, ha="left", va="center")
 
 
+def _sweep_text(x: float) -> str:
+    """At least two significant figures for the note's sweep range (0.772 -> 0.77, 10.631 -> 10.6)."""
+    return ps.fmt_half_up(x, 2 if x < 1 else 1)
+
+
 def main(out_dir: str | Path | None = None) -> list[Path]:
     _check_passed_runs()
     stride, writes, sessions = load_stride(), load_cpu_writes(), load_sessions()
-    gpu_ms, gpu_gbps, gpu_net = load_gpu_read()
+    gpu = {kernel: load_gpu_read(kernel) for kernel, _ in GPU_KERNELS}
+    sweep_low, sweep_high, sweep_rows = load_shape_sweep()
     read_date, asym_date = sessions["stride"]["date"], sessions["asym"]["date"]
 
-    fig, ax = ps.new_figure("double", 8.2, layout="none")
+    fig, ax = ps.new_figure("double", FIG_HEIGHT_CM, layout="none")
     fig.subplots_adjust(left=AXES_LEFT, right=AXES_RIGHT, bottom=AXES_BOTTOM, top=AXES_TOP)
     x_max = stride[("v3d", "seq_byte")].high * X_HEADROOM
     plt.rcParams["hatch.linewidth"] = HATCH_WIDTH
 
     gpu_byte, gpu_tr, cached_tr = stride[("v3d", "seq_byte")], stride[("v3d", "stride3_byte")], stride[("malloc", "stride3_byte")]
-    heap_tr, gpu_copy = stride[("heap", "stride3_byte")], stride[("v3d", "seq_memcpy")]
+    heap_tr, gpu_copy, gpu_ld3 = stride[("heap", "stride3_byte")], stride[("v3d", "seq_memcpy")], stride[("v3d", "stride3_auto")]
     _bar(ax, 0, BAR_HEIGHT, gpu_byte, GPU_MEM_COLOR, x_max, _two(gpu_byte.median))
     _bar(ax, 1 - PAIR_HEIGHT / 2, PAIR_HEIGHT, gpu_tr, GPU_MEM_COLOR, x_max, _two(gpu_tr.median))
     _bar(ax, 1 + PAIR_HEIGHT / 2, PAIR_HEIGHT, cached_tr, CACHED_MEM_COLOR, x_max,
          f"{_two(cached_tr.median)} (캐시 dma-heap {_two(heap_tr.median)})")
-    _bar(ax, 2, BAR_HEIGHT, gpu_copy, GPU_MEM_COLOR, x_max, _two(gpu_copy.median))
-    _bar(ax, 3, BAR_HEIGHT, writes["seq_byte"], GPU_MEM_COLOR, x_max, _two(writes["seq_byte"].median))
-    _bar(ax, 4, BAR_HEIGHT, writes["memcpy"], GPU_MEM_COLOR, x_max, _two(writes["memcpy"].median))
-    _bar(ax, 5, BAR_HEIGHT, gpu_ms, GPU_MEM_COLOR, x_max, f"{_two(gpu_ms.median)} (대역폭 환산)", hatch=CONVERTED_HATCH)
+    _bar(ax, 2, BAR_HEIGHT, gpu_ld3, GPU_MEM_COLOR, x_max, _two(gpu_ld3.median))
+    _bar(ax, 3, BAR_HEIGHT, gpu_copy, GPU_MEM_COLOR, x_max, _two(gpu_copy.median))
+    _bar(ax, 4, BAR_HEIGHT, writes["seq_byte"], GPU_MEM_COLOR, x_max, _two(writes["seq_byte"].median))
+    _bar(ax, 5, BAR_HEIGHT, writes["memcpy"], GPU_MEM_COLOR, x_max, _two(writes["memcpy"].median))
+    gpu_labels = []
+    for y, (kernel, width) in enumerate(GPU_KERNELS, start=6):
+        ms, gbps, _ = gpu[kernel]
+        _bar(ax, y, BAR_HEIGHT, ms, GPU_MEM_COLOR, x_max, f"{_two(ms.median)} (대역폭 환산)", hatch=CONVERTED_HATCH)
+        gpu_labels.append(f"GPU 읽기({width} 접근)\n({ps.fmt_half_up(gbps.median, 2)} GB/s에서 환산)")
 
-    ax.set_yticks(range(6), ["CPU 1바이트 읽기", "CPU 전치 루프\n(1바이트, stride 3)", "CPU memcpy 읽기", "CPU 1바이트 쓰기",
-                             "CPU memcpy 쓰기", f"GPU 읽기\n({ps.fmt_half_up(gpu_gbps.median, 2)} GB/s에서 환산)"])
-    ax.set_ylim(5.6, -0.6)
+    ax.set_yticks(range(8), ["CPU 1바이트 읽기", "CPU 전치 루프\n(1바이트, stride 3)", "CPU 전치 루프\n(NEON ld3 자동 벡터화)",
+                             "CPU memcpy 읽기", "CPU 1바이트 쓰기", "CPU memcpy 쓰기", *gpu_labels])
+    ax.set_ylim(7.6, -0.6)
     ax.set_xlim(0, x_max)
     ax.xaxis.set_major_locator(MultipleLocator(X_TICK_STEP))
     ax.grid(axis="y", visible=False)
     ax.set_xlabel(f"{BUFFER_BYTES:,} B 접근 시간 (ms)")
-    for y in (2.5, 4.5):                 # CPU read / CPU write / GPU read
+    for y in (3.5, 5.5):                 # CPU read / CPU write / GPU read
         ax.axhline(y, color=ps.REFERENCE_COLOR, lw=0.5, ls=(0, (3, 2)))
 
     date_x = ax.get_yaxis_transform()    # x in axes coordinates, y in data coordinates
-    for y, date in ((0, read_date), (1, read_date), (2, read_date), (3, asym_date), (4, asym_date), (5, asym_date)):
-        ax.text(1.0, y, date, transform=date_x, ha="right", va="center", color=ps.REFERENCE_COLOR)
+    for y in range(8):
+        ax.text(1.0, y, read_date if y < 4 else asym_date, transform=date_x, ha="right", va="center", color=ps.REFERENCE_COLOR)
     ax.text(1.0, -0.6, "측정일", transform=date_x, ha="right", va="bottom", color=ps.REFERENCE_COLOR)
 
     handles = [Patch(fc=GPU_MEM_COLOR, ec=ps.EDGE_COLOR, lw=0.4, label=GPU_MEM_LABEL),
-               Patch(fc=CACHED_MEM_COLOR, ec=ps.EDGE_COLOR, lw=0.4, label=CACHED_MEM_LABEL)]
-    ax.legend(handles=handles, loc="center right", bbox_to_anchor=(0.84, 0.3), handlelength=1.6)
+               Patch(fc=CACHED_MEM_COLOR, ec=ps.EDGE_COLOR, lw=0.4, label=CACHED_MEM_LABEL),
+               Patch(fc="white", ec=ps.EDGE_COLOR, lw=0.4, hatch=CONVERTED_HATCH, label=CONVERTED_LABEL)]
+    ax.legend(handles=handles, loc="center right", bbox_to_anchor=LEGEND_ANCHOR, handlelength=1.6)
 
     conditions = {(s["governor"], s["v3d"]) for s in sessions.values()}
     if len(conditions) != 1:
@@ -211,22 +242,27 @@ def main(out_dir: str | Path | None = None) -> list[Path]:
     governor, v3d = conditions.pop()
     fig.text(NOTE_X, NOTE_Y, f"두 회차 공통: 거버너 {governor}, V3D {v3d} MHz, NPU·표시 미사용, CPU 측정 코어 3 고정. "
              "막대는 실행별 중앙값의 3회 중앙값, 수염은 최소~최대.\n"
-             "GPU 읽기는 uvec4 접근, 디스패치 형태 256×3, 디스패치 고정비 포함 값이며 형태에 따라 크게 달라진다.",
+             "GPU 읽기는 디스패치 형태 256×3, 디스패치 고정비 포함 대역폭을 시간으로 환산한 값이며 형태에 따라 크게 달라진다.\n"
+             f"형태 스윕(예비)에서 같은 크기의 GPU 읽기 대역폭은 {_sweep_text(sweep_low)}~{_sweep_text(sweep_high)} GB/s였다.",
              ha="left", va="bottom", linespacing=1.2)
 
     lines = [f"{read_date} stride_read governor {sessions['stride']['governor']}, V3D {sessions['stride']['v3d']} MHz",
              f"{asym_date} memory_asymmetry governor {sessions['asym']['governor']}, V3D {sessions['asym']['v3d']} MHz"]
     for name, v in (("CPU seq_byte read v3d", gpu_byte), ("CPU transpose v3d", gpu_tr), ("CPU transpose malloc", cached_tr),
-                    ("CPU transpose heap", heap_tr), ("CPU memcpy read v3d", gpu_copy),
+                    ("CPU transpose heap", heap_tr), ("CPU transpose ld3 (stride3_auto) v3d", gpu_ld3),
+                    ("CPU memcpy read v3d", gpu_copy),
                     ("CPU seq_byte write v3d", writes["seq_byte"]), ("CPU memcpy write v3d", writes["memcpy"])):
         lines.append(f"{name}: {v.median:.3f} [{v.low:.3f}..{v.high:.3f}] -> {_two(v.median)}")
-    lines.append(f"GPU read_v4 v3d raw {gpu_gbps.median:.3f} GB/s [{gpu_gbps.low:.3f}..{gpu_gbps.high:.3f}] -> "
-                 f"{gpu_ms.median:.4f} ms -> {_two(gpu_ms.median)}; net {gpu_net:.3f} GB/s -> "
-                 f"{_gbps_to_ms(gpu_net):.4f} ms (caption only)")
+    for kernel, _ in GPU_KERNELS:
+        ms, gbps, net = gpu[kernel]
+        lines.append(f"GPU {kernel} v3d raw {gbps.median:.3f} GB/s [{gbps.low:.3f}..{gbps.high:.3f}] -> "
+                     f"{ms.median:.4f} ms -> {_two(ms.median)}; net {net:.3f} GB/s -> {_gbps_to_ms(net):.4f} ms (audit only)")
+    lines.append(f"shape sweep reads at {BUFFER_BYTES} B: {sweep_rows} rows, {sweep_low:.3f}..{sweep_high:.3f} GB/s -> "
+                 f"{_sweep_text(sweep_low)}~{_sweep_text(sweep_high)}")
     paths = ps.save(fig, ps.resolve_out_dir(out_dir), STEM)
     ps.report(STEM, [STRIDE_DIR / "evidence" / "stride_run1.txt", STRIDE_DIR / "env_bench.txt", MEDIANS,
                      ASYM_DIR / "raw" / "cpuwrite_run1" / "stdout.log", ASYM_DIR / "raw" / "bw_r256x3_run1" / "stdout.log",
-                     ASYM_DIR / "env_bench.txt"], lines)
+                     ASYM_DIR / "env_bench.txt", SHAPE_SWEEP], lines)
     return paths
 
 
