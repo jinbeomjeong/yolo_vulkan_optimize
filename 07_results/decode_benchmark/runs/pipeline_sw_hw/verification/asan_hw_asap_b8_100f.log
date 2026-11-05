@@ -1,0 +1,26 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[cfg] video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 1920x1080 mode=dmabuf layout=nhcw batch=8 slots=16 gpu_depth=3 postproc=gpu/export device=V3D 7.1.10.2
+[hevc @ 0x518000010c80] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+== yvo_pipeline (dmabuf, nhcw, batch 8, slots 16, gpu_depth 3, postproc gpu/export) ==
+frames          100 (decoded 100, errors 0)
+wall            2.001 s, 49.98 FPS
+cpu             2.540 ms/frame (process user+sys 254.0 ms, 13% of one core)
+decode call ms  mean 3.470  median 3.809  p90 6.205  max 12.984
+gpu shader ms   mean 1.912  median 1.866  p90 2.066  max 2.960
+npu latency ms  mean 281.377  median 294.172  p90 303.376  max 409.474
+e2e latency ms  mean 317.594  median 306.220  p90 429.713  max 540.861  (decode return → NPU completion callback)
+slot wait ms    mean 13.575  p90 104.001  (time the main thread waited for a free slot)
+gpu post ms     mean 0.492  median 0.455  p90 0.524  max 2.301  (yolo_decode.comp pass 1)
+cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+nms backend     gpu
+gpu nms ms      mean 0.0471  median 0.0455  p90 0.0556  max 0.0612  (efficient_nms.comp)
+nms fallback    0 frames (capacity 0, iou guard 0)
+candidates      mean 13.36  max 30  overflow frames 0
+slot hold ms    mean 16.817  median 4.795  p90 18.834  max 244.939  (NPU completion callback → slot return)
+held frames max 2 (decoder limit about 13), slot timeout 0
+detections      203 total, 2.03 / frame
+hailo chip temp 50.0 -> 52.5 C
+soc temp        73.6 -> 69.2 C
+vk validation   errors 0, warnings 1
+thread cpu      yvo_pip:disk$        threads  1        0.0 ms    0.000 ms/arrived    0.000 ms/processed
+thread cpu      yvo_pipeline         threads  9      254.6 ms    2.546 ms/arrived    2.546 ms/processed

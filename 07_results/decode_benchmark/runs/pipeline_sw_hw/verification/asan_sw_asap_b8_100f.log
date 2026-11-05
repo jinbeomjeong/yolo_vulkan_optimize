@@ -1,0 +1,27 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[cfg] video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 1920x1080 mode=dmabuf layout=nhcw batch=8 slots=16 gpu_depth=3 postproc=gpu/export device=V3D 7.1.10.2
+== yvo_pipeline (dmabuf, nhcw, batch 8, slots 16, gpu_depth 3, postproc gpu/export) ==
+frames          100 (decoded 100, errors 0)
+wall            3.325 s, 30.08 FPS
+cpu             33.599 ms/frame (process user+sys 3359.9 ms, 101% of one core)
+decode call ms  mean 31.860  median 29.679  p90 37.380  max 79.749
+gpu shader ms   mean 1.873  median 1.850  p90 1.909  max 2.300
+npu latency ms  mean 75.704  median 71.062  p90 93.895  max 111.742
+e2e latency ms  mean 152.082  median 158.026  p90 170.703  max 190.723  (decode return → NPU completion callback)
+slot wait ms    mean 0.000  p90 0.000  (time the main thread waited for a free slot)
+gpu post ms     mean 0.468  median 0.454  p90 0.495  max 1.081  (yolo_decode.comp pass 1)
+cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+nms backend     gpu
+gpu nms ms      mean 0.0475  median 0.0458  p90 0.0577  max 0.0801  (efficient_nms.comp)
+nms fallback    0 frames (capacity 0, iou guard 0)
+candidates      mean 13.36  max 30  overflow frames 0
+slot hold ms    mean 44.402  median 39.793  p90 62.540  max 76.886  (NPU completion callback → slot return)
+held frames max 1 (decoder limit about 13), slot timeout 0
+detections      203 total, 2.03 / frame
+hailo chip temp 51.9 -> 54.2 C
+soc temp        73.0 -> 73.0 C
+vk validation   errors 0, warnings 1
+thread cpu      yvo_pip:disk$        threads  1        0.0 ms    0.000 ms/arrived    0.000 ms/processed
+thread cpu      yvo_pipeline         threads  8     3360.6 ms   33.606 ms/arrived   33.606 ms/processed
+sw decode copy: mean 6.619 ms/frame (memcpy 6.517 + cache sync 0.102), decode wait mean 25.221 ms/frame, 100 frames
+sw decode pool: 12 buffers (peak in use 2), heap /dev/dma_heap/vidbuf_cached, libavcodec threads 1 (none)

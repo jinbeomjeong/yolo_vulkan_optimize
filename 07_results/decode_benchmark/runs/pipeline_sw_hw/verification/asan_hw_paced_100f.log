@@ -1,0 +1,33 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[cfg] video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 1920x1080 mode=dmabuf layout=nhcw batch=1 slots=1 gpu_depth=1 postproc=gpu/export device=V3D 7.1.10.2
+[pace] input-pace source @ 30.000 fps, input-queue 1 (leaky: drop the oldest), hw_frames=8
+[hevc @ 0x518000010c80] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+== yvo_pipeline (dmabuf, nhcw, batch 1, slots 1, gpu_depth 1, postproc gpu/export) ==
+frames          82 (decoded 82, errors 0)
+wall            3.378 s, 24.28 FPS
+cpu             3.153 ms/frame (process user+sys 258.5 ms, 8% of one core)
+decode call ms  mean 2.947  median 3.755  p90 4.254  max 11.933
+gpu shader ms   mean 1.794  median 1.771  p90 1.834  max 2.415
+npu latency ms  mean 37.889  median 38.150  p90 38.237  max 42.944
+e2e latency ms  mean 55.885  median 56.307  p90 70.351  max 77.128  (decode return → NPU completion callback)
+slot wait ms    mean 22.182  p90 34.913  (time the main thread waited for a free slot)
+input pace      source @ 30.000 fps, input queue 1 (leaky: full -> drop the oldest)
+arrived         100 (processed 82, dropped 18 = 18.00%, abandoned 0, longest drop run 1, queue depth max 1)
+e2e arrival ms  mean 58.964  median 58.882  p90 71.995  max 77.589  (source arrival → NPU completion callback)
+queue wait ms   mean 14.847  p90 26.813  max 36.116  (decode return → GPU submit)
+decode late ms  mean 3.071  p90 4.606  max 11.964  (source arrival → decode return)
+note            paced: FPS and cpu ms/frame are per processed frame (plus polling) — not comparable to asap
+gpu post ms     mean 0.463  median 0.454  p90 0.491  max 0.604  (yolo_decode.comp pass 1)
+cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+nms backend     gpu
+gpu nms ms      mean 0.0438  median 0.0426  p90 0.0511  max 0.0589  (efficient_nms.comp)
+nms fallback    0 frames (capacity 0, iou guard 0)
+candidates      mean 13.24  max 28  overflow frames 0
+slot hold ms    mean 1.146  median 0.803  p90 1.018  max 11.879  (NPU completion callback → slot return)
+held frames max 2 (decoder limit about 13), slot timeout 0
+detections      167 total, 2.04 / frame
+hailo chip temp 48.5 -> 50.6 C
+soc temp        73.6 -> 70.3 C
+vk validation   errors 0, warnings 1
+thread cpu      yvo_pip:disk$        threads  1        0.0 ms    0.000 ms/arrived    0.000 ms/processed
+thread cpu      yvo_pipeline         threads  9      259.3 ms    2.593 ms/arrived    3.162 ms/processed

@@ -1,0 +1,34 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[cfg] video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 1920x1080 mode=dmabuf layout=nhcw batch=1 slots=1 gpu_depth=1 postproc=gpu/export device=V3D 7.1.10.2
+[pace] input-pace source @ 30.000 fps, input-queue 1 (leaky: drop the oldest), hw_frames=8
+== yvo_pipeline (dmabuf, nhcw, batch 1, slots 1, gpu_depth 1, postproc gpu/export) ==
+frames          46 (decoded 46, errors 0)
+wall            3.372 s, 13.64 FPS
+cpu             71.419 ms/frame (process user+sys 3285.3 ms, 97% of one core)
+decode call ms  mean 31.974  median 29.708  p90 37.571  max 79.642
+gpu shader ms   mean 1.860  median 1.811  p90 1.981  max 2.373
+npu latency ms  mean 33.161  median 31.414  p90 38.282  max 42.903
+e2e latency ms  mean 73.030  median 70.404  p90 98.651  max 103.718  (decode return → NPU completion callback)
+slot wait ms    mean 39.015  p90 67.736  (time the main thread waited for a free slot)
+input pace      source @ 30.000 fps, input queue 1 (leaky: full -> drop the oldest)
+arrived         100 (processed 46, dropped 54 = 54.00%, abandoned 0, longest drop run 2, queue depth max 1)
+e2e arrival ms  mean 113.258  median 100.427  p90 163.365  max 171.811  (source arrival → NPU completion callback)
+queue wait ms   mean 1.454  p90 3.163  max 5.007  (decode return → GPU submit)
+decode late ms  mean 41.564  p90 67.386  max 79.656  (source arrival → decode return)
+note            paced: FPS and cpu ms/frame are per processed frame (plus polling) — not comparable to asap
+gpu post ms     mean 0.528  median 0.447  p90 0.753  max 0.791  (yolo_decode.comp pass 1)
+cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+nms backend     gpu
+gpu nms ms      mean 0.0419  median 0.0405  p90 0.0489  max 0.0597  (efficient_nms.comp)
+nms fallback    0 frames (capacity 0, iou guard 0)
+candidates      mean 13.15  max 30  overflow frames 0
+slot hold ms    mean 16.577  median 11.416  p90 36.244  max 37.141  (NPU completion callback → slot return)
+held frames max 2 (decoder limit about 13), slot timeout 0
+detections      92 total, 2.00 / frame
+hailo chip temp 51.6 -> 52.5 C
+soc temp        71.9 -> 71.9 C
+vk validation   errors 0, warnings 1
+thread cpu      yvo_pip:disk$        threads  1        0.0 ms    0.000 ms/arrived    0.000 ms/processed
+thread cpu      yvo_pipeline         threads  8     3286.0 ms   32.860 ms/arrived   71.435 ms/processed
+sw decode copy: mean 6.464 ms/frame (memcpy 6.356 + cache sync 0.109), decode wait mean 25.490 ms/frame, 100 frames
+sw decode pool: 12 buffers (peak in use 2), heap /dev/dma_heap/vidbuf_cached, libavcodec threads 1 (none)

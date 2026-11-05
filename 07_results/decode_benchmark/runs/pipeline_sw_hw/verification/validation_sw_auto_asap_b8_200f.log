@@ -1,0 +1,29 @@
+[vulkan WARNING] Layer "VK_LAYER_KHRONOS_validation" forced enabled due to env var 'VK_LOADER_LAYERS_ENABLE'
+[vulkan WARNING] Layer "VK_LAYER_KHRONOS_validation" forced enabled due to env var 'VK_LOADER_LAYERS_ENABLE'
+[cfg] video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 1920x1080 mode=dmabuf layout=nhcw batch=8 slots=16 gpu_depth=3 postproc=gpu/export device=V3D 7.1.10.2
+== yvo_pipeline (dmabuf, nhcw, batch 8, slots 16, gpu_depth 3, postproc gpu/export) ==
+frames          200 (decoded 200, errors 0)
+wall            3.996 s, 50.05 FPS
+cpu             35.096 ms/frame (process user+sys 7019.1 ms, 176% of one core)
+decode call ms  mean 6.653  median 2.353  p90 17.492  max 53.038
+gpu shader ms   mean 2.580  median 2.335  p90 3.086  max 8.969
+npu latency ms  mean 272.935  median 279.670  p90 304.835  max 324.985
+e2e latency ms  mean 309.386  median 308.345  p90 394.636  max 526.986  (decode return → NPU completion callback)
+slot wait ms    mean 10.490  p90 81.363  (time the main thread waited for a free slot)
+gpu post ms     mean 0.600  median 0.507  p90 0.765  max 3.605  (yolo_decode.comp pass 1)
+cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+nms backend     gpu
+gpu nms ms      mean 0.0705  median 0.0559  p90 0.0804  max 1.1873  (efficient_nms.comp)
+nms fallback    0 frames (capacity 0, iou guard 0)
+candidates      mean 16.43  max 35  overflow frames 0
+slot hold ms    mean 15.259  median 5.196  p90 23.550  max 220.434  (NPU completion callback → slot return)
+held frames max 3 (decoder limit about 13), slot timeout 0
+detections      606 total, 3.03 / frame
+hailo chip temp 60.0 -> 63.2 C
+soc temp        70.8 -> 74.1 C
+vk validation   errors 0, warnings 2
+thread cpu      av:hevc:df           threads  5     6242.7 ms   31.213 ms/arrived   31.213 ms/processed
+thread cpu      yvo_pip:disk$        threads  1        0.0 ms    0.000 ms/arrived    0.000 ms/processed
+thread cpu      yvo_pipeline         threads  9      776.9 ms    3.884 ms/arrived    3.884 ms/processed
+sw decode copy: mean 1.911 ms/frame (memcpy 1.823 + cache sync 0.088), decode wait mean 4.735 ms/frame, 200 frames
+sw decode pool: 12 buffers (peak in use 4), heap /dev/dma_heap/vidbuf_cached, libavcodec threads 5 (frame)

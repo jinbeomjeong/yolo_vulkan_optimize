@@ -1,0 +1,9 @@
+# detections.jsonl md5, whole video (1816 frames), --input-pace asap, display off, 2026-11-05
+02a01eefa34ebe06473c62ac2a35f805  fa_hw/detections.jsonl
+02a01eefa34ebe06473c62ac2a35f805  fa_sw1/detections.jsonl
+02a01eefa34ebe06473c62ac2a35f805  fa_sw0/detections.jsonl
+1816 fa_hw/detections.jsonl
+# first 300 frames
+53434f97a270931dcdb0bae77bfb4033  bx_hw/detections.jsonl
+53434f97a270931dcdb0bae77bfb4033  bx_sw1/detections.jsonl
+53434f97a270931dcdb0bae77bfb4033  bx_sw0/detections.jsonl
