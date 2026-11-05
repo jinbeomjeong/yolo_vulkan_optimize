@@ -209,14 +209,17 @@ async function build() {
     '추론만 NPU가 맡으면 나머지는 CPU가 하며, 프레임마다 수 MB를 읽고 쓴다',
     '스마트폰·서버에서도 추론 밖 전·후처리와 데이터 이동이 종단간 성능을 좌우한다는 보고가 있다 [1][2]',
   ], { fontSize: 16, paraSpaceAfter: 14 }), { x: M, y: 3.85, w: 7.3, h: 2.75, valign: 'middle', objectName: '본문' });
-  card(s, '출발점 카드', 8.4, 3.85, W - M - 8.4, 2.75, C.background2);
+  // v6: 그림의 경로(전부 CPU) 값으로 바꾸고, 17.6 ms는 어떤 경로의 값인지 밝혀 함께 둔다
+  card(s, '출발점 카드', 8.4, 3.85, W - M - 8.4, 2.6, C.background2);
   tx(s, [
-    { text: '출발점 · 배치 1 응용 CPU', options: { fontSize: 14, color: C.accent2, bold: true, breakLine: true } },
-    { text: '17.6', options: { fontSize: 60, bold: true, color: C.accent1 } },
+    { text: '이 흐름 · 배치 1 응용 CPU', options: { fontSize: 14, color: C.accent2, bold: true, breakLine: true } },
+    { text: '47.86', options: { fontSize: 54, bold: true, color: C.accent1 } },
     { text: ' ms/프레임', options: { fontSize: 20, bold: true, color: C.accent1, breakLine: true } },
-    { text: '한 코어의 40% 이상', options: { fontSize: 16, color: C.text1 } },
-  ], { x: 8.7, y: 4.1, w: W - M - 9.0, h: 2.3, valign: 'middle', objectName: '출발점 수치' });
-  s.addNotes('목표는 CPU 개입을 최소화하는 것이다.');
+    { text: '코어 하나를 넘게 쓴다 (117%)', options: { fontSize: 15, color: C.text1, breakLine: true } },
+    { text: 'HW 디코드·GPU 전처리를 써도 17.6 ms', options: { fontSize: 14, bold: true, color: C.text1 } },
+  ], { x: 8.7, y: 3.95, w: 3.9, h: 2.4, valign: 'middle', objectName: '출발점 수치' });
+  footnote(s, '47.86 ms: 전 단계 CPU · 표시 on · 디코더 1스레드 · GPU 1150 MHz, 처리한 프레임 기준. 17.6 ms: 표시 off · 디코더 자동 · GPU 960 MHz · 슬롯 2. 조건이 달라 서로 빼지 않는다', 6.55);
+  s.addNotes('목표는 CPU 개입을 최소화하는 것이다. 그림처럼 추론 밖을 모두 CPU가 하면 응용 CPU가 처리한 프레임당 47.86 ms로 코어 하나를 넘게 쓴다. 디코드와 전처리를 하드웨어와 GPU에 맡겨도 형식 변환과 NMS가 CPU에 남으면 17.6 ms다. 뒤의 ②와 ③은 이 17.6 ms에서 출발한다. 두 값은 측정 조건이 달라 서로 빼지 않는다.');
 
   // 4. 대상 시스템 --------------------------------------------------------
   s = pres.addSlide({ masterName: 'CONTENT', sectionTitle: '문제와 대상 시스템' });
