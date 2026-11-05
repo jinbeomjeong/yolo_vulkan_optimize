@@ -2,6 +2,8 @@
 
 기준: v4 덱(`out/yolo_npu_cpu_offload_talk_v4.pptx`, 명세 `content_spec.md` + `content_spec_v2.md` + `content_spec_v3.md` + `content_spec_v4.md`).
 v5는 v4에서 **9번 한 줄 추가**와 **부록 A4 한 장(17번) 추가**만 한다. 나머지 1~16번은 v4와 같다.
+단 5번 그림은 2026-11-05에 바꿨다: 최저 지연 운용 막대와 원형 숫자를 뺀 사본 `diagrams/overview_plain.{graphml,svg,png}`을 쓰고(요약 상자의 ②·③도 뺌, "최저 지연: 도착 → 결과" 수치 줄은 유지), 캡션의 "①~⑤ = 다섯 기술"을 뺀다. 원본 `figures/fig10_brief_cpu_offload`는 브리프 그림 1이라 그대로 둔다. 결정: 5번 그림에서 최저 지연 운용과 원형 숫자를 삭제 (사용자 결정, 2026-11-05)
+4번에는 GPU 카드를 더해 카드 5개를 3줄(보드 / NPU·GPU / 모델·입력)로 놓는다. 값은 `VideoCore VII (V3D 7.1)`, `Vulkan 1.3 컴퓨트 셰이더`이고, 슬라이드마다 측정 클럭이 달라(960·1150 MHz, 각 슬라이드 각주) 클럭은 적지 않는다. 결정: 4번에 GPU 정보 추가 (사용자 결정, 2026-11-05)
 
 **새 근거**
 - `07_results/display_planes_e2e/runs/vblank_phase_20261027/summary.md`(커밋 5d3674a, 2026-10-27 측정).

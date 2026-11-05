@@ -141,6 +141,7 @@ async function build() {
   const I = {
     film: await icon(lu.LuFilm, HEX.lt1), gpu: await icon(bs.BsGpuCard, HEX.lt1), npu: await icon(lu.LuBrainCircuit, HEX.lt1),
     scan: await icon(lu.LuScanSearch, HEX.lt1), monitor: await icon(lu.LuMonitor, HEX.lt1), shuffle: await icon(lu.LuShuffle, HEX.lt1),
+    gpuD: await icon(bs.BsGpuCard, HEX.accent5),
     filmD: await icon(lu.LuFilm, HEX.accent5), board: await icon(lu.LuCircuitBoard, HEX.accent5), chip: await icon(lu.LuMicrochip, HEX.accent5),
     model: await icon(lu.LuBoxes, HEX.accent5), timerL: await icon(lu.LuTimer, HEX.accent6), info: await icon(lu.LuInfo, HEX.accent5),
     send: await icon(lu.LuSend, HEX.accent1), key: await icon(lu.LuKeyRound, HEX.accent6), link: await icon(lu.LuArrowRightLeft, HEX.accent6),
@@ -221,23 +222,25 @@ async function build() {
   // 4. 대상 시스템 --------------------------------------------------------
   s = pres.addSlide({ masterName: 'CONTENT', sectionTitle: '문제와 대상 시스템' });
   s.addText('대상 시스템과 운용 기준', { placeholder: 'title', lang: LANG });
+  // 카드 5개, 3줄: 보드(두 칸 폭) / NPU·GPU / 모델·입력. [라벨, 값, 아이콘, 열, 줄, 칸 수]
   const sys = [
-    ['보드', 'Raspberry Pi Compute Module 5 [3]', I.board],
-    ['NPU', 'Hailo-8 (PCIe)\n런타임 HailoRT 4.24.0 [4]', I.chip],
-    ['모델', 'YOLO11m [5]', I.model],
-    ['입력', 'HEVC 영상\n(SoC 하드웨어 디코더)', I.filmD],
+    ['보드', 'Raspberry Pi Compute Module 5 [3]', I.board, 0, 0, 2],
+    ['NPU', 'Hailo-8 (PCIe)\n런타임 HailoRT 4.24.0 [4]', I.chip, 0, 1, 1],
+    ['GPU', 'VideoCore VII (V3D 7.1)\nVulkan 1.3 컴퓨트 셰이더', I.gpuD, 1, 1, 1],
+    ['모델', 'YOLO11m [5]', I.model, 0, 2, 1],
+    ['입력', 'HEVC 영상\n(SoC 하드웨어 디코더)', I.filmD, 1, 2, 1],
   ];
-  const cw3 = 3.6, ch3 = 2.4, g3 = 0.3;
-  sys.forEach(([k, v, ic], i) => {
-    const x = M + (i % 2) * (cw3 + g3), y = 1.5 + Math.floor(i / 2) * (ch3 + g3);
-    card(s, `시스템 카드 ${k}`, x, y, cw3, ch3, C.background2);
-    s.addShape(pres.shapes.OVAL, { x: x + 0.3, y: y + 0.3, w: 0.7, h: 0.7, fill: { color: C.background1 }, line: { type: 'none' }, objectName: `아이콘 원 ${k}` });
-    s.addImage({ data: ic, x: x + 0.45, y: y + 0.45, w: 0.4, h: 0.4, altText: k, objectName: `아이콘 ${k}` });
-    tx(s, k, { x: x + 1.2, y: y + 0.3, w: cw3 - 1.5, h: 0.7, fontSize: 16, bold: true, color: C.accent2, valign: 'middle', objectName: `라벨 ${k}` });
-    tx(s, v, { x: x + 0.3, y: y + 1.15, w: cw3 - 0.5, h: 1.05, fontSize: 18, bold: true, color: C.text1, objectName: `값 ${k}` });
+  const cw3 = 3.6, ch3 = 1.5, g3 = 0.3;
+  sys.forEach(([k, v, ic, col, row, span]) => {
+    const x = M + col * (cw3 + g3), y = 1.5 + row * (ch3 + g3), w3 = span * cw3 + (span - 1) * g3;
+    card(s, `시스템 카드 ${k}`, x, y, w3, ch3, C.background2);
+    s.addShape(pres.shapes.OVAL, { x: x + 0.2, y: y + 0.15, w: 0.5, h: 0.5, fill: { color: C.background1 }, line: { type: 'none' }, objectName: `아이콘 원 ${k}` });
+    s.addImage({ data: ic, x: x + 0.3, y: y + 0.25, w: 0.3, h: 0.3, altText: k, objectName: `아이콘 ${k}` });
+    tx(s, k, { x: x + 0.8, y: y + 0.15, w: w3 - 1.0, h: 0.5, fontSize: 14, bold: true, color: C.accent2, valign: 'middle', objectName: `라벨 ${k}` });
+    tx(s, v, { x: x + 0.2, y: y + 0.7, w: w3 - 0.3, h: 0.7, fontSize: 16, bold: true, color: C.text1, valign: 'middle', objectName: `값 ${k}` });
   });
   const px3 = M + 2 * cw3 + 2 * g3 + 0.1;
-  card(s, '운용 기준 패널', px3, 1.5, W - M - px3, 2 * ch3 + g3, C.text2);
+  card(s, '운용 기준 패널', px3, 1.5, W - M - px3, 3 * ch3 + 2 * g3, C.text2);
   s.addImage({ data: I.timerL, x: px3 + 0.4, y: 2.45, w: 0.6, h: 0.6, altText: '지연', objectName: '운용 기준 아이콘' });
   tx(s, [
     { text: '운용 기준', options: { fontSize: 16, bold: true, color: C.accent3, breakLine: true } },
@@ -249,10 +252,10 @@ async function build() {
   // 5. 전체 구조 ----------------------------------------------------------
   s = pres.addSlide({ masterName: 'CONTENT', sectionTitle: '문제와 대상 시스템' });
   s.addText('전체 구조 — 데이터는 하드웨어끼리, CPU는 지휘만', { placeholder: 'title', lang: LANG });
-  const fw4 = 11.2, fh4 = fw4 * 1223 / 2700;
-  s.addImage({ path: path.join(FIG, 'fig10_brief_cpu_offload.png'), x: (W - fw4) / 2, y: 1.3, w: fw4, h: fh4,
+  const fw4 = 11.2, fh4 = fw4 * 1133 / 2700;
+  s.addImage({ path: path.join(DECK, 'diagrams', 'overview_plain.png'), x: (W - fw4) / 2, y: 1.3, w: fw4, h: fh4,
     altText: '그림 1. CPU 최소화 기술의 전체 구조: 영상 입력 → 하드웨어 디코더 → GPU 전처리(NHCW) → NPU → GPU 후처리(NMS) → 화면, CPU는 점선으로 제어만', objectName: '그림 1 전체 구조' });
-  tx(s, '굵은 실선 = dma-buf로 복사 없이 넘기는 데이터 · 가는 실선 = CPU를 거치는 작은 데이터 · 점선 = CPU 제어 · ①~⑤ = 다섯 기술',
+  tx(s, '굵은 실선 = dma-buf로 복사 없이 넘기는 데이터 · 가는 실선 = CPU를 거치는 작은 데이터 · 점선 = CPU 제어',
     { x: (W - fw4) / 2, y: 1.3 + fh4 + 0.1, w: fw4, h: 0.35, fontSize: 12, color: C.accent2, objectName: '그림 캡션' });
   s.addNotes('다섯 기술 — ① 하드웨어 디코더와 제로 카피 ② NPU 형식을 GPU가 직접 생성 ③ 결과 해석도 GPU ④ 최저 지연 운용 ⑤ CPU는 지휘만.');
 
