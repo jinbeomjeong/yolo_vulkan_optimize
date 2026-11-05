@@ -24,9 +24,9 @@ import paper_style as ps
 STEM = "fig11_decoder_sw_vs_hw"
 RUN_DIR = ps.RESULTS / "decode_benchmark" / "runs" / "pipeline_sw_hw"
 SRC = RUN_DIR / "results_raw.csv"
-SETTINGS = (("hw_t1", "HW 디코더", ps.DEVICE_COLORS["decoder"]),
-            ("sw_auto", "SW 자동 스레드", ps.DEVICE_COLORS["cpu"]),
-            ("sw_t1", "SW 1스레드", ps.DEVICE_COLORS["cpu"]))
+SETTINGS = (("hw_t1", "하드웨어 디코더", ps.DEVICE_COLORS["decoder"]),
+            ("sw_auto", "소프트웨어\n자동 스레드", ps.DEVICE_COLORS["cpu"]),
+            ("sw_t1", "소프트웨어\n1스레드", ps.DEVICE_COLORS["cpu"]))
 RUNS = (1, 2, 3)
 BAR_HEIGHT = 0.42
 CROSS_CHECK_TOLERANCE = 0.01
@@ -136,6 +136,7 @@ def main(out_dir: str | Path | None = None) -> list[Path]:
     ax2.tick_params(axis="y", length=0)
     ax3.tick_params(axis="y", length=0)
 
+    ax3.text(0, 1.36, "파일 입력의 미리 디코드 포함", ha="left", va="center", fontsize=ps.FONT_SIZE - 1)  # not a live-input latency
     ax1.set_title("(a) 응용 CPU", loc="left")
     ax1.set_xlabel("응용 CPU (ms/도착 프레임)")
     ax1.set_xlim(0, cpu_max)
