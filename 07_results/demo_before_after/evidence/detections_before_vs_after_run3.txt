@@ -1,0 +1,30 @@
+[warn] frame counts differ: ref 1477, test 1473, common 1190
+label            : (none)
+frames           : 1190
+detections ref   : 6292
+detections test  : 6193  (-1.57 %)
+match @ IoU 0.5 : 5219 / 6838 = 0.7632
+match @ IoU 0.7 : 5101 / 6838 = 0.7460
+match @ IoU 0.9 : 3265 / 6838 = 0.4775
+
+coord err px (max(|dx1|,|dy1|,|dx2|,|dy2|) of matched pairs)
+IoU    pairs          max         mean          p50          p90
+0.5     5219   103.400000     3.207818     2.400000     6.000000
+0.7     5101    67.200000     3.026701     2.300000     5.600000
+0.9     3265    18.700000     2.520735     2.100000     4.560000
+
+class                 ref   test    diff
+car                   3836   3765    -1.85 %
+traffic light         1192   1086    -8.89 %
+person                 898    983    +9.47 %
+truck                  150    148    -1.33 %
+bicycle                 98     94    -4.08 %
+chair                   60     49   -18.33 %
+bus                     23     20   -13.04 %
+fire hydrant            17     20   +17.65 %
+motorcycle               8     10   +25.00 %
+train                    4      4    +0.00 %
+stop sign                4      6   +50.00 %
+airplane                 1      6  +500.00 %
+bird                     1      1    +0.00 %
+bench                    0      1     +nan %
