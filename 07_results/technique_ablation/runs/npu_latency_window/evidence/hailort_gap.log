@@ -1,0 +1,40 @@
+[2026-11-07 01:09:40.586] [344445] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-11-07 01:09:40.586] [344445] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-11-07 01:09:40.586] [344445] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-11-07 01:09:41.082] [344454] [HailoRT] [info] [vdevice.cpp:535] [create] Creating vdevice with params: device_count: 1, scheduling_algorithm: ROUND_ROBIN, multi_process_service: false
+[2026-11-07 01:09:41.094] [344454] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-11-07 01:09:41.094] [344454] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-11-07 01:09:41.094] [344454] [HailoRT] [info] [vdevice.cpp:682] [create] VDevice Infos: 0001:01:00.0
+[2026-11-07 01:09:41.101] [344454] [HailoRT] [info] [internal_buffer_manager.cpp:77] [print_execution_results] Planned internal buffer memory: CMA=0 CMA-Desc=851968 Pinned=7835648. memory to edge layer usage factor is 0.89460456
+[2026-11-07 01:09:41.101] [344454] [HailoRT] [info] [internal_buffer_manager.cpp:86] [print_execution_results] Default Internal buffer planner executed successfully
+[2026-11-07 01:09:41.135] [344454] [HailoRT] [info] [device_internal.cpp:57] [configure] Configuring HEF took 40.540306 milliseconds
+[2026-11-07 01:09:41.135] [344454] [HailoRT] [info] [vdevice.cpp:780] [configure] Configuring HEF on VDevice took 40.801383 milliseconds
+[2026-11-07 01:10:11.344] [344609] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-11-07 01:10:11.345] [344609] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-11-07 01:10:11.345] [344609] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-11-07 01:10:21.545] [344634] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-11-07 01:10:21.545] [344634] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-11-07 01:10:21.545] [344634] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-11-07 01:10:22.045] [344643] [HailoRT] [info] [vdevice.cpp:535] [create] Creating vdevice with params: device_count: 1, scheduling_algorithm: ROUND_ROBIN, multi_process_service: false
+[2026-11-07 01:10:22.057] [344643] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-11-07 01:10:22.057] [344643] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-11-07 01:10:22.057] [344643] [HailoRT] [info] [vdevice.cpp:682] [create] VDevice Infos: 0001:01:00.0
+[2026-11-07 01:10:22.064] [344643] [HailoRT] [info] [internal_buffer_manager.cpp:77] [print_execution_results] Planned internal buffer memory: CMA=0 CMA-Desc=851968 Pinned=7835648. memory to edge layer usage factor is 0.89460456
+[2026-11-07 01:10:22.064] [344643] [HailoRT] [info] [internal_buffer_manager.cpp:86] [print_execution_results] Default Internal buffer planner executed successfully
+[2026-11-07 01:10:22.099] [344643] [HailoRT] [info] [device_internal.cpp:57] [configure] Configuring HEF took 40.93489 milliseconds
+[2026-11-07 01:10:22.099] [344643] [HailoRT] [info] [vdevice.cpp:780] [configure] Configuring HEF on VDevice took 41.2018 milliseconds
+[2026-11-07 01:10:52.322] [344695] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-11-07 01:10:52.322] [344695] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-11-07 01:10:52.322] [344695] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-11-07 01:11:02.524] [344728] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-11-07 01:11:02.525] [344728] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-11-07 01:11:02.525] [344728] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-11-07 01:11:12.721] [344754] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-11-07 01:11:12.721] [344754] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-11-07 01:11:12.721] [344754] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-11-07 01:11:22.921] [344775] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-11-07 01:11:22.921] [344775] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-11-07 01:11:22.921] [344775] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-11-07 01:11:23.385] [344789] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-11-07 01:11:23.385] [344789] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-11-07 01:11:23.385] [344789] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0

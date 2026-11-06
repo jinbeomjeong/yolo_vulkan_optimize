@@ -1,0 +1,9 @@
+# hailo ioctl counts from strace -f -T -e trace=ioctl, 300 arrived / 244 processed frames, display off
+# 0x76,0x4 = map dma-buf, 0x76,0x5 = unmap; durations only from complete (not split) lines
+
+old_base:  map 1734 (median 7 us over 1687 complete)  unmap 1734 (median 6 us over 1720 complete)
+old_input_copy:  map 1490 (median 7 us over 1425 complete)  unmap 1490 (median 6 us over 1481 complete)
+new_base:  map 26 (median 11 us over 26 complete)  unmap 26 (median 6 us over 26 complete)
+new_input_copy:  map 26 (median 21 us over 26 complete)  unmap 26 (median 7 us over 26 complete)
+
+# per processed frame after the 26 setup calls: old base (1734-26)/244 = 7.0, old input_copy (1490-26)/244 = 6.0, new 0
