@@ -1484,7 +1484,7 @@ int run_runner(const Options& o, const std::vector<std::vector<std::uint8_t>>& i
     t << "# step 3a: RawSession -> yvo::HailoRawRunner promotion smoke test\n";
     t << fmt("# pcie=%s x%s hef=%s video=%s\n", link_speed.c_str(), link_width.c_str(), o.hef.c_str(),
              o.video.c_str());
-    t << fmt("# batch=%d requested_slots=%d frames=%d api=infer_async contract(map=dmabuf_size, transfer=hw_frame_size)\n",
+    t << fmt("# batch=%d requested_slots=%d frames=%d api=infer_async contract(map A=dmabuf_size B=hw_frame_size, transfer=hw_frame_size)\n",
              o.batch, o.slots, n);
     t << fmt("# cooling: hailo %.1f -> %.1f C, waited %d s\n\n", static_cast<double>(t_before),
              static_cast<double>(t_after), cooled_s);

@@ -14,8 +14,8 @@
 // The runner knows nothing about Vulkan — **it takes only fds and sizes** (yvo_hailo does not link to yvo_vulkan).
 //
 // ── Size contract (F0 checked exhaustively: 07_results/gpu_postprocess/evidence/f0_in_dmabuf.txt) ────
-//   dma_map_dmabuf() gets the **actual dma-buf size** (the lseek(fd, 0, SEEK_END) value),
-//   infer_async() gets **only hw_frame_size**.
+//   dma_map_dmabuf() and infer_async() both get **only hw_frame_size** (the lseek(fd, 0, SEEK_END) value is only checked >= it).
+//   Equal sizes let the HailoRT 4.24 mapping cache (exact {fd, dir, size} match) hit — no per-frame map/unmap.
 //   If the transfer size is given as the actual dma-buf size, HailoRT returns HAILO_SUCCESS and then its internal worker
 //   silently drops the request — **not a single callback arrives.** That is why drain() must have a deadline.
 //
@@ -109,9 +109,9 @@ public:
 
     // Per-slot dma-buf registration. Call **exactly once** per slot right after construction.
     //   in_fd           : preprocessing output (V3D export). Mapped H2D
-    //   in_map_size     : actual dma-buf size (lseek value). **Not the transfer size**
+    //   in_map_size     : actual dma-buf size (lseek value). Only checked >= hw_frame_size (map/transfer use hw_frame_size)
     //   out_fd[6]       : raw tensors (V3D export). Mapped D2H. Numbered in the same order as info().t[]
-    //   out_map_size[6] : actual size of each dma-buf
+    //   out_map_size[6] : actual size of each dma-buf (checked >= hw_frame_size, same as input)
     // The caller owns the fds. The runner does not close them.
     // Throws on failure (out-of-range slot, duplicate bind, insufficient size, dma_map_dmabuf failure).
     void bind_slot(int slot, int in_fd, std::size_t in_map_size,

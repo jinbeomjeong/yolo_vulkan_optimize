@@ -38,7 +38,7 @@ PlaneDisplay::PlaneDisplay(yvo::vk::VulkanContext& ctx, std::unique_ptr<PlaneSca
     oc.src_h = cfg_.src_h;
     oc.overlay.max_dets = cfg_.max_dets;
     oc.overlay.line_width = cfg_.overlay_line_width;
-    oc.overlay.text_scale = cfg_.overlay_text_scale;
+    oc.overlay.text_scale = cfg_.overlay_text_scale;  oc.timestamps = cfg_.gpu_timestamps;   // OverlayPlane passes it on to its OverlayRenderer
     ov_ = std::make_unique<OverlayPlane>(ctx_, oc);
     scanout_->register_overlay(*ov_);
 

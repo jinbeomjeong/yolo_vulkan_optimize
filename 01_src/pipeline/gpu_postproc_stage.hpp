@@ -62,6 +62,7 @@ struct GpuPostprocStageConfig {
     std::chrono::milliseconds timeout{5000};
     bool verbose = false;
     NmsBackend nms = NmsBackend::Gpu;
+    bool timestamps = true;   // YoloPostprocConfig::timestamps (--gpu-timestamps). off: post_ms()/gpu_nms_ms() hold -1
 };
 
 class GpuPostprocStage final : public InferStage {

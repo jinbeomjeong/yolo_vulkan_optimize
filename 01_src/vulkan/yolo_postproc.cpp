@@ -323,11 +323,11 @@ void YoloPostproc::create_slots() {
 }
 
 void YoloPostproc::record(Slot& s, int slot, const LetterboxParams& lb, int src_w, int src_h, bool checksum) {
-    VkCommandBuffer cb = s.cmd;
+    VkCommandBuffer cb = s.cmd;  s.recorded = false;   // stays false if recording throws. Slot is not pending here (VUID-vkResetCommandBuffer-commandBuffer-00045)
     YVO_VK_CHECK(vkResetCommandBuffer(cb, 0));
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    bi.flags = 0;   // no ONE_TIME_SUBMIT: the same recording is resubmitted while its key is unchanged (see submit())
     YVO_VK_CHECK(vkBeginCommandBuffer(cb, &bi));
 
     const std::uint32_t qf = ctx_.queue_family();
@@ -505,6 +505,7 @@ void YoloPostproc::record(Slot& s, int slot, const LetterboxParams& lb, int src_
 
     if (query_pool_) vkCmdWriteTimestamp2(cb, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, query_pool_, qslot + 5);
     YVO_VK_CHECK(vkEndCommandBuffer(cb));
+    s.rec_scale = lb.scale; s.rec_pad_x = lb.pad_x; s.rec_pad_y = lb.pad_y; s.rec_src_w = src_w; s.rec_src_h = src_h; s.rec_checksum = checksum; s.recorded = true;
 }
 
 void YoloPostproc::submit(int slot, const LetterboxParams& lb, int src_w, int src_h, bool checksum) {
@@ -525,9 +526,8 @@ void YoloPostproc::submit(int slot, const LetterboxParams& lb, int src_w, int sr
     h->overflow = 0;
     h->text_bytes = 0;
     std::memset(h->text, 0, sizeof(h->text));
-
-    record(s, slot, lb, src_w, src_h, checksum);
-
+    // Re-record only when a push-constant input changes. The slot is not pending here (checked above), so the buffer is executable, not pending (VUID-vkQueueSubmit2-commandBuffer-03874/03875). The FOREIGN_EXT acquire/release barriers, the host-write barrier and the query reset are inside the buffer, so they run on every submit.
+    if (!s.recorded || s.rec_scale != lb.scale || s.rec_pad_x != lb.pad_x || s.rec_pad_y != lb.pad_y || s.rec_src_w != src_w || s.rec_src_h != src_h || s.rec_checksum != checksum) record(s, slot, lb, src_w, src_h, checksum);
     YVO_VK_CHECK(vkResetFences(ctx_.device(), 1, &s.fence));
     VkCommandBufferSubmitInfo cbi{};
     cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;

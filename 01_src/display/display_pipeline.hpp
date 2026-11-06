@@ -113,6 +113,9 @@ struct DisplayPipelineConfig {
     // --display-warmup: the first N presentations are left out of glass / present-interval / late-frame statistics
     // (kms first commit is a blocking modeset, kms_scanout.hpp B8/B10). Same meaning for every backend. 0 = keep all.
     int warmup = 0;
+    // GPU timestamp queries of the display passes (DisplayConvert, OverlayRenderer, OverlayPlane). false (--gpu-timestamps off)
+    // drops the query resets/writes/reads; convert_ms()/overlay_ms() then stay empty.
+    bool gpu_timestamps = true;
 };
 
 class DisplayPipeline final : public DisplaySink {

@@ -30,7 +30,7 @@ bool same_bits(const std::vector<yvo::DetectionKeyed>& a, const std::vector<yvo:
     return true;
 }
 
-// Actual dma-buf size. The mapping-size contract of `bind_slot()` is the **lseek value** (not the transfer size).
+// Actual dma-buf size. `bind_slot()` only checks it is >= hw_frame_size (the runner maps hw_frame_size).
 std::size_t dmabuf_size(int fd) {
     const off_t end = ::lseek(fd, 0, SEEK_END);
     if (end <= 0) throw std::runtime_error("lseek(dma-buf, SEEK_END) failed: fd " + std::to_string(fd));
@@ -95,7 +95,7 @@ GpuPostprocStage::GpuPostprocStage(yvo::vk::VulkanContext& ctx, const GpuPostpro
     pc.input_alloc = cfg_.input_alloc;
     pc.input_sync = yvo::vk::YoloInputSync::Foreign;   // external memory written by Hailo PCIe DMA (--output-copy: CPU, see output_copy.hpp)
     pc.checksum_pipeline = false;
-    pc.verbose = cfg_.verbose;
+    pc.verbose = cfg_.verbose;  pc.timestamps = cfg_.timestamps;
     pc.enable_nms = cfg_.nms != NmsBackend::Cpu;
     pc.nms.iou_thr = cfg_.iou_thr;
     pc.nms.max_per_class = cfg_.max_per_class;
@@ -136,7 +136,7 @@ void GpuPostprocStage::bind_input_dmabuf(int slot, int fd) {
             throw std::runtime_error("YoloPostproc did not export a dma-buf (check input_alloc)");
         out_sz[t] = out_copy_ ? out_copy_->map_size(slot, t) : pp_->raw_dmabuf_size(slot, t);
     }
-    // Both input and output are mapped at the **actual dma-buf size**. The transfer size is set by the runner from hw_frame_size.
+    // Actual sizes are passed for the >= check only. The runner maps and transfers hw_frame_size (mapping cache hit).
     raw_->bind_slot(slot, fd, dmabuf_size(fd), out_fd, out_sz);
     bound_[static_cast<std::size_t>(slot)] = true;
 }

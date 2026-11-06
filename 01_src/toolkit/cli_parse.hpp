@@ -123,4 +123,15 @@ inline float arg_stof(const char* argv0, std::string_view opt, const char* text)
     return v;
 }
 
+// Strictly parse an "on"/"off" switch value (e.g. --gpu-timestamps). Exact lowercase match only: "ON", "1", "true",
+// " on" and "" are rejected. Returns false (out unchanged) on failure.
+inline bool parse_on_off(const char* text, bool& out) {
+    if (text == nullptr) return false;
+    const std::string_view t = text;
+    if (t == "on") out = true;
+    else if (t == "off") out = false;
+    else return false;
+    return true;
+}
+
 }  // namespace yvo::tool

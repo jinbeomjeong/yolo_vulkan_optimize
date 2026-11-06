@@ -192,7 +192,7 @@ void HailoRawRunner::bind_slot(int slot, int in_fd, std::size_t in_map_size, con
     if (sl.bound)
         throw std::runtime_error("HailoRawRunner::bind_slot: slot " + std::to_string(slot) + " is already bound");
     if (in_fd < 0) throw std::runtime_error("HailoRawRunner::bind_slot: input fd is negative");
-    // Size contract: the mapping size is the actual dma-buf size and must be >= the transfer size (hw_frame_size).
+    // Size contract: the actual dma-buf size must be >= the transfer size (hw_frame_size).
     if (in_map_size < info_.input_frame_size)
         throw std::runtime_error("HailoRawRunner::bind_slot: input dma-buf size " + std::to_string(in_map_size) +
                                  " < hw_frame_size " + std::to_string(info_.input_frame_size));
@@ -205,15 +205,15 @@ void HailoRawRunner::bind_slot(int slot, int in_fd, std::size_t in_map_size, con
                                      std::to_string(info_.t[i].hw_frame_size));
     }
 
-    // ⚠ dma_map_dmabuf gets the **actual dma-buf size** (the direction differs too — input H2D, output D2H).
-    const auto st_in = vdevice_->dma_map_dmabuf(in_fd, in_map_size, HAILO_DMA_BUFFER_DIRECTION_H2D);
+    // ⚠ Map with **hw_frame_size** (= infer_async size) so the {fd, dir, size} mapping cache hits. Input H2D, output D2H.
+    const auto st_in = vdevice_->dma_map_dmabuf(in_fd, info_.input_frame_size, HAILO_DMA_BUFFER_DIRECTION_H2D);
     if (st_in != HAILO_SUCCESS) throw HailoError("VDevice::dma_map_dmabuf(H2D)", st_in);
-    mapped_.push_back({in_fd, in_map_size, HAILO_DMA_BUFFER_DIRECTION_H2D});
+    mapped_.push_back({in_fd, info_.input_frame_size, HAILO_DMA_BUFFER_DIRECTION_H2D});
 
     for (int i = 0; i < kNumTensors; ++i) {
-        const auto st = vdevice_->dma_map_dmabuf(out_fd[i], out_map_size[i], HAILO_DMA_BUFFER_DIRECTION_D2H);
+        const auto st = vdevice_->dma_map_dmabuf(out_fd[i], info_.t[i].hw_frame_size, HAILO_DMA_BUFFER_DIRECTION_D2H);
         if (st != HAILO_SUCCESS) throw HailoError("VDevice::dma_map_dmabuf(D2H)", st);
-        mapped_.push_back({out_fd[i], out_map_size[i], HAILO_DMA_BUFFER_DIRECTION_D2H});
+        mapped_.push_back({out_fd[i], info_.t[i].hw_frame_size, HAILO_DMA_BUFFER_DIRECTION_D2H});
     }
 
     sl.in_fd = in_fd;

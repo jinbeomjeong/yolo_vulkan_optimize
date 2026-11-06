@@ -275,4 +275,30 @@ TEST(CommitMargin, ParseRejectsAndLeavesOutputUntouched) {
     EXPECT_FALSE(commit_margin_valid(std::nan("")));
 }
 
+// --gpu-timestamps on|off (main.cpp parse() → yvo::tool::parse_on_off, then DisplayPipelineConfig::gpu_timestamps).
+TEST(GpuTimestamps, DefaultIsOn) {
+    EXPECT_TRUE(DisplayPipelineConfig{}.gpu_timestamps);
+}
+
+TEST(GpuTimestamps, ParseOnOff) {
+    bool v = false;
+    EXPECT_TRUE(yvo::tool::parse_on_off("on", v));
+    EXPECT_TRUE(v);
+    EXPECT_TRUE(yvo::tool::parse_on_off("off", v));
+    EXPECT_FALSE(v);
+}
+
+TEST(GpuTimestamps, ParseRejectsAndLeavesOutputUntouched) {
+    for (const char* s : {"", " ", "ON", "Off", "on ", " off", "1", "0", "true", "false", "of", "onn", "-"}) {
+        bool on = true, off = false;
+        EXPECT_FALSE(yvo::tool::parse_on_off(s, on)) << '"' << s << '"';
+        EXPECT_FALSE(yvo::tool::parse_on_off(s, off)) << '"' << s << '"';
+        EXPECT_TRUE(on) << '"' << s << '"';
+        EXPECT_FALSE(off) << '"' << s << '"';
+    }
+    bool v = true;
+    EXPECT_FALSE(yvo::tool::parse_on_off(nullptr, v));
+    EXPECT_TRUE(v);
+}
+
 } // namespace

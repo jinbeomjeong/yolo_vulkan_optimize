@@ -198,7 +198,7 @@ struct Args {
     InputPace input_pace = InputPace::Source;   // O2 default (user decision 2026-10-27); asap was the default before
     int input_queue = 1;               // leaky queue capacity, --input-pace source only (user decision 2026-10-12: 1)
     bool input_queue_explicit = false;  bool input_copy = false;  bool input_live = false;  bool decode_copy = false;  bool output_copy = false;   int queue_held() const { return input_queue + (input_live ? yvo::pipeline::kLiveMailboxFrames : 0); }   // input_live: --input-live (pipeline/live_input.hpp); queue_held: frames waiting ahead of the slots   // input_copy: comparison path, CPU copy between GPU and NPU (pipeline/input_copy.hpp)   // decode_copy: comparison path, CPU copy between the HW decoder and the GPU (pipeline/decode_copy.hpp)   // output_copy: comparison path, CPU copy between the NPU and the GPU post-processing (pipeline/output_copy.hpp)
-    std::string frame_log;             // --frame-log PATH: per-frame timing CSV written once at the end ("" = off)
+    bool gpu_timestamps = true;  std::string frame_log;   // gpu_timestamps: --gpu-timestamps on|off, GPU timestamp queries of every stage (off: GPU ms fields nan). frame_log: --frame-log PATH: per-frame timing CSV written once at the end ("" = off)
 
     // ── Display (all defaults are "off": running without arguments takes the same path as before) ──
     bool display = false;
@@ -213,7 +213,7 @@ void usage(const char* a0) {
                  "usage: %s [--video PATH] [--hef PATH] [--frames N] [--mode ptr|dmabuf] [--layout nhwc|nhcw]\n"
                  "          [--batch N] [--slots N] [--postproc host|gpu] [--postproc-alloc export|heap]\n"
                  "          [--nms gpu|cpu|verify] [--gpu-depth N] [--score T] [--dump-dir DIR] [--dump-every K]\n"
-                 "          [--quiet] [--csv-label L] [--input-pace asap|source] [--input-queue N] [--frame-log PATH] [--decoder hw|sw] [--input-copy] [--input-live] [--decode-copy] [--output-copy]\n"
+                 "          [--quiet] [--csv-label L] [--input-pace asap|source] [--input-queue N] [--frame-log PATH] [--decoder hw|sw] [--input-copy] [--input-live] [--decode-copy] [--output-copy] [--gpu-timestamps on|off]\n"
                  "  --layout     preprocessing output / NPU input tensor layout (default nhcw with the default --mode dmabuf; nhwc under --mode ptr)\n"
                  "               nhcw removes HailoRT's CPU input conversion (about 14 ms/frame). --mode dmabuf only\n"
                  "  --batch N / --slots N  NPU batch size (default 1) / slots shared by GPU and NPU (default 1 with batch 1 + --input-pace source, else max(4, batch*2))\n"
@@ -231,7 +231,7 @@ void usage(const char* a0) {
                  "               slots free up (throughput benches). --frames counts arrived frames; dropped frames get no jsonl line / PNG (\"frame\" stays the source index)\n"
                  "  --input-queue N  leaky queue size for --input-pace source, 1..3 (default 1)\n"
                  "               paced cpu ms/frame and FPS are per processed frame: not comparable to asap\n  --input-live  with --input-pace source: packets reach the decoder only at their arrival time (camera-like, no read-ahead), so frame-thread and reorder delay show in the arrival latency. Decoding runs on its own thread\n"
-                 "  --frame-log PATH  one CSV row per frame at the end (ms since start; dropped 1 = queue drop, 2 = abandoned)\n  --decoder    hw = V4L2 HEVC dma-buf (default). sw = libavcodec software HEVC, the CPU copies each frame to a SAND128 dma-buf; the rest of the pipeline is the same. Threads: YVO_DEC_THREADS\n  --input-copy comparison path: after the GPU fence the CPU copies the V3D output to a cached dma-heap buffer and the NPU reads that (default off). --mode dmabuf --layout nhcw only\n  --decode-copy comparison path: the CPU reads each HW decoder frame through an mmap of its dma-buf and copies it to a cached dma-heap SAND128 buffer, which the GPU reads (default off). Not with --decoder sw; works with --input-copy and --input-live (the copy runs where next() runs)\n  --output-copy comparison path: the NPU writes its 6 raw outputs to cached dma-heap buffers and, after the NPU completion, the CPU copies them to the buffers the GPU post-processing reads (default off). --postproc gpu (--mode dmabuf --layout nhcw) only; works with --input-copy and --decode-copy\n"
+                 "  --frame-log PATH  one CSV row per frame at the end (ms since start; dropped 1 = queue drop, 2 = abandoned)\n  --decoder    hw = V4L2 HEVC dma-buf (default). sw = libavcodec software HEVC, the CPU copies each frame to a SAND128 dma-buf; the rest of the pipeline is the same. Threads: YVO_DEC_THREADS\n  --input-copy comparison path: after the GPU fence the CPU copies the V3D output to a cached dma-heap buffer and the NPU reads that (default off). --mode dmabuf --layout nhcw only\n  --decode-copy comparison path: the CPU reads each HW decoder frame through an mmap of its dma-buf and copies it to a cached dma-heap SAND128 buffer, which the GPU reads (default off). Not with --decoder sw; works with --input-copy and --input-live (the copy runs where next() runs)\n  --output-copy comparison path: the NPU writes its 6 raw outputs to cached dma-heap buffers and, after the NPU completion, the CPU copies them to the buffers the GPU post-processing reads (default off). --postproc gpu (--mode dmabuf --layout nhcw) only; works with --input-copy and --decode-copy\n  --gpu-timestamps on|off  GPU timestamp queries in preprocessing, post-processing/NMS and the display passes (default on).\n               off removes the query resets, timestamp writes and result reads (V3DV turns each into a CPU job); the GPU ms\n               fields (summary and RESULT_CSV*) print nan. Field count and order do not change\n"
 #ifdef YVO_HAVE_DISPLAY
                  "  --display {off,on}                       real-time HDMI display (default off)\n"
                  "  --display-backend {auto,wayland,offscreen,wayland-planes,kms}  default auto. wayland is strict (no silent fallback)\n"
@@ -304,7 +304,7 @@ bool parse(int argc, char** argv, Args& a) {
         else if (s == "--dump-every" && (v = next())) a.dump_every = arg_number<int>(argv[0], s, v);
         else if (s == "--csv-label" && (v = next())) a.csv_label = v;
         else if (s == "--frame-log" && (v = next())) a.frame_log = v;
-        else if (s == "--input-copy") a.input_copy = true; else if (s == "--quiet") a.quiet = true; else if (s == "--decoder" && (v = next())) { if (std::string(v) != "hw" && std::string(v) != "sw") return false; a.sw_decoder = std::string(v) == "sw"; } else if (s == "--decode-copy") a.decode_copy = true; else if (s == "--output-copy") a.output_copy = true;
+        else if (s == "--input-copy") a.input_copy = true; else if (s == "--quiet") a.quiet = true; else if (s == "--decoder" && (v = next())) { if (std::string(v) != "hw" && std::string(v) != "sw") return false; a.sw_decoder = std::string(v) == "sw"; } else if (s == "--decode-copy") a.decode_copy = true; else if (s == "--output-copy") a.output_copy = true; else if (s == "--gpu-timestamps" && (v = next())) { if (!yvo::tool::parse_on_off(v, a.gpu_timestamps)) return false; }
         else if (s == "--input-pace" && (v = next())) {
             const std::string p = v;
             if (p == "asap") a.input_pace = InputPace::Asap;
@@ -377,7 +377,7 @@ bool parse(int argc, char** argv, Args& a) {
     // Pacing default: source when display is on (follows the 30 fps source), none when off.
     if (!a.pace_explicit)
         a.disp.pace = a.display ? yvo::display::DisplayPace::Source : yvo::display::DisplayPace::None;
-    a.disp.num_slots = a.slots;
+    a.disp.num_slots = a.slots;  a.disp.gpu_timestamps = a.gpu_timestamps;
     // Plane scanout (PlaneDisplay): wayland-planes and kms. Same frame-holding rules (same PlaneDisplay limit).
     // auto is never a plane path (Wayland composition or offscreen) → it always takes the composition budget below.
     const bool planes = yvo::display::is_plane_backend(a.disp.backend);
@@ -651,9 +651,9 @@ bool print_summary(const Args& a, const RunTotals& t, const GpuPostSnapshot& g, 
     const double wall_s = t.wall_s;
     const double fps = static_cast<double>(completed) / wall_s;
     const double cpu_per_frame = completed ? t.cpu_ms / static_cast<double>(completed) : 0.0;
-    const Stats &sd = t.sd, &sg = t.sg, &sn = t.sn, &se = t.se, &sw = t.sw;
-    const Stats &sp = g.sp, &sq = g.sq, &sc = g.sc, &sh = g.sh, &sgn = g.sgn;
-    const Stats &sdc = d.sdc, &sdo = d.sdo, &sdi = d.sdi, &sdg = d.sdg, &sdd = d.sdd;
+    const double kNan = std::nan("");  const Stats off{kNan, kNan, kNan, kNan, kNan, 0};  const bool ts = a.gpu_timestamps;   // --gpu-timestamps off: GPU timestamp fields print nan
+    const Stats &sd = t.sd, &sg = ts ? t.sg : off, &sn = t.sn, &se = t.se, &sw = t.sw;  const Stats &sp = ts ? g.sp : off, &sq = g.sq, &sc = g.sc, &sh = g.sh, &sgn = ts ? g.sgn : off;
+    const Stats &sdc = ts ? d.sdc : off, &sdo = ts ? d.sdo : off, &sdi = d.sdi, &sdg = d.sdg, &sdd = d.sdd;
     // Empty after the --display-warmup cut (or display off) → "nan", not a 0 that looks like a measurement.
     char num_buf[32];
     std::snprintf(num_buf, sizeof(num_buf), "%.2f", sdg.median);
@@ -929,7 +929,7 @@ int run(const Args& a) {
     yvo::vk::SandLetterboxConfig pcfg;
     pcfg.num_slots = a.slots;
     pcfg.export_dmabuf = dmabuf;
-    pcfg.out_layout = a.layout;
+    pcfg.out_layout = a.layout;  pcfg.timestamps = a.gpu_timestamps;
     yvo::vk::SandLetterbox pre(ctx, pcfg);
 
     std::unique_ptr<yvo::pipeline::InferStage> stage;
@@ -940,7 +940,7 @@ int run(const Args& a) {
         gcfg.batch_size = static_cast<std::uint16_t>(a.batch);
         gcfg.num_slots = a.slots;
         gcfg.score_thr = a.score >= 0.0f ? a.score : 0.2f;
-        gcfg.nms = a.nms;
+        gcfg.nms = a.nms;  gcfg.timestamps = a.gpu_timestamps;
         gcfg.input_alloc = a.postproc_alloc == "heap" ? yvo::vk::YoloInputAlloc::ImportHeap
                                                       : yvo::vk::YoloInputAlloc::ExportDmaBuf;
         auto g = std::make_unique<yvo::pipeline::GpuPostprocStage>(ctx, gcfg);

@@ -281,6 +281,12 @@ private:
         VkDeviceMemory det_mem = VK_NULL_HANDLE;
         std::uint8_t* det_host = nullptr;
         bool pending = false;
+        // Recorded once and resubmitted while the key below is unchanged (no ONE_TIME_SUBMIT). Everything else in the
+        // command buffer (descriptor sets, pipelines, NMS push constants, barriers, queries) is fixed per slot.
+        bool recorded = false;
+        float rec_scale = 0.0f;
+        int rec_pad_x = 0, rec_pad_y = 0, rec_src_w = 0, rec_src_h = 0;
+        bool rec_checksum = false;
     };
 
     void validate();

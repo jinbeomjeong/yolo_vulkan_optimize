@@ -174,14 +174,14 @@ void DisplayPipeline::build_passes() {
     DisplayConvertConfig cc;
     cc.num_slots = static_cast<int>(backend_->image_count());
     cc.uniform_scale = uniform_scale_;
-    cc.max_dst_w = std::max<int>(static_cast<int>(ext.width), 1920);
+    cc.max_dst_w = std::max<int>(static_cast<int>(ext.width), 1920);  cc.timestamps = cfg_.gpu_timestamps;
     conv_ = std::make_unique<DisplayConvert>(ctx_, cc);
 
     OverlayConfig oc;
     oc.num_slots = static_cast<int>(backend_->image_count());
     oc.max_dets = cfg_.max_dets;
     oc.line_width = cfg_.overlay_line_width;
-    oc.text_scale = cfg_.overlay_text_scale;
+    oc.text_scale = cfg_.overlay_text_scale;  oc.timestamps = cfg_.gpu_timestamps;
     ov_ = std::make_unique<OverlayRenderer>(ctx_, oc);
 }
 
