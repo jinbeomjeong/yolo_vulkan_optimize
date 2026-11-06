@@ -30,6 +30,7 @@ FIGURES = (
     "fig12_cpu_saving_by_technique",
     "fig13_input_layout_paths",
     "fig14_memory_read_cost",
+    "fig15_dmabuf_copy_ablation",
 )
 
 
