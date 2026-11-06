@@ -7,16 +7,16 @@
 //
 // Source: 6 buffers per slot from the system heap (DmaHeapConfig default, cached CPU mapping, HailoRT alignment 16384). The runner
 //   maps them D2H in place of the YoloPostproc buffers (GpuPostprocStage::set_output_copy). Buffer index = slot * 6 + tensor.
-// Destination: the YoloPostproc raw buffer of the same slot and tensor (raw_host_ptr). ExportDmaBuf: a vkMapMemory pointer to
-//   HOST_VISIBLE|HOST_COHERENT memory (dmabuf_export.cpp), no flush needed — vkQueueSubmit makes host writes to coherent memory
-//   visible to the device. ImportHeap: the cached heap mmap, so the write runs inside raw_cpu_sync_begin/end(Write) (R3: V3D does
-//   not see CPU caches). The stage passes those two calls as dst_begin/dst_end; they are no-ops for ExportDmaBuf.
+// Destination: the YoloPostproc raw buffer of the same slot and tensor (raw_host_ptr). ExportDmaBuf: vkMapMemory pointer to
+//   HOST_VISIBLE|HOST_COHERENT memory (dmabuf_export.cpp), no flush/sync: vkQueueSubmit makes earlier host writes visible to the device.
+//   ImportHeap: the cached heap mmap, written in raw_cpu_sync_begin/end(Write) = dst_begin/dst_end (R3: V3D does not see CPU caches).
+//   GPU side unchanged: FOREIGN_EXT acquire (input_sync). Redundant but harmless for ExportDmaBuf; kept as ImportHeap needs it after SYNC END.
 // CPU cache of the source: the NPU does not see CPU caches either, so every read runs in a READ sync section (dma_heap_alloc.hpp R2)
 //   opened after the completion callback. The pool zero-fills inside a WRITE section, so no dirty line can overwrite NPU data, and
 //   the CPU only reads these buffers afterwards.
 // Lifetime: the slot number is the ownership token. The NPU writes a slot's buffers only between its submit and its completion
 //   callback; the copy runs after that callback and before pp_->submit of the same slot; the slot returns (and can be resubmitted)
-//   only after the GPU fence of that submit. So a copy never overlaps an NPU write of the source or a GPU read of the destination.
+//   only after the GPU fence of that submit. So a copy never overlaps an NPU write of the source or a GPU read of the destination (WAR).
 //   The pool must outlive the stage: the runner holds the fds mapped until it is destroyed (main.cpp declares this first).
 // Single-threaded: main thread only (GpuPostprocStage::push_ready_to_gpu, inside pump / drain_one / drain). The copy is in the
 //   process CPU time like the rest of the main thread.

@@ -93,7 +93,7 @@ GpuPostprocStage::GpuPostprocStage(yvo::vk::VulkanContext& ctx, const GpuPostpro
     pc.local_size_y = cfg_.local_size_y;
     pc.score_thr = cfg_.score_thr;
     pc.input_alloc = cfg_.input_alloc;
-    pc.input_sync = yvo::vk::YoloInputSync::Foreign;   // external memory written by Hailo PCIe DMA
+    pc.input_sync = yvo::vk::YoloInputSync::Foreign;   // external memory written by Hailo PCIe DMA (--output-copy: CPU, see output_copy.hpp)
     pc.checksum_pipeline = false;
     pc.verbose = cfg_.verbose;
     pc.enable_nms = cfg_.nms != NmsBackend::Cpu;
@@ -306,7 +306,7 @@ void GpuPostprocStage::set_output_copy(OutputCopy* oc) {
 }
 
 // Main thread, after the NPU completion of the slot and before pp_->submit(slot). Destination: ExportDmaBuf = coherent mapping
-// (no flush), ImportHeap = cached heap mapping, so raw_cpu_sync_begin/end(Write) clean it for V3D (no-ops otherwise).
+// (no flush; the Foreign acquire above is redundant here but kept), ImportHeap = cached mapping, raw_cpu_sync_begin/end(Write) cleans it.
 void GpuPostprocStage::copy_outputs(int slot) {
     std::uint8_t* dst[yvo::vk::kYoloNumTensors];
     for (int t = 0; t < yvo::vk::kYoloNumTensors; ++t) dst[t] = pp_->raw_host_ptr(slot, t);
