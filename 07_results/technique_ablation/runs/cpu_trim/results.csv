@@ -1,0 +1,4 @@
+config,n,fps_median,fps_min,fps_max,cpu_ms_per_frame_median,cpu_ms_per_frame_min,cpu_ms_per_frame_max,drop_ratio_median,drop_ratio_min,drop_ratio_max,e2e_arr_mean_ms_median,e2e_arr_mean_ms_min,e2e_arr_mean_ms_max,a2p_mean_ms_median,a2p_mean_ms_min,a2p_mean_ms_max,glass_mean_ms_median,glass_mean_ms_min,glass_mean_ms_max
+base,3,24.29,24.29,24.3,1.448,1.438,1.489,0.1894,0.1894,0.19,53.77,53.72,53.86,69.95,69.85,70.4,52.43,52.41,52.99
+new_ts_on,3,24.31,24.3,24.31,1.348,1.316,1.361,0.1894,0.1889,0.1894,53.8,53.72,53.84,70.27,69.98,70.9,52.86,52.45,53.43
+new_ts_off,3,24.32,24.31,24.32,1.179,1.178,1.215,0.1889,0.1889,0.1894,53.63,53.57,53.75,70.18,69.99,70.41,52.95,52.58,53.11
