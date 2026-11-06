@@ -58,3 +58,19 @@
 - `--decode-copy`·`--output-copy` 코드는 측정 뒤 커밋해야 한다(측정 바이너리 md5는 위).
 - `--output-copy`의 셰이더 입력 배리어는 기존 `Foreign` acquire 그대로다(검증 레이어 errors 0). Vulkan 쪽 검토는 남았다.
 - 벤치 CSV는 `input copy` 통계만 열로 집계한다. `decode copy`·`output copy` 통계는 `raw/<설정>_run<N>/stdout.log`에만 있다.
+
+## 후속 (2026-11-06)
+
+위 본문은 측정 직후 기록이라 그대로 둔다. 그 뒤 바뀐 점만 적는다.
+
+- **코드 커밋:** `--decode-copy`·`--output-copy`는 `18e21c6`으로 커밋했다. 이 결과 폴더는 `cd512c5`다.
+- **`--output-copy` 동기화 검토:** vulkan-expert의 판정은 스펙상 맞다는 것이다.
+  - 기본 할당(`--postproc-alloc export`)은 HOST_COHERENT다. CPU 쓰기는 vkQueueSubmit의 host-write 순서 보장으로 GPU에 보이고, `Foreign` acquire는 중복이지만 무해하다.
+  - heap 할당에서는 `DMA_BUF_IOCTL_SYNC` END 뒤 `Foreign` acquire가 맞는 순서다.
+  - 쓰기 후 읽기 위험은 fence 대기가 막는다.
+  - 세 실행(off·export·heap)의 검증 레이어 errors는 0이었고, `detections.jsonl`은 바이트 동일했다. 로그는 `11_logs/2026-11-06_output_copy_review/`(git 밖)에 있다.
+  - 결정: 동작은 고치지 않고 주석만 보강한다 (사용자 결정, 2026-11-06).
+- **입력 버림:** 결론의 "20.1%"는 `all_copy` 1회의 값이다. 3회 중앙값은 **20.0%**이고, 논문은 이 값을 쓴다.
+- **"약 5%" 표현:** 논문에서는 뺐다. 기준인 47.86 ms(적용 전 구성)가 논문에 정의돼 있지 않기 때문이다. 대신 절대값(+2.37 ms)과 남은 CPU 대비(약 2.6배, 넓은 memcpy 1회 대안 조건)로 적는다.
+  - 결정: "적용 전 대비 약 5%" 표현 삭제 (사용자 결정, 2026-11-06).
+- **반영 위치:** 논문 §7.1·§8·부록 A.2와 그림 15(`10_paper/figures/fig15_dmabuf_copy_ablation.svg`)에 반영했다(`54c1d6d`, `49a3643`).
