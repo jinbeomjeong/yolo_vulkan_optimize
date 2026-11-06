@@ -275,7 +275,7 @@ median 을 써라(V3D 가 커맨드 버퍼를 합치면서 한쪽 구간이 0에
 ## 6. 검증
 
 ```bash
-ctest --test-dir build        # 213/213 통과해야 한다
+ctest --test-dir build        # 218/218 통과해야 한다
 ```
 
 | 테스트 | NPU | 무엇을 보는가 |

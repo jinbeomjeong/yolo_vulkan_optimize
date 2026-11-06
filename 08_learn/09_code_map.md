@@ -22,7 +22,7 @@
 | | [`02_shaders/`](../02_shaders/) | GLSL 컴퓨트 셰이더 — 본 파이프라인 5개 + `diag/` 진단 전용 3개 (`.comp`). `overlay_boxes.comp` 는 버퍼 변형까지 SPIR-V 2개로 빌드 |
 | **자산** | `03_models/` | `yolov11m.hef` — 컴파일된 YOLO 모델 (33 MB, git에 없음) |
 | | `04_data/` | 입력 영상(기본 `video_h265.mp4`, 혼잡 장면용 `mot20_{02,05}_h265.mp4`)과 테스트용 원시 텐서 픽스처 (git에 없음) |
-| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 10개(`test_postproc_live` 를 따로 세면 11), ctest 항목 213개(NPU 없이 210) |
+| **검증·측정** | [`05_tests/`](../05_tests/) | GoogleTest 실행 파일 10개(`test_postproc_live` 를 따로 세면 11), ctest 항목 218개(NPU 없이 215) |
 | | [`06_tools/`](../06_tools/) | 빌드 밖 도구 — `bench/`(측정 셸 16개), `python/`(15개 + 논문 스크립트 `paper/` 14개 + 단위 테스트 `tests/` 141개), `probes/`(일회성 소스, `hvs_probe/` 포함) |
 | | [`07_results/`](../07_results/) | 실험별 측정 원시 출력과 `summary.md` |
 | **문서** | [`08_learn/`](00_README.md) | 지금 읽고 있는 이 자습 교재 13장 |
@@ -54,7 +54,7 @@
 ├── vulkan/     GPU (Vulkan 컴퓨트, 공용 compute_pipeline·sand_column_lut) ┘ 링크하지 않는다
 ├── display/    화면 표시 (Vulkan 합성·스왑체인 + HVS 평면 스캔아웃: Wayland linux-dmabuf / KMS atomic)   — vulkan과 별도 라이브러리
 ├── isp/        ISP 전처리 — 구현됐지만 미사용
-├── pipeline/   이 전부를 묶는 실행 파일 main.cpp + slot_exchange(슬롯 풀·슬롯 예산 검사)·input_pacer(입력 페이싱 leaky 큐) — 둘 다 단위 테스트 대상. 비교용 input_copy·live_input
+├── pipeline/   이 전부를 묶는 실행 파일 main.cpp + slot_exchange(슬롯 풀·슬롯 예산 검사)·input_pacer(입력 페이싱 leaky 큐) — 둘 다 단위 테스트 대상. 비교용 input_copy·decode_copy·output_copy·live_input
 ├── gstelem/    (선택) GStreamer 연구 경로 — 레터박스 요소 + HailoRT 싱크(`yvohailosink`). 앱 본체는 쓰지 않는다
 └── tools/      빌드되는 진단·측정 도구 14개 ({hailo,vulkan,display,isp,decode,gst}/ — 측정 대상 도메인 기준)
 ```

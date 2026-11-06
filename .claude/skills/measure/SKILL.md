@@ -30,7 +30,7 @@ description: >
 | `display_bench.sh` | 표시 통합 e2e (RESULT_CSV + RESULT_CSV2 병합, 70열 — `labwc_cpu_ms`·`labwc_cpu_ms_per_frame` = 컴포지터 labwc CPU(표시 off 포함 매 실행, `raw/<run>/labwc_stat_{pre,post}.txt`), 그 뒤 sys_* 9열 = 앱 CPU 창(c0..c1)에 맞춘 시스템 전체 CPU(`06_tools/python/sys_cpu_window.py`, 냉각 뒤 idle 기준선 `IDLE_S`, `raw/<run>/syscpu*.{json,csv}`; `sys_net_ms_per_frame` = 창 sched_run − 기준선 비례분). 48·53·59·61열 옛 CSV 와 섞지 않는다. 앞 프레임 제외 없음 = `--display-warmup 0`) | `07_results/display_e2e/` |
 | `decode_bench.sh` | 디코드 경로 비교 | `07_results/decode_benchmark/` |
 | `decode_pipeline_bench.sh` | `yvo_pipeline` O2 표시 on에서 디코더만 변경: `hw_t1`·`sw_t1`·`sw_auto`, 전체 영상 × 3, 58열 raw(`sw_copy_ms` 등 복사 4열, hw는 nan). HDMI 화면 사용. 디코더 비용 비교는 `stdout.log`의 `thread cpu` ms/arrived를 본다 | `07_results/decode_benchmark/runs/pipeline_sw_hw/` |
-| `technique_ablation_bench.sh` | 확정 파이프라인에서 기법을 하나씩 뺀 구성: `base`·`layout_nhwc`(후처리도 host)·`post_host`·`nms_cpu`·`input_copy`, 전체 영상 × 3, 표시 on. `layout_nhwc`는 `post_host`와 비교한다 | `07_results/technique_ablation/` |
+| `technique_ablation_bench.sh` | 확정 파이프라인에서 기법을 하나씩 뺀 구성: `base`·`layout_nhwc`(후처리도 host)·`post_host`·`nms_cpu`·`input_copy`, dma-buf 구간별 비교 `decode_copy`·`output_copy`·`all_copy`(`input_copy` 포함 세 구간, CSV는 `input copy` 통계만 집계하고 나머지는 `stdout.log`), 전체 영상 × 3, 표시 on. `layout_nhwc`는 `post_host`와 비교한다 | `07_results/technique_ablation/` |
 | `live_input_bench.sh` | `--input-live`(패킷을 도착 시각에야 디코더로)로 `hw_t1`·`sw_t1`·`sw_auto`, 3회. 재정렬 지연이 함께 들어가므로 스레드 효과는 `sw_auto − hw_t1`로 읽는다 | `07_results/decode_benchmark/runs/pipeline_live_input/` |
 | `backpressure_bench.sh` | 백프레셔 전후 비교 | `07_results/raw_runner_backpressure/` |
 | `isp_bench.sh` | ISP 전처리 단독(NPU 미사용) | `07_results/isp_resize/` |
