@@ -1,0 +1,33 @@
+path                                             | run1 %  ms | run2 %  ms | run3 %  ms | median ms
+main thread (tid=pid)                            | 64.12 1.076 | 63.95 0.999 | 63.83 1.008 | 1.008
+V3DV submit thread                               | 16.72 0.281 | 16.81 0.263 | 17.06 0.269 | 0.269
+HailoRT threads (2)                              | 17.08 0.287 | 17.69 0.276 | 17.35 0.274 | 0.276
+V4L2 decode helper thread                        |  2.06 0.035 |  1.52 0.024 |  1.74 0.028 | 0.028
+DisplayPipeline::show                            | 12.17 0.204 | 14.05 0.220 | 16.61 0.262 | 0.220
+  VulkanSwapchain::present                       |  7.27 0.122 |  8.17 0.128 | 10.18 0.161 | 0.128
+  DisplayPipeline::drain_present_waits           |  5.55 0.093 |  4.78 0.075 |  4.27 0.067 | 0.075
+    VulkanSwapchain::wait_present                |  5.55 0.093 |  4.56 0.071 |  4.09 0.065 | 0.071
+  DisplayPipeline::pump                          |  6.77 0.114 |  5.74 0.090 |  6.32 0.100 | 0.100
+  DisplayConvert::record                         |  1.28 0.022 |  1.18 0.018 |  1.66 0.026 | 0.022
+  DisplayConvert::begin                          |  1.02 0.017 |  1.43 0.022 |  1.13 0.018 | 0.018
+  OverlayRenderer::record_dispatch               |  0.64 0.011 |  0.93 0.015 |  1.56 0.025 | 0.015
+  VulkanSwapchain::acquire                       |  0.94 0.016 |  1.09 0.017 |  1.16 0.018 | 0.017
+GpuPostprocStage::pump                           |  7.45 0.125 |  7.21 0.113 |  5.64 0.089 | 0.113
+  push_ready_to_gpu                              |  7.14 0.120 |  6.68 0.104 |  5.38 0.085 | 0.104
+  YoloPostproc::submit                           |  7.14 0.120 |  6.08 0.095 |  5.26 0.083 | 0.095
+    YoloPostproc::record                         |  6.10 0.102 |  5.33 0.083 |  4.93 0.078 | 0.083
+GpuPostprocStage::submit (->HailoRawRunner)      |  2.57 0.043 |  3.58 0.056 |  2.52 0.040 | 0.043
+SandLetterbox::submit                            |  3.75 0.063 |  3.32 0.052 |  4.35 0.069 | 0.063
+  SandLetterbox::record                          |  3.40 0.057 |  2.90 0.045 |  3.61 0.057 | 0.057
+libavcodec (any frame)                           | 16.13 0.271 | 15.49 0.242 | 13.48 0.213 | 0.242
+  __memset_zva64 (hevc_frame_start)              |  5.28 0.089 |  5.66 0.088 |  4.60 0.073 | 0.088
+libavformat                                      |  2.80 0.047 |  3.59 0.056 |  2.82 0.044 | 0.047
+drmSyncobjWait                                   |  5.37 0.090 |  5.53 0.086 |  6.07 0.096 | 0.090
+drmSyncobjExportSyncFile                         |  4.71 0.079 |  3.88 0.061 |  4.73 0.075 | 0.075
+v3d_submit_cpu_ioctl                             |  5.11 0.086 |  5.79 0.090 |  5.14 0.081 | 0.086
+v3d_submit_csd_ioctl                             |  2.38 0.040 |  1.44 0.022 |  1.99 0.031 | 0.031
+mmap syscall                                     |  2.82 0.047 |  3.34 0.052 |  3.48 0.055 | 0.052
+munmap syscall                                   |  2.34 0.039 |  2.61 0.041 |  2.06 0.033 | 0.039
+png deflate                                      |  0.66 0.011 |  0.74 0.012 |  0.72 0.011 | 0.011
+lambda()#3                                       | 14.01 0.235 | 15.77 0.246 | 17.98 0.284 | 0.246
+lambda()#4                                       |  3.55 0.060 |  4.13 0.065 |  3.32 0.052 | 0.060

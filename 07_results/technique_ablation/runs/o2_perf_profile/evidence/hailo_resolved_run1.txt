@@ -1,0 +1,108 @@
+samples 1061 total_period 5215494605
+== children (resolved), top 70
+ 64.12%  (anonymous namespace)::run((anonymous namespace)::Args const&)
+ 64.12%  main
+ 64.12%  __libc_start_call_main
+ 64.12%  __libc_start_main@@GLIBC_2.34
+ 64.12%  _start
+ 64.12%  (anonymous namespace)::run((anonymous namespace)::Args const&)::{lambda(long&, std::chrono::time_point<std::chrono::_V2::steady_clock, std::chrono::duration<long, std::ratio<1l, 1000000000l> > >)#1}::operator()(long&, std::chrono::time_point<std::chrono::_V2::steady_clock, std::chrono::duration<long, std::ratio<1l, 1000000000l> > >) const [clone .constprop.0]
+ 55.68%  el0t_64_sync_handler
+ 55.68%  el0t_64_sync
+ 54.75%  el0_svc
+ 49.70%  do_el0_svc
+ 49.65%  el0_svc_common.constprop.0
+ 49.41%  invoke_syscall
+ 46.67%  [unknown] (/usr/lib/aarch64-linux-gnu/libvulkan_broadcom.so)
+ 38.22%  __GI___ioctl
+ 35.88%  thread_start
+ 33.94%  __arm64_sys_ioctl
+ 33.82%  start_thread
+ 22.15%  drmIoctl
+ 19.28%  [unknown] (/usr/lib/libhailort.so.4.24.0)
+ 18.32%  drm_ioctl [drm]
+ 17.76%  [unknown] (/usr/lib/aarch64-linux-gnu/libavcodec.so.61.19.101)
+ 17.08%  [unknown] (/usr/lib/aarch64-linux-gnu/libstdc++.so.6.0.33)
+ 16.52%  drm_ioctl_kernel [drm]
+ 14.01%  (anonymous namespace)::run((anonymous namespace)::Args const&)::{lambda()#3}::operator()() const
+ 12.17%  yvo::display::DisplayPipeline::show(int, std::vector<yvo::Detection, std::allocator<yvo::Detection> > const&, std::basic_string_view<char, std::char_traits<char> >)
+  8.96%  __internal_syscall_cancel
+  8.82%  __syscall_cancel_arch
+  7.45%  yvo::pipeline::GpuPostprocStage::pump()
+  7.27%  yvo::display::VulkanSwapchain::present(yvo::display::SwapchainFrame const&)
+  7.14%  yvo::vk::YoloPostproc::submit(int, yvo::LetterboxParams const&, int, int, bool)
+  7.14%  yvo::pipeline::GpuPostprocStage::push_ready_to_gpu()
+  6.77%  yvo::display::DisplayPipeline::pump()
+  6.19%  __syscall_cancel
+  6.10%  yvo::vk::YoloPostproc::record(yvo::vk::YoloPostproc::Slot&, int, yvo::LetterboxParams const&, int, int, bool)
+  6.08%  hailo_pcie_fops_unlockedioctl [hailo_pci]
+  6.08%  hailo_vdma_ioctl [hailo_pci]
+  5.55%  yvo::display::VulkanSwapchain::wait_present(unsigned long, unsigned long)
+  5.55%  yvo::display::DisplayPipeline::drain_present_waits(bool)
+  5.37%  drmSyncobjWait
+  5.28%  __memset_zva64
+  5.11%  v3d_submit_cpu_ioctl [v3d]
+  4.71%  drmSyncobjExportSyncFile
+  3.75%  yvo::vk::SandLetterbox::submit(yvo::DrmFrame const&, int)
+  3.55%  (anonymous namespace)::run((anonymous namespace)::Args const&)::{lambda()#4}::operator()() const
+  3.40%  yvo::vk::SandLetterbox::record(yvo::vk::SandLetterbox::Slot&, int, yvo::vk::ImportedDmaBuf const&, yvo::vk::ImportedDmaBuf const&, yvo::vk::SandLetterboxPush const&)
+  3.40%  __arm64_sys_futex
+  3.37%  do_futex
+  3.36%  drm_syncobj_handle_to_fd_ioctl [drm]
+  3.30%  drm_syncobj_wait_ioctl [drm]
+  3.28%  v4l2_ioctl [videodev]
+  3.22%  [unknown] (/usr/lib/aarch64-linux-gnu/libwayland-client.so.0.24.0)
+  3.21%  wl_display_dispatch_queue_timeout
+  3.18%  hailo_vdma_launch_transfer [hailo_pci]
+  3.18%  hailo_vdma_launch_transfer_ioctl [hailo_pci]
+  3.14%  malloc
+  2.94%  video_usercopy [videodev]
+  2.85%  video_ioctl2 [videodev]
+  2.82%  do_mmap
+  2.82%  vm_mmap_pgoff
+  2.82%  ksys_mmap_pgoff
+  2.82%  __arm64_sys_mmap
+  2.82%  __mmap
+  2.77%  __GI___futex_abstimed_wait_cancelable64
+  2.65%  cfree@GLIBC_2.17
+  2.59%  __video_do_ioctl [videodev]
+  2.57%  yvo::HailoRawRunner::submit(int, long, std::function<void (yvo::RawInferResult&&)>)
+  2.57%  yvo::pipeline::GpuPostprocStage::submit(yvo::PreprocOutput const&, std::function<void (yvo::InferResult&&)> const&)
+  2.39%  __mmap_region
+  2.39%  mmap_region
+  2.38%  v3d_submit_csd_ioctl [v3d]
+== self top 25
+  6.21%  [unknown] (/usr/lib/aarch64-linux-gnu/libvulkan_broadcom.so)
+  5.29%  [unknown] (/usr/lib/libhailort.so.4.24.0)
+  5.17%  __memset_zva64
+  4.01%  el0_svc
+  3.75%  [unknown] (/usr/lib/aarch64-linux-gnu/libavcodec.so.61.19.101)
+  2.28%  _raw_spin_unlock_irqrestore
+  2.19%  hailo_vdma_launch_transfer [hailo_pci]
+  1.92%  [unknown] ([vdso])
+  1.59%  __kmalloc_noprof
+  1.49%  cfree@GLIBC_2.17
+  1.32%  _int_malloc
+  1.28%  __arch_copy_to_user
+  1.07%  __memcpy_generic
+  1.05%  _raw_spin_lock
+  0.97%  drm_syncobj_array_wait_timeout.constprop.0 [drm]
+  0.96%  kfree
+  0.93%  __GI___ioctl
+  0.93%  malloc
+  0.92%  __pi_memset_generic
+  0.85%  __printf_fp_buffer_1.isra.0
+  0.81%  queue_work_on
+  0.79%  [unknown] (/usr/lib/aarch64-linux-gnu/libwayland-client.so.0.24.0)
+  0.76%  std::_Rb_tree_increment(std::_Rb_tree_node_base*)
+  0.76%  __arch_copy_from_user
+  0.75%  security_file_permission
+== hailo_pci paths
+  3.18%  hailo_pcie_fops_unlockedioctl [hailo_pci] <- hailo_vdma_ioctl [hailo_pci] <- hailo_vdma_launch_transfer_ioctl [hailo_pci] || el0t_64_sync <- __GI___ioctl <- [unknown] (/usr/lib/libhailort.so.4.24.0) <- [unknown] (/usr/lib/libhailort.so.4.24.0) <- [unknown] (/usr/lib/libhailort.so.4.24.0)
+  1.16%  hailo_pcie_fops_unlockedioctl [hailo_pci] <- hailo_vdma_ioctl [hailo_pci] <- hailo_vdma_buffer_map_ioctl [hailo_pci] || el0t_64_sync <- __GI___ioctl <- [unknown] (/usr/lib/libhailort.so.4.24.0) <- [unknown] (/usr/lib/libhailort.so.4.24.0) <- [unknown] (/usr/lib/libhailort.so.4.24.0)
+  0.85%  hailo_pcie_fops_unlockedioctl [hailo_pci] <- hailo_vdma_ioctl [hailo_pci] <- hailo_vdma_interrupts_wait_ioctl [hailo_pci] || el0t_64_sync <- __GI___ioctl <- [unknown] (/usr/lib/libhailort.so.4.24.0) <- [unknown] (/usr/lib/libhailort.so.4.24.0) <- [unknown] (/usr/lib/libhailort.so.4.24.0)
+  0.41%  hailo_pcie_fops_unlockedioctl [hailo_pci] <- hailo_vdma_ioctl [hailo_pci] <- hailo_vdma_find_descriptors_buffer [hailo_pci] || el0t_64_sync <- __GI___ioctl <- [unknown] (/usr/lib/libhailort.so.4.24.0) <- [unknown] (/usr/lib/libhailort.so.4.24.0) <- [unknown] (/usr/lib/libhailort.so.4.24.0)
+  0.34%  hailo_pcie_fops_unlockedioctl [hailo_pci] <- hailo_vdma_ioctl [hailo_pci] <- hailo_vdma_buffer_unmap_ioctl [hailo_pci] || el0t_64_sync <- __GI___ioctl <- [unknown] (/usr/lib/libhailort.so.4.24.0) <- [unknown] (/usr/lib/libhailort.so.4.24.0) <- [unknown] (/usr/lib/libhailort.so.4.24.0)
+  0.15%  hailo_pcie_fops_unlockedioctl [hailo_pci] <- hailo_vdma_ioctl [hailo_pci] || el0t_64_sync <- __GI___ioctl <- [unknown] (/usr/lib/libhailort.so.4.24.0) <- [unknown] (/usr/lib/libhailort.so.4.24.0) <- [unknown] (/usr/lib/libhailort.so.4.24.0)
+  0.00%  hailo_pcie_fops_unlockedioctl [hailo_pci] <- hailo_vdma_interrupts_wait_ioctl [hailo_pci] || el0t_64_sync <- __GI___ioctl <- [unknown] (/usr/lib/libhailort.so.4.24.0) <- [unknown] (/usr/lib/libhailort.so.4.24.0) <- [unknown] (/usr/lib/libhailort.so.4.24.0)
+== hailo tids {'312692': 65910861, '312691': 251323508}
+HAILO_PCI_TOTAL 6.083%

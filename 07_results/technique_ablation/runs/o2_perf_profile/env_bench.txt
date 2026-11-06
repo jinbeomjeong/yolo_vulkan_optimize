@@ -1,0 +1,15 @@
+date: 2026-11-06T18:46:36+09:00
+governor: performance
+binary md5: ef24741c7e5ca9457253f73e03aa73ca
+git HEAD: d5739d8
+pcie: 8.0 GT/s PCIe x1
+v3d: frequency(0)=1150014720
+soc: temp=66.4'C
+throttled: throttled=0xe0000
+6.18.50+rpt-rpi-2712
+perf: perf version 6.18.50
+video: /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4
+args: --mode dmabuf --decoder hw --batch 1 --slots 1 --input-pace source --input-queue 1 --display on --display-backend wayland --display-fullscreen --display-sync matched --display-pace source --dump-dir . --dump-every 100000000 --layout nhcw --postproc gpu --nms gpu
+run 1 hailo_start_c=55.4 soc=temp=66.4'C
+run 2 hailo_start_c=64.1 soc=temp=68.1'C
+run 3 hailo_start_c=64.9 soc=temp=68.1'C
