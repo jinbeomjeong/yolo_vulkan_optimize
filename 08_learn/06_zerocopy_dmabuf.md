@@ -792,7 +792,7 @@ vdma_stream.cpp:379  unaligned buffer causes performance degradation
 
 왜 셋이 필요한가? **HailoRT API마다 받는 크기가 다르기 때문이다.**
 
-- `dma_map_dmabuf(fd, size, D2H)` — dma-buf 전체 크기를 준다(버퍼 전체를 덮는 쪽이 안전)
+- `dma_map_dmabuf(fd, size, D2H)` — **`hw_frame_size`를 준다**(실크기는 그 이상인지 검사에만 쓴다). 전송 크기와 정확히 같아야 HailoRT 매핑 캐시에 적중한다. 실크기로 매핑했던 2026-11-06 이전 코드는 프레임마다 다시 매핑했다([`cpu_trim`](../07_results/technique_ablation/runs/cpu_trim/summary.md))
 - `read_async` / `hailo_dma_buffer_t.size` — **`hw_frame_size` 만 받는다**
 
 그리고 여기에 **치명적인 함정**이 있다:

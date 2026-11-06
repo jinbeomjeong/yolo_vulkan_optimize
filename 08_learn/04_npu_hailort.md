@@ -574,14 +574,14 @@ GPU 후처리를 통합한 뒤 처리량이 눈에 띄게 떨어졌다. 원인�
 **이 챕터에서 가장 위험한 함정이다.**
 
 dma-buf(여러 칩이 같은 메모리를 공유하는 수단, → [06_zerocopy_dmabuf.md](06_zerocopy_dmabuf.md))를
-HailoRT에 넘길 때 **크기를 두 군데에 적는데, 그 둘이 서로 다른 값이어야 한다.**
+HailoRT에 넘길 때 **크기를 두 군데에 적는데, 둘 다 `hw_frame_size`여야 한다.** dma-buf 실크기는 "그보다 작지 않은가"를 검사하는 데만 쓴다.
 
 | 호출 | 넘겨야 하는 크기 | 왜 |
 |---|---|---|
-| `dma_map_dmabuf()` | **dma-buf 실크기** (`lseek(fd, 0, SEEK_END)`) | 매핑은 버퍼 전체를 덮는 쪽이 안전하다 |
+| `dma_map_dmabuf()` | **`hw_frame_size`** (실크기 `lseek(fd, 0, SEEK_END)` ≥ 이 값인지 먼저 검사) | HailoRT 4.24의 매핑 캐시는 `{fd, 방향, 크기}`가 정확히 같아야 사전 매핑을 다시 쓴다. 실크기로 매핑하면 전송 크기와 달라 **프레임마다 다시 매핑한다**(2026-11-06 수정 전 동작, 프레임당 map·unmap 7회, [`cpu_trim`](../07_results/technique_ablation/runs/cpu_trim/summary.md)). 드라이버는 크기와 무관하게 dma-buf 전체를 매핑한다 |
 | `infer_async()` | **`hw_frame_size`** | 실제로 전송할 바이트 수 |
 
-두 값이 왜 다른가? GPU(V3DV)가 dma-buf를 할당할 때 내부 사정으로 **"+256 B 후 16 KB 단위
+두 크기(실크기와 `hw_frame_size`)가 왜 다른가? GPU(V3DV)가 dma-buf를 할당할 때 내부 사정으로 **"+256 B 후 16 KB 단위
 올림"** 을 하기 때문이다. 텐서 하나당 16~29 KB가 남는다
 ([`07_results/gpu_postprocess/summary.md`](../07_results/gpu_postprocess/summary.md) 주의 절).
 
@@ -722,7 +722,7 @@ SoC 쪽 `vcgencmd get_throttled`는 계속 0이었으므로 **Pi가 아니라 Ha
    ▼
  infer_async(입력 1 + 출력 6) ──────► 요청 큐에 적재
    │  ⚠ 크기는 hw_frame_size            │
-   │  ⚠ 매핑은 dma-buf 실크기           │ 스케줄러(ROUND_ROBIN)가 순서 결정
+   │  ⚠ 사전 매핑도 hw_frame_size       │ 스케줄러(ROUND_ROBIN)가 순서 결정
    │                                     ▼
    │ 즉시 반환 → 다음 프레임 처리   ┌── PCIe H2D 전송 ─────────► 입력 적재
    │                                 │                            [컨텍스트 1] 가중치↓
@@ -793,9 +793,9 @@ batch를 올려도 slots를 그대로 두면 **슬롯 제약**에 걸리기 때�
 
 **`HAILO_SUCCESS`를 반환하고 콜백을 0회 호출한다.** 요청이 내부 워커에서 조용히 버려져서,
 완료를 무한정 기다리는 코드는 **영구 정지**한다. 에러도 로그도 없다.
-전송 크기는 반드시 **`hw_frame_size`**, 매핑 크기는 **dma-buf 실크기**다.
+전송 크기와 사전 매핑 크기는 모두 **`hw_frame_size`**다(dma-buf 실크기는 그 이상인지 검사에만 쓴다).
 방어는 ① 모든 대기에 시한을 두고 시한 초과를 치명적 오류로 올리기(`drain_for`),
-② 매핑 크기가 `hw_frame_size`보다 작으면 시작 시점에 거부하기다
+② dma-buf 실크기가 `hw_frame_size`보다 작으면 시작 시점에 거부하기다
 ([`hailo_raw_runner.hpp`](../01_src/hailo/hailo_raw_runner.hpp) "크기 계약").
 
 **Q7. 원시 출력(1.22 MB)이 NMS 출력(160 KB)보다 7.6배 큰데도 PCIe 트래픽이 늘지 않는 이유는?**
