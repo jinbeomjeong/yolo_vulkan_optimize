@@ -65,6 +65,7 @@
 - 표시·기록 on 값이다. 표시 off인 기존 값과 섞지 않는다.
 - 측정 중 진행 확인과 읽기 전용 검토 에이전트가 돌았다. 벤치의 코어는 고정하지 않았다.
 - `input_copy`의 NPU 지연이 `base`보다 0.5 ms 짧다(32.17 대 32.69). 캐시 힙 입력이 원인으로 보이나 확인하지 않았다.
+  - → 정정(2026-11-07): 캐시 힙 효과가 아니라 `npu_ms` 측정 구간 시작점 효과다. 처리량·지연 이득은 없다([`runs/npu_latency_window`](runs/npu_latency_window/summary.md)).
 
 ## 정정 (2026-11-06, 메인 에이전트)
 
@@ -73,3 +74,18 @@
 결정: 그림 12의 정의를 완화하고 7번 색을 분리하며 감소율은 1·7·8·10번에만 적는다 (사용자 결정, 2026-11-06)
 결정: 그림 13은 기존·NHCW 직접 입력·제안의 3행으로 그린다 (사용자 결정, 2026-11-06)
 결정: 헤드라인 58.4·70.2 ms는 유지하고 파일 입력 조건의 단서를 붙인다 (사용자 결정, 2026-11-06)
+
+## 하위 회차 (2026-11-07 색인)
+
+결정: 기법 제거 요약에 하위 회차 목록을 둔다 (사용자 결정, 2026-11-07)
+결정: 위 "주의" 절의 `input_copy` NPU 지연 추정에는 원문을 두고 정정 참조만 덧붙인다 (사용자 결정, 2026-11-07)
+
+| 회차 | 내용 |
+|---|---|
+| [`runs/dmabuf_ablation`](runs/dmabuf_ablation/summary.md) | dma-buf 공유만 구간별로 CPU 복사로 바꾼 비교 (2026-11-06) |
+| [`runs/display_onoff`](runs/display_onoff/summary.md) | 표시를 끄면 도착 기준 지연이 길어지는 현상 (2026-11-06) |
+| [`runs/display_onoff_aspm_off`](runs/display_onoff_aspm_off/summary.md) | 위 현상의 진단 회차, ASPM L1 끔 (2026-11-06) |
+| [`runs/o2_perf_profile`](runs/o2_perf_profile/summary.md) | 확정 구성의 남은 응용 CPU를 perf로 분해 (2026-11-06) |
+| [`runs/cpu_trim`](runs/cpu_trim/summary.md) | 변경 3건(사전 매핑 크기·후처리 CB 사전 기록·`--gpu-timestamps`) 전후 비교 (2026-11-06) |
+| [`runs/npu_latency_window`](runs/npu_latency_window/summary.md) | `input_copy`의 NPU 지연이 짧게 나오는 이유 — 측정 구간 시작점 효과 (2026-11-07) |
+| [`runs/o2_mot20_02`](runs/o2_mot20_02/summary.md) · [`o2_mot20_05`](runs/o2_mot20_05/summary.md) | 확정 구성을 혼잡 장면 MOT20 두 영상으로 재측정 (2026-11-07) |
