@@ -1,0 +1,5 @@
+binary,config,n,fps_median,fps_min,fps_max,npu_ms_mean_median,npu_ms_mean_min,npu_ms_mean_max,npu_ms_median_median,npu_ms_median_min,npu_ms_median_max,npu_ms_p90_median,npu_ms_p90_min,npu_ms_p90_max,e2e_arr_ms_median_median,e2e_arr_ms_median_min,e2e_arr_ms_median_max,cpu_ms_per_frame_median,cpu_ms_per_frame_min,cpu_ms_per_frame_max
+new,base,3,24.430,24.420,24.430,38.341,38.339,38.353,38.527,38.524,38.528,38.576,38.575,38.576,58.189,58.167,58.193,0.711,0.703,0.714
+new,input_copy,3,24.430,24.420,24.430,37.474,37.470,37.477,37.662,37.659,37.662,37.710,37.709,37.711,58.227,58.171,58.290,1.584,1.580,1.598
+old,base,3,24.430,24.420,24.430,38.291,38.279,38.293,38.474,38.471,38.475,38.523,38.521,38.526,58.236,58.135,58.244,0.800,0.797,0.814
+old,input_copy,3,24.430,24.430,24.430,37.396,37.169,37.405,37.606,37.365,37.608,37.656,37.417,37.659,58.233,58.155,58.260,1.685,1.679,1.920

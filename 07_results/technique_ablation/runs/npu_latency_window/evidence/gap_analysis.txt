@@ -1,0 +1,15 @@
+# X = npu_done_ms - submit_ms (GPU submit -> NPU completion callback) of frame i
+# G = submit_ms(i) - npu_done_ms(i-1) (previous NPU completion -> this GPU submit)
+# processed frames only (dropped == 0), pairs with seq >= 30; source: evidence/gap_src_*_frame_log.csv
+
+base: pairs 703  X median 40.36  G median 0.56  X+G median 40.92 ms
+  G in [0,1) ms: n  651  X median 40.36
+  G in [1,2) ms: n   11  X median 39.23
+  G in [2,4) ms: n   33  X median 38.13
+  G in [4,8) ms: n    8  X median 36.66
+
+input_copy: pairs 703  X median 40.37  G median 0.56  X+G median 40.92 ms
+  G in [0,1) ms: n  651  X median 40.37
+  G in [1,2) ms: n   12  X median 39.56
+  G in [2,4) ms: n   36  X median 38.23
+  G in [4,8) ms: n    4  X median 36.76

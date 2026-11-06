@@ -1,0 +1,143 @@
+# npu_latency_window — environment (assembled from each run's raw/<run>/env.txt; driver evidence/run_npu_lat.sh, run_gap.sh)
+date: 2026-11-07 (00:13 - 01:11 KST)
+kernel: 6.18.50+rpt-rpi-2712
+HailoRT: 4.24.0 (libhailort.so.4.24.0), HEF 03_models/yolov11m.hef
+video: 04_data/videos/video_h265.mp4 md5 f04e7047fed4e1c6d84ea24ec5dc6be9
+binaries: new = HEAD 3d78e59 build md5 af63c101943f444a215e7eca0315b77b; old = before c97c274 md5 ef24741c (pre-map with the dma-buf lseek size)
+common args: --mode dmabuf --decoder hw --batch 1 --slots 1 --input-pace source --input-queue 1 --layout nhcw --postproc gpu --nms gpu --display off (input_copy adds --input-copy); YVO_DEC_THREADS not set by the driver
+order: per repetition new base -> new input_copy -> old base -> old input_copy, 3 repetitions; cool to Hailo <= 65 C and SoC <= 75 C before every run
+governor: performance during the runs (trap restored ondemand)
+
+## per run
+### new_base_run1
+2026-11-07T00:13:28+09:00
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_pipeline md5 af63c101943f444a215e7eca0315b77b
+pcie: 8.0 GT/s PCIe x1
+hailo_pre: 49.4 C  soc_pre: 73.2 C  cool_wait_s: 11
+governor: performance  cur_khz 2400000
+throttled=0xe0000
+frequency(0)=1150008192
+git HEAD: 3d78e596c9175ed3763eb3007f5d14ea1373094b
+args: --video /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 --mode dmabuf --decoder hw --batch 1 --slots 1 --input-pace source --input-queue 1 --layout nhcw --postproc gpu --nms gpu --display off 
+exit 0 hailort_warn 0 err 0 hailo_post 66.6 soc_post 68.8
+### new_base_run2
+2026-11-07T00:20:28+09:00
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_pipeline md5 af63c101943f444a215e7eca0315b77b
+pcie: 8.0 GT/s PCIe x1
+hailo_pre: 64.2 C  soc_pre: 70.0 C  cool_wait_s: 62
+governor: performance  cur_khz 2400000
+throttled=0xe0000
+frequency(0)=1150011520
+git HEAD: 3d78e596c9175ed3763eb3007f5d14ea1373094b
+args: --video /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 --mode dmabuf --decoder hw --batch 1 --slots 1 --input-pace source --input-queue 1 --layout nhcw --postproc gpu --nms gpu --display off 
+exit 0 hailort_warn 0 err 0 hailo_post 74.9 soc_post 69.4
+### new_base_run3
+2026-11-07T00:28:39+09:00
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_pipeline md5 af63c101943f444a215e7eca0315b77b
+pcie: 8.0 GT/s PCIe x1
+hailo_pre: 64.5 C  soc_pre: 70.5 C  cool_wait_s: 62
+governor: performance  cur_khz 2400000
+throttled=0xe0000
+frequency(0)=1150014720
+git HEAD: 3d78e596c9175ed3763eb3007f5d14ea1373094b
+args: --video /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 --mode dmabuf --decoder hw --batch 1 --slots 1 --input-pace source --input-queue 1 --layout nhcw --postproc gpu --nms gpu --display off 
+exit 0 hailort_warn 0 err 0 hailo_post 75.4 soc_post 70.0
+### new_input_copy_run1
+2026-11-07T00:14:40+09:00
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_pipeline md5 af63c101943f444a215e7eca0315b77b
+pcie: 8.0 GT/s PCIe x1
+hailo_pre: 64.0 C  soc_pre: 68.3 C  cool_wait_s: 11
+governor: performance  cur_khz 2400000
+throttled=0xe0000
+frequency(0)=1150014720
+git HEAD: 3d78e596c9175ed3763eb3007f5d14ea1373094b
+args: --video /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 --mode dmabuf --decoder hw --batch 1 --slots 1 --input-pace source --input-queue 1 --layout nhcw --postproc gpu --nms gpu --display off --input-copy
+exit 0 hailort_warn 0 err 0 hailo_post 73.8 soc_post 67.8
+### new_input_copy_run2
+2026-11-07T00:22:30+09:00
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_pipeline md5 af63c101943f444a215e7eca0315b77b
+pcie: 8.0 GT/s PCIe x1
+hailo_pre: 64.2 C  soc_pre: 68.8 C  cool_wait_s: 61
+governor: performance  cur_khz 2400000
+throttled=0xe0000
+frequency(0)=1150014720
+git HEAD: 3d78e596c9175ed3763eb3007f5d14ea1373094b
+args: --video /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 --mode dmabuf --decoder hw --batch 1 --slots 1 --input-pace source --input-queue 1 --layout nhcw --postproc gpu --nms gpu --display off --input-copy
+exit 0 hailort_warn 0 err 0 hailo_post 75.1 soc_post 70.5
+### new_input_copy_run3
+2026-11-07T00:30:42+09:00
+bin: /home/pi/workspace/yolo_vulkan_optimize/build/bin/yvo_pipeline md5 af63c101943f444a215e7eca0315b77b
+pcie: 8.0 GT/s PCIe x1
+hailo_pre: 64.6 C  soc_pre: 69.4 C  cool_wait_s: 62
+governor: performance  cur_khz 2400000
+throttled=0xe0000
+frequency(0)=1150011520
+git HEAD: 3d78e596c9175ed3763eb3007f5d14ea1373094b
+args: --video /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 --mode dmabuf --decoder hw --batch 1 --slots 1 --input-pace source --input-queue 1 --layout nhcw --postproc gpu --nms gpu --display off --input-copy
+exit 0 hailort_warn 0 err 0 hailo_post 75.5 soc_post 70.0
+### old_base_run1
+2026-11-07T00:16:32+09:00
+bin: /tmp/claude-1000/-home-pi-workspace-yolo-vulkan-optimize/e4a7ad62-ae73-489e-9893-56a55ad8454a/scratchpad/baseline_bin/yvo_pipeline md5 ef24741c7e5ca9457253f73e03aa73ca
+pcie: 8.0 GT/s PCIe x1
+hailo_pre: 64.1 C  soc_pre: 67.2 C  cool_wait_s: 51
+governor: performance  cur_khz 2400000
+throttled=0xe0000
+frequency(0)=1150014720
+git HEAD: 3d78e596c9175ed3763eb3007f5d14ea1373094b
+args: --video /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 --mode dmabuf --decoder hw --batch 1 --slots 1 --input-pace source --input-queue 1 --layout nhcw --postproc gpu --nms gpu --display off 
+exit 0 hailort_warn 0 err 0 hailo_post 74.5 soc_post 70.5
+### old_base_run2
+2026-11-07T00:24:33+09:00
+bin: /tmp/claude-1000/-home-pi-workspace-yolo-vulkan-optimize/e4a7ad62-ae73-489e-9893-56a55ad8454a/scratchpad/baseline_bin/yvo_pipeline md5 ef24741c7e5ca9457253f73e03aa73ca
+pcie: 8.0 GT/s PCIe x1
+hailo_pre: 64.3 C  soc_pre: 68.8 C  cool_wait_s: 61
+governor: performance  cur_khz 2400000
+throttled=0xe0000
+frequency(0)=1150011520
+git HEAD: 3d78e596c9175ed3763eb3007f5d14ea1373094b
+args: --video /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 --mode dmabuf --decoder hw --batch 1 --slots 1 --input-pace source --input-queue 1 --layout nhcw --postproc gpu --nms gpu --display off 
+exit 0 hailort_warn 0 err 0 hailo_post 75.2 soc_post 68.8
+### old_base_run3
+2026-11-07T00:32:44+09:00
+bin: /tmp/claude-1000/-home-pi-workspace-yolo-vulkan-optimize/e4a7ad62-ae73-489e-9893-56a55ad8454a/scratchpad/baseline_bin/yvo_pipeline md5 ef24741c7e5ca9457253f73e03aa73ca
+pcie: 8.0 GT/s PCIe x1
+hailo_pre: 64.7 C  soc_pre: 70.5 C  cool_wait_s: 61
+governor: performance  cur_khz 2400000
+throttled=0xe0000
+frequency(0)=1150014720
+git HEAD: 3d78e596c9175ed3763eb3007f5d14ea1373094b
+args: --video /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 --mode dmabuf --decoder hw --batch 1 --slots 1 --input-pace source --input-queue 1 --layout nhcw --postproc gpu --nms gpu --display off 
+exit 0 hailort_warn 0 err 0 hailo_post 75.6 soc_post 70.5
+### old_input_copy_run1
+2026-11-07T00:18:25+09:00
+bin: /tmp/claude-1000/-home-pi-workspace-yolo-vulkan-optimize/e4a7ad62-ae73-489e-9893-56a55ad8454a/scratchpad/baseline_bin/yvo_pipeline md5 ef24741c7e5ca9457253f73e03aa73ca
+pcie: 8.0 GT/s PCIe x1
+hailo_pre: 64.9 C  soc_pre: 68.8 C  cool_wait_s: 51
+governor: performance  cur_khz 2400000
+throttled=0xe0000
+frequency(0)=1150018048
+git HEAD: 3d78e596c9175ed3763eb3007f5d14ea1373094b
+args: --video /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 --mode dmabuf --decoder hw --batch 1 --slots 1 --input-pace source --input-queue 1 --layout nhcw --postproc gpu --nms gpu --display off --input-copy
+exit 0 hailort_warn 0 err 0 hailo_post 75.1 soc_post 68.8
+### old_input_copy_run2
+2026-11-07T00:26:36+09:00
+bin: /tmp/claude-1000/-home-pi-workspace-yolo-vulkan-optimize/e4a7ad62-ae73-489e-9893-56a55ad8454a/scratchpad/baseline_bin/yvo_pipeline md5 ef24741c7e5ca9457253f73e03aa73ca
+pcie: 8.0 GT/s PCIe x1
+hailo_pre: 64.4 C  soc_pre: 68.8 C  cool_wait_s: 61
+governor: performance  cur_khz 2400000
+throttled=0xe0000
+frequency(0)=1150011520
+git HEAD: 3d78e596c9175ed3763eb3007f5d14ea1373094b
+args: --video /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 --mode dmabuf --decoder hw --batch 1 --slots 1 --input-pace source --input-queue 1 --layout nhcw --postproc gpu --nms gpu --display off --input-copy
+exit 0 hailort_warn 0 err 0 hailo_post 75.3 soc_post 68.8
+### old_input_copy_run3
+2026-11-07T00:34:47+09:00
+bin: /tmp/claude-1000/-home-pi-workspace-yolo-vulkan-optimize/e4a7ad62-ae73-489e-9893-56a55ad8454a/scratchpad/baseline_bin/yvo_pipeline md5 ef24741c7e5ca9457253f73e03aa73ca
+pcie: 8.0 GT/s PCIe x1
+hailo_pre: 64.8 C  soc_pre: 70.5 C  cool_wait_s: 61
+governor: performance  cur_khz 2400000
+throttled=0xe0000
+frequency(0)=1150011520
+git HEAD: 3d78e596c9175ed3763eb3007f5d14ea1373094b
+args: --video /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 --mode dmabuf --decoder hw --batch 1 --slots 1 --input-pace source --input-queue 1 --layout nhcw --postproc gpu --nms gpu --display off --input-copy
+exit 0 hailort_warn 0 err 0 hailo_post 75.6 soc_post 70.0

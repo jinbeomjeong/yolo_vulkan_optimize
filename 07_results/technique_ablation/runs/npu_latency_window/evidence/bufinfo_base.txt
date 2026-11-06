@@ -1,0 +1,330 @@
+
+Dma-buf Objects:
+size    	flags   	mode    	count   	exp_name	ino     	name
+01048576	00000002	02080007	00000005	system	00050160	<none>
+	write fence:detached-driver signaled-timeline seq 651 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+02097152	00000002	02080007	00000005	system	00050159	<none>
+	write fence:detached-driver signaled-timeline seq 651 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+01048576	00000002	02080007	00000005	system	00050158	<none>
+	write fence:detached-driver signaled-timeline seq 611 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+02097152	00000002	02080007	00000005	system	00050157	<none>
+	write fence:detached-driver signaled-timeline seq 611 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+01048576	00000002	02080007	00000005	system	00050156	<none>
+	write fence:detached-driver signaled-timeline seq 596 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+02097152	00000002	02080007	00000005	system	00050155	<none>
+	write fence:detached-driver signaled-timeline seq 596 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+01048576	00000002	02080007	00000005	system	00050154	<none>
+	write fence:detached-driver signaled-timeline seq 681 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+02097152	00000002	02080007	00000005	system	00050153	<none>
+	write fence:detached-driver signaled-timeline seq 681 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+01048576	00000002	02080007	00000005	system	00050152	<none>
+	write fence:detached-driver signaled-timeline seq 676 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+02097152	00000002	02080007	00000005	system	00050151	<none>
+	write fence:detached-driver signaled-timeline seq 676 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+01048576	00000002	02080007	00000005	system	00050150	<none>
+	write fence:detached-driver signaled-timeline seq 636 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+02097152	00000002	02080007	00000005	system	00050149	<none>
+	write fence:detached-driver signaled-timeline seq 636 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+01048576	00000002	02080007	00000005	system	00050148	<none>
+	write fence:detached-driver signaled-timeline seq 671 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+02097152	00000002	02080007	00000005	system	00050147	<none>
+	write fence:detached-driver signaled-timeline seq 671 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+01048576	00000002	02080007	00000005	system	00050146	<none>
+	write fence:detached-driver signaled-timeline seq 621 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+02097152	00000002	02080007	00000005	system	00050145	<none>
+	write fence:detached-driver signaled-timeline seq 621 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+01048576	00000002	02080007	00000005	system	00050144	<none>
+	write fence:detached-driver signaled-timeline seq 666 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+02097152	00000002	02080007	00000005	system	00050143	<none>
+	write fence:detached-driver signaled-timeline seq 666 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+01048576	00000002	02080007	00000005	system	00050142	<none>
+	write fence:detached-driver signaled-timeline seq 656 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+02097152	00000002	02080007	00000005	system	00050141	<none>
+	write fence:detached-driver signaled-timeline seq 656 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+01048576	00000002	02080007	00000005	system	00050140	<none>
+	write fence:detached-driver signaled-timeline seq 626 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+02097152	00000002	02080007	00000005	system	00050139	<none>
+	write fence:detached-driver signaled-timeline seq 626 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+01048576	00000002	02080007	00000005	system	00050138	<none>
+	write fence:detached-driver signaled-timeline seq 661 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+02097152	00000002	02080007	00000005	system	00050137	<none>
+	write fence:detached-driver signaled-timeline seq 661 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+01048576	00000002	02080007	00000005	system	00050136	<none>
+	write fence:detached-driver signaled-timeline seq 646 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+02097152	00000002	02080007	00000005	system	00050135	<none>
+	write fence:detached-driver signaled-timeline seq 646 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+01048576	00000002	02080007	00000005	system	00050134	<none>
+	write fence:detached-driver signaled-timeline seq 686 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+02097152	00000002	02080007	00000005	system	00050133	<none>
+	write fence:detached-driver signaled-timeline seq 686 signalled
+	Attached Devices:
+	1002000000.v3d
+	1000800000.codec
+Total 2 devices attached
+
+00212992	00000002	02080007	00000003	system	00050132	<none>
+	Attached Devices:
+	1000800000.codec
+Total 1 devices attached
+
+00212992	00000002	02080007	00000003	system	00050131	<none>
+	Attached Devices:
+	1000800000.codec
+Total 1 devices attached
+
+00212992	00000002	02080007	00000003	system	00050130	<none>
+	Attached Devices:
+	1000800000.codec
+Total 1 devices attached
+
+00212992	00000002	02080007	00000003	system	00050129	<none>
+	Attached Devices:
+	1000800000.codec
+Total 1 devices attached
+
+00212992	00000002	02080007	00000003	system	00050128	<none>
+	Attached Devices:
+	1000800000.codec
+Total 1 devices attached
+
+00212992	00000002	02080007	00000003	system	00050127	<none>
+	Attached Devices:
+	1000800000.codec
+Total 1 devices attached
+
+01245184	00000002	02080007	00000004	drm	00050126	<none>
+	write fence:detached-driver signaled-timeline seq 686 signalled
+	Attached Devices:
+	0001:01:00.0
+Total 1 devices attached
+
+00049152	00000002	02080007	00000004	drm	00050125	<none>
+	write fence:detached-driver signaled-timeline seq 684 signalled
+	Attached Devices:
+	0001:01:00.0
+Total 1 devices attached
+
+00065536	00000002	02080007	00000004	drm	00050124	<none>
+	write fence:detached-driver signaled-timeline seq 684 signalled
+	Attached Devices:
+	0001:01:00.0
+Total 1 devices attached
+
+00131072	00000002	02080007	00000004	drm	00050123	<none>
+	write fence:detached-driver signaled-timeline seq 683 signalled
+	Attached Devices:
+	0001:01:00.0
+Total 1 devices attached
+
+00147456	00000002	02080007	00000004	drm	00050122	<none>
+	write fence:detached-driver signaled-timeline seq 683 signalled
+	Attached Devices:
+	0001:01:00.0
+Total 1 devices attached
+
+00425984	00000002	02080007	00000004	drm	00050121	<none>
+	write fence:detached-driver signaled-timeline seq 682 signalled
+	Attached Devices:
+	0001:01:00.0
+Total 1 devices attached
+
+00540672	00000002	02080007	00000004	drm	00050120	<none>
+	write fence:detached-driver signaled-timeline seq 682 signalled
+	Attached Devices:
+	0001:01:00.0
+Total 1 devices attached
+
+00016384	00000002	02080007	00000001	udmabuf	00050119	<none>
+	Attached Devices:
+Total 0 devices attached
+
+03702784	00000002	02080007	00000005	drm	00041853	<none>
+	write fence:detached-driver signaled-timeline seq 1880 signalled
+	Attached Devices:
+	axi:gpu
+Total 1 devices attached
+
+03702784	00000002	02080007	00000005	drm	00041851	<none>
+	write fence:detached-driver signaled-timeline seq 1881 signalled
+	Attached Devices:
+	axi:gpu
+Total 1 devices attached
+
+00032768	00000002	02080007	00000010	drm	00000008	<none>
+	write fence:detached-driver signaled-timeline seq 44349 signalled
+	Attached Devices:
+	1002000000.v3d
+	1002000000.v3d
+Total 2 devices attached
+
+00016384	00000002	02080007	00000005	drm	00000007	<none>
+	write fence:detached-driver signaled-timeline seq 2 signalled
+	Attached Devices:
+	axi:gpu
+Total 1 devices attached
+
+08306688	00000002	02080007	00000010	drm	00000004	<none>
+	write fence:detached-driver signaled-timeline seq 46009 signalled
+	Attached Devices:
+	1002000000.v3d
+	1002000000.v3d
+Total 2 devices attached
+
+00032768	00000002	02080007	00000010	drm	00000003	<none>
+	write fence:detached-driver signaled-timeline seq 44350 signalled
+	Attached Devices:
+	1002000000.v3d
+	1002000000.v3d
+Total 2 devices attached
+
+00032768	00000002	02080007	00000010	drm	00000002	<none>
+	write fence:detached-driver signaled-timeline seq 30519 signalled
+	Attached Devices:
+	1002000000.v3d
+	1002000000.v3d
+Total 2 devices attached
+
+08306688	00000002	02080007	00000010	drm	00000001	<none>
+	write fence:detached-driver signaled-timeline seq 46008 signalled
+	Attached Devices:
+	1002000000.v3d
+	1002000000.v3d
+Total 2 devices attached
+
+
+Total 50 objects, 72073216 bytes
