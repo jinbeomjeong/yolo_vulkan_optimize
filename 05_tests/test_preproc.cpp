@@ -11,6 +11,8 @@
 // I420ToSand.* (no device): the --decoder sw copy (decode/sw_sand_frames.hpp) against explicit SAND128 addresses and desand_nv12.
 // SandFramePool.* (dma-heap only, skipped without it): fd reuse, exhaustion, frames outliving the pool owner.
 // SwDecode.* (HW HEVC decoder for the comparison, no GPU): SW frames vs HW frames, same layout fields and same visible bytes.
+// DecodeCopy.* (dma-heap; the second one needs the HW HEVC decoder, no GPU): the --decode-copy copy (pipeline/decode_copy.hpp),
+// whole SAND128 planes byte-identical to the source, layout fields kept, decoder frame released, pool exhaustion is an error.
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
@@ -19,6 +21,7 @@
 #include <fstream>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -42,6 +45,7 @@ extern "C" {
 #include "ref/sand.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
 #include "decode/sw_sand_frames.hpp"
+#include "pipeline/decode_copy.hpp"
 #include "vulkan/sand_letterbox.hpp"
 #include "vulkan/vulkan_context.hpp"
 
@@ -796,6 +800,149 @@ TEST(SwDecode, FramesStayReadableAfterTheDecoderCloses) {
     EXPECT_TRUE(before.y == after.y);
     EXPECT_TRUE(before.uv == after.uv);
     EXPECT_EQ(sw.sw_stats().frames, 1);   // the stats stay readable after close()
+}
+
+// ── DecodeCopy: --decode-copy (pipeline/decode_copy.hpp) ──────────────────────────────────────────────────────────────
+// Whole SAND128 planes of a frame (column height padding included), read through DmaBufReadMap.
+bool read_planes(const yvo::DrmFrame& f, VisiblePlanes& out) {
+    const std::size_t yb = yvo::sand_plane_bytes(f.width, f.sand_col_height), uvb = yvo::sand_plane_bytes(f.width, f.uv_sand_col_height);
+    if (f.y_offset + yb > f.size || f.uv_offset + uvb > f.uv_size) return false;
+    const DmaBufReadMap my(f.fd, f.size), muv(f.uv_fd, f.uv_size);
+    if (!my.data() || !muv.data()) return false;
+    out.y.assign(my.data() + f.y_offset, my.data() + f.y_offset + yb);
+    out.uv.assign(muv.data() + f.uv_offset, muv.data() + f.uv_offset + uvb);
+    return true;
+}
+
+void expect_same_layout(const yvo::DrmFrame& c, const yvo::DrmFrame& s) {
+    EXPECT_EQ(c.modifier, s.modifier);
+    EXPECT_EQ(c.drm_format, s.drm_format);
+    EXPECT_EQ(c.width, s.width);
+    EXPECT_EQ(c.height, s.height);
+    EXPECT_EQ(c.coded_height, s.coded_height);
+    EXPECT_EQ(c.y_pitch, s.y_pitch);
+    EXPECT_EQ(c.uv_pitch, s.uv_pitch);
+    EXPECT_EQ(c.sand_col_height, s.sand_col_height);
+    EXPECT_EQ(c.uv_sand_col_height, s.uv_sand_col_height);
+    EXPECT_EQ(c.pts, s.pts);
+    EXPECT_EQ(c.y_offset, 0u);
+    EXPECT_EQ(c.uv_offset, 0u);
+}
+
+// Synthetic source (no decoder): dma-heap planes with offsets and random bytes, padding rows included.
+TEST(DecodeCopy, WholePlanesAreByteIdenticalAndTheSourceIsReleased) {
+    constexpr int kW = 300, kH = 20;   // 3 columns, the last one partly used; column height 32 (rows 20..31 are padding)
+    std::unique_ptr<yvo::DmaHeapPool> src_pool;
+    std::optional<yvo::pipeline::DecodeCopy> dc;
+    try {
+        src_pool = std::make_unique<yvo::DmaHeapPool>();
+        dc.emplace(kW, kH, 2);
+    } catch (const std::runtime_error&) {
+        GTEST_SKIP() << "dma-heap not available";
+    }
+    const std::size_t y_col = yvo::sand_y_col_height(kH), uv_col = yvo::sand_uv_col_height(kH);
+    const std::size_t yb = yvo::sand_plane_bytes(kW, y_col), uvb = yvo::sand_plane_bytes(kW, uv_col);
+    constexpr std::size_t kYOff = 4096, kUvOff = 128;
+    const int yi = src_pool->allocate(kYOff + yb), uvi = src_pool->allocate(kUvOff + uvb);
+    const yvo::DmaHeapBuf& by = src_pool->at(yi);
+    const yvo::DmaHeapBuf& buv = src_pool->at(uvi);
+    {
+        yvo::DmaCpuAccess wy(by.fd, yvo::DmaSyncDir::Write), wuv(buv.fd, yvo::DmaSyncDir::Write);
+        std::uint32_t r = 12345;
+        for (std::size_t i = 0; i < kYOff + yb; ++i) by.ptr[i] = static_cast<std::uint8_t>((r = r * 1664525u + 1013904223u) >> 24);
+        for (std::size_t i = 0; i < kUvOff + uvb; ++i) buv.ptr[i] = static_cast<std::uint8_t>((r = r * 1664525u + 1013904223u) >> 24);
+    }
+    yvo::DrmFrame src;
+    src.fd = by.fd;
+    src.size = by.dmabuf_size;
+    src.uv_fd = buv.fd;
+    src.uv_size = buv.dmabuf_size;
+    src.y_offset = kYOff;
+    src.uv_offset = kUvOff;
+    src.width = kW;
+    src.height = kH;
+    src.coded_height = static_cast<int>(y_col);
+    src.modifier = 0x0700000000000004ull;
+    src.y_pitch = y_col;
+    src.uv_pitch = uv_col;
+    src.sand_col_height = static_cast<std::uint32_t>(y_col);
+    src.uv_sand_col_height = static_cast<std::uint32_t>(uv_col);
+    src.pts = 7;
+    auto token = std::make_shared<int>(0);
+    const std::weak_ptr<int> watch = token;
+    src.keepalive = std::move(token);   // stands in for the decoder's AVFrame
+
+    VisiblePlanes ps, pc;
+    ASSERT_TRUE(read_planes(src, ps));
+    yvo::DrmFrame f = src;
+    src.keepalive.reset();
+    std::string why;
+    ASSERT_TRUE(dc->copy(f, why)) << why;
+    EXPECT_TRUE(watch.expired()) << "the source frame must be released right after the copy";
+    EXPECT_NE(f.fd, by.fd);
+    EXPECT_NE(f.uv_fd, buv.fd);
+    expect_same_layout(f, src);
+    ASSERT_TRUE(read_planes(f, pc));
+    EXPECT_TRUE(ps.y == pc.y) << "Y plane differs";
+    EXPECT_TRUE(ps.uv == pc.uv) << "UV plane differs";
+    EXPECT_EQ(dc->total_ms().size(), 1u);
+    EXPECT_EQ(dc->mappings(), 2u);
+
+    // Same source again: the mapping cache hits. Then the pool (2) runs out: an error, not a stall.
+    yvo::DrmFrame g = src;
+    ASSERT_TRUE(dc->copy(g, why)) << why;
+    EXPECT_EQ(dc->mappings(), 2u);
+    yvo::DrmFrame h = src;
+    EXPECT_FALSE(dc->copy(h, why));
+    EXPECT_NE(why.find("frame pool exhausted"), std::string::npos) << why;
+    EXPECT_EQ(dc->peak_in_use(), 2);
+
+    // A frame of another size is rejected without touching the pool.
+    yvo::DrmFrame bad = src;
+    bad.width = 320;
+    EXPECT_FALSE(dc->copy(bad, why));
+    EXPECT_NE(why.find("does not fit"), std::string::npos) << why;
+}
+
+// Real HW decoder frames: the copy path (frame filter) against a plain decoder, whole planes byte-identical.
+TEST(DecodeCopy, HwDecoderFramesThroughTheFilterAreByteIdentical) {
+    const std::string video = YVO_TEST_VIDEO;
+    if (!std::filesystem::exists(video)) GTEST_SKIP() << "video not found: " << video;
+    yvo::FfmpegDrmDecoder plain, copied;
+    yvo::FfmpegDrmDecoder::Options opt;
+    opt.threads = 1;
+    if (!plain.open(video, opt)) GTEST_SKIP() << "HW HEVC decoder unavailable (open failed): " << plain.error();
+    ASSERT_TRUE(copied.open(video, opt)) << copied.error();
+    std::optional<yvo::pipeline::DecodeCopy> dc;
+    try {
+        dc.emplace(copied.width(), copied.height(), opt.extra_hw_frames + 4);
+    } catch (const std::runtime_error&) {
+        GTEST_SKIP() << "dma-heap not available";
+    }
+    copied.set_frame_filter(dc->filter());
+    constexpr int kFrames = 8;
+    std::vector<yvo::DrmFrame> held;   // copies outlive the decoder frames they came from
+    for (int i = 0; i < kFrames; ++i) {
+        auto a = plain.next();
+        if (!a) GTEST_SKIP() << "HW HEVC decoder produced no frame: " << plain.error();
+        auto b = copied.next();
+        ASSERT_TRUE(b.has_value()) << copied.error();
+        expect_same_layout(*b, *a);
+        VisiblePlanes pa, pb;
+        ASSERT_TRUE(read_planes(*a, pa));
+        ASSERT_TRUE(read_planes(*b, pb));
+        std::printf("[frame %d] hw Y %016llx UV %016llx  copy Y %016llx UV %016llx\n", i, static_cast<unsigned long long>(fnv1a(pa.y)),
+                    static_cast<unsigned long long>(fnv1a(pa.uv)), static_cast<unsigned long long>(fnv1a(pb.y)),
+                    static_cast<unsigned long long>(fnv1a(pb.uv)));
+        EXPECT_TRUE(pa.y == pb.y) << "Y differs at frame " << i;
+        EXPECT_TRUE(pa.uv == pb.uv) << "UV differs at frame " << i;
+        held.push_back(std::move(*b));
+    }
+    EXPECT_EQ(dc->total_ms().size(), static_cast<std::size_t>(kFrames));
+    EXPECT_GT(dc->mappings(), 0u);
+    copied.close();   // clears the filter; held copies stay valid (they hold the pool)
+    VisiblePlanes after;
+    EXPECT_TRUE(read_planes(held.front(), after));
 }
 
 } // namespace

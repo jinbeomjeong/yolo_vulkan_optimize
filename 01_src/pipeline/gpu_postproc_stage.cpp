@@ -131,10 +131,10 @@ void GpuPostprocStage::bind_input_dmabuf(int slot, int fd) {
     int out_fd[yvo::vk::kYoloNumTensors];
     std::size_t out_sz[yvo::vk::kYoloNumTensors];
     for (int t = 0; t < yvo::vk::kYoloNumTensors; ++t) {
-        out_fd[t] = pp_->raw_dmabuf_fd(slot, t);
+        out_fd[t] = out_copy_ ? out_copy_->fd(slot, t) : pp_->raw_dmabuf_fd(slot, t);   // --output-copy: the NPU writes the heap copy
         if (out_fd[t] < 0)
             throw std::runtime_error("YoloPostproc did not export a dma-buf (check input_alloc)");
-        out_sz[t] = pp_->raw_dmabuf_size(slot, t);
+        out_sz[t] = out_copy_ ? out_copy_->map_size(slot, t) : pp_->raw_dmabuf_size(slot, t);
     }
     // Both input and output are mapped at the **actual dma-buf size**. The transfer size is set by the runner from hw_frame_size.
     raw_->bind_slot(slot, fd, dmabuf_size(fd), out_fd, out_sz);
@@ -183,7 +183,7 @@ void GpuPostprocStage::push_ready_to_gpu() {
             if (done_) done_(std::move(r));
             continue;
         }
-        pp_->submit(d.slot, lb_[s], src_w_, src_h_);
+        if (out_copy_) { copy_outputs(d.slot); }  pp_->submit(d.slot, lb_[s], src_w_, src_h_);   // copy first: the GPU reads the copied tensors
         pp_q_.push_back(d.slot);
     }
 }
@@ -281,6 +281,37 @@ void GpuPostprocStage::drain() {
         pp_->wait(slot);
         finish(slot, Clock::now());
     }
+}
+
+
+// ── --output-copy (pipeline/output_copy.hpp). Defined here, after the cited lines above, so they keep their numbers. ──
+OutputCopy::Sizes GpuPostprocStage::raw_output_sizes() const {
+    OutputCopy::Sizes z{};
+    for (int t = 0; t < yvo::vk::kYoloNumTensors; ++t) z[static_cast<std::size_t>(t)] = pp_->raw_size(t);
+    return z;
+}
+
+void GpuPostprocStage::set_output_copy(OutputCopy* oc) {
+    static_assert(OutputCopy::kTensors == yvo::vk::kYoloNumTensors, "OutputCopy tensor count");
+    for (bool b : bound_)
+        if (b) throw std::runtime_error("set_output_copy: call it before bind_input_dmabuf (slots are already mapped)");
+    if (oc && oc->slots() != cfg_.num_slots)
+        throw std::runtime_error("set_output_copy: pool has " + std::to_string(oc->slots()) + " slots, stage " +
+                                 std::to_string(cfg_.num_slots));
+    if (oc)
+        for (int t = 0; t < yvo::vk::kYoloNumTensors; ++t)
+            if (oc->size(t) != pp_->raw_size(t))
+                throw std::runtime_error("set_output_copy: tensor " + std::to_string(t) + " size mismatch");
+    out_copy_ = oc;
+}
+
+// Main thread, after the NPU completion of the slot and before pp_->submit(slot). Destination: ExportDmaBuf = coherent mapping
+// (no flush), ImportHeap = cached heap mapping, so raw_cpu_sync_begin/end(Write) clean it for V3D (no-ops otherwise).
+void GpuPostprocStage::copy_outputs(int slot) {
+    std::uint8_t* dst[yvo::vk::kYoloNumTensors];
+    for (int t = 0; t < yvo::vk::kYoloNumTensors; ++t) dst[t] = pp_->raw_host_ptr(slot, t);
+    out_copy_->copy(slot, dst, [&] { pp_->raw_cpu_sync_begin(slot, yvo::DmaSyncDir::Write); },
+                    [&] { pp_->raw_cpu_sync_end(slot, yvo::DmaSyncDir::Write); });
 }
 
 } // namespace yvo::pipeline

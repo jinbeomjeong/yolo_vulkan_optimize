@@ -24,6 +24,8 @@
 //                         rejection of what they silently mangled, exit code 2 + message from arg_number().
 //   FrameLog.*            --frame-log CSV: exact header, processed / dropped / abandoned / asap rows, empty fields,
 //                         the optional present_ms (+ commit_ms, present_seq) columns (--display on only; 9 otherwise).
+//   OutputCopy.*          --output-copy pool (pipeline/output_copy.hpp, dma-heap only, skipped without it): 6 aligned buffers per
+//                         slot, byte-identical copy into plain destinations, destination section hooks, bad arguments throw.
 //
 // Links yvo_stages only for the header include paths (InferResult comes from hailo/hailo_runner.hpp);
 // nothing here opens /dev/hailo0 or creates a Vulkan instance.
@@ -1199,6 +1201,95 @@ TEST(LiveInput, StartupGateCountsTheMailbox) {
     const std::string err = yvo::pipeline::validate_input_queue(1, depth, kLiveMailboxFrames);
     EXPECT_NE(err.find("--input-live"), std::string::npos) << err;
     EXPECT_EQ(yvo::pipeline::validate_input_queue(1, depth - kLiveMailboxFrames, kLiveMailboxFrames), "");
+}
+
+} // namespace
+
+// ═══════════════════════════════════════════════ --output-copy pool (pipeline/output_copy.hpp)
+// No NPU or GPU: the test writes the source buffers (standing in for the NPU) and copies into plain memory (standing in for the
+// YoloPostproc mapping). The sizes are arbitrary, some odd, to check that exactly size(t) bytes move.
+#include "pipeline/output_copy.hpp"
+
+namespace {
+
+std::optional<yvo::pipeline::OutputCopy> make_output_copy(int slots, const yvo::pipeline::OutputCopy::Sizes& sizes) {
+    try {
+        return std::optional<yvo::pipeline::OutputCopy>(std::in_place, slots, sizes);
+    } catch (const std::runtime_error&) {
+        return std::nullopt;   // no dma-heap
+    }
+}
+
+TEST(OutputCopy, BuffersAreAlignedAndSizedPerSlotAndTensor) {
+    const yvo::pipeline::OutputCopy::Sizes sizes{102400, 1600, 25600, 400, 7680, 120};
+    auto oc = make_output_copy(2, sizes);
+    if (!oc) GTEST_SKIP() << "dma-heap not available";
+    EXPECT_EQ(oc->buffers(), 12);
+    EXPECT_FALSE(oc->heap().empty());
+    std::vector<int> fds;
+    for (int s = 0; s < 2; ++s)
+        for (int t = 0; t < yvo::pipeline::OutputCopy::kTensors; ++t) {
+            EXPECT_GE(oc->fd(s, t), 0);
+            EXPECT_GE(oc->map_size(s, t), sizes[static_cast<std::size_t>(t)]);
+            EXPECT_EQ(oc->map_size(s, t) % yvo::kHailoAsyncAlign, 0u);   // HailoRT read_async alignment
+            EXPECT_EQ(reinterpret_cast<std::uintptr_t>(oc->data(s, t)) % yvo::kHailoAsyncAlign, 0u);
+            fds.push_back(oc->fd(s, t));
+        }
+    std::sort(fds.begin(), fds.end());
+    EXPECT_EQ(std::adjacent_find(fds.begin(), fds.end()), fds.end());   // one buffer per slot and tensor
+    EXPECT_THROW(oc->fd(2, 0), std::out_of_range);
+    EXPECT_THROW(oc->fd(0, 6), std::out_of_range);
+}
+
+TEST(OutputCopy, CopyIsByteIdenticalPerSlotAndCallsTheDestinationHooksInOrder) {
+    const yvo::pipeline::OutputCopy::Sizes sizes{102400 + 3, 1600, 25600, 401, 7680, 120};
+    auto oc = make_output_copy(2, sizes);
+    if (!oc) GTEST_SKIP() << "dma-heap not available";
+    std::uint32_t r = 2463534242u;
+    auto next = [&r] { r ^= r << 13; r ^= r >> 17; r ^= r << 5; return static_cast<std::uint8_t>(r); };
+    for (int s = 0; s < 2; ++s)
+        for (int t = 0; t < yvo::pipeline::OutputCopy::kTensors; ++t) {
+            yvo::DmaCpuAccess w(oc->fd(s, t), yvo::DmaSyncDir::Write);
+            for (std::size_t i = 0; i < sizes[static_cast<std::size_t>(t)]; ++i) oc->data(s, t)[i] = next();
+            w.finish();
+        }
+    for (int s = 1; s >= 0; --s) {   // slot order does not matter
+        std::vector<std::vector<std::uint8_t>> dst(yvo::pipeline::OutputCopy::kTensors);
+        std::uint8_t* ptr[yvo::pipeline::OutputCopy::kTensors];
+        for (int t = 0; t < yvo::pipeline::OutputCopy::kTensors; ++t) {
+            dst[static_cast<std::size_t>(t)].assign(sizes[static_cast<std::size_t>(t)] + 64, 0xA5);   // guard bytes after size(t)
+            ptr[t] = dst[static_cast<std::size_t>(t)].data();
+        }
+        std::string order;
+        oc->copy(s, ptr, [&] { order += 'b'; }, [&] { order += 'e'; });
+        EXPECT_EQ(order, "be");
+        for (int t = 0; t < yvo::pipeline::OutputCopy::kTensors; ++t) {
+            const std::size_t n = sizes[static_cast<std::size_t>(t)];
+            const auto& d = dst[static_cast<std::size_t>(t)];
+            EXPECT_EQ(std::memcmp(d.data(), oc->data(s, t), n), 0) << "slot " << s << " tensor " << t;
+            EXPECT_TRUE(std::all_of(d.begin() + static_cast<std::ptrdiff_t>(n), d.end(), [](std::uint8_t b) { return b == 0xA5; }))
+                << "wrote past size(" << t << ")";
+        }
+    }
+    ASSERT_EQ(oc->total_ms().size(), 2u);   // one sample per copy
+    ASSERT_EQ(oc->memcpy_ms().size(), 2u);
+    ASSERT_EQ(oc->sync_ms().size(), 2u);
+    for (std::size_t i = 0; i < 2; ++i) EXPECT_LE(oc->memcpy_ms()[i] + oc->sync_ms()[i], oc->total_ms()[i] + 1e-9);
+}
+
+TEST(OutputCopy, BadArgumentsThrow) {
+    const yvo::pipeline::OutputCopy::Sizes sizes{4096, 4096, 4096, 4096, 4096, 4096};
+    auto oc = make_output_copy(1, sizes);
+    if (!oc) GTEST_SKIP() << "dma-heap not available";
+    std::vector<std::uint8_t> d(4096);
+    std::uint8_t* ptr[yvo::pipeline::OutputCopy::kTensors] = {d.data(), d.data(), d.data(), d.data(), d.data(), nullptr};
+    EXPECT_THROW(oc->copy(0, ptr), std::runtime_error);   // missing destination mapping
+    ptr[5] = d.data();
+    EXPECT_THROW(oc->copy(1, ptr), std::out_of_range);    // slot out of range
+    EXPECT_TRUE(oc->total_ms().empty());                  // failed copies leave no sample
+    EXPECT_NO_THROW(oc->copy(0, ptr));
+    EXPECT_THROW((yvo::pipeline::OutputCopy(0, sizes)), std::invalid_argument);
+    EXPECT_THROW((yvo::pipeline::OutputCopy(1, {4096, 0, 4096, 4096, 4096, 4096})), std::invalid_argument);
 }
 
 } // namespace

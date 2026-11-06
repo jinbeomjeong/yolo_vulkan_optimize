@@ -81,11 +81,11 @@
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
-
 #include "core/coco_labels.hpp"
 #include "ref/cpu_letterbox.hpp"
 #include "hailo/hailo_runner.hpp"
 #include "decode/ffmpeg_drm_decoder.hpp"
+#include "pipeline/decode_copy.hpp"
 #include "pipeline/gpu_postproc_stage.hpp"
 #include "pipeline/infer_stage.hpp"
 #include "pipeline/input_copy.hpp"
@@ -197,7 +197,7 @@ struct Args {
     int dec_threads = 1;  bool sw_decoder = false;   // sw_decoder: --decoder sw, software HEVC copied to dma-heap SAND128 buffers
     InputPace input_pace = InputPace::Source;   // O2 default (user decision 2026-10-27); asap was the default before
     int input_queue = 1;               // leaky queue capacity, --input-pace source only (user decision 2026-10-12: 1)
-    bool input_queue_explicit = false;  bool input_copy = false;  bool input_live = false;   int queue_held() const { return input_queue + (input_live ? yvo::pipeline::kLiveMailboxFrames : 0); }   // input_live: --input-live (pipeline/live_input.hpp); queue_held: frames waiting ahead of the slots   // input_copy: comparison path, CPU copy between GPU and NPU (pipeline/input_copy.hpp)
+    bool input_queue_explicit = false;  bool input_copy = false;  bool input_live = false;  bool decode_copy = false;  bool output_copy = false;   int queue_held() const { return input_queue + (input_live ? yvo::pipeline::kLiveMailboxFrames : 0); }   // input_live: --input-live (pipeline/live_input.hpp); queue_held: frames waiting ahead of the slots   // input_copy: comparison path, CPU copy between GPU and NPU (pipeline/input_copy.hpp)   // decode_copy: comparison path, CPU copy between the HW decoder and the GPU (pipeline/decode_copy.hpp)   // output_copy: comparison path, CPU copy between the NPU and the GPU post-processing (pipeline/output_copy.hpp)
     std::string frame_log;             // --frame-log PATH: per-frame timing CSV written once at the end ("" = off)
 
     // ── Display (all defaults are "off": running without arguments takes the same path as before) ──
@@ -213,7 +213,7 @@ void usage(const char* a0) {
                  "usage: %s [--video PATH] [--hef PATH] [--frames N] [--mode ptr|dmabuf] [--layout nhwc|nhcw]\n"
                  "          [--batch N] [--slots N] [--postproc host|gpu] [--postproc-alloc export|heap]\n"
                  "          [--nms gpu|cpu|verify] [--gpu-depth N] [--score T] [--dump-dir DIR] [--dump-every K]\n"
-                 "          [--quiet] [--csv-label L] [--input-pace asap|source] [--input-queue N] [--frame-log PATH] [--decoder hw|sw] [--input-copy] [--input-live]\n"
+                 "          [--quiet] [--csv-label L] [--input-pace asap|source] [--input-queue N] [--frame-log PATH] [--decoder hw|sw] [--input-copy] [--input-live] [--decode-copy] [--output-copy]\n"
                  "  --layout     preprocessing output / NPU input tensor layout (default nhcw with the default --mode dmabuf; nhwc under --mode ptr)\n"
                  "               nhcw removes HailoRT's CPU input conversion (about 14 ms/frame). --mode dmabuf only\n"
                  "  --batch N / --slots N  NPU batch size (default 1) / slots shared by GPU and NPU (default 1 with batch 1 + --input-pace source, else max(4, batch*2))\n"
@@ -231,7 +231,7 @@ void usage(const char* a0) {
                  "               slots free up (throughput benches). --frames counts arrived frames; dropped frames get no jsonl line / PNG (\"frame\" stays the source index)\n"
                  "  --input-queue N  leaky queue size for --input-pace source, 1..3 (default 1)\n"
                  "               paced cpu ms/frame and FPS are per processed frame: not comparable to asap\n  --input-live  with --input-pace source: packets reach the decoder only at their arrival time (camera-like, no read-ahead), so frame-thread and reorder delay show in the arrival latency. Decoding runs on its own thread\n"
-                 "  --frame-log PATH  one CSV row per frame at the end (ms since start; dropped 1 = queue drop, 2 = abandoned)\n  --decoder    hw = V4L2 HEVC dma-buf (default). sw = libavcodec software HEVC, the CPU copies each frame to a SAND128 dma-buf; the rest of the pipeline is the same. Threads: YVO_DEC_THREADS\n  --input-copy comparison path: after the GPU fence the CPU copies the V3D output to a cached dma-heap buffer and the NPU reads that (default off). --mode dmabuf --layout nhcw only\n"
+                 "  --frame-log PATH  one CSV row per frame at the end (ms since start; dropped 1 = queue drop, 2 = abandoned)\n  --decoder    hw = V4L2 HEVC dma-buf (default). sw = libavcodec software HEVC, the CPU copies each frame to a SAND128 dma-buf; the rest of the pipeline is the same. Threads: YVO_DEC_THREADS\n  --input-copy comparison path: after the GPU fence the CPU copies the V3D output to a cached dma-heap buffer and the NPU reads that (default off). --mode dmabuf --layout nhcw only\n  --decode-copy comparison path: the CPU reads each HW decoder frame through an mmap of its dma-buf and copies it to a cached dma-heap SAND128 buffer, which the GPU reads (default off). Not with --decoder sw; works with --input-copy and --input-live (the copy runs where next() runs)\n  --output-copy comparison path: the NPU writes its 6 raw outputs to cached dma-heap buffers and, after the NPU completion, the CPU copies them to the buffers the GPU post-processing reads (default off). --postproc gpu (--mode dmabuf --layout nhcw) only; works with --input-copy and --decode-copy\n"
 #ifdef YVO_HAVE_DISPLAY
                  "  --display {off,on}                       real-time HDMI display (default off)\n"
                  "  --display-backend {auto,wayland,offscreen,wayland-planes,kms}  default auto. wayland is strict (no silent fallback)\n"
@@ -304,7 +304,7 @@ bool parse(int argc, char** argv, Args& a) {
         else if (s == "--dump-every" && (v = next())) a.dump_every = arg_number<int>(argv[0], s, v);
         else if (s == "--csv-label" && (v = next())) a.csv_label = v;
         else if (s == "--frame-log" && (v = next())) a.frame_log = v;
-        else if (s == "--input-copy") a.input_copy = true; else if (s == "--quiet") a.quiet = true; else if (s == "--decoder" && (v = next())) { if (std::string(v) != "hw" && std::string(v) != "sw") return false; a.sw_decoder = std::string(v) == "sw"; }
+        else if (s == "--input-copy") a.input_copy = true; else if (s == "--quiet") a.quiet = true; else if (s == "--decoder" && (v = next())) { if (std::string(v) != "hw" && std::string(v) != "sw") return false; a.sw_decoder = std::string(v) == "sw"; } else if (s == "--decode-copy") a.decode_copy = true; else if (s == "--output-copy") a.output_copy = true;
         else if (s == "--input-pace" && (v = next())) {
             const std::string p = v;
             if (p == "asap") a.input_pace = InputPace::Asap;
@@ -359,7 +359,7 @@ bool parse(int argc, char** argv, Args& a) {
     a.layout = lay_dn ? yvo::TensorLayout::Nhwc : a.layout;  a.postproc = pp_dn ? Postproc::Host : a.postproc;
     if (a.slots <= 0) a.slots = yvo::pipeline::default_slots(a.batch, a.input_pace == InputPace::Source);
     if (a.batch < 1 || a.batch > 64 || a.gpu_depth < 1 || a.dump_every < 1) return false;
-    a.gpu_depth = std::min(a.gpu_depth, a.slots);  if (a.input_live && a.input_pace != InputPace::Source) { std::fprintf(stderr, "--input-live is only for --input-pace source.\n"); return false; }
+    a.gpu_depth = std::min(a.gpu_depth, a.slots);  if (a.input_live && a.input_pace != InputPace::Source) { std::fprintf(stderr, "--input-live is only for --input-pace source.\n"); return false; }  if (a.decode_copy && a.sw_decoder) { std::fprintf(stderr, "--decode-copy is only for --decoder hw (it replaces the zero-copy hand-off of the HW decoder output; --decoder sw already copies).\n"); return false; }
     if (a.input_pace == InputPace::Asap && a.input_queue_explicit) {
         std::fprintf(stderr, "--input-queue is only for --input-pace source.\n");
         return false;
@@ -501,7 +501,7 @@ int check_mode_combination(const Args& a) {
         std::fprintf(stderr, "--nms is only for --postproc gpu (on the host path HailoRT does NMS per the HEF settings).\n");
         return 2;
     }
-    if (a.input_copy && (!dmabuf || a.layout != yvo::TensorLayout::Nhcw)) { std::fprintf(stderr, "--input-copy is only for --mode dmabuf --layout nhcw (the copy replaces the zero-copy hand-off of that path).\n"); return 2; }  return 0;
+    if (a.input_copy && (!dmabuf || a.layout != yvo::TensorLayout::Nhcw)) { std::fprintf(stderr, "--input-copy is only for --mode dmabuf --layout nhcw (the copy replaces the zero-copy hand-off of that path).\n"); return 2; }  if (a.output_copy && (!dmabuf || a.layout != yvo::TensorLayout::Nhcw || a.postproc != Postproc::Gpu)) { std::fprintf(stderr, "--output-copy is only for --mode dmabuf --layout nhcw --postproc gpu (the copy replaces the zero-copy hand-off of the NPU raw outputs to the GPU post-processing).\n"); return 2; }  return 0;
 }
 
 // GPU post-processing stats, snapshotted before the stage is released (all empty/zero for --postproc host).
@@ -859,7 +859,7 @@ int run(const Args& a) {
     const double soc_t0 = soc_temperature();
 
     // Export fds must be closed later than the runner (unmap), so they are declared first (reverse destruction).
-    FdCloser export_fds;  std::optional<yvo::pipeline::InputCopy> input_copy;   // --input-copy: same reason, the runner maps its fds
+    FdCloser export_fds;  std::optional<yvo::pipeline::InputCopy> input_copy;  std::optional<yvo::pipeline::OutputCopy> output_copy;   // --input-copy: same reason, the runner maps its fds   // --output-copy: likewise
     // --frame-log: opened before any device so a bad path fails fast (exit 2). Rows are written once, after the drain.
     std::unique_ptr<std::FILE, decltype([](std::FILE* fp) { std::fclose(fp); })> frame_log_fp;
     if (!a.frame_log.empty()) {
@@ -960,7 +960,7 @@ int run(const Args& a) {
         return 1;
     }
 
-    std::vector<int> slot_fd(static_cast<std::size_t>(a.slots), -1);  if (a.input_copy) input_copy.emplace(a.slots, stage->input_frame_size());
+    std::vector<int> slot_fd(static_cast<std::size_t>(a.slots), -1);  if (a.input_copy) input_copy.emplace(a.slots, stage->input_frame_size());  if (a.output_copy) { output_copy.emplace(a.slots, gpu_stage->raw_output_sizes()); gpu_stage->set_output_copy(&*output_copy); }   // before bind_input_dmabuf
     if (dmabuf) {
         for (int s = 0; s < a.slots; ++s) {
             const int v3d_fd = pre.export_dmabuf_fd(s);
@@ -988,7 +988,7 @@ int run(const Args& a) {
     }
 #endif
 
-    yvo::FfmpegDrmDecoder dec;
+    std::optional<yvo::pipeline::DecodeCopy> decode_copy;  yvo::FfmpegDrmDecoder dec;   // decode_copy: --decode-copy, declared first so it outlives the decoder's frame filter
     yvo::FfmpegDrmDecoder::Options dopt;
     dopt.threads = a.dec_threads; dopt.software = a.sw_decoder; if (const char* e = std::getenv("YVO_SW_HEAP")) dopt.sw_heaps = {e};  // 1 frame thread (07_results/dec_threads); YVO_DEC_THREADS=0 -> FFmpeg auto; YVO_SW_HEAP: research knob, dma-heap node of --decoder sw
     dopt.extra_hw_frames = std::max(2 * yvo::kNumSlots, a.gpu_depth + 4);
@@ -1016,7 +1016,7 @@ int run(const Args& a) {
         std::fprintf(stderr, "decoder open failed: %s\n", dec.error().c_str());
         return 1;
     }
-    const int src_w = dec.width(), src_h = dec.height();
+    const int src_w = dec.width(), src_h = dec.height();  if (a.decode_copy) { decode_copy.emplace(src_w, src_h, dopt.extra_hw_frames + 4); dec.set_frame_filter(decode_copy->filter()); }   // pool = the frames the HW pool lets us hold
     stage->set_source_size(src_w, src_h);
     const double dec_fps = dec.frame_rate();
     if (paced && !(dec_fps >= 1.0 && dec_fps <= 240.0)) {   // NaN fails the range test too
@@ -1613,6 +1613,14 @@ int run(const Args& a) {
         const Stats st = stats(input_copy->total_ms()), sm = stats(input_copy->memcpy_ms()), ss = stats(input_copy->sync_ms());
         std::printf("input copy: mean %.3f median %.3f p90 %.3f ms/frame (memcpy mean %.3f + cache sync mean %.3f), %zu frames, %d buffers, heap %s\n",
                     st.mean, st.median, st.p90, sm.mean, ss.mean, st.n, input_copy->buffers(), input_copy->heap().c_str());
+    }  if (decode_copy) {   // Printed with --quiet too, same form as the input copy line. --input-live: read after the decode thread joined.
+        const Stats st = stats(decode_copy->total_ms()), sm = stats(decode_copy->memcpy_ms()), ss = stats(decode_copy->sync_ms());
+        std::printf("decode copy: mean %.3f median %.3f p90 %.3f ms/frame (memcpy mean %.3f + cache sync mean %.3f), %zu frames, %d buffers (peak in use %d), %zu decoder buffers mapped, heap %s\n",
+                    st.mean, st.median, st.p90, sm.mean, ss.mean, st.n, decode_copy->buffers(), decode_copy->peak_in_use(), decode_copy->mappings(), decode_copy->heap().c_str());
+    }  if (output_copy) {   // Printed with --quiet too, same form as the input copy line.
+        const Stats st = stats(output_copy->total_ms()), sm = stats(output_copy->memcpy_ms()), ss = stats(output_copy->sync_ms());
+        std::printf("output copy: mean %.3f median %.3f p90 %.3f ms/frame (memcpy mean %.3f + cache sync mean %.3f), %zu frames, %d buffers, heap %s\n",
+                    st.mean, st.median, st.p90, sm.mean, ss.mean, st.n, output_copy->buffers(), output_copy->heap().c_str());
     }
     if (a.input_live) { yvo::pipeline::print_live_stats(live_stats); }  std::fflush(stdout);
     if (ctx.debug_messenger_active() && ctx.validation_errors() > 0) fail = true;

@@ -10,6 +10,9 @@
 #   post_host    --postproc host: HEF NMS output, HailoRT post-processing on the CPU
 #   nms_cpu      --nms cpu: GPU decode, CPU suppression
 #   input_copy   --input-copy: the CPU copies the V3D output to a cached dma-heap buffer, the NPU reads that (pipeline/input_copy.hpp)
+#   decode_copy / output_copy / all_copy  --decode-copy (HW decoder -> GPU, pipeline/decode_copy.hpp), --output-copy (NPU -> GPU
+#                post-processing, pipeline/output_copy.hpp), and all three copies together. Their "decode copy:" / "output copy:"
+#                lines stay in stdout.log only (no CSV columns); the input_* columns are filled for input_copy and all_copy.
 #
 # Run folder raw/<config>_run<N>/:
 #   stdout.log        includes "thread cpu ..." (per thread name) and, for input_copy, "input copy: ..."
@@ -65,9 +68,9 @@ require_bin "$BIN_PIPELINE" yvo_pipeline
 for t in timeout wlr-randr awk; do
   command -v "$t" >/dev/null || { echo "required tool not found: $t" >&2; exit 1; }
 done
-# A binary older than --input-copy would fail every input_copy run with a usage message. --help opens no device.
+# A binary older than the copy options would fail those runs with a usage message. --help opens no device.
 help_text=$("$BIN_PIPELINE" --help 2>&1 || true)
-grep -q -- '--input-copy' <<<"$help_text" || { echo "$BIN_PIPELINE has no --input-copy: rebuild it" >&2; exit 1; }
+for o in --input-copy --decode-copy --output-copy; do grep -q -- "$o" <<<"$help_text" || { echo "$BIN_PIPELINE has no $o: rebuild it" >&2; exit 1; }; done
 check_only_exit
 
 # id|arguments that define the technique. Every option that defines the operating point is explicit: defaults can move, archived
@@ -81,6 +84,9 @@ configs=(
   "post_host|--layout nhcw --postproc host"
   "nms_cpu|--layout nhcw --postproc gpu --nms cpu"
   "input_copy|--layout nhcw --postproc gpu --nms gpu --input-copy"
+  "decode_copy|--layout nhcw --postproc gpu --nms gpu --decode-copy"
+  "output_copy|--layout nhcw --postproc gpu --nms gpu --output-copy"
+  "all_copy|--layout nhcw --postproc gpu --nms gpu --decode-copy --input-copy --output-copy"
   "display_off|--layout nhcw --postproc gpu --nms gpu --display off"   # base without display (later --display wins); no RESULT_CSV5
 )
 
@@ -151,7 +157,7 @@ cat "$OUT_DIR/env_bench.txt"
 
 RAW="$OUT_DIR/results_raw.csv"
 # RESULT_CSV 22 + RESULT_CSV4 21 (after its label) + RESULT_CSV5 6 (after its label) + 16 script columns = 65.
-# The input_* columns are nan except for input_copy (per frame, "input copy:" line).
+# The input_* columns are nan except for input_copy and all_copy (per frame, "input copy:" line).
 CSV1_COLS="label,mode,layout,batch,slots,frames,wall_s,fps,cpu_ms_per_frame,decode_ms_mean,gpu_ms_mean,gpu_ms_p90,npu_ms_mean,npu_ms_p90,e2e_ms_mean,e2e_ms_p90,detections,hailo_t0,hailo_t1,soc_t0,soc_t1,ok"
 CSV4_COLS="input_queue,src_fps,arrived,processed,dropped,abandoned,drop_rate,max_drop_run,queue_depth_max,e2e_arr_mean,e2e_arr_median,e2e_arr_p90,e2e_arr_max,queue_wait_mean,queue_wait_p90,queue_wait_max,decode_late_mean,decode_late_p90,decode_late_max,held_frames_max,pace_ok"
 CSV5_COLS="a2p_mean,a2p_median,a2p_p90,a2p_max,a2p_n,a2p_ok"
@@ -241,7 +247,7 @@ for ((r = 1; r <= RUNS; r++)); do
     unreliable=0; (( nwarn > 0 )) && unreliable=1
     note="-"; (( ${#notes[@]} )) && note=$(IFS=';'; echo "${notes[*]}")
     echo "$line,$pace,$a2p,$r,$cooled,$t_pre,$soc_now,$nwarn,$nerr,$lcols,$copycols,$rc,$unreliable,$note" >> "$RAW"
-    echo "  $(grep -E '^wall|^cpu |^arrived|^display  |^input copy' "$log" | tr -s ' ' | tr '\n' ' ') labwc_ms/frame=${lcols#*,} hailo_warn=$nwarn err=$nerr rc=$rc note=$note"
+    echo "  $(grep -E '^wall|^cpu |^arrived|^display  |^(input|decode|output) copy' "$log" | tr -s ' ' | tr '\n' ' ') labwc_ms/frame=${lcols#*,} hailo_warn=$nwarn err=$nerr rc=$rc note=$note"
   done
 done
 

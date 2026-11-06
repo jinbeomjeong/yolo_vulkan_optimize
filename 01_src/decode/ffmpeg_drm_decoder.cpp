@@ -137,7 +137,7 @@ void FfmpegDrmDecoder::close() {
     stream_index_ = -1;
     input_done_ = false;
     eof_ = false;
-    packet_gate_ = nullptr; packets_sent_ = 0; frame_counter_ = 0; sw_pool_.reset(); software_ = false;  // SW frames still held keep the pool alive; sw_stats_ stays readable
+    packet_gate_ = nullptr; frame_filter_ = nullptr; packets_sent_ = 0; frame_counter_ = 0; sw_pool_.reset(); software_ = false;  // SW frames still held keep the pool alive; sw_stats_ stays readable
 }
 
 bool FfmpegDrmDecoder::fail(const std::string& msg) {
@@ -270,6 +270,13 @@ std::optional<DrmFrame> FfmpegDrmDecoder::next() {
         auto* f = static_cast<AVFrame*>(p);
         av_frame_free(&f);
     });
+    if (frame_filter_) {   // --decode-copy: the CPU copy replaces the frame; the AVFrame goes back to the pool here
+        why.clear();
+        if (!frame_filter_(out, why)) {
+            fail(why.empty() ? std::string("frame filter failed") : why);
+            return std::nullopt;
+        }
+    }
     return out;
 }
 

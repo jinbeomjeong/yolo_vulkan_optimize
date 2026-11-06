@@ -37,6 +37,7 @@
 
 #include "hailo/hailo_raw_runner.hpp"
 #include "pipeline/infer_stage.hpp"
+#include "pipeline/output_copy.hpp"
 #include "vulkan/yolo_postproc.hpp"
 
 namespace yvo::vk {
@@ -102,6 +103,12 @@ public:
     NmsBackend nms_backend() const { return cfg_.nms; }
     const char* alloc_name() const;
 
+    // --output-copy (pipeline/output_copy.hpp): transfer sizes of the 6 raw tensors (hw_frame_size), to size the copy pool.
+    OutputCopy::Sizes raw_output_sizes() const;
+    // Makes the NPU write its raw outputs to oc's buffers; each completed slot is copied into the YoloPostproc buffers on the main
+    // thread before the GPU submit. Call before the first bind_input_dmabuf(). oc must outlive this stage (the runner maps its fds).
+    void set_output_copy(OutputCopy* oc);
+
 private:
     struct RawDone {
         int slot = -1;
@@ -112,6 +119,7 @@ private:
 
     void finish(int slot, std::chrono::steady_clock::time_point t_post_done);   // pp_->wait() done (t_post_done) → Done via NMS
     void push_ready_to_gpu();   // drains ready_ and hands it to pp_
+    void copy_outputs(int slot);   // --output-copy: out_copy_ → pp_ raw buffers of the slot (main thread)
 
     // Declaration order = construction order. ~GpuPostprocStage() resets raw_ first (see "Destruction order" above).
     GpuPostprocStageConfig cfg_;
@@ -123,6 +131,7 @@ private:
     std::vector<yvo::LetterboxParams> lb_;
     std::vector<bool> bound_;
     Done done_;
+    OutputCopy* out_copy_ = nullptr;   // --output-copy (not owned). nullptr = the NPU writes the YoloPostproc buffers directly
 
     std::mutex ready_mtx_;
     std::condition_variable ready_cv_;  // HailoRT callback → wake the main thread

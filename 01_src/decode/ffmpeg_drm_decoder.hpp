@@ -77,6 +77,11 @@ public:
     // another packet (also before the read that finds the end of the file). The gate may sleep; its time is not counted in
     // SwStats::decode_wait_ms. false makes next() return nullopt without an error. Set after open(); close() clears it.
     void set_packet_gate(std::function<bool(std::int64_t)> gate) { packet_gate_ = std::move(gate); }
+    // Post-decode hook of the HW path (pipeline/decode_copy.hpp, yvo_pipeline --decode-copy): next() passes each frame through it
+    // right before returning. The filter may replace the frame (the old keepalive is then dropped); false makes next() return
+    // nullopt with error() = the reason it wrote. Runs on the thread that calls next(). Set after open(); close() clears it.
+    using FrameFilter = std::function<bool(DrmFrame&, std::string&)>;
+    void set_frame_filter(FrameFilter filter) { frame_filter_ = std::move(filter); }
     std::int64_t packets_sent() const { return packets_sent_; }
     bool input_flushed() const { return input_done_; }   // the end of the file was reached and the flush was sent
     int thread_count() const;     // resolved libavcodec thread count
@@ -100,6 +105,7 @@ private:
     int stream_index_ = -1;
     bool input_done_ = false; // end of packets (flush sent)
     std::function<bool(std::int64_t)> packet_gate_;
+    FrameFilter frame_filter_;
     std::int64_t packets_sent_ = 0;
     bool eof_ = false;
     std::int64_t frame_counter_ = 0;
