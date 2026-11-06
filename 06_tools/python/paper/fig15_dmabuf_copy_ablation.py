@@ -5,6 +5,9 @@
 (b) Per hand-off, the measured CPU increase (setting median - base median) next to the copy time alone (per processed frame,
     median of 3 runs). The last group compares the sum of the three single increases with the all_copy increase (they add up)
     and with the all_copy copy time.
+    Error bars on the measured increases (the three hand-offs and all_copy, not the stacked sum): min-max of the paired
+    differences setting run N - base run N. The bench interleaves the settings inside each run, so equal run numbers ran
+    back to back. The bar height stays the difference of medians, which must lie inside that range.
 Bar colors: each hand-off takes the color of the unit that produces the copied buffer (decoder, GPU, NPU; 09_diagrams
 convention). Measured increases are solid, copy times hatched.
 Sources (under 07_results/technique_ablation/runs/dmabuf_ablation):
@@ -22,6 +25,7 @@ import statistics
 import sys
 from pathlib import Path
 
+from matplotlib.container import ErrorbarContainer
 from matplotlib.patches import Patch
 
 import paper_style as ps
@@ -35,7 +39,7 @@ SETTINGS = ("base", "decode_copy", "input_copy", "output_copy", "all_copy")
 SECTIONS = ("decode", "input", "output")              # stdout stat names, in pipeline order
 SECTION_SETTING = {"decode": "decode_copy", "input": "input_copy", "output": "output_copy"}
 SETTING_LABELS = {
-    "base": "기준\n(dma-buf\n공유)",
+    "base": "기준\n(복사\n없음)",
     "decode_copy": "① 디코더\n→GPU\n복사",
     "input_copy": "② GPU\n→NPU\n복사",
     "output_copy": "③ NPU\n→GPU\n복사",
@@ -135,6 +139,31 @@ def increases(stats: dict[str, tuple[float, float, float]]) -> dict[str, float]:
     return {label: round(stats[label][0] - base, 3) for label in SETTINGS if label != "base"}
 
 
+def paired_ranges(runs: dict[str, list[dict[str, str]]], inc: dict[str, float]) -> dict[str, tuple[float, float]]:
+    """{setting: (min, max)} of setting run N - base run N. The difference of medians must lie inside the range."""
+    base = {x["run"]: float(x["cpu_ms_per_frame"]) for x in runs["base"]}
+    ranges: dict[str, tuple[float, float]] = {}
+    for label in SETTINGS[1:]:
+        own = {x["run"]: float(x["cpu_ms_per_frame"]) for x in runs[label]}
+        if set(own) != set(base):
+            raise ValueError(f"{ps.rel(RAW_CSV)}: {label} runs {sorted(own)} do not pair with base runs {sorted(base)}")
+        diffs = [round(own[r] - base[r], 3) for r in sorted(base, key=int)]   # 3-decimal inputs
+        ranges[label] = (min(diffs), max(diffs))
+        if not ranges[label][0] <= inc[label] <= ranges[label][1]:
+            raise ValueError(f"{label}: difference of medians {inc[label]} outside paired range {ranges[label]}")
+    return ranges
+
+
+def _increase_bar(ax, x: float, value: float, width: float, color: str, rng: tuple[float, float], y_max: float,
+                  kw: dict) -> ErrorbarContainer:
+    """One measured-increase bar with its paired min-max error bar; the value label sits above the error bar."""
+    ax.bar(x, value, width, color=color, **kw)
+    err = ax.errorbar([x], [value], yerr=[[value - rng[0]], [rng[1] - value]], fmt="none", ecolor=ps.EDGE_COLOR,
+                      elinewidth=0.8)
+    _bar_label(ax, x, rng[1], value, y_max)
+    return err
+
+
 def _setting_color(label: str) -> str:
     if label == "base":
         return BASE_COLOR
@@ -172,18 +201,18 @@ def _bar_label(ax, x: float, top: float, value: float, y_max: float) -> None:
             fontsize=ps.FONT_SIZE - 0.5)
 
 
-def draw_explained(ax, inc: dict[str, float], copy: dict[str, dict[str, float]]) -> float:
+def draw_explained(ax, inc: dict[str, float], copy: dict[str, dict[str, float]],
+                   ranges: dict[str, tuple[float, float]]) -> float:
     """Panel (b): increase vs copy time per hand-off, then sum of increases, all_copy increase and all_copy copy time."""
     inc_sum = round(sum(inc[SECTION_SETTING[s]] for s in SECTIONS), 3)
     copy_all = copy["all_copy"]
-    y_max = max(inc_sum, inc["all_copy"], sum(copy_all.values())) * Y_HEADROOM
+    y_max = max(inc_sum, ranges["all_copy"][1], sum(copy_all.values())) * Y_HEADROOM
     w = BAR_WIDTH_B
     kw = {"edgecolor": ps.EDGE_COLOR, "lw": 0.6}
     for i, s in enumerate(SECTIONS):
         v_inc, v_copy = inc[SECTION_SETTING[s]], copy[SECTION_SETTING[s]][s]
-        ax.bar(i - PAIR_OFFSET, v_inc, w, color=SECTION_COLORS[s], **kw)
+        _increase_bar(ax, i - PAIR_OFFSET, v_inc, w, SECTION_COLORS[s], ranges[SECTION_SETTING[s]], y_max, kw)
         ax.bar(i + PAIR_OFFSET, v_copy, w, color=SECTION_COLORS[s], hatch=COPY_HATCH, **kw)
-        _bar_label(ax, i - PAIR_OFFSET, v_inc, v_inc, y_max)
         _bar_label(ax, i + PAIR_OFFSET, v_copy, v_copy, y_max)
 
     # Last group: three bars on a wider pitch so their value labels do not touch.
@@ -195,8 +224,7 @@ def draw_explained(ax, inc: dict[str, float], copy: dict[str, dict[str, float]])
         ax.bar(xs[0], inc[SECTION_SETTING[s]], w3, bottom=bottom, color=SECTION_COLORS[s], **kw)
         bottom += inc[SECTION_SETTING[s]]
     _bar_label(ax, xs[0], bottom, inc_sum, y_max)
-    ax.bar(xs[1], inc["all_copy"], w3, color=ALL_COLOR, **kw)
-    _bar_label(ax, xs[1], inc["all_copy"], inc["all_copy"], y_max)
+    err = _increase_bar(ax, xs[1], inc["all_copy"], w3, ALL_COLOR, ranges["all_copy"], y_max, kw)
     bottom = 0.0
     for s in SECTIONS:                   # all_copy copy time, stacked
         ax.bar(xs[2], copy_all[s], w3, bottom=bottom, color=SECTION_COLORS[s], hatch=COPY_HATCH, **kw)
@@ -211,8 +239,10 @@ def draw_explained(ax, inc: dict[str, float], copy: dict[str, dict[str, float]])
     ax.set_ylabel("CPU 시간 (ms/처리 프레임)")
     ax.set_title("(b) CPU 증가와 복사 단독 시간", loc="left")
     handles = [Patch(fc=ALL_COLOR, ec=ps.EDGE_COLOR, lw=0.6, label="측정된 CPU 증가 (설정 − 기준 중앙값)"),
-               Patch(fc="white", ec=ps.EDGE_COLOR, lw=0.6, hatch=COPY_HATCH, label="복사 단독 시간 (3회 중앙값)")]
-    ax.legend(handles=handles, loc="upper left", fontsize=ps.FONT_SIZE - 0.5, handlelength=1.6)
+               Patch(fc="white", ec=ps.EDGE_COLOR, lw=0.6, hatch=COPY_HATCH, label="복사 단독 시간 (3회 중앙값)"),
+               err]
+    labels = [h.get_label() for h in handles[:2]] + ["오차 막대: 같은 회차 짝 차이의 최소~최대"]
+    ax.legend(handles=handles, labels=labels, loc="upper left", fontsize=ps.FONT_SIZE - 0.5, handlelength=1.6)
     return inc_sum
 
 
@@ -220,10 +250,11 @@ def main(out_dir: str | Path | None = None) -> list[Path]:
     runs, stats = load_cpu()
     copy = load_copy(runs)
     inc = increases(stats)
+    ranges = paired_ranges(runs, inc)
 
     fig, (ax_a, ax_b) = ps.new_figure("double", 7.5, ncols=2, gridspec_kw={"width_ratios": [1.0, 1.15]})
     draw_settings(ax_a, stats, inc)
-    inc_sum = draw_explained(ax_b, inc, copy)
+    inc_sum = draw_explained(ax_b, inc, copy, ranges)
 
     lines = [f"{s}: median {stats[s][0]:.3f} (min {stats[s][1]:.3f}, max {stats[s][2]:.3f}) -> {ps.fmt_half_up(stats[s][0], 3)}"
              + ("" if s == "base" else f", increase {inc[s]:.3f} -> +{ps.fmt_half_up(inc[s], 2)}") for s in SETTINGS]
@@ -235,6 +266,8 @@ def main(out_dir: str | Path | None = None) -> list[Path]:
     copy_all_sum = sum(copy["all_copy"].values())
     lines += [f"sum of single increases {inc_sum:.3f} -> {ps.fmt_half_up(inc_sum, 2)} vs all_copy increase "
               f"{inc['all_copy']:.3f} -> {ps.fmt_half_up(inc['all_copy'], 2)}",
+              *[f"{label} paired difference (run N - base run N) min {lo:.3f} max {hi:.3f} -> "
+                f"{ps.fmt_half_up(lo, 2)}~{ps.fmt_half_up(hi, 2)}" for label, (lo, hi) in ranges.items()],
               f"all_copy copy time sum {copy_all_sum:.4f} -> {ps.fmt_half_up(round(copy_all_sum, 4), 2)}"]
     paths = ps.save(fig, ps.resolve_out_dir(out_dir), STEM)
     ps.report(STEM, [RAW_CSV, SUMMARY_CSV, RUN_DIR / "raw"], lines)
