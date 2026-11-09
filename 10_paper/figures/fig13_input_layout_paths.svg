@@ -59,62 +59,62 @@ L 0 3.5
     </g>
     <g id="xtick_2">
      <g id="line2d_3">
-      <path d="M 222.394819 181.417323 
-L 222.394819 18.141732 
+      <path d="M 219.303887 181.417323 
+L 219.303887 18.141732 
 " clip-path="url(#c96da7eedd6)" style="fill: none; stroke: #d9d9d9; stroke-width: 0.4; stroke-linecap: square"/>
      </g>
      <g id="line2d_4">
       <g>
-       <use xlink:href="#mfd4e453d5d" x="222.394819" y="181.417323" style="stroke: #000000; stroke-width: 0.6"/>
+       <use xlink:href="#mfd4e453d5d" x="219.303887" y="181.417323" style="stroke: #000000; stroke-width: 0.6"/>
       </g>
      </g>
      <g id="text_2">
-      <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="222.394819" y="195.217323" transform="rotate(-0 222.394819 195.217323)">5</text>
+      <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="219.303887" y="195.217323" transform="rotate(-0 219.303887 195.217323)">5</text>
      </g>
     </g>
     <g id="xtick_3">
      <g id="line2d_5">
-      <path d="M 310.85263 181.417323 
-L 310.85263 18.141732 
+      <path d="M 304.670765 181.417323 
+L 304.670765 18.141732 
 " clip-path="url(#c96da7eedd6)" style="fill: none; stroke: #d9d9d9; stroke-width: 0.4; stroke-linecap: square"/>
      </g>
      <g id="line2d_6">
       <g>
-       <use xlink:href="#mfd4e453d5d" x="310.85263" y="181.417323" style="stroke: #000000; stroke-width: 0.6"/>
+       <use xlink:href="#mfd4e453d5d" x="304.670765" y="181.417323" style="stroke: #000000; stroke-width: 0.6"/>
       </g>
      </g>
      <g id="text_3">
-      <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="310.85263" y="195.217323" transform="rotate(-0 310.85263 195.217323)">10</text>
+      <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="304.670765" y="195.217323" transform="rotate(-0 304.670765 195.217323)">10</text>
      </g>
     </g>
     <g id="xtick_4">
      <g id="line2d_7">
-      <path d="M 399.310441 181.417323 
-L 399.310441 18.141732 
+      <path d="M 390.037644 181.417323 
+L 390.037644 18.141732 
 " clip-path="url(#c96da7eedd6)" style="fill: none; stroke: #d9d9d9; stroke-width: 0.4; stroke-linecap: square"/>
      </g>
      <g id="line2d_8">
       <g>
-       <use xlink:href="#mfd4e453d5d" x="399.310441" y="181.417323" style="stroke: #000000; stroke-width: 0.6"/>
+       <use xlink:href="#mfd4e453d5d" x="390.037644" y="181.417323" style="stroke: #000000; stroke-width: 0.6"/>
       </g>
      </g>
      <g id="text_4">
-      <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="399.310441" y="195.217323" transform="rotate(-0 399.310441 195.217323)">15</text>
+      <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="390.037644" y="195.217323" transform="rotate(-0 390.037644 195.217323)">15</text>
      </g>
     </g>
     <g id="xtick_5">
      <g id="line2d_9">
-      <path d="M 487.768252 181.417323 
-L 487.768252 18.141732 
+      <path d="M 475.404523 181.417323 
+L 475.404523 18.141732 
 " clip-path="url(#c96da7eedd6)" style="fill: none; stroke: #d9d9d9; stroke-width: 0.4; stroke-linecap: square"/>
      </g>
      <g id="line2d_10">
       <g>
-       <use xlink:href="#mfd4e453d5d" x="487.768252" y="181.417323" style="stroke: #000000; stroke-width: 0.6"/>
+       <use xlink:href="#mfd4e453d5d" x="475.404523" y="181.417323" style="stroke: #000000; stroke-width: 0.6"/>
       </g>
      </g>
      <g id="text_5">
-      <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="487.768252" y="195.217323" transform="rotate(-0 487.768252 195.217323)">20</text>
+      <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="475.404523" y="195.217323" transform="rotate(-0 475.404523 195.217323)">20</text>
      </g>
     </g>
     <g id="text_6">
@@ -124,73 +124,73 @@ L 487.768252 18.141732
    <g id="matplotlib.axis_2"/>
    <g id="patch_3">
     <path d="M 133.937008 34.469291 
-L 135.285105 34.469291 
-L 135.285105 56.23937 
+L 135.237999 34.469291 
+L 135.237999 56.23937 
 L 133.937008 56.23937 
 z
 " clip-path="url(#c96da7eedd6)" style="fill: #99cc00; stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
    </g>
    <g id="patch_4">
-    <path d="M 135.285105 34.469291 
-L 371.90975 34.469291 
-L 371.90975 56.23937 
-L 135.285105 56.23937 
+    <path d="M 135.237999 34.469291 
+L 372.933536 34.469291 
+L 372.933536 56.23937 
+L 135.237999 56.23937 
 z
 " clip-path="url(#c96da7eedd6)" style="fill: #d55e00; stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
    </g>
    <g id="patch_5">
-    <path d="M 371.90975 34.469291 
-L 398.871691 34.469291 
-L 398.871691 56.23937 
-L 371.90975 56.23937 
+    <path d="M 372.933536 34.469291 
+L 402.948531 34.469291 
+L 402.948531 56.23937 
+L 372.933536 56.23937 
 z
 " clip-path="url(#c96da7eedd6)" style="fill: #cc79a7; stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
    </g>
    <g id="patch_6">
-    <path d="M 398.871691 34.469291 
+    <path d="M 402.948531 34.469291 
 L 424.66245 34.469291 
 L 424.66245 56.23937 
-L 398.871691 56.23937 
+L 402.948531 56.23937 
 z
 " clip-path="url(#c96da7eedd6)" style="fill: #e6e6e6; stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
    </g>
    <g id="patch_7">
     <path d="M 133.937008 88.894488 
-L 135.285105 88.894488 
-L 135.285105 110.664567 
+L 135.237999 88.894488 
+L 135.237999 110.664567 
 L 133.937008 110.664567 
 z
 " clip-path="url(#c96da7eedd6)" style="fill: #99cc00; stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
    </g>
    <g id="patch_8">
-    <path d="M 135.285105 88.894488 
-L 162.247046 88.894488 
-L 162.247046 110.664567 
-L 135.285105 110.664567 
+    <path d="M 135.237999 88.894488 
+L 165.252994 88.894488 
+L 165.252994 110.664567 
+L 135.237999 110.664567 
 z
 " clip-path="url(#c96da7eedd6)" style="fill: #cc79a7; stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
    </g>
    <g id="patch_9">
-    <path d="M 162.247046 88.894488 
-L 188.037805 88.894488 
-L 188.037805 110.664567 
-L 162.247046 110.664567 
+    <path d="M 165.252994 88.894488 
+L 186.966913 88.894488 
+L 186.966913 110.664567 
+L 165.252994 110.664567 
 z
 " clip-path="url(#c96da7eedd6)" style="fill: #e6e6e6; stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
    </g>
    <g id="patch_10">
     <path d="M 133.937008 143.319685 
-L 135.285105 143.319685 
-L 135.285105 165.089764 
+L 135.237999 143.319685 
+L 135.237999 165.089764 
 L 133.937008 165.089764 
 z
 " clip-path="url(#c96da7eedd6)" style="fill: #99cc00; stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
    </g>
    <g id="patch_11">
-    <path d="M 135.285105 143.319685 
-L 161.075864 143.319685 
-L 161.075864 165.089764 
-L 135.285105 165.089764 
+    <path d="M 135.237999 143.319685 
+L 156.951918 143.319685 
+L 156.951918 165.089764 
+L 135.237999 165.089764 
 z
 " clip-path="url(#c96da7eedd6)" style="fill: #e6e6e6; stroke: #333333; stroke-width: 0.4; stroke-linejoin: miter"/>
    </g>
@@ -205,19 +205,19 @@ L 488.622047 181.417323
 " style="fill: none; stroke: #333333; stroke-width: 0.6; stroke-linejoin: miter; stroke-linecap: square"/>
    </g>
    <g id="text_7">
-    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="253.597427" y="47.734331" transform="rotate(-0 253.597427 47.734331)">13.38</text>
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="254.085768" y="47.734331" transform="rotate(-0 254.085768 47.734331)">13.92</text>
    </g>
    <g id="text_8">
-    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="385.39072" y="47.734331" transform="rotate(-0 385.39072 47.734331)">1.52</text>
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="387.941033" y="47.734331" transform="rotate(-0 387.941033 47.734331)">1.76</text>
    </g>
    <g id="text_9">
-    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="411.76707" y="47.734331" transform="rotate(-0 411.76707 47.734331)">1.46</text>
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="413.80549" y="47.734331" transform="rotate(-0 413.80549 47.734331)">1.27</text>
    </g>
    <g id="text_10">
-    <text style="font-weight: 700; font-size: 9px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="427.854615" y="48.031831" transform="rotate(-0 427.854615 48.031831)">16.43</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="427.854615" y="48.031831" transform="rotate(-0 427.854615 48.031831)">17.03</text>
    </g>
    <g id="text_11">
-    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="456.461178" y="47.734331" transform="rotate(-0 456.461178 47.734331)">18.68 fps</text>
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="456.461178" y="47.734331" transform="rotate(-0 456.461178 47.734331)">18.41 fps</text>
    </g>
    <g id="text_12">
     <text style="font-weight: 700; font-size: 9px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="3.968504" y="35.984055" transform="rotate(-0 3.968504 35.984055)">기존 파이프라인</text>
@@ -227,16 +227,16 @@ L 488.622047 181.417323
     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(3.968504 55.911811)">→ NHCW 변환 → 호스트 후처리</text>
    </g>
    <g id="text_14">
-    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="148.766075" y="102.159528" transform="rotate(-0 148.766075 102.159528)">1.52</text>
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="150.245496" y="102.159528" transform="rotate(-0 150.245496 102.159528)">1.76</text>
    </g>
    <g id="text_15">
-    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="175.142425" y="102.159528" transform="rotate(-0 175.142425 102.159528)">1.46</text>
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="176.109953" y="102.159528" transform="rotate(-0 176.109953 102.159528)">1.27</text>
    </g>
    <g id="text_16">
-    <text style="font-weight: 700; font-size: 9px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="191.229971" y="102.457028" transform="rotate(-0 191.229971 102.457028)">3.06</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="190.159078" y="102.457028" transform="rotate(-0 190.159078 102.457028)">3.11</text>
    </g>
    <g id="text_17">
-    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="214.346533" y="102.159528" transform="rotate(-0 214.346533 102.159528)">24.13 fps</text>
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="213.275641" y="102.159528" transform="rotate(-0 213.275641 102.159528)">24.10 fps</text>
    </g>
    <g id="text_18">
     <text style="font-weight: 700; font-size: 9px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="3.968504" y="90.409252" transform="rotate(-0 3.968504 90.409252)">NHCW 직접 입력</text>
@@ -246,13 +246,13 @@ L 488.622047 181.417323
     <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'" transform="translate(3.968504 110.337008)">→ 호스트 후처리</text>
    </g>
    <g id="text_20">
-    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="148.180485" y="156.584724" transform="rotate(-0 148.180485 156.584724)">1.46</text>
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="146.094959" y="156.584724" transform="rotate(-0 146.094959 156.584724)">1.27</text>
    </g>
    <g id="text_21">
-    <text style="font-weight: 700; font-size: 9px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="164.26803" y="156.882224" transform="rotate(-0 164.26803 156.882224)">1.53</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="160.144084" y="156.882224" transform="rotate(-0 160.144084 156.882224)">1.35</text>
    </g>
    <g id="text_22">
-    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="187.384592" y="156.584724" transform="rotate(-0 187.384592 156.584724)">24.30 fps</text>
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="183.260646" y="156.584724" transform="rotate(-0 183.260646 156.584724)">24.31 fps</text>
    </g>
    <g id="text_23">
     <text style="font-weight: 700; font-size: 9px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="3.968504" y="144.834449" transform="rotate(-0 3.968504 144.834449)">제안 파이프라인</text>
@@ -279,7 +279,7 @@ L 285.960945 69.123937
 z
 " style="fill: #ffffff"/>
     </g>
-    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="287.160945" y="77.123937" transform="rotate(-0 287.160945 77.123937)">13.38 감소</text>
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="287.160945" y="77.123937" transform="rotate(-0 287.160945 77.123937)">13.92 감소</text>
    </g>
    <g id="patch_16">
     <path d="M 282.904724 106.310551 
@@ -299,7 +299,7 @@ L 285.960945 121.372126
 z
 " style="fill: #ffffff"/>
     </g>
-    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="287.160945" y="129.372126" transform="rotate(-0 287.160945 129.372126)">1.52 감소</text>
+    <text style="font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: start" x="287.160945" y="129.372126" transform="rotate(-0 287.160945 129.372126)">1.76 감소</text>
    </g>
    <g id="text_27">
     <g id="patch_18">
@@ -310,7 +310,7 @@ L 259.716599 148.584724
 z
 " style="fill: #ffffff"/>
     </g>
-    <text style="font-weight: 700; font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="282.904724" y="156.584724" transform="rotate(-0 282.904724 156.584724)">전체 약 1/11</text>
+    <text style="font-weight: 700; font-size: 8px; font-family: 'NanumSquare', 'UnDotum', 'DejaVu Sans'; text-anchor: middle" x="282.904724" y="156.584724" transform="rotate(-0 282.904724 156.584724)">전체 약 1/13</text>
    </g>
   </g>
   <g id="text_28">

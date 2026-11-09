@@ -593,14 +593,14 @@ NPU는 프레임마다 텐서 **6개**를 내놓는다(스케일 3개 × {클래
 
 | 셰이더 | 입력 → 출력 | 하는 일 | 실측 중앙값 |
 |---|---|---|---:|
-| [`sand_letterbox.comp`](../02_shaders/sand_letterbox.comp) | 디코더 SAND128 NV12 → NHCW 640×640×3 | de-SAND + 축소 + YUV→RGB + letterbox 패딩 | **1.788 ms** |
-| [`yolo_decode.comp`](../02_shaders/yolo_decode.comp) | 원시 6텐서 → 후보 박스 ~16개 | dequantize + DFL softmax + threshold + 좌표 역변환 | **0.439 ms** (단계 분해(argmax 지름길 이후, 2026-10-11): 클래스 스캔 약 0.34 ms 고정, emit은 통과 클래스가 1개면 클래스 텐서를 다시 읽지 않아 운용 임계값 0.2에서 0.04~0.05 ms(혼잡 장면에서도. 임계값을 0.02·0.003으로 낮추면 폴백이 늘어 0.14·1.09 ms), DFL은 후보 수에 비례, 좌표 역변환은 0.01 ms 미만 — [`postproc_stage_cost`](../07_results/postproc_stage_cost/summary.md), 회차 [`emit_shortcut`](../07_results/postproc_stage_cost/runs/emit_shortcut/summary.md)) |
-| [`display_convert.comp`](../02_shaders/display_convert.comp) | 디코더 SAND128 NV12 → 스왑체인 RGBA | de-SAND + YUV→RGB (1:1) | **3.598 ms** |
+| [`sand_letterbox.comp`](../02_shaders/sand_letterbox.comp) | 디코더 SAND128 NV12 → NHCW 640×640×3 | de-SAND + 축소 + YUV→RGB + letterbox 패딩 | **1.776 ms** |
+| [`yolo_decode.comp`](../02_shaders/yolo_decode.comp) | 원시 6텐서 → 후보 박스 ~16개 | dequantize + DFL softmax + threshold + 좌표 역변환 | **0.438 ms** (단계 분해(argmax 지름길 이후, 2026-10-11): 클래스 스캔 약 0.34 ms 고정, emit은 통과 클래스가 1개면 클래스 텐서를 다시 읽지 않아 운용 임계값 0.2에서 0.04~0.05 ms(혼잡 장면에서도. 임계값을 0.02·0.003으로 낮추면 폴백이 늘어 0.14·1.09 ms), DFL은 후보 수에 비례, 좌표 역변환은 0.01 ms 미만 — [`postproc_stage_cost`](../07_results/postproc_stage_cost/summary.md), 회차 [`emit_shortcut`](../07_results/postproc_stage_cost/runs/emit_shortcut/summary.md)) |
+| [`display_convert.comp`](../02_shaders/display_convert.comp) | 디코더 SAND128 NV12 → 스왑체인 RGBA | de-SAND + YUV→RGB (1:1) | **3.588 ms** |
 | [`overlay_boxes.comp`](../02_shaders/overlay_boxes.comp) | 검출 목록 → 스왑체인 RGBA (변형 `overlay_boxes_buf`: → AB24 dma-buf 버퍼) | 박스 테두리 + 라벨 글자 + HUD 그리기 | **0.115 ms** (image 경로) |
 | [`efficient_nms.comp`](../02_shaders/efficient_nms.comp) | 후보 박스 → 최종 검출 | bitonic 정렬 + 클래스별 greedy 억제 | **0.049~0.050 ms** (파이프라인 중앙값, 1150 MHz ¹) |
 
-합 **5.986 ms**(5개, NMS는 같은 실행의 0.046 ms), 프레임 주기 33.4 ms의 17.9%다
-([`v3d1150_quiet_perfgov_20261016`](../07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016/summary.md) §2.3, 실행별 stdout median의 5회 중앙값, 소스 30 fps 페이싱 `disp_source`, 2026-10-16, V3D 1150 MHz · 디코더 1스레드 · GPU NMS, 논문 §6.7).
+합 **5.963 ms**(5개, NMS는 같은 실행의 0.046 ms), 프레임 주기 33.4 ms의 17.9%다
+([`v3d1150_quiet_perfgov_20261109`](../07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261109/summary.md) §2.1, 실행별 stdout median의 5회 중앙값, 소스 30 fps 페이싱 `disp_source`, 2026-11-09, 코드 dc447c5, V3D 1150 MHz · 디코더 1스레드 · GPU NMS, 논문 §6.7).
 표의 NMS 행만 표시 off 정식 A/B 값이다(¹). 아래 워크그룹 스윕은 **V3D 960 MHz** 조건이다.
 이전 측정(960 MHz · 자동 5스레드 · CPU NMS, [`display_e2e/summary.md`](../07_results/display_e2e/summary.md) §3.1)은 전처리 2.088 · 후처리 0.626 · 변환 4.153 · 오버레이 0.128 ms,
 4개 합 6.995 ms(24.5%)였다. 후처리 감소(−30%)에는 argmax 지름길 몫이 섞여 있어 클럭 효과만이 아니다.

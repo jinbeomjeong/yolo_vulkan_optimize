@@ -1,8 +1,8 @@
 """Figure 6: where the time of one frame goes in the confirmed configuration, file input and simulated live input. Stacked timeline.
 
 Sources (under 07_results), processed frames only (dropped == 0):
-  file input  technique_ablation/raw/base_run{1,2,3}/frame_log.csv, results.csv, results_raw.csv, stdout.log
-  live input  decode_benchmark/runs/pipeline_live_input/raw/hw_t1_run{1,2,3}/frame_log.csv, results.csv, results_raw.csv, stdout.log
+  file input  technique_ablation/runs/rerun_dc447c5/raw/base_run{1,2,3}/frame_log.csv, results.csv, results_raw.csv, stdout.log (2026-11-09, dc447c5)
+  live input  decode_benchmark/runs/pipeline_live_input_dc447c5/raw/hw_t1_run{1,2,3}/frame_log.csv, results.csv, results_raw.csv, stdout.log (2026-11-10, dc447c5)
 Segments are time-point differences of frame_log.csv (01_src/toolkit/frame_log.hpp):
   decode   decode_end - arrival      decode. With --input-live it includes the decoder's reorder delay (live_reorder packets).
   wait     submit - decode_end       input queue wait only: main.cpp stamps submit before the GPU preprocessing is submitted.
@@ -72,8 +72,8 @@ class Source:
 
 
 SOURCES = (
-    Source("file", "파일 입력", "다음 패킷을\n미리 읽을 수 있음", ps.RESULTS / "technique_ablation", "base", "base"),
-    Source("live", "실시간 입력 모사", "패킷을 도착\n시각에 전송", ps.RESULTS / "decode_benchmark" / "runs" / "pipeline_live_input",
+    Source("file", "파일 입력", "다음 패킷을\n미리 읽을 수 있음", ps.RESULTS / "technique_ablation" / "runs" / "rerun_dc447c5", "base", "base"),
+    Source("live", "실시간 입력 모사", "패킷을 도착\n시각에 전송", ps.RESULTS / "decode_benchmark" / "runs" / "pipeline_live_input_dc447c5",
            "hw_t1", "hw_t1"),
 )
 

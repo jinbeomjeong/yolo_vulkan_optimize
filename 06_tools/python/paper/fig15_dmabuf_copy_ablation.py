@@ -1,6 +1,6 @@
 """Figure 15: app CPU added when one dma-buf hand-off is replaced by a CPU copy, and how the copy time explains it. Two panels.
 
-(a) App CPU per processed frame of the five dmabuf_ablation settings: median bar with a min-max error bar over 3 runs, the
+(a) App CPU per processed frame of the five copy-ablation settings: median bar with a min-max error bar over 3 runs, the
     value and the increase over base above each bar, and a light reference line at the base median.
 (b) Per hand-off, the measured CPU increase (setting median - base median) next to the copy time alone (per processed frame,
     median of 3 runs). The last group compares the sum of the three single increases with the all_copy increase (they add up)
@@ -10,7 +10,7 @@
     back to back. The bar height stays the difference of medians, which must lie inside that range.
 Bar colors: each hand-off takes the color of the unit that produces the copied buffer (decoder, GPU, NPU; 09_diagrams
 convention). Measured increases are solid, copy times hatched.
-Sources (under 07_results/technique_ablation/runs/dmabuf_ablation):
+Sources (under 07_results/technique_ablation/runs/rerun_dc447c5, 2026-11-09, binary dc447c5; 5 of its 9 settings):
   results_raw.csv  cpu_ms_per_frame per run (median, min, max), processed and arrived frames; every run must be valid.
   results.csv      cpu_ms_per_frame_median, cross-checked against the median of results_raw.csv.
   raw/<setting>_run<N>/stdout.log  fixed-format "decode|input|output copy: mean X ... ms/frame ..., N frames" lines.
@@ -31,7 +31,7 @@ from matplotlib.patches import Patch
 import paper_style as ps
 
 STEM = "fig15_dmabuf_copy_ablation"
-RUN_DIR = ps.RESULTS / "technique_ablation" / "runs" / "dmabuf_ablation"
+RUN_DIR = ps.RESULTS / "technique_ablation" / "runs" / "rerun_dc447c5"
 RAW_CSV = RUN_DIR / "results_raw.csv"
 SUMMARY_CSV = RUN_DIR / "results.csv"
 

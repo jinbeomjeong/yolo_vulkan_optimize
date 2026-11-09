@@ -5,8 +5,8 @@ Row 1 is resize -> dma-buf (NHWC) -> NHWC->NHCW conversion on the CPU -> host po
 Only the totals are measured directly; the stages are differences. Per processed frame: the throughput differs per row, so the
 rows cover different frame counts. App CPU: GPU and NPU time are not included.
 Sources (under 07_results), all medians of 3 runs:
-  totals      technique_ablation: layout_nhwc (row 1), post_host (row 2), base (row 3), cpu_ms_per_frame_median; display on.
-  fps         technique_ablation: fps_median of the same settings.
+  totals      technique_ablation/runs/rerun_dc447c5 (2026-11-09, binary dc447c5): layout_nhwc (row 1), post_host (row 2),
+              base (row 3), cpu_ms_per_frame_median; display on. fps: fps_median of the same settings.
   GPU preproc preproc_cpu_vs_gpu/runs/stage_split: gpu cpu_mean (CPU submit and wait), checked against evidence/medians.txt.
               This run has no NPU and no display, so it is a different condition from the totals.
   conversion  layout_nhwc - post_host (derived; row 1 only).

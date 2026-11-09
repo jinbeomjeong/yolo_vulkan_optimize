@@ -15,12 +15,12 @@ Sources (under 07_results), all medians of 3 runs. Rows 1, 2, 7, 8, 9, 10 and 11
      (CPU download to yuv420p) minus outfmt_drmprime_S1 (DRM_PRIME kept). This download includes the SAND->planar copy, so it overlaps row 3.
   3-6  preproc_cpu_vs_gpu/runs/stage_split (C): cpuref_t1 flatten; cpuref_split_t1 color, resize, pad. These split-loop
      values do not add up to the single-loop reference (see the stage_split and residual_cause runs); not drawn.
-  7  technique_ablation (D): layout_nhwc - post_host. GPU post-processing is NHCW-only, so this is the difference under
-     host post-processing, not a single removal from base. Percent base: layout_nhwc.
-  8  technique_ablation (D): input_copy - base, the real GPU->NPU copy path. Percent base: input_copy.
+  7  technique_ablation/runs/rerun_dc447c5 (D, 2026-11-09, binary dc447c5): layout_nhwc - post_host. GPU post-processing
+     is NHCW-only, so this is the difference under host post-processing, not a single removal from base. Percent: layout_nhwc.
+  8  rerun_dc447c5 (D): input_copy - base, the real GPU->NPU copy path. Percent base: input_copy.
   9  stage_split (C): handoff CPU of rawout_copy_t1 - rawout_import_t1. Synthetic: the pipeline has no copy path.
-  10 technique_ablation (D): post_host - base, the whole post-processing, so it contains row 11. Percent base: post_host.
-  11 technique_ablation (D): nms_cpu - base. Negative: GPU NMS adds CPU in this configuration.
+  10 rerun_dc447c5 (D): post_host - base, the whole post-processing, so it contains row 11. Percent base: post_host.
+  11 rerun_dc447c5 (D): nms_cpu - base. Negative: GPU NMS adds CPU in this configuration.
 """
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ SPLIT_DIR = ps.RESULTS / "preproc_cpu_vs_gpu" / "runs" / "stage_split"
 SPLIT_MEDIANS = SPLIT_DIR / "evidence" / "medians.txt"
 FFMPEG_DOWNLOAD = "h265_Cref_ffmpeg_drm_S1"
 FFMPEG_KEEP = "h265_Cref_ffmpeg_outfmt_drmprime_S1"
-ABLATION_DIR = ps.RESULTS / "technique_ablation"
+ABLATION_DIR = ps.RESULTS / "technique_ablation" / "runs" / "rerun_dc447c5"   # 2026-11-09, binary dc447c5
 ABLATION_SETTINGS = ("base", "post_host", "layout_nhwc", "nms_cpu", "input_copy")
 
 COPY_COLOR = "#BDBDBD"               # neutral: a copy was removed, the work did not move to another unit
