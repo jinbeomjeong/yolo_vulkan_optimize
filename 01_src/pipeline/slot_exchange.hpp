@@ -98,6 +98,12 @@ public:
         }
         cv_.notify_all();
     }
+    // Main thread. When a slot last went back to the free list (epoch = never). With one slot this is the moment the
+    // previous frame's slot became reusable (compute done, + display done when need_display); --submit-delay-ms.
+    Clock::time_point last_release() {
+        std::lock_guard<std::mutex> lk(m_);
+        return last_free_;
+    }
     std::vector<Completion> take_done() {
         std::lock_guard<std::mutex> lk(m_);
         std::vector<Completion> out(std::make_move_iterator(done_.begin()), std::make_move_iterator(done_.end()));
@@ -116,6 +122,7 @@ private:
             ready_[i] = {false, false};
             out_[i] = false;
             free_.push_back(slot);
+            last_free_ = Clock::now();
         }
     }
     std::optional<int> pop_locked() {
@@ -136,6 +143,7 @@ private:
     std::deque<int> free_;
     std::deque<Completion> done_;
     bool woken_ = false;                       // wake() since the last acquire_poll / wait_event_until return
+    Clock::time_point last_free_{};            // last slot return to free_ (initial slots do not count)
 };
 
 // ── Decoder frame budget (--display on) ──────────────────────────────────────────────────────────────────────

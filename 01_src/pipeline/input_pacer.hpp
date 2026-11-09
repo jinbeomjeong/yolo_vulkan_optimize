@@ -108,4 +108,18 @@ inline std::string validate_input_queue(int n, int gpu_depth, int live_held = 0)
     return {};
 }
 
+// --submit-delay-ms X (diagnostic, --input-pace source only): the paced loop does not pick the next queued frame
+// before X ms have passed since the last slot release (SlotExchange::last_release). 0 = no delay (the default).
+inline constexpr float kDefaultSubmitDelayMs = 0.0f;
+inline constexpr float kMaxSubmitDelayMs = 1000.0f;
+inline bool submit_delay_valid(float ms) { return std::isfinite(ms) && ms >= 0.0f && ms <= kMaxSubmitDelayMs; }
+// Earliest pick time after a release at `released`. delay_ms <= 0 returns `released` (never later than now).
+inline std::chrono::steady_clock::time_point submit_pick_time(std::chrono::steady_clock::time_point released,
+                                                              float delay_ms) {
+    if (!(delay_ms > 0.0f)) return released;
+    const double ns = static_cast<double>(delay_ms) * 1e6;
+    return released + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                          std::chrono::nanoseconds(std::llround(ns)));
+}
+
 } // namespace yvo::pipeline

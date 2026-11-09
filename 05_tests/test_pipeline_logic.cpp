@@ -324,6 +324,22 @@ TEST(SlotExchange, WaitEventUntilEndsOnWakeAndOnCompletion) {
     EXPECT_FALSE(ex.wait_event_until(std::chrono::steady_clock::now() + std::chrono::milliseconds(5)));
 }
 
+// last_release(): when a slot last went back to the free list (--submit-delay-ms anchor). Initial slots do not count.
+TEST(SlotExchange, LastReleaseIsTheReturnTime) {
+    SlotExchange ex(1, true);
+    EXPECT_EQ(ex.last_release(), std::chrono::steady_clock::time_point{});
+    ASSERT_EQ(ex.try_acquire(), std::optional<int>(0));
+    ex.complete(result_for(0, 0));
+    EXPECT_EQ(ex.last_release(), std::chrono::steady_clock::time_point{});   // display not done: still out
+    const auto t0 = std::chrono::steady_clock::now();
+    ex.display_done(0);
+    const auto r = ex.last_release();
+    EXPECT_GE(r, t0);
+    EXPECT_LE(r, std::chrono::steady_clock::now());
+    ex.display_done(0);   // ignored signal (slot not out) does not move it
+    EXPECT_EQ(ex.last_release(), r);
+}
+
 // The yvo_pipeline thread shape: main thread acquires slots and acks display; a worker thread (the HailoRT callback
 // thread stand-in) calls complete(). Every frame must complete exactly once, and a slot must never be handed out
 // while it is still out.
@@ -942,6 +958,48 @@ TEST(CliParse, SizeRejectsJunkNonPositiveAndOverflow) {
     }
     int w = 0, h = 0;
     EXPECT_FALSE(yvo::tool::parse_size(nullptr, w, h));
+}
+
+// --submit-delay-ms X (yvo_pipeline parse(): arg_stof, then submit_delay_valid; pipeline/input_pacer.hpp).
+TEST(CliParse, SubmitDelayAcceptsZeroToMaxAndDefaultsToZero) {
+    EXPECT_EQ(yvo::pipeline::kDefaultSubmitDelayMs, 0.0f);
+    EXPECT_TRUE(yvo::pipeline::submit_delay_valid(yvo::pipeline::kDefaultSubmitDelayMs));
+    for (const char* t : {"0", "5", "4.4", "0.5", "1000", "1e2"}) {
+        SCOPED_TRACE(t);
+        float v = -1.0f;
+        ASSERT_TRUE(yvo::tool::parse_stof(t, v));
+        EXPECT_TRUE(yvo::pipeline::submit_delay_valid(v));
+        EXPECT_EQ(v, std::stof(t));
+    }
+    // Default 0: the pick time is the release itself (no delay), also for a never-released (epoch) slot.
+    const auto t = std::chrono::steady_clock::now();
+    EXPECT_EQ(yvo::pipeline::submit_pick_time(t, 0.0f), t);
+    EXPECT_EQ(yvo::pipeline::submit_pick_time(std::chrono::steady_clock::time_point{}, 5.0f),
+              std::chrono::steady_clock::time_point{} + std::chrono::milliseconds(5));
+    EXPECT_EQ(yvo::pipeline::submit_pick_time(t, 5.0f) - t, std::chrono::milliseconds(5));
+    EXPECT_EQ(yvo::pipeline::submit_pick_time(t, 0.25f) - t, std::chrono::microseconds(250));
+}
+
+TEST(CliParse, SubmitDelayRejectsNegativeNonFiniteAndAboveMax) {
+    for (const char* t : {"-1", "-0.001", "1000.5", "1e9"}) {
+        SCOPED_TRACE(t);
+        float v = 0.0f;
+        ASSERT_TRUE(yvo::tool::parse_stof(t, v));
+        EXPECT_FALSE(yvo::pipeline::submit_delay_valid(v));
+    }
+    EXPECT_FALSE(yvo::pipeline::submit_delay_valid(std::numeric_limits<float>::quiet_NaN()));
+    EXPECT_FALSE(yvo::pipeline::submit_delay_valid(std::numeric_limits<float>::infinity()));
+    for (const char* t : {"", "abc", "5ms", "nan", "inf"}) {   // parse_stof rejects these (arg_stof exits with 2)
+        SCOPED_TRACE(t);
+        float v = 0.0f;
+        EXPECT_FALSE(yvo::tool::parse_stof(t, v));
+    }
+}
+
+TEST(CliParseDeathTest, SubmitDelayJunkExitsWithCodeTwo) {
+    GTEST_FLAG_SET(death_test_style, "threadsafe");
+    EXPECT_EXIT(yvo::tool::arg_stof("/x/bin/yvo_pipeline", "--submit-delay-ms", "5ms"), testing::ExitedWithCode(2),
+                "^yvo_pipeline: invalid value for --submit-delay-ms: '5ms'\n$");
 }
 
 // ── --frame-log (toolkit/frame_log.hpp) ─────────────────────────────────────────────────────────────────────────

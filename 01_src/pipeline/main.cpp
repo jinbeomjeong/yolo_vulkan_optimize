@@ -198,7 +198,7 @@ struct Args {
     InputPace input_pace = InputPace::Source;   // O2 default (user decision 2026-10-27); asap was the default before
     int input_queue = 1;               // leaky queue capacity, --input-pace source only (user decision 2026-10-12: 1)
     bool input_queue_explicit = false;  bool input_copy = false;  bool input_live = false;  bool decode_copy = false;  bool output_copy = false;   int queue_held() const { return input_queue + (input_live ? yvo::pipeline::kLiveMailboxFrames : 0); }   // input_live: --input-live (pipeline/live_input.hpp); queue_held: frames waiting ahead of the slots   // input_copy: comparison path, CPU copy between GPU and NPU (pipeline/input_copy.hpp)   // decode_copy: comparison path, CPU copy between the HW decoder and the GPU (pipeline/decode_copy.hpp)   // output_copy: comparison path, CPU copy between the NPU and the GPU post-processing (pipeline/output_copy.hpp)
-    bool gpu_timestamps = true;  std::string frame_log;   // gpu_timestamps: --gpu-timestamps on|off, GPU timestamp queries of every stage (off: GPU ms fields nan). frame_log: --frame-log PATH: per-frame timing CSV written once at the end ("" = off)
+    bool gpu_timestamps = true;  std::string frame_log;  float submit_delay_ms = yvo::pipeline::kDefaultSubmitDelayMs;  bool submit_delay_explicit = false;   // gpu_timestamps: --gpu-timestamps on|off, GPU timestamp queries of every stage (off: GPU ms fields nan). frame_log: --frame-log PATH: per-frame timing CSV written once at the end ("" = off)   // submit_delay_ms: --submit-delay-ms X, diagnostic (pipeline/input_pacer.hpp)
 
     // ── Display (all defaults are "off": running without arguments takes the same path as before) ──
     bool display = false;
@@ -213,7 +213,7 @@ void usage(const char* a0) {
                  "usage: %s [--video PATH] [--hef PATH] [--frames N] [--mode ptr|dmabuf] [--layout nhwc|nhcw]\n"
                  "          [--batch N] [--slots N] [--postproc host|gpu] [--postproc-alloc export|heap]\n"
                  "          [--nms gpu|cpu|verify] [--gpu-depth N] [--score T] [--dump-dir DIR] [--dump-every K]\n"
-                 "          [--quiet] [--csv-label L] [--input-pace asap|source] [--input-queue N] [--frame-log PATH] [--decoder hw|sw] [--input-copy] [--input-live] [--decode-copy] [--output-copy] [--gpu-timestamps on|off]\n"
+                 "          [--quiet] [--csv-label L] [--input-pace asap|source] [--input-queue N] [--frame-log PATH] [--decoder hw|sw] [--input-copy] [--input-live] [--decode-copy] [--output-copy] [--gpu-timestamps on|off] [--submit-delay-ms X]\n"
                  "  --layout     preprocessing output / NPU input tensor layout (default nhcw with the default --mode dmabuf; nhwc under --mode ptr)\n"
                  "               nhcw removes HailoRT's CPU input conversion (about 14 ms/frame). --mode dmabuf only\n"
                  "  --batch N / --slots N  NPU batch size (default 1) / slots shared by GPU and NPU (default 1 with batch 1 + --input-pace source, else max(4, batch*2))\n"
@@ -231,7 +231,7 @@ void usage(const char* a0) {
                  "               slots free up (throughput benches). --frames counts arrived frames; dropped frames get no jsonl line / PNG (\"frame\" stays the source index)\n"
                  "  --input-queue N  leaky queue size for --input-pace source, 1..3 (default 1)\n"
                  "               paced cpu ms/frame and FPS are per processed frame: not comparable to asap\n  --input-live  with --input-pace source: packets reach the decoder only at their arrival time (camera-like, no read-ahead), so frame-thread and reorder delay show in the arrival latency. Decoding runs on its own thread\n"
-                 "  --frame-log PATH  one CSV row per frame at the end (ms since start; dropped 1 = queue drop, 2 = abandoned)\n  --decoder    hw = V4L2 HEVC dma-buf (default). sw = libavcodec software HEVC, the CPU copies each frame to a SAND128 dma-buf; the rest of the pipeline is the same. Threads: YVO_DEC_THREADS\n  --input-copy comparison path: after the GPU fence the CPU copies the V3D output to a cached dma-heap buffer and the NPU reads that (default off). --mode dmabuf --layout nhcw only\n  --decode-copy comparison path: the CPU reads each HW decoder frame through an mmap of its dma-buf and copies it to a cached dma-heap SAND128 buffer, which the GPU reads (default off). Not with --decoder sw; works with --input-copy and --input-live (the copy runs where next() runs)\n  --output-copy comparison path: the NPU writes its 6 raw outputs to cached dma-heap buffers and, after the NPU completion, the CPU copies them to the buffers the GPU post-processing reads (default off). --postproc gpu (--mode dmabuf --layout nhcw) only; works with --input-copy and --decode-copy\n  --gpu-timestamps on|off  GPU timestamp queries in preprocessing, post-processing/NMS and the display passes (default on).\n               off removes the query resets, timestamp writes and result reads (V3DV turns each into a CPU job); the GPU ms\n               fields (summary and RESULT_CSV*) print nan. Field count and order do not change\n"
+                 "  --frame-log PATH  one CSV row per frame at the end (ms since start; dropped 1 = queue drop, 2 = abandoned)\n  --decoder    hw = V4L2 HEVC dma-buf (default). sw = libavcodec software HEVC, the CPU copies each frame to a SAND128 dma-buf; the rest of the pipeline is the same. Threads: YVO_DEC_THREADS\n  --input-copy comparison path: after the GPU fence the CPU copies the V3D output to a cached dma-heap buffer and the NPU reads that (default off). --mode dmabuf --layout nhcw only\n  --decode-copy comparison path: the CPU reads each HW decoder frame through an mmap of its dma-buf and copies it to a cached dma-heap SAND128 buffer, which the GPU reads (default off). Not with --decoder sw; works with --input-copy and --input-live (the copy runs where next() runs)\n  --output-copy comparison path: the NPU writes its 6 raw outputs to cached dma-heap buffers and, after the NPU completion, the CPU copies them to the buffers the GPU post-processing reads (default off). --postproc gpu (--mode dmabuf --layout nhcw) only; works with --input-copy and --decode-copy\n  --gpu-timestamps on|off  GPU timestamp queries in preprocessing, post-processing/NMS and the display passes (default on).\n               off removes the query resets, timestamp writes and result reads (V3DV turns each into a CPU job); the GPU ms\n               fields (summary and RESULT_CSV*) print nan. Field count and order do not change\n  --submit-delay-ms X  diagnostic, --input-pace source only (asap: rejected, exit 2): the next queued frame is not picked\n               (and not submitted to the GPU) until X ms after the last slot release (= previous NPU completion with\n               --slots 1). Arrivals, queue drops and polling go on meanwhile. 0..1000, default 0 = no delay. Not in RESULT_CSV*\n"
 #ifdef YVO_HAVE_DISPLAY
                  "  --display {off,on}                       real-time HDMI display (default off)\n"
                  "  --display-backend {auto,wayland,offscreen,wayland-planes,kms}  default auto. wayland is strict (no silent fallback)\n"
@@ -313,7 +313,7 @@ bool parse(int argc, char** argv, Args& a) {
         } else if (s == "--input-queue" && (v = next())) {
             a.input_queue = arg_number<int>(argv[0], s, v);
             a.input_queue_explicit = true;
-        } else if (s == "--input-live") a.input_live = true;
+        } else if (s == "--input-live") a.input_live = true; else if (s == "--submit-delay-ms" && (v = next())) { a.submit_delay_ms = yvo::tool::arg_stof(argv[0], s, v); a.submit_delay_explicit = true; if (!yvo::pipeline::submit_delay_valid(a.submit_delay_ms)) { std::fprintf(stderr, "--submit-delay-ms must be 0..%g (now %s).\n", static_cast<double>(yvo::pipeline::kMaxSubmitDelayMs), v); return false; } }
 #ifdef YVO_HAVE_DISPLAY
         else if (s == "--display" && (v = next())) {
             const std::string d = v;
@@ -363,7 +363,7 @@ bool parse(int argc, char** argv, Args& a) {
     if (a.input_pace == InputPace::Asap && a.input_queue_explicit) {
         std::fprintf(stderr, "--input-queue is only for --input-pace source.\n");
         return false;
-    }
+    }  if (a.input_pace == InputPace::Asap && a.submit_delay_explicit) { std::fprintf(stderr, "--submit-delay-ms is only for --input-pace source.\n"); return false; }
     if (a.input_pace == InputPace::Source) {
         // With --display on the display pace gate is skipped (run_paced) and plane late frames allow for queue drops.
         const std::string err = yvo::pipeline::validate_input_queue(a.input_queue, a.gpu_depth, a.queue_held() - a.input_queue);
@@ -702,7 +702,7 @@ bool print_summary(const Args& a, const RunTotals& t, const GpuPostSnapshot& g, 
                     p.sq.max);
         std::printf("decode late ms  mean %.3f  p90 %.3f  max %.3f  (source arrival → decode return)\n", p.sl.mean,
                     p.sl.p90, p.sl.max);
-        std::printf("note            paced: FPS and cpu ms/frame are per processed frame (plus polling) — not comparable to asap\n");
+        std::printf("note            paced: FPS and cpu ms/frame are per processed frame (plus polling) — not comparable to asap\n");  if (a.submit_delay_ms > 0.0f) std::printf("submit delay    %.3f ms (diagnostic: next frame picked no earlier than this after the last slot release)\n", static_cast<double>(a.submit_delay_ms));
     }
     if (a.postproc == Postproc::Gpu) {
         std::printf("gpu post ms     mean %.3f  median %.3f  p90 %.3f  max %.3f  (yolo_decode.comp pass 1)\n", sp.mean,
@@ -1255,7 +1255,7 @@ int run(const Args& a) {
     auto run_paced = [&](long& n, Clock::time_point t_start) {
         bool ingest_done = false;
         long polled_at = -1;                                 // arrived count at the last window poll
-        std::optional<Clock::time_point> slot_wait_since;   // the 5 s timeout runs while the queue waits for a slot
+        std::optional<Clock::time_point> slot_wait_since;  std::optional<int> held_slot;   // the 5 s timeout runs while the queue waits for a slot; held_slot: --submit-delay-ms, slot taken but frame not picked yet
         sched.start(t_start);  if (a.input_live) live_in = std::make_unique<yvo::pipeline::LiveDecodeThread<yvo::FfmpegDrmDecoder>>(dec, sched, [&ex] { ex.wake(); });   // t0 (shared with wall and --frame-log): just before the first decode; --input-live: the decode thread starts here
         const auto ingest = [&]() {
             while (!ingest_done && !stop_requested()) {
@@ -1312,7 +1312,7 @@ int run(const Args& a) {
                 continue;
             }
             // Same no-blocking rule as the asap slot loop (pump + finish_gpu + flush_results, then a short poll).
-            std::optional<int> slot = ex.try_acquire();
+            const bool from_hold = held_slot.has_value();  std::optional<int> slot = from_hold ? std::exchange(held_slot, std::nullopt) : ex.try_acquire();
             if (!slot) {
                 if (!slot_wait_since) slot_wait_since = Clock::now();
                 stage->pump();
@@ -1335,8 +1335,30 @@ int run(const Args& a) {
                     continue;   // back to ingest: frames keep arriving (and dropping) while the queue waits
                 }
             }
+            // --submit-delay-ms (diagnostic): keep the slot but do not pick a frame before last release + X. The wait is
+            // the same event-driven poll as above (arrivals, drops, NPU/GPU completions and the window keep going).
+            if (a.submit_delay_ms > 0.0f) {
+                const auto pick_at = yvo::pipeline::submit_pick_time(ex.last_release(), a.submit_delay_ms);
+                if (Clock::now() < pick_at) {
+                    if (!from_hold) {   // slot wait ends here, not at the pick
+                        wait_block_ms.push_back(slot_wait_since ? ms_of(Clock::now() - *slot_wait_since) : 0.0);
+                        slot_wait_since.reset();
+                    }
+                    held_slot = slot;
+                    stage->pump();
+                    while (!gpu_q.empty() && pre.ready(gpu_q.front())) finish_gpu();
+                    flush_results();
+                    pump_display();
+                    auto until = pick_at;
+                    if (live_in) until = std::min(until, Clock::now() + live_in->idle_wait());
+                    else if (!ingest_done) until = std::min(until, sched.arrival(arrived));
+                    if (need_display_ack) until = std::min(until, Clock::now() + std::chrono::microseconds(500));
+                    if (!stage->drain_one()) ex.wait_event_until(until);
+                    continue;
+                }
+            }
             const auto w1 = Clock::now();
-            wait_block_ms.push_back(slot_wait_since ? ms_of(w1 - *slot_wait_since) : 0.0);
+            if (!from_hold) wait_block_ms.push_back(slot_wait_since ? ms_of(w1 - *slot_wait_since) : 0.0);
             slot_wait_since.reset();
             QueuedFrame qf = std::move(*in_q.pop_oldest());   // FIFO: the oldest queued frame
             qf.f.pts = n;                                      // internal pts = submit sequence
