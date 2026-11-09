@@ -1,0 +1,43 @@
+Starting Measurements...
+Measuring FPS in HW-only mode
+Network yolov11m/yolov11m: 10% | 24 | FPS: 23.98 | ETA: 00:00:09
+[F[2KNetwork yolov11m/yolov11m: 20% | 49 | FPS: 24.47 | ETA: 00:00:08
+[F[2KNetwork yolov11m/yolov11m: 30% | 73 | FPS: 24.31 | ETA: 00:00:07
+[F[2KNetwork yolov11m/yolov11m: 40% | 98 | FPS: 24.48 | ETA: 00:00:06
+[F[2KNetwork yolov11m/yolov11m: 50% | 122 | FPS: 24.38 | ETA: 00:00:05
+[F[2KNetwork yolov11m/yolov11m: 60% | 147 | FPS: 24.48 | ETA: 00:00:04
+[F[2KNetwork yolov11m/yolov11m: 70% | 171 | FPS: 24.41 | ETA: 00:00:03
+[F[2KNetwork yolov11m/yolov11m: 80% | 195 | FPS: 24.35 | ETA: 00:00:02
+[F[2KNetwork yolov11m/yolov11m: 90% | 220 | FPS: 24.42 | ETA: 00:00:01
+[F[2KNetwork yolov11m/yolov11m: 100% | 244 | FPS: 24.38 | ETA: 00:00:00
+[F[2KNetwork yolov11m/yolov11m: 100% | 244 | FPS: 24.31 | ETA: 00:00:00
+Measuring FPS (and Power on supported platforms) in streaming mode
+Network yolov11m/yolov11m: 10% | 24 | FPS: 23.98 | ETA: 00:00:09
+[F[2KNetwork yolov11m/yolov11m: 20% | 49 | FPS: 24.47 | ETA: 00:00:08
+[F[2KNetwork yolov11m/yolov11m: 30% | 73 | FPS: 24.31 | ETA: 00:00:07
+[F[2KNetwork yolov11m/yolov11m: 40% | 97 | FPS: 24.23 | ETA: 00:00:06
+[F[2KNetwork yolov11m/yolov11m: 50% | 122 | FPS: 24.38 | ETA: 00:00:05
+[F[2KNetwork yolov11m/yolov11m: 60% | 146 | FPS: 24.31 | ETA: 00:00:04
+[F[2KNetwork yolov11m/yolov11m: 70% | 171 | FPS: 24.41 | ETA: 00:00:03
+[F[2KNetwork yolov11m/yolov11m: 80% | 195 | FPS: 24.35 | ETA: 00:00:02
+[F[2KNetwork yolov11m/yolov11m: 90% | 220 | FPS: 24.42 | ETA: 00:00:01
+[F[2KNetwork yolov11m/yolov11m: 100% | 244 | FPS: 24.38 | ETA: 00:00:00
+[F[2KNetwork yolov11m/yolov11m: 100% | 244 | FPS: 24.32 | ETA: 00:00:00
+Measuring HW Latency
+Network yolov11m/yolov11m: 10% | 24 | HW Latency: 32.45 ms | ETA: 00:00:09
+[F[2KNetwork yolov11m/yolov11m: 20% | 49 | HW Latency: 32.50 ms | ETA: 00:00:08
+[F[2KNetwork yolov11m/yolov11m: 30% | 73 | HW Latency: 32.50 ms | ETA: 00:00:07
+[F[2KNetwork yolov11m/yolov11m: 40% | 97 | HW Latency: 32.51 ms | ETA: 00:00:06
+[F[2KNetwork yolov11m/yolov11m: 50% | 122 | HW Latency: 32.51 ms | ETA: 00:00:05
+[F[2KNetwork yolov11m/yolov11m: 60% | 146 | HW Latency: 32.51 ms | ETA: 00:00:04
+[F[2KNetwork yolov11m/yolov11m: 70% | 171 | HW Latency: 32.51 ms | ETA: 00:00:03
+[F[2KNetwork yolov11m/yolov11m: 80% | 195 | HW Latency: 32.51 ms | ETA: 00:00:02
+[F[2KNetwork yolov11m/yolov11m: 90% | 220 | HW Latency: 32.51 ms | ETA: 00:00:01
+[F[2KNetwork yolov11m/yolov11m: 100% | 244 | HW Latency: 32.52 ms | ETA: 00:00:00
+
+=======
+Summary
+=======
+FPS     (hw_only)                 = 24.3094
+        (streaming)               = 24.3224
+Latency (hw)                      = 32.5156 ms

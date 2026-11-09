@@ -1,0 +1,920 @@
+################ yolov11n: context_table.py
+# per-B median (min~max) over runs; files: 9; B = [1, 2, 8]; all values ms
+series                                           B=1                     B=2                     B=8
+dynamic_0 span                      5.04 (5.04~5.05)        6.99 (6.99~6.99)     18.65 (18.65~18.65)
+dynamic_1 span                      4.46 (4.45~4.46)        6.53 (6.53~6.54)     18.04 (18.04~18.08)
+dynamic_0 config-type               0.66 (0.66~0.66)        0.66 (0.66~0.66)        0.66 (0.66~0.66)
+dynamic_0 lcu-type                  4.16 (4.16~4.17)        6.11 (6.10~6.11)     17.77 (17.77~17.77)
+dynamic_1 config-type               0.56 (0.56~0.56)        0.56 (0.56~0.56)        0.56 (0.56~0.56)
+dynamic_1 lcu-type                  3.66 (3.66~3.66)        5.73 (5.73~5.74)     17.24 (17.24~17.28)
+switch gaps (sum)                   0.00 (0.00~0.00)        0.00 (0.00~0.00)        0.00 (0.00~0.00)
+batch span                          9.51 (9.50~9.51)     13.53 (13.52~13.53)     36.70 (36.70~36.74)
+out_ms (dyn0 -> last output)        8.90 (8.90~8.90)     12.92 (12.92~12.93)     36.09 (36.09~36.13)
+tail_ms (after last output)         0.61 (0.61~0.61)        0.61 (0.61~0.61)        0.61 (0.61~0.61)
+period from stdout fps              9.53 (9.53~9.53)     13.56 (13.56~13.58)     36.94 (36.90~36.94)
+period from JSON fps                9.53 (9.53~9.53)     13.58 (13.57~13.58)     37.07 (37.07~37.08)
+period_stdout - batch span          0.03 (0.03~0.03)        0.03 (0.03~0.05)        0.20 (0.20~0.25)
+preliminary (once)                  3.33 (3.33~3.33)        3.33 (3.32~3.33)        3.33 (3.33~4.33)
+fps                           104.89 (104.89~104.89)  147.51 (147.29~147.51)  216.55 (216.54~216.83)   (stdout, last line)
+fps_json                      104.90 (104.88~104.91)  147.33 (147.30~147.35)  215.81 (215.76~215.83)
+
+# fits y = a + b*B over all runs (a = fixed per batch, b = per frame)
+  dynamic_0 span               a    3.10  b   1.94  rms  0.00
+  dynamic_1 span               a    2.59  b   1.93  rms  0.06
+  dynamic_0 config-type        a    0.66  b   0.00  rms  0.00
+  dynamic_1 config-type        a    0.56  b   0.00  rms  0.00
+  dynamic_0 lcu-type           a    2.22  b   1.94  rms  0.00
+  dynamic_1 lcu-type           a    1.79  b   1.93  rms  0.06
+  batch span                   a    5.69  b   3.88  rms  0.06
+  out_ms                       a    5.09  b   3.88  rms  0.06
+  tail_ms                      a    0.61  b   0.00  rms  0.00
+  dynamic_1 pre-output         a    1.98  b   1.93  rms  0.06
+  period_stdout                a    5.68  b   3.91  rms  0.05
+  period_json                  a    5.66  b   3.93  rms  0.05
+
+# fixed-cost share of each context's a (sum 5.69):
+  dynamic_0: a   3.10 =  54.5% of batch-span a 5.69
+  dynamic_1: a   2.59 =  45.4% of batch-span a 5.69
+
+# out_ms split via context fits: fixed 5.08 + per-frame 3.88*B (direct out_ms fit 5.09 + 3.88*B)
+  B=1: out_ms median 8.90 -> fixed 5.08 (57.1%), per-frame 3.82
+  vs 34.6 ms: fixed 5.08 = 14.7%
+  vs 32.513 ms: fixed 5.08 = 15.6%
+
+# next-context check: enable_lcu_default at the end of a context vs lcu_interrupt count of the next
+  dynamic_0: enable_lcu_default 106  ->  dynamic_1: lcu_interrupt 106  match
+  dynamic_1: enable_lcu_default 119  ->  dynamic_0: lcu_interrupt 119  match
+  identical in all 9 runs: True
+################ yolov11n: fw_actions_breakdown.py (9 files)
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11n_b1_run1//fwactions.json run 0: batch 1, fps 104.88, fps period 9.53 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          302      3.33         1          0.00
+  dynamic_0            460      5.05       316         19.14
+  dynamic_1            456      4.46       316         19.13
+  batch_switching      133 not timed         0          0.00
+  dynamic span sum 9.50 ms; switch gaps [0.005] ms; batch span 9.51 ms; fps period 9.53 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 2.69, sequencer_done_interrupt 0.35, repeated_action 0.18, trigger_sequencer 0.06, activate_inter_context_output 0.02, activate_cfg_channel 0.00, other 0.01
+      gap    1.60 ms before #200 module_config_done_interrupt (after enable_lcu_default)
+      gap    0.60 ms before #125 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.27 ms before #233 module_config_done_interrupt (after enable_lcu_default)
+    dynamic_0      lcu_interrupt 4.07, sequencer_done_interrupt 0.44, repeated_action 0.12, disable_lcu 0.10, fetch_cfg_channel_descriptors 0.08, module_config_done_interrupt 0.08, other 0.17
+      gap    2.81 ms before #22 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.38 ms before #292 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.22 ms before #334 sequencer_done_interrupt (after trigger_sequencer)
+    dynamic_1      lcu_interrupt 3.57, sequencer_done_interrupt 0.35, repeated_action 0.13, disable_lcu 0.09, fetch_cfg_channel_descriptors 0.08, module_config_done_interrupt 0.06, other 0.16
+      gap    0.90 ms before #42 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.88 ms before #61 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.46 ms before #30 lcu_interrupt (after fetch_cfg_channel_descriptors)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11n_b1_run2//fwactions.json run 0: batch 1, fps 104.90, fps period 9.53 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          302      3.33         1          0.00
+  dynamic_0            460      5.04       316         19.15
+  dynamic_1            456      4.46       316         19.14
+  batch_switching      133 not timed         0          0.00
+  dynamic span sum 9.50 ms; switch gaps [0.005] ms; batch span 9.51 ms; fps period 9.53 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 2.69, sequencer_done_interrupt 0.35, repeated_action 0.18, trigger_sequencer 0.06, activate_inter_context_output 0.02, activate_cfg_channel 0.00, other 0.01
+      gap    1.60 ms before #200 module_config_done_interrupt (after enable_lcu_default)
+      gap    0.60 ms before #125 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.27 ms before #233 module_config_done_interrupt (after enable_lcu_default)
+    dynamic_0      lcu_interrupt 4.06, sequencer_done_interrupt 0.44, repeated_action 0.12, disable_lcu 0.10, fetch_cfg_channel_descriptors 0.08, module_config_done_interrupt 0.08, other 0.17
+      gap    2.81 ms before #22 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.38 ms before #292 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.22 ms before #334 sequencer_done_interrupt (after trigger_sequencer)
+    dynamic_1      lcu_interrupt 3.57, sequencer_done_interrupt 0.35, repeated_action 0.13, disable_lcu 0.09, fetch_cfg_channel_descriptors 0.08, module_config_done_interrupt 0.06, other 0.16
+      gap    0.90 ms before #42 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.88 ms before #61 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.46 ms before #30 lcu_interrupt (after fetch_cfg_channel_descriptors)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11n_b1_run3//fwactions.json run 0: batch 1, fps 104.91, fps period 9.53 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          302      3.33         1          0.00
+  dynamic_0            460      5.04       316         19.14
+  dynamic_1            456      4.45       316         19.13
+  batch_switching      133 not timed         0          0.00
+  dynamic span sum 9.50 ms; switch gaps [0.005] ms; batch span 9.50 ms; fps period 9.53 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 2.69, sequencer_done_interrupt 0.35, repeated_action 0.18, trigger_sequencer 0.06, activate_inter_context_output 0.02, activate_cfg_channel 0.00, other 0.01
+      gap    1.60 ms before #200 module_config_done_interrupt (after enable_lcu_default)
+      gap    0.60 ms before #125 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.27 ms before #233 module_config_done_interrupt (after enable_lcu_default)
+    dynamic_0      lcu_interrupt 4.06, sequencer_done_interrupt 0.44, repeated_action 0.12, disable_lcu 0.10, fetch_cfg_channel_descriptors 0.08, module_config_done_interrupt 0.08, other 0.17
+      gap    2.81 ms before #22 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.38 ms before #292 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.22 ms before #334 sequencer_done_interrupt (after trigger_sequencer)
+    dynamic_1      lcu_interrupt 3.57, sequencer_done_interrupt 0.35, repeated_action 0.13, disable_lcu 0.09, fetch_cfg_channel_descriptors 0.08, module_config_done_interrupt 0.06, other 0.16
+      gap    0.90 ms before #42 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.88 ms before #61 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.46 ms before #30 lcu_interrupt (after fetch_cfg_channel_descriptors)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11n_b2_run1//fwactions.json run 0: batch 2, fps 147.35, fps period 13.57 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          302      3.33         1          0.00
+  dynamic_0            460      6.99       222         27.19
+  dynamic_1            456      6.53       222         27.18
+  batch_switching      133 not timed         0          0.00
+  dynamic span sum 13.52 ms; switch gaps [0.005] ms; batch span 13.52 ms; fps period 13.57 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 2.69, sequencer_done_interrupt 0.35, repeated_action 0.18, trigger_sequencer 0.06, activate_inter_context_output 0.02, activate_cfg_channel 0.00, other 0.01
+      gap    1.60 ms before #200 module_config_done_interrupt (after enable_lcu_default)
+      gap    0.60 ms before #125 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.27 ms before #233 module_config_done_interrupt (after enable_lcu_default)
+    dynamic_0      lcu_interrupt 6.00, sequencer_done_interrupt 0.44, repeated_action 0.12, disable_lcu 0.10, fetch_cfg_channel_descriptors 0.08, module_config_done_interrupt 0.08, other 0.17
+      gap    4.75 ms before #22 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.37 ms before #292 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.22 ms before #334 sequencer_done_interrupt (after trigger_sequencer)
+    dynamic_1      lcu_interrupt 5.64, sequencer_done_interrupt 0.35, repeated_action 0.13, disable_lcu 0.09, fetch_cfg_channel_descriptors 0.08, module_config_done_interrupt 0.06, other 0.17
+      gap    1.79 ms before #32 lcu_interrupt (after disable_lcu)
+      gap    0.89 ms before #30 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.46 ms before #34 lcu_interrupt (after disable_lcu)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11n_b2_run2//fwactions.json run 0: batch 2, fps 147.30, fps period 13.58 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          302      3.33         1          0.00
+  dynamic_0            460      6.99       222         27.18
+  dynamic_1            456      6.53       222         27.17
+  batch_switching      133 not timed         0          0.00
+  dynamic span sum 13.52 ms; switch gaps [0.005] ms; batch span 13.53 ms; fps period 13.58 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 2.69, sequencer_done_interrupt 0.35, repeated_action 0.18, trigger_sequencer 0.06, activate_inter_context_output 0.02, activate_cfg_channel 0.00, other 0.01
+      gap    1.60 ms before #200 module_config_done_interrupt (after enable_lcu_default)
+      gap    0.60 ms before #125 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.27 ms before #233 module_config_done_interrupt (after enable_lcu_default)
+    dynamic_0      lcu_interrupt 6.01, sequencer_done_interrupt 0.44, repeated_action 0.12, disable_lcu 0.10, fetch_cfg_channel_descriptors 0.08, module_config_done_interrupt 0.08, other 0.17
+      gap    4.76 ms before #22 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.37 ms before #292 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.23 ms before #334 sequencer_done_interrupt (after trigger_sequencer)
+    dynamic_1      lcu_interrupt 5.64, sequencer_done_interrupt 0.35, repeated_action 0.13, disable_lcu 0.09, fetch_cfg_channel_descriptors 0.08, module_config_done_interrupt 0.06, other 0.17
+      gap    1.79 ms before #32 lcu_interrupt (after disable_lcu)
+      gap    0.90 ms before #30 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.46 ms before #34 lcu_interrupt (after disable_lcu)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11n_b2_run3//fwactions.json run 0: batch 2, fps 147.33, fps period 13.58 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          302      3.32         1          0.00
+  dynamic_0            460      6.99       222         27.20
+  dynamic_1            456      6.54       222         27.19
+  batch_switching      133 not timed         0          0.00
+  dynamic span sum 13.53 ms; switch gaps [0.005] ms; batch span 13.53 ms; fps period 13.58 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 2.68, sequencer_done_interrupt 0.35, repeated_action 0.18, trigger_sequencer 0.06, activate_inter_context_output 0.02, activate_cfg_channel 0.00, other 0.01
+      gap    1.60 ms before #200 module_config_done_interrupt (after enable_lcu_default)
+      gap    0.60 ms before #125 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.27 ms before #233 module_config_done_interrupt (after enable_lcu_default)
+    dynamic_0      lcu_interrupt 6.01, sequencer_done_interrupt 0.44, repeated_action 0.12, disable_lcu 0.10, fetch_cfg_channel_descriptors 0.08, module_config_done_interrupt 0.08, other 0.17
+      gap    4.75 ms before #22 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.37 ms before #292 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.22 ms before #334 sequencer_done_interrupt (after trigger_sequencer)
+    dynamic_1      lcu_interrupt 5.65, sequencer_done_interrupt 0.35, repeated_action 0.13, disable_lcu 0.09, fetch_cfg_channel_descriptors 0.08, module_config_done_interrupt 0.06, other 0.17
+      gap    1.79 ms before #32 lcu_interrupt (after disable_lcu)
+      gap    0.90 ms before #30 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.46 ms before #34 lcu_interrupt (after disable_lcu)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11n_b8_run1//fwactions.json run 0: batch 8, fps 215.83, fps period 37.07 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          302      4.33         1          0.00
+  dynamic_0            460     18.65        82         73.53
+  dynamic_1            456     18.08        82         73.56
+  batch_switching      133 not timed         0          0.00
+  dynamic span sum 36.74 ms; switch gaps [0.005] ms; batch span 36.74 ms; fps period 37.07 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 2.69, repeated_action 1.18, sequencer_done_interrupt 0.35, trigger_sequencer 0.06, activate_inter_context_output 0.02, activate_cfg_channel 0.00, other 0.01
+      gap    1.60 ms before #200 module_config_done_interrupt (after enable_lcu_default)
+      gap    1.03 ms before #268 repeated_action (after module_config_done_interrupt)
+      gap    0.60 ms before #125 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_0      lcu_interrupt 17.67, sequencer_done_interrupt 0.44, repeated_action 0.12, disable_lcu 0.10, fetch_cfg_channel_descriptors 0.08, module_config_done_interrupt 0.08, other 0.17
+      gap   16.41 ms before #22 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.37 ms before #292 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.22 ms before #334 sequencer_done_interrupt (after trigger_sequencer)
+    dynamic_1      lcu_interrupt 17.19, sequencer_done_interrupt 0.36, repeated_action 0.13, disable_lcu 0.09, fetch_cfg_channel_descriptors 0.08, module_config_done_interrupt 0.06, other 0.17
+      gap   13.57 ms before #30 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.96 ms before #32 lcu_interrupt (after disable_lcu)
+      gap    0.44 ms before #61 lcu_interrupt (after fetch_cfg_channel_descriptors)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11n_b8_run2//fwactions.json run 0: batch 8, fps 215.81, fps period 37.07 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          302      3.33         1          0.00
+  dynamic_0            460     18.65        82         73.54
+  dynamic_1            456     18.04        82         73.53
+  batch_switching      133 not timed         0          0.00
+  dynamic span sum 36.69 ms; switch gaps [0.005] ms; batch span 36.70 ms; fps period 37.07 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 2.69, sequencer_done_interrupt 0.36, repeated_action 0.18, trigger_sequencer 0.06, activate_inter_context_output 0.02, activate_cfg_channel 0.00, other 0.01
+      gap    1.60 ms before #200 module_config_done_interrupt (after enable_lcu_default)
+      gap    0.60 ms before #125 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.27 ms before #233 module_config_done_interrupt (after enable_lcu_default)
+    dynamic_0      lcu_interrupt 17.67, sequencer_done_interrupt 0.44, repeated_action 0.12, disable_lcu 0.10, fetch_cfg_channel_descriptors 0.08, module_config_done_interrupt 0.08, other 0.17
+      gap   16.42 ms before #22 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.37 ms before #292 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.22 ms before #334 sequencer_done_interrupt (after trigger_sequencer)
+    dynamic_1      lcu_interrupt 17.15, sequencer_done_interrupt 0.35, repeated_action 0.13, disable_lcu 0.09, fetch_cfg_channel_descriptors 0.08, module_config_done_interrupt 0.06, other 0.17
+      gap   13.53 ms before #30 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.96 ms before #32 lcu_interrupt (after disable_lcu)
+      gap    0.44 ms before #61 lcu_interrupt (after fetch_cfg_channel_descriptors)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11n_b8_run3//fwactions.json run 0: batch 8, fps 215.76, fps period 37.08 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          302      3.33         1          0.00
+  dynamic_0            460     18.65        82         73.50
+  dynamic_1            456     18.04        82         73.50
+  batch_switching      133 not timed         0          0.00
+  dynamic span sum 36.69 ms; switch gaps [0.005] ms; batch span 36.70 ms; fps period 37.08 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 2.69, sequencer_done_interrupt 0.35, repeated_action 0.18, trigger_sequencer 0.06, activate_inter_context_output 0.02, activate_cfg_channel 0.00, other 0.01
+      gap    1.60 ms before #200 module_config_done_interrupt (after enable_lcu_default)
+      gap    0.60 ms before #125 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.27 ms before #233 module_config_done_interrupt (after enable_lcu_default)
+    dynamic_0      lcu_interrupt 17.67, sequencer_done_interrupt 0.44, repeated_action 0.12, disable_lcu 0.10, fetch_cfg_channel_descriptors 0.08, module_config_done_interrupt 0.08, other 0.17
+      gap   16.42 ms before #22 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.37 ms before #292 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.22 ms before #334 sequencer_done_interrupt (after trigger_sequencer)
+    dynamic_1      lcu_interrupt 17.15, sequencer_done_interrupt 0.35, repeated_action 0.13, disable_lcu 0.09, fetch_cfg_channel_descriptors 0.08, module_config_done_interrupt 0.06, other 0.17
+      gap   13.52 ms before #30 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.96 ms before #32 lcu_interrupt (after disable_lcu)
+      gap    0.44 ms before #61 lcu_interrupt (after fetch_cfg_channel_descriptors)
+
+=== fit span(B) = a + b*B over B = [1, 2, 8] (9 runs); reference T(B) = 24.8 + 16.2*B
+  series                    a ms  b ms/B   n    rms        B=1      B=2      B=8
+  dynamic_0                 3.10    1.94   9   0.00       5.04     6.99    18.65
+  dynamic_1                 2.59    1.93   9   0.06       4.52     6.46    18.07
+  sum of context fits       5.69    3.88
+  dynamic_span_sum          5.69    3.88   9   0.06       9.57    13.45    36.72
+  batch_span                5.69    3.88   9   0.06       9.57    13.45    36.72
+  fps_period                5.66    3.93   9   0.05       9.59    13.51    37.08
+  reference (pipeline)     24.80   16.20                 41.00    57.20   154.40
+  per (context, action type) fits (types with >= --fit-min-ms in some run):
+    dynamic_0  lcu_interrupt                          a    2.12  b   1.94  [an LCU (layer control unit) reported done -> wait before it ~ compute (inferred)]
+    dynamic_1  lcu_interrupt                          a    1.70  b   1.93  [an LCU (layer control unit) reported done -> wait before it ~ compute (inferred)]
+note: action-type readings are inferred from names and timing, not from HailoRT documentation.
+################ yolov11s: context_table.py
+# per-B median (min~max) over runs; files: 9; B = [1, 2, 8]; all values ms
+series                                           B=1                     B=2                     B=8
+dynamic_0 span                      7.76 (7.76~7.76)     11.31 (11.30~11.32)     34.20 (34.19~34.21)
+dynamic_1 span                   11.46 (11.46~11.47)     15.70 (15.70~15.70)     39.46 (39.46~39.46)
+dynamic_0 config-type               0.61 (0.61~0.61)        0.61 (0.61~0.61)        0.61 (0.61~0.61)
+dynamic_0 lcu-type                  6.87 (6.86~6.87)     10.42 (10.41~10.42)     33.29 (33.29~33.31)
+dynamic_1 config-type               2.73 (2.73~2.73)        2.73 (2.73~2.73)        2.73 (2.73~2.73)
+dynamic_1 lcu-type                  8.45 (8.45~8.45)     12.69 (12.69~12.69)     36.45 (36.45~36.45)
+switch gaps (sum)                   0.00 (0.00~0.00)        0.00 (0.00~0.00)        0.00 (0.00~0.00)
+batch span                       19.23 (19.23~19.23)     27.02 (27.01~27.03)     73.66 (73.65~73.68)
+out_ms (dyn0 -> last output)     16.49 (16.49~16.49)     24.29 (24.27~24.29)     70.93 (70.92~70.94)
+tail_ms (after last output)         2.74 (2.74~2.74)        2.74 (2.73~2.74)        2.73 (2.73~2.74)
+period from stdout fps           19.25 (19.25~19.37)     27.17 (27.17~27.17)     74.84 (74.84~74.84)
+period from JSON fps             19.44 (19.27~19.44)     27.24 (27.17~27.24)     74.16 (74.16~74.16)
+period_stdout - batch span          0.02 (0.02~0.14)        0.14 (0.14~0.17)        1.18 (1.17~1.19)
+preliminary (once)                  9.24 (9.24~9.24)        9.24 (9.24~9.24)        9.75 (9.24~9.94)
+fps                              51.95 (51.63~51.95)     73.62 (73.60~73.62)  106.89 (106.89~106.89)   (stdout, last line)
+fps_json                         51.44 (51.44~51.90)     73.43 (73.43~73.60)  107.88 (107.87~107.88)
+
+# fits y = a + b*B over all runs (a = fixed per batch, b = per frame)
+  dynamic_0 span               a    3.86  b   3.79  rms  0.10
+  dynamic_1 span               a    7.60  b   3.99  rms  0.10
+  dynamic_0 config-type        a    0.61  b  -0.00  rms  0.00
+  dynamic_1 config-type        a    2.73  b  -0.00  rms  0.00
+  dynamic_0 lcu-type           a    2.96  b   3.79  rms  0.10
+  dynamic_1 lcu-type           a    4.58  b   3.99  rms  0.10
+  batch span                   a   11.46  b   7.78  rms  0.01
+  out_ms                       a    8.73  b   7.78  rms  0.01
+  tail_ms                      a    2.74  b  -0.00  rms  0.00
+  dynamic_1 pre-output         a    4.86  b   3.99  rms  0.10
+  period_stdout                a   11.32  b   7.94  rms  0.04
+  period_json                  a   11.56  b   7.82  rms  0.05
+
+# fixed-cost share of each context's a (sum 11.46):
+  dynamic_0: a   3.86 =  33.7% of batch-span a 11.46
+  dynamic_1: a   7.60 =  66.3% of batch-span a 11.46
+
+# out_ms split via context fits: fixed 8.72 + per-frame 7.78*B (direct out_ms fit 8.73 + 7.78*B)
+  B=1: out_ms median 16.49 -> fixed 8.72 (52.9%), per-frame 7.77
+  vs 34.6 ms: fixed 8.72 = 25.2%
+  vs 32.513 ms: fixed 8.72 = 26.8%
+
+# next-context check: enable_lcu_default at the end of a context vs lcu_interrupt count of the next
+  dynamic_0: enable_lcu_default 111  ->  dynamic_1: lcu_interrupt 111  match
+  dynamic_1: enable_lcu_default 117  ->  dynamic_0: lcu_interrupt 117  match
+  identical in all 9 runs: True
+################ yolov11s: fw_actions_breakdown.py (9 files)
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11s_b1_run1//fwactions.json run 0: batch 1, fps 51.90, fps period 19.27 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          300      9.24         1          0.00
+  dynamic_0            493      7.76       156         38.60
+  dynamic_1            496     11.46       156         38.59
+  batch_switching      135 not timed         0          0.00
+  dynamic span sum 19.23 ms; switch gaps [0.005] ms; batch span 19.23 ms; fps period 19.27 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 8.38, sequencer_done_interrupt 0.56, repeated_action 0.18, trigger_sequencer 0.06, activate_inter_context_output 0.03, activate_cfg_channel 0.00, other 0.01
+      gap    5.92 ms before #200 module_config_done_interrupt (after enable_lcu_default)
+      gap    1.11 ms before #123 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.79 ms before #233 module_config_done_interrupt (after enable_lcu_default)
+    dynamic_0      lcu_interrupt 6.77, sequencer_done_interrupt 0.34, fetch_cfg_channel_descriptors 0.12, repeated_action 0.12, output_channel_transfer_done_interrupt 0.11, disable_lcu 0.10, other 0.21
+      gap    3.24 ms before #24 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.74 ms before #311 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.39 ms before #140 lcu_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_1      lcu_interrupt 8.36, module_config_done_interrupt 2.03, sequencer_done_interrupt 0.52, repeated_action 0.13, fetch_cfg_channel_descriptors 0.12, disable_lcu 0.09, other 0.21
+      gap    2.46 ms before #34 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.45 ms before #37 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.23 ms before #367 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11s_b1_run2//fwactions.json run 0: batch 1, fps 51.44, fps period 19.44 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          300      9.24         1          0.00
+  dynamic_0            493      7.76       156         38.60
+  dynamic_1            496     11.46       156         38.58
+  batch_switching      135 not timed         0          0.00
+  dynamic span sum 19.23 ms; switch gaps [0.005] ms; batch span 19.23 ms; fps period 19.44 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 8.38, sequencer_done_interrupt 0.56, repeated_action 0.18, trigger_sequencer 0.06, activate_inter_context_output 0.03, activate_cfg_channel 0.00, other 0.01
+      gap    5.92 ms before #200 module_config_done_interrupt (after enable_lcu_default)
+      gap    1.12 ms before #123 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.79 ms before #233 module_config_done_interrupt (after enable_lcu_default)
+    dynamic_0      lcu_interrupt 6.77, sequencer_done_interrupt 0.34, fetch_cfg_channel_descriptors 0.12, repeated_action 0.12, output_channel_transfer_done_interrupt 0.11, disable_lcu 0.10, other 0.21
+      gap    3.24 ms before #24 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.74 ms before #311 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.39 ms before #140 lcu_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_1      lcu_interrupt 8.36, module_config_done_interrupt 2.03, sequencer_done_interrupt 0.52, repeated_action 0.13, fetch_cfg_channel_descriptors 0.12, disable_lcu 0.09, other 0.21
+      gap    2.46 ms before #34 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.45 ms before #37 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.23 ms before #367 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11s_b1_run3//fwactions.json run 0: batch 1, fps 51.44, fps period 19.44 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          300      9.24         1          0.00
+  dynamic_0            493      7.76       156         38.60
+  dynamic_1            496     11.47       156         38.59
+  batch_switching      135 not timed         0          0.00
+  dynamic span sum 19.23 ms; switch gaps [0.005] ms; batch span 19.23 ms; fps period 19.44 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 8.38, sequencer_done_interrupt 0.56, repeated_action 0.18, trigger_sequencer 0.06, activate_inter_context_output 0.03, activate_cfg_channel 0.00, other 0.01
+      gap    5.92 ms before #200 module_config_done_interrupt (after enable_lcu_default)
+      gap    1.12 ms before #123 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.79 ms before #233 module_config_done_interrupt (after enable_lcu_default)
+    dynamic_0      lcu_interrupt 6.77, sequencer_done_interrupt 0.34, fetch_cfg_channel_descriptors 0.12, repeated_action 0.12, output_channel_transfer_done_interrupt 0.11, disable_lcu 0.10, other 0.21
+      gap    3.24 ms before #24 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.74 ms before #311 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.39 ms before #140 lcu_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_1      lcu_interrupt 8.36, module_config_done_interrupt 2.03, sequencer_done_interrupt 0.52, repeated_action 0.13, fetch_cfg_channel_descriptors 0.12, output_channel_transfer_done_interrupt 0.09, other 0.21
+      gap    2.46 ms before #34 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.45 ms before #37 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.23 ms before #367 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11s_b2_run1//fwactions.json run 0: batch 2, fps 73.60, fps period 27.17 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          300      9.24         1          0.00
+  dynamic_0            493     11.30       111         54.16
+  dynamic_1            496     15.70       111         54.15
+  batch_switching      135 not timed         0          0.00
+  dynamic span sum 27.00 ms; switch gaps [0.005] ms; batch span 27.01 ms; fps period 27.17 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 8.38, sequencer_done_interrupt 0.56, repeated_action 0.18, trigger_sequencer 0.06, activate_inter_context_output 0.03, activate_cfg_channel 0.00, other 0.01
+      gap    5.92 ms before #200 module_config_done_interrupt (after enable_lcu_default)
+      gap    1.12 ms before #123 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.79 ms before #233 module_config_done_interrupt (after enable_lcu_default)
+    dynamic_0      lcu_interrupt 10.31, sequencer_done_interrupt 0.34, fetch_cfg_channel_descriptors 0.12, repeated_action 0.12, output_channel_transfer_done_interrupt 0.11, disable_lcu 0.10, other 0.21
+      gap    5.55 ms before #24 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.74 ms before #311 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.67 ms before #123 lcu_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_1      lcu_interrupt 12.59, module_config_done_interrupt 2.03, sequencer_done_interrupt 0.52, repeated_action 0.13, fetch_cfg_channel_descriptors 0.12, disable_lcu 0.09, other 0.21
+      gap    6.47 ms before #34 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.47 ms before #54 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.33 ms before #37 lcu_interrupt (after fetch_cfg_channel_descriptors)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11s_b2_run2//fwactions.json run 0: batch 2, fps 73.43, fps period 27.24 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          300      9.24         1          0.00
+  dynamic_0            493     11.31       111         54.19
+  dynamic_1            496     15.70       111         54.17
+  batch_switching      135 not timed         0          0.00
+  dynamic span sum 27.02 ms; switch gaps [0.005] ms; batch span 27.02 ms; fps period 27.24 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 8.39, sequencer_done_interrupt 0.56, repeated_action 0.18, trigger_sequencer 0.06, activate_inter_context_output 0.03, activate_cfg_channel 0.00, other 0.01
+      gap    5.93 ms before #200 module_config_done_interrupt (after enable_lcu_default)
+      gap    1.11 ms before #123 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.79 ms before #233 module_config_done_interrupt (after enable_lcu_default)
+    dynamic_0      lcu_interrupt 10.32, sequencer_done_interrupt 0.34, fetch_cfg_channel_descriptors 0.12, repeated_action 0.12, output_channel_transfer_done_interrupt 0.11, disable_lcu 0.10, other 0.21
+      gap    5.56 ms before #24 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.74 ms before #311 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.67 ms before #123 lcu_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_1      lcu_interrupt 12.60, module_config_done_interrupt 2.03, sequencer_done_interrupt 0.52, repeated_action 0.13, fetch_cfg_channel_descriptors 0.12, output_channel_transfer_done_interrupt 0.09, other 0.21
+      gap    6.47 ms before #34 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.47 ms before #54 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.33 ms before #37 lcu_interrupt (after fetch_cfg_channel_descriptors)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11s_b2_run3//fwactions.json run 0: batch 2, fps 73.43, fps period 27.24 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          300      9.24         1          0.00
+  dynamic_0            493     11.32       111         54.20
+  dynamic_1            496     15.70       111         54.18
+  batch_switching      135 not timed         0          0.00
+  dynamic span sum 27.02 ms; switch gaps [0.005] ms; batch span 27.03 ms; fps period 27.24 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 8.38, sequencer_done_interrupt 0.56, repeated_action 0.18, trigger_sequencer 0.06, activate_inter_context_output 0.03, activate_cfg_channel 0.00, other 0.01
+      gap    5.92 ms before #200 module_config_done_interrupt (after enable_lcu_default)
+      gap    1.11 ms before #123 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.79 ms before #233 module_config_done_interrupt (after enable_lcu_default)
+    dynamic_0      lcu_interrupt 10.32, sequencer_done_interrupt 0.34, fetch_cfg_channel_descriptors 0.12, repeated_action 0.12, output_channel_transfer_done_interrupt 0.11, disable_lcu 0.10, other 0.21
+      gap    5.56 ms before #24 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.74 ms before #311 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.67 ms before #123 lcu_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_1      lcu_interrupt 12.60, module_config_done_interrupt 2.03, sequencer_done_interrupt 0.52, repeated_action 0.13, fetch_cfg_channel_descriptors 0.12, disable_lcu 0.09, other 0.21
+      gap    6.47 ms before #34 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.47 ms before #54 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.33 ms before #37 lcu_interrupt (after fetch_cfg_channel_descriptors)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11s_b8_run1//fwactions.json run 0: batch 8, fps 107.88, fps period 74.16 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          300      9.94         1          0.00
+  dynamic_0            493     34.20        41        147.46
+  dynamic_1            496     39.46        41        147.44
+  batch_switching      135 not timed         0          0.00
+  dynamic span sum 73.66 ms; switch gaps [0.005] ms; batch span 73.66 ms; fps period 74.16 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 8.39, repeated_action 0.88, sequencer_done_interrupt 0.56, trigger_sequencer 0.06, activate_inter_context_output 0.03, activate_cfg_channel 0.00, other 0.01
+      gap    5.92 ms before #200 module_config_done_interrupt (after enable_lcu_default)
+      gap    1.12 ms before #123 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.79 ms before #233 module_config_done_interrupt (after enable_lcu_default)
+    dynamic_0      lcu_interrupt 33.20, sequencer_done_interrupt 0.34, fetch_cfg_channel_descriptors 0.12, repeated_action 0.12, output_channel_transfer_done_interrupt 0.11, disable_lcu 0.10, other 0.21
+      gap   27.62 ms before #24 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.74 ms before #311 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.67 ms before #123 lcu_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_1      lcu_interrupt 36.36, module_config_done_interrupt 2.02, sequencer_done_interrupt 0.52, repeated_action 0.13, fetch_cfg_channel_descriptors 0.12, output_channel_transfer_done_interrupt 0.09, other 0.21
+      gap   28.07 ms before #34 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.41 ms before #54 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.22 ms before #367 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11s_b8_run2//fwactions.json run 0: batch 8, fps 107.87, fps period 74.16 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          300      9.24         1          0.00
+  dynamic_0            493     34.19        41        147.47
+  dynamic_1            496     39.46        41        147.45
+  batch_switching      135 not timed         0          0.00
+  dynamic span sum 73.65 ms; switch gaps [0.005] ms; batch span 73.65 ms; fps period 74.16 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 8.39, sequencer_done_interrupt 0.56, repeated_action 0.18, trigger_sequencer 0.06, activate_inter_context_output 0.03, activate_cfg_channel 0.00, other 0.01
+      gap    5.93 ms before #200 module_config_done_interrupt (after enable_lcu_default)
+      gap    1.11 ms before #123 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.79 ms before #233 module_config_done_interrupt (after enable_lcu_default)
+    dynamic_0      lcu_interrupt 33.19, sequencer_done_interrupt 0.34, fetch_cfg_channel_descriptors 0.12, repeated_action 0.12, output_channel_transfer_done_interrupt 0.11, disable_lcu 0.10, other 0.21
+      gap   27.62 ms before #24 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.74 ms before #311 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.67 ms before #123 lcu_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_1      lcu_interrupt 36.36, module_config_done_interrupt 2.03, sequencer_done_interrupt 0.52, repeated_action 0.13, fetch_cfg_channel_descriptors 0.12, disable_lcu 0.09, other 0.21
+      gap   28.06 ms before #34 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.41 ms before #54 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.22 ms before #367 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11s_b8_run3//fwactions.json run 0: batch 8, fps 107.88, fps period 74.16 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          300      9.75         1          0.00
+  dynamic_0            493     34.21        41        147.48
+  dynamic_1            496     39.46        41        147.46
+  batch_switching      135 not timed         0          0.00
+  dynamic span sum 73.67 ms; switch gaps [0.005] ms; batch span 73.68 ms; fps period 74.16 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 7.89, repeated_action 1.18, sequencer_done_interrupt 0.56, trigger_sequencer 0.06, activate_inter_context_output 0.03, activate_cfg_channel 0.00, other 0.01
+      gap    5.92 ms before #200 module_config_done_interrupt (after enable_lcu_default)
+      gap    1.12 ms before #123 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.03 ms before #235 repeated_action (after module_config_done_interrupt)
+    dynamic_0      lcu_interrupt 33.21, sequencer_done_interrupt 0.34, fetch_cfg_channel_descriptors 0.12, repeated_action 0.12, output_channel_transfer_done_interrupt 0.11, disable_lcu 0.10, other 0.21
+      gap   27.62 ms before #24 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.74 ms before #311 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.68 ms before #123 lcu_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_1      lcu_interrupt 36.36, module_config_done_interrupt 2.03, sequencer_done_interrupt 0.52, repeated_action 0.13, fetch_cfg_channel_descriptors 0.12, output_channel_transfer_done_interrupt 0.09, other 0.21
+      gap   28.06 ms before #34 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.41 ms before #54 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.23 ms before #367 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+
+=== fit span(B) = a + b*B over B = [1, 2, 8] (9 runs); reference T(B) = 24.8 + 16.2*B
+  series                    a ms  b ms/B   n    rms        B=1      B=2      B=8
+  dynamic_0                 3.86    3.79   9   0.10       7.65    11.44    34.18
+  dynamic_1                 7.60    3.99   9   0.10      11.58    15.57    39.48
+  sum of context fits      11.46    7.78
+  dynamic_span_sum         11.46    7.78   9   0.01      19.23    27.01    73.66
+  batch_span               11.46    7.78   9   0.01      19.24    27.01    73.66
+  fps_period               11.56    7.82   9   0.05      19.39    27.21    74.16
+  reference (pipeline)     24.80   16.20                 41.00    57.20   154.40
+  per (context, action type) fits (types with >= --fit-min-ms in some run):
+    dynamic_0  lcu_interrupt                          a    2.87  b   3.79  [an LCU (layer control unit) reported done -> wait before it ~ compute (inferred)]
+    dynamic_1  lcu_interrupt                          a    4.49  b   3.99  [an LCU (layer control unit) reported done -> wait before it ~ compute (inferred)]
+    dynamic_1  module_config_done_interrupt           a    2.03  b  -0.00  [a config module finished loading (inferred)]
+    dynamic_1  sequencer_done_interrupt               a    0.52  b   0.00  [config sequencer finished (inferred)]
+note: action-type readings are inferred from names and timing, not from HailoRT documentation.
+################ yolov11m: context_table.py
+# per-B median (min~max) over runs; files: 9; B = [1, 2, 8]; all values ms
+series                                           B=1                     B=2                     B=8
+dynamic_0 span                   10.11 (10.11~10.11)     15.82 (15.82~15.82)     50.10 (50.10~50.10)
+dynamic_1 span                   10.85 (10.85~10.85)     14.29 (14.29~14.30)     35.66 (35.66~35.68)
+dynamic_2 span                      8.78 (8.78~8.78)     14.64 (14.64~14.65)     49.64 (49.64~49.65)
+dynamic_3 span                   11.17 (11.17~11.17)     12.32 (12.31~12.32)     19.19 (19.19~19.19)
+dynamic_0 config-type               1.21 (1.21~1.21)        1.21 (1.21~1.21)        1.21 (1.21~1.21)
+dynamic_0 lcu-type                  8.64 (8.64~8.64)     14.35 (14.35~14.35)     48.63 (48.62~48.63)
+dynamic_1 config-type               1.70 (1.70~1.71)        0.82 (0.82~0.82)        0.81 (0.81~0.82)
+dynamic_1 lcu-type                  8.90 (8.89~8.90)     13.22 (13.22~13.23)     34.60 (34.59~34.62)
+dynamic_2 config-type               0.47 (0.47~0.47)        0.47 (0.47~0.47)        0.47 (0.47~0.47)
+dynamic_2 lcu-type                  8.11 (8.11~8.11)     13.98 (13.98~13.99)     48.98 (48.98~48.98)
+dynamic_3 config-type               8.32 (8.32~8.32)        7.32 (7.32~7.32)        2.64 (2.64~2.64)
+dynamic_3 lcu-type                  2.64 (2.64~2.64)        4.78 (4.78~4.78)     16.34 (16.33~16.35)
+switch gaps (sum)                   0.01 (0.01~0.01)        0.01 (0.01~0.01)        0.01 (0.01~0.01)
+batch span                       40.92 (40.92~40.92)     57.09 (57.08~57.09)  154.61 (154.61~154.63)
+out_ms (dyn0 -> last output)     32.57 (32.57~32.57)     49.73 (49.72~49.73)  151.94 (151.94~151.96)
+tail_ms (after last output)         8.35 (8.35~8.35)        7.36 (7.36~7.36)        2.67 (2.67~2.67)
+period from stdout fps           41.14 (41.10~41.14)     57.75 (57.70~57.75)  158.07 (158.07~158.07)
+period from JSON fps             41.71 (41.71~41.71)     57.22 (57.21~57.30)  166.84 (158.04~166.85)
+period_stdout - batch span          0.22 (0.18~0.22)        0.66 (0.63~0.67)        3.46 (3.44~3.46)
+preliminary (once)               11.06 (11.06~11.06)     11.06 (11.06~11.06)     11.07 (11.07~11.07)
+fps                              24.31 (24.31~24.33)     34.63 (34.63~34.66)     50.61 (50.61~50.61)   (stdout, last line)
+fps_json                         23.97 (23.97~23.97)     34.95 (34.91~34.96)     47.95 (47.95~50.62)
+
+# fits y = a + b*B over all runs (a = fixed per batch, b = per frame)
+  dynamic_0 span               a    4.40  b   5.71  rms  0.00
+  dynamic_1 span               a    7.25  b   3.55  rms  0.04
+  dynamic_2 span               a    2.95  b   5.84  rms  0.01
+  dynamic_3 span               a   10.03  b   1.15  rms  0.00
+  dynamic_0 config-type        a    1.21  b  -0.00  rms  0.00
+  dynamic_1 config-type        a    1.42  b  -0.08  rms  0.33
+  dynamic_2 config-type        a    0.47  b   0.00  rms  0.00
+  dynamic_3 config-type        a    9.03  b  -0.80  rms  0.08
+  dynamic_0 lcu-type           a    2.92  b   5.71  rms  0.00
+  dynamic_1 lcu-type           a    5.58  b   3.63  rms  0.28
+  dynamic_2 lcu-type           a    2.29  b   5.84  rms  0.01
+  dynamic_3 lcu-type           a    0.78  b   1.95  rms  0.08
+  batch span                   a   24.63  b  16.25  rms  0.03
+  out_ms                       a   15.57  b  17.05  rms  0.05
+  tail_ms                      a    9.06  b  -0.80  rms  0.08
+  dynamic_3 pre-output         a    0.96  b   1.95  rms  0.08
+  period_stdout                a   24.37  b  16.71  rms  0.04
+  period_json                  a   23.20  b  17.57  rms  2.54
+
+# fixed-cost share of each context's a (sum 24.62):
+  dynamic_0: a   4.40 =  17.8% of batch-span a 24.63
+  dynamic_1: a   7.25 =  29.4% of batch-span a 24.63
+  dynamic_2: a   2.95 =  12.0% of batch-span a 24.63
+  dynamic_3: a  10.03 =  40.7% of batch-span a 24.63
+
+# out_ms split via context fits: fixed 15.56 + per-frame 17.05*B (direct out_ms fit 15.57 + 17.05*B)
+  B=1: out_ms median 32.57 -> fixed 15.56 (47.8%), per-frame 17.01
+  vs 34.6 ms: fixed 15.56 = 45.0%
+  vs 32.513 ms: fixed 15.56 = 47.8%
+
+# next-context check: enable_lcu_default at the end of a context vs lcu_interrupt count of the next
+  dynamic_0: enable_lcu_default 91  ->  dynamic_1: lcu_interrupt 91  match
+  dynamic_1: enable_lcu_default 105  ->  dynamic_2: lcu_interrupt 105  match
+  dynamic_2: enable_lcu_default 38  ->  dynamic_3: lcu_interrupt 38  match
+  dynamic_3: enable_lcu_default 72  ->  dynamic_0: lcu_interrupt 72  match
+  identical in all 9 runs: True
+################ yolov11m: fw_actions_breakdown.py (9 files)
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11m_b1_run1//fwactions.json run 0: batch 1, fps 23.97, fps period 41.71 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          209     11.06         1          0.00
+  dynamic_0            340     10.11        74         81.95
+  dynamic_1            430     10.85        73         81.97
+  dynamic_2            331      8.78        73         81.90
+  dynamic_3            240     11.17        73         81.92
+  batch_switching       88 not timed         0          0.00
+  dynamic span sum 40.90 ms; switch gaps [0.005, 0.005, 0.005] ms; batch span 40.92 ms; fps period 41.71 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 10.53, sequencer_done_interrupt 0.31, repeated_action 0.11, trigger_sequencer 0.07, activate_inter_context_output 0.03, activate_cfg_channel 0.00, other 0.01
+      gap    4.88 ms before #143 module_config_done_interrupt (after module_config_done_interrupt)
+      gap    4.40 ms before #184 module_config_done_interrupt (after enable_lcu_default)
+      gap    0.63 ms before #78 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_0      lcu_interrupt 8.58, module_config_done_interrupt 0.56, sequencer_done_interrupt 0.53, output_channel_transfer_done_interrupt 0.11, repeated_action 0.10, disable_lcu 0.06, other 0.17
+      gap    5.18 ms before #23 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.55 ms before #238 module_config_done_interrupt (after module_config_done_interrupt)
+      gap    0.52 ms before #228 sequencer_done_interrupt (after trigger_sequencer)
+    dynamic_1      lcu_interrupt 8.82, module_config_done_interrupt 1.19, sequencer_done_interrupt 0.35, repeated_action 0.12, fetch_cfg_channel_descriptors 0.11, disable_lcu 0.08, other 0.19
+      gap    1.82 ms before #30 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.44 ms before #232 lcu_interrupt (after disable_lcu)
+      gap    1.21 ms before #263 lcu_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_2      lcu_interrupt 8.03, sequencer_done_interrupt 0.36, disable_lcu 0.09, output_channel_transfer_done_interrupt 0.08, repeated_action 0.05, module_config_done_interrupt 0.04, other 0.12
+      gap    3.99 ms before #27 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.76 ms before #66 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.49 ms before #54 lcu_interrupt (after disable_lcu)
+    dynamic_3      module_config_done_interrupt 7.90, lcu_interrupt 2.61, sequencer_done_interrupt 0.31, output_channel_transfer_done_interrupt 0.10, repeated_action 0.09, trigger_sequencer 0.06, other 0.11
+      gap    7.02 ms before #135 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.54 ms before #26 lcu_interrupt (after disable_lcu)
+      gap    0.87 ms before #161 module_config_done_interrupt (after module_config_done_interrupt)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11m_b1_run2//fwactions.json run 0: batch 1, fps 23.97, fps period 41.71 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          209     11.06         1          0.00
+  dynamic_0            340     10.11        74         81.95
+  dynamic_1            430     10.85        73         81.96
+  dynamic_2            331      8.78        73         81.90
+  dynamic_3            240     11.17        73         81.92
+  batch_switching       88 not timed         0          0.00
+  dynamic span sum 40.91 ms; switch gaps [0.005, 0.005, 0.005] ms; batch span 40.92 ms; fps period 41.71 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 10.53, sequencer_done_interrupt 0.31, repeated_action 0.11, trigger_sequencer 0.07, activate_inter_context_output 0.03, activate_cfg_channel 0.00, other 0.01
+      gap    4.88 ms before #143 module_config_done_interrupt (after module_config_done_interrupt)
+      gap    4.40 ms before #184 module_config_done_interrupt (after enable_lcu_default)
+      gap    0.63 ms before #78 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_0      lcu_interrupt 8.58, module_config_done_interrupt 0.56, sequencer_done_interrupt 0.53, output_channel_transfer_done_interrupt 0.11, repeated_action 0.10, disable_lcu 0.06, other 0.17
+      gap    5.18 ms before #23 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.55 ms before #238 module_config_done_interrupt (after module_config_done_interrupt)
+      gap    0.52 ms before #228 sequencer_done_interrupt (after trigger_sequencer)
+    dynamic_1      lcu_interrupt 8.82, module_config_done_interrupt 1.18, sequencer_done_interrupt 0.35, repeated_action 0.12, fetch_cfg_channel_descriptors 0.11, disable_lcu 0.08, other 0.19
+      gap    2.00 ms before #63 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.82 ms before #30 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.76 ms before #263 lcu_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_2      lcu_interrupt 8.03, sequencer_done_interrupt 0.36, disable_lcu 0.09, output_channel_transfer_done_interrupt 0.09, repeated_action 0.05, module_config_done_interrupt 0.04, other 0.12
+      gap    3.99 ms before #27 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.76 ms before #66 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.50 ms before #54 lcu_interrupt (after disable_lcu)
+    dynamic_3      module_config_done_interrupt 7.90, lcu_interrupt 2.61, sequencer_done_interrupt 0.31, output_channel_transfer_done_interrupt 0.10, repeated_action 0.09, trigger_sequencer 0.06, other 0.11
+      gap    7.02 ms before #135 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.54 ms before #26 lcu_interrupt (after disable_lcu)
+      gap    0.87 ms before #161 module_config_done_interrupt (after module_config_done_interrupt)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11m_b1_run3//fwactions.json run 0: batch 1, fps 23.97, fps period 41.71 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          209     11.06         1          0.00
+  dynamic_0            340     10.11        74         81.96
+  dynamic_1            430     10.85        73         81.96
+  dynamic_2            331      8.78        73         81.89
+  dynamic_3            240     11.17        73         81.91
+  batch_switching       88 not timed         0          0.00
+  dynamic span sum 40.90 ms; switch gaps [0.005, 0.005, 0.005] ms; batch span 40.92 ms; fps period 41.71 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 10.53, sequencer_done_interrupt 0.31, repeated_action 0.11, trigger_sequencer 0.07, activate_inter_context_output 0.03, activate_cfg_channel 0.00, other 0.01
+      gap    4.88 ms before #143 module_config_done_interrupt (after module_config_done_interrupt)
+      gap    4.40 ms before #184 module_config_done_interrupt (after enable_lcu_default)
+      gap    0.63 ms before #78 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_0      lcu_interrupt 8.57, module_config_done_interrupt 0.56, sequencer_done_interrupt 0.53, output_channel_transfer_done_interrupt 0.11, repeated_action 0.10, trigger_sequencer 0.06, other 0.17
+      gap    5.18 ms before #23 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.55 ms before #238 module_config_done_interrupt (after module_config_done_interrupt)
+      gap    0.52 ms before #228 sequencer_done_interrupt (after trigger_sequencer)
+    dynamic_1      lcu_interrupt 8.82, module_config_done_interrupt 1.19, sequencer_done_interrupt 0.35, repeated_action 0.12, fetch_cfg_channel_descriptors 0.11, disable_lcu 0.08, other 0.19
+      gap    1.82 ms before #30 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.76 ms before #263 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.44 ms before #232 lcu_interrupt (after disable_lcu)
+    dynamic_2      lcu_interrupt 8.03, sequencer_done_interrupt 0.36, disable_lcu 0.09, output_channel_transfer_done_interrupt 0.09, repeated_action 0.05, module_config_done_interrupt 0.04, other 0.12
+      gap    3.99 ms before #27 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.76 ms before #66 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.50 ms before #54 lcu_interrupt (after disable_lcu)
+    dynamic_3      module_config_done_interrupt 7.90, lcu_interrupt 2.61, sequencer_done_interrupt 0.31, output_channel_transfer_done_interrupt 0.10, repeated_action 0.09, trigger_sequencer 0.06, other 0.11
+      gap    7.02 ms before #135 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.54 ms before #26 lcu_interrupt (after disable_lcu)
+      gap    0.87 ms before #161 module_config_done_interrupt (after module_config_done_interrupt)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11m_b2_run1//fwactions.json run 0: batch 2, fps 34.95, fps period 57.22 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          209     11.06         1          0.00
+  dynamic_0            340     15.82        53        114.24
+  dynamic_1            430     14.29        53        114.24
+  dynamic_2            331     14.64        52        114.18
+  dynamic_3            240     12.31        52        114.20
+  batch_switching       88 not timed         0          0.00
+  dynamic span sum 57.06 ms; switch gaps [0.005, 0.005, 0.005] ms; batch span 57.08 ms; fps period 57.22 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 10.53, sequencer_done_interrupt 0.31, repeated_action 0.11, trigger_sequencer 0.07, activate_inter_context_output 0.03, activate_cfg_channel 0.00, other 0.01
+      gap    4.88 ms before #143 module_config_done_interrupt (after module_config_done_interrupt)
+      gap    4.40 ms before #184 module_config_done_interrupt (after enable_lcu_default)
+      gap    0.62 ms before #78 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_0      lcu_interrupt 14.28, module_config_done_interrupt 0.56, sequencer_done_interrupt 0.53, output_channel_transfer_done_interrupt 0.11, repeated_action 0.10, disable_lcu 0.06, other 0.17
+      gap   10.89 ms before #23 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.55 ms before #238 module_config_done_interrupt (after module_config_done_interrupt)
+      gap    0.52 ms before #228 sequencer_done_interrupt (after trigger_sequencer)
+    dynamic_1      lcu_interrupt 13.14, sequencer_done_interrupt 0.35, module_config_done_interrupt 0.30, repeated_action 0.12, fetch_cfg_channel_descriptors 0.11, disable_lcu 0.08, other 0.19
+      gap    5.46 ms before #30 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.63 ms before #232 lcu_interrupt (after disable_lcu)
+      gap    0.99 ms before #263 lcu_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_2      lcu_interrupt 13.89, sequencer_done_interrupt 0.36, disable_lcu 0.09, output_channel_transfer_done_interrupt 0.09, repeated_action 0.05, module_config_done_interrupt 0.04, other 0.12
+      gap    9.85 ms before #27 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.76 ms before #66 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.50 ms before #54 lcu_interrupt (after disable_lcu)
+    dynamic_3      module_config_done_interrupt 6.91, lcu_interrupt 4.75, sequencer_done_interrupt 0.31, output_channel_transfer_done_interrupt 0.10, repeated_action 0.09, trigger_sequencer 0.06, other 0.11
+      gap    6.02 ms before #135 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    3.04 ms before #26 lcu_interrupt (after disable_lcu)
+      gap    1.24 ms before #24 lcu_interrupt (after fetch_cfg_channel_descriptors)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11m_b2_run2//fwactions.json run 0: batch 2, fps 34.96, fps period 57.21 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          209     11.06         1          0.00
+  dynamic_0            340     15.82        53        114.26
+  dynamic_1            430     14.30        53        114.31
+  dynamic_2            331     14.64        52        114.24
+  dynamic_3            240     12.32        52        114.26
+  batch_switching       88 not timed         0          0.00
+  dynamic span sum 57.08 ms; switch gaps [0.005, 0.005, 0.005] ms; batch span 57.09 ms; fps period 57.21 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 10.53, sequencer_done_interrupt 0.31, repeated_action 0.11, trigger_sequencer 0.07, activate_inter_context_output 0.03, activate_cfg_channel 0.00, other 0.01
+      gap    4.88 ms before #143 module_config_done_interrupt (after module_config_done_interrupt)
+      gap    4.40 ms before #184 module_config_done_interrupt (after enable_lcu_default)
+      gap    0.62 ms before #78 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_0      lcu_interrupt 14.29, module_config_done_interrupt 0.56, sequencer_done_interrupt 0.53, output_channel_transfer_done_interrupt 0.11, repeated_action 0.10, disable_lcu 0.06, other 0.17
+      gap   10.89 ms before #23 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.55 ms before #238 module_config_done_interrupt (after module_config_done_interrupt)
+      gap    0.52 ms before #228 sequencer_done_interrupt (after trigger_sequencer)
+    dynamic_1      lcu_interrupt 13.15, sequencer_done_interrupt 0.35, module_config_done_interrupt 0.30, repeated_action 0.12, fetch_cfg_channel_descriptors 0.11, disable_lcu 0.08, other 0.19
+      gap    5.46 ms before #30 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.63 ms before #232 lcu_interrupt (after disable_lcu)
+      gap    0.99 ms before #263 lcu_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_2      lcu_interrupt 13.89, sequencer_done_interrupt 0.36, disable_lcu 0.09, output_channel_transfer_done_interrupt 0.08, repeated_action 0.05, module_config_done_interrupt 0.04, other 0.12
+      gap    9.85 ms before #27 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.76 ms before #66 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.50 ms before #54 lcu_interrupt (after disable_lcu)
+    dynamic_3      module_config_done_interrupt 6.91, lcu_interrupt 4.75, sequencer_done_interrupt 0.31, output_channel_transfer_done_interrupt 0.10, repeated_action 0.09, trigger_sequencer 0.06, other 0.11
+      gap    6.02 ms before #135 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    3.04 ms before #26 lcu_interrupt (after disable_lcu)
+      gap    1.24 ms before #24 lcu_interrupt (after fetch_cfg_channel_descriptors)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11m_b2_run3//fwactions.json run 0: batch 2, fps 34.91, fps period 57.30 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          209     11.06         1          0.00
+  dynamic_0            340     15.82        53        114.25
+  dynamic_1            430     14.29        53        114.27
+  dynamic_2            331     14.65        52        114.22
+  dynamic_3            240     12.32        52        114.24
+  batch_switching       88 not timed         0          0.00
+  dynamic span sum 57.07 ms; switch gaps [0.005, 0.005, 0.005] ms; batch span 57.09 ms; fps period 57.30 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 10.53, sequencer_done_interrupt 0.31, repeated_action 0.11, trigger_sequencer 0.07, activate_inter_context_output 0.03, activate_cfg_channel 0.00, other 0.01
+      gap    4.88 ms before #143 module_config_done_interrupt (after module_config_done_interrupt)
+      gap    4.40 ms before #184 module_config_done_interrupt (after enable_lcu_default)
+      gap    0.62 ms before #78 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_0      lcu_interrupt 14.29, module_config_done_interrupt 0.56, sequencer_done_interrupt 0.53, output_channel_transfer_done_interrupt 0.11, repeated_action 0.10, disable_lcu 0.06, other 0.17
+      gap   10.89 ms before #23 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.55 ms before #238 module_config_done_interrupt (after module_config_done_interrupt)
+      gap    0.52 ms before #228 sequencer_done_interrupt (after trigger_sequencer)
+    dynamic_1      lcu_interrupt 13.14, sequencer_done_interrupt 0.35, module_config_done_interrupt 0.30, repeated_action 0.12, fetch_cfg_channel_descriptors 0.11, disable_lcu 0.08, other 0.19
+      gap    5.46 ms before #30 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.61 ms before #232 lcu_interrupt (after disable_lcu)
+      gap    0.99 ms before #263 lcu_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_2      lcu_interrupt 13.90, sequencer_done_interrupt 0.36, disable_lcu 0.09, output_channel_transfer_done_interrupt 0.08, repeated_action 0.05, module_config_done_interrupt 0.04, other 0.12
+      gap    9.85 ms before #27 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.76 ms before #66 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.50 ms before #54 lcu_interrupt (after disable_lcu)
+    dynamic_3      module_config_done_interrupt 6.91, lcu_interrupt 4.75, sequencer_done_interrupt 0.31, output_channel_transfer_done_interrupt 0.10, repeated_action 0.09, trigger_sequencer 0.06, other 0.11
+      gap    6.02 ms before #135 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+      gap    3.04 ms before #26 lcu_interrupt (after disable_lcu)
+      gap    1.24 ms before #24 lcu_interrupt (after fetch_cfg_channel_descriptors)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11m_b8_run1//fwactions.json run 0: batch 8, fps 50.62, fps period 158.04 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          209     11.07         1          0.00
+  dynamic_0            340     50.10        20        309.36
+  dynamic_1            430     35.66        20        309.35
+  dynamic_2            331     49.65        19        309.28
+  dynamic_3            240     19.19        19        309.30
+  batch_switching       88 not timed         0          0.00
+  dynamic span sum 154.60 ms; switch gaps [0.005, 0.005, 0.005] ms; batch span 154.61 ms; fps period 158.04 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 10.53, sequencer_done_interrupt 0.31, repeated_action 0.11, trigger_sequencer 0.07, activate_inter_context_output 0.03, activate_cfg_channel 0.00, other 0.01
+      gap    4.88 ms before #143 module_config_done_interrupt (after module_config_done_interrupt)
+      gap    4.40 ms before #184 module_config_done_interrupt (after enable_lcu_default)
+      gap    0.63 ms before #78 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_0      lcu_interrupt 48.57, module_config_done_interrupt 0.56, sequencer_done_interrupt 0.53, output_channel_transfer_done_interrupt 0.11, repeated_action 0.10, disable_lcu 0.06, other 0.17
+      gap   45.17 ms before #23 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.55 ms before #238 module_config_done_interrupt (after module_config_done_interrupt)
+      gap    0.52 ms before #228 sequencer_done_interrupt (after trigger_sequencer)
+    dynamic_1      lcu_interrupt 34.52, sequencer_done_interrupt 0.35, module_config_done_interrupt 0.30, repeated_action 0.12, fetch_cfg_channel_descriptors 0.11, disable_lcu 0.08, other 0.19
+      gap   25.58 ms before #30 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.44 ms before #232 lcu_interrupt (after disable_lcu)
+      gap    0.78 ms before #180 lcu_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_2      lcu_interrupt 48.89, sequencer_done_interrupt 0.36, disable_lcu 0.09, output_channel_transfer_done_interrupt 0.09, repeated_action 0.05, module_config_done_interrupt 0.04, other 0.12
+      gap   44.86 ms before #27 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.76 ms before #66 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.50 ms before #54 lcu_interrupt (after disable_lcu)
+    dynamic_3      lcu_interrupt 16.30, module_config_done_interrupt 2.22, sequencer_done_interrupt 0.31, output_channel_transfer_done_interrupt 0.10, repeated_action 0.09, trigger_sequencer 0.06, other 0.11
+      gap   10.79 ms before #26 lcu_interrupt (after disable_lcu)
+      gap    5.05 ms before #24 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.34 ms before #135 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11m_b8_run2//fwactions.json run 0: batch 8, fps 47.95, fps period 166.84 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          209     11.07         1          0.00
+  dynamic_0            340     50.10        20        309.32
+  dynamic_1            430     35.66        20        309.35
+  dynamic_2            331     49.64        19        309.29
+  dynamic_3            240     19.19        19        309.32
+  batch_switching       88 not timed         0          0.00
+  dynamic span sum 154.60 ms; switch gaps [0.005, 0.005, 0.005] ms; batch span 154.61 ms; fps period 166.84 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 10.53, sequencer_done_interrupt 0.31, repeated_action 0.11, trigger_sequencer 0.07, activate_inter_context_output 0.03, activate_cfg_channel 0.00, other 0.01
+      gap    4.88 ms before #143 module_config_done_interrupt (after module_config_done_interrupt)
+      gap    4.40 ms before #184 module_config_done_interrupt (after enable_lcu_default)
+      gap    0.63 ms before #78 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_0      lcu_interrupt 48.56, module_config_done_interrupt 0.56, sequencer_done_interrupt 0.53, output_channel_transfer_done_interrupt 0.11, repeated_action 0.10, disable_lcu 0.06, other 0.17
+      gap   45.16 ms before #23 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.55 ms before #238 module_config_done_interrupt (after module_config_done_interrupt)
+      gap    0.52 ms before #228 sequencer_done_interrupt (after trigger_sequencer)
+    dynamic_1      lcu_interrupt 34.52, sequencer_done_interrupt 0.35, module_config_done_interrupt 0.30, repeated_action 0.12, fetch_cfg_channel_descriptors 0.11, disable_lcu 0.08, other 0.19
+      gap   25.59 ms before #30 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.44 ms before #232 lcu_interrupt (after disable_lcu)
+      gap    0.78 ms before #180 lcu_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_2      lcu_interrupt 48.89, sequencer_done_interrupt 0.36, disable_lcu 0.09, output_channel_transfer_done_interrupt 0.09, repeated_action 0.05, module_config_done_interrupt 0.04, other 0.12
+      gap   44.85 ms before #27 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.76 ms before #66 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.50 ms before #54 lcu_interrupt (after disable_lcu)
+    dynamic_3      lcu_interrupt 16.31, module_config_done_interrupt 2.22, sequencer_done_interrupt 0.31, output_channel_transfer_done_interrupt 0.10, repeated_action 0.09, trigger_sequencer 0.06, other 0.11
+      gap   10.80 ms before #26 lcu_interrupt (after disable_lcu)
+      gap    5.05 ms before #24 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.34 ms before #135 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+
+=== /home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11m_b8_run3//fwactions.json run 0: batch 8, fps 47.95, fps period 166.85 ms (clock 200 MHz)
+  context          actions   span ms batch_ctr  idle_time ms
+  activation             8      0.02         1          0.00
+  preliminary          209     11.07         1          0.00
+  dynamic_0            340     50.10        20        309.58
+  dynamic_1            430     35.68        20        309.41
+  dynamic_2            331     49.64        19        309.33
+  dynamic_3            240     19.19        19        309.35
+  batch_switching       88 not timed         0          0.00
+  dynamic span sum 154.61 ms; switch gaps [0.005, 0.005, 0.005] ms; batch span 154.63 ms; fps period 166.85 ms
+  time by action type (interval before an action charged to it; sums to the span):
+    activation     open_boundary_output_channel 0.02, open_boundary_input_channel 0.00
+    preliminary    module_config_done_interrupt 10.53, sequencer_done_interrupt 0.31, repeated_action 0.11, trigger_sequencer 0.07, activate_inter_context_output 0.03, activate_cfg_channel 0.00, other 0.01
+      gap    4.88 ms before #143 module_config_done_interrupt (after module_config_done_interrupt)
+      gap    4.40 ms before #184 module_config_done_interrupt (after enable_lcu_default)
+      gap    0.63 ms before #78 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_0      lcu_interrupt 48.57, module_config_done_interrupt 0.56, sequencer_done_interrupt 0.53, output_channel_transfer_done_interrupt 0.11, repeated_action 0.10, disable_lcu 0.06, other 0.17
+      gap   45.17 ms before #23 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.55 ms before #238 module_config_done_interrupt (after module_config_done_interrupt)
+      gap    0.52 ms before #228 sequencer_done_interrupt (after trigger_sequencer)
+    dynamic_1      lcu_interrupt 34.54, sequencer_done_interrupt 0.35, module_config_done_interrupt 0.30, repeated_action 0.12, fetch_cfg_channel_descriptors 0.11, disable_lcu 0.08, other 0.19
+      gap   25.59 ms before #30 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.44 ms before #232 lcu_interrupt (after disable_lcu)
+      gap    0.78 ms before #180 lcu_interrupt (after fetch_cfg_channel_descriptors)
+    dynamic_2      lcu_interrupt 48.89, sequencer_done_interrupt 0.36, disable_lcu 0.09, output_channel_transfer_done_interrupt 0.08, repeated_action 0.05, module_config_done_interrupt 0.04, other 0.12
+      gap   44.85 ms before #27 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.76 ms before #66 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    0.50 ms before #54 lcu_interrupt (after disable_lcu)
+    dynamic_3      lcu_interrupt 16.31, module_config_done_interrupt 2.22, sequencer_done_interrupt 0.31, output_channel_transfer_done_interrupt 0.10, repeated_action 0.09, trigger_sequencer 0.06, other 0.11
+      gap   10.79 ms before #26 lcu_interrupt (after disable_lcu)
+      gap    5.05 ms before #24 lcu_interrupt (after fetch_cfg_channel_descriptors)
+      gap    1.34 ms before #135 module_config_done_interrupt (after fetch_cfg_channel_descriptors)
+
+=== fit span(B) = a + b*B over B = [1, 2, 8] (9 runs); reference T(B) = 24.8 + 16.2*B
+  series                    a ms  b ms/B   n    rms        B=1      B=2      B=8
+  dynamic_0                 4.40    5.71   9   0.00      10.11    15.82    50.10
+  dynamic_1                 7.25    3.55   9   0.04      10.80    14.35    35.66
+  dynamic_2                 2.95    5.84   9   0.01       8.79    14.63    49.65
+  dynamic_3                10.03    1.15   9   0.00      11.17    12.32    19.19
+  sum of context fits      24.62   16.25
+  dynamic_span_sum         24.62   16.25   9   0.03      40.87    57.11   154.60
+  batch_span               24.63   16.25   9   0.03      40.88    57.13   154.61
+  fps_period               23.20   17.57   9   2.54      40.77    58.34   163.75
+  reference (pipeline)     24.80   16.20                 41.00    57.20   154.40
+  per (context, action type) fits (types with >= --fit-min-ms in some run):
+    dynamic_0  lcu_interrupt                          a    2.86  b   5.71  [an LCU (layer control unit) reported done -> wait before it ~ compute (inferred)]
+    dynamic_0  module_config_done_interrupt           a    0.56  b  -0.00  [a config module finished loading (inferred)]
+    dynamic_0  sequencer_done_interrupt               a    0.53  b  -0.00  [config sequencer finished (inferred)]
+    dynamic_1  lcu_interrupt                          a    5.50  b   3.63  [an LCU (layer control unit) reported done -> wait before it ~ compute (inferred)]
+    dynamic_1  module_config_done_interrupt           a    0.90  b  -0.08  [a config module finished loading (inferred)]
+    dynamic_2  lcu_interrupt                          a    2.20  b   5.84  [an LCU (layer control unit) reported done -> wait before it ~ compute (inferred)]
+    dynamic_3  module_config_done_interrupt           a    8.61  b  -0.80  [a config module finished loading (inferred)]
+    dynamic_3  lcu_interrupt                          a    0.75  b   1.95  [an LCU (layer control unit) reported done -> wait before it ~ compute (inferred)]
+note: action-type readings are inferred from names and timing, not from HailoRT documentation.

@@ -1,0 +1,2658 @@
+{
+ "tool": "fw_actions_breakdown.py",
+ "reference": {
+  "a": 24.8,
+  "b": 16.2
+ },
+ "runs": [
+  {
+   "file": "/home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11s_b1_run1//fwactions.json",
+   "run": 0,
+   "batch_size": 1,
+   "fps": 51.90272748942752,
+   "clock_MHz": 200.0,
+   "contexts": [
+    {
+     "name": "activation",
+     "timed": true,
+     "actions": 8,
+     "batch_counter": 1,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 723,
+     "last_cycles": 5348,
+     "span_ms": 0.023125,
+     "type_ms": {
+      "open_boundary_output_channel": 0.018945,
+      "open_boundary_input_channel": 0.00418
+     },
+     "type_counts": {
+      "burst_credits_task_reset": 1,
+      "open_boundary_output_channel": 6,
+      "open_boundary_input_channel": 1
+     },
+     "largest_gaps": [
+      {
+       "ms": 0.00418,
+       "index": 7,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_input_channel"
+      },
+      {
+       "ms": 0.00324,
+       "index": 4,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_output_channel"
+      },
+      {
+       "ms": 0.00321,
+       "index": 3,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_output_channel"
+      }
+     ]
+    },
+    {
+     "name": "preliminary",
+     "timed": true,
+     "actions": 300,
+     "batch_counter": 1,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 24193,
+     "last_cycles": 1871810,
+     "span_ms": 9.238085,
+     "type_ms": {
+      "module_config_done_interrupt": 8.38428,
+      "sequencer_done_interrupt": 0.562615,
+      "repeated_action": 0.179695,
+      "trigger_sequencer": 0.063875,
+      "activate_inter_context_output": 0.032935,
+      "activate_cfg_channel": 0.003935,
+      "deactivate_cfg_channel": 0.003035,
+      "activate_boundary_input": 0.002655,
+      "fetch_data_from_vdma_channel": 0.00244,
+      "burst_credits_task_start": 0.00165,
+      "resume vdma channel": 0.00097,
+      "disable_lcu": 0.0,
+      "fetch_cfg_channel_descriptors": 0.0,
+      "change_vdma_to_stream_mapping": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "repeated_action": 7,
+      "disable_lcu": 117,
+      "fetch_cfg_channel_descriptors": 2,
+      "module_config_done_interrupt": 19,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "activate_inter_context_output": 7,
+      "activate_boundary_input": 1,
+      "change_vdma_to_stream_mapping": 7,
+      "resume vdma channel": 1,
+      "fetch_data_from_vdma_channel": 1,
+      "burst_credits_task_start": 1,
+      "enable_lcu_default": 117,
+      "deactivate_cfg_channel": 2
+     },
+     "largest_gaps": [
+      {
+       "ms": 5.92403,
+       "index": 200,
+       "after": "enable_lcu_default",
+       "before": "module_config_done_interrupt"
+      },
+      {
+       "ms": 1.1145,
+       "index": 123,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "module_config_done_interrupt"
+      },
+      {
+       "ms": 0.791715,
+       "index": 233,
+       "after": "enable_lcu_default",
+       "before": "module_config_done_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "dynamic_0",
+     "timed": true,
+     "actions": 493,
+     "batch_counter": 156,
+     "idle_time_ms": 38.603605,
+     "wraps": 0,
+     "first_cycles": 9254656,
+     "last_cycles": 10807313,
+     "span_ms": 7.763285,
+     "type_ms": {
+      "lcu_interrupt": 6.76733,
+      "sequencer_done_interrupt": 0.341045,
+      "fetch_cfg_channel_descriptors": 0.12205,
+      "repeated_action": 0.12036,
+      "output_channel_transfer_done_interrupt": 0.106925,
+      "disable_lcu": 0.098315,
+      "module_config_done_interrupt": 0.089225,
+      "trigger_sequencer": 0.06042,
+      "activate_inter_context_output": 0.033145,
+      "deactivate_vdma_channel": 0.00981,
+      "activate_cfg_channel": 0.003925,
+      "deactivate_cfg_channel": 0.003085,
+      "fetch_data_from_vdma_channel": 0.00248,
+      "burst_credits_task_start": 0.00169,
+      "activate_boundary_input": 0.001255,
+      "resume vdma channel": 0.001115,
+      "pause vdma channel": 0.00111,
+      "change_vdma_to_stream_mapping": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "activate_inter_context_output": 7,
+      "activate_boundary_input": 1,
+      "repeated_action": 4,
+      "change_vdma_to_stream_mapping": 7,
+      "resume vdma channel": 1,
+      "fetch_data_from_vdma_channel": 1,
+      "burst_credits_task_start": 1,
+      "fetch_cfg_channel_descriptors": 81,
+      "lcu_interrupt": 117,
+      "disable_lcu": 117,
+      "output_channel_transfer_done_interrupt": 7,
+      "module_config_done_interrupt": 10,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "enable_lcu_default": 111,
+      "deactivate_cfg_channel": 2,
+      "deactivate_vdma_channel": 7,
+      "pause vdma channel": 1
+     },
+     "largest_gaps": [
+      {
+       "ms": 3.238245,
+       "index": 24,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 0.743115,
+       "index": 311,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 0.388025,
+       "index": 140,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "dynamic_1",
+     "timed": true,
+     "actions": 496,
+     "batch_counter": 156,
+     "idle_time_ms": 38.588695,
+     "wraps": 0,
+     "first_cycles": 10808249,
+     "last_cycles": 13100934,
+     "span_ms": 11.463425,
+     "type_ms": {
+      "lcu_interrupt": 8.357565,
+      "module_config_done_interrupt": 2.02923,
+      "sequencer_done_interrupt": 0.51874,
+      "repeated_action": 0.13307,
+      "fetch_cfg_channel_descriptors": 0.12338,
+      "disable_lcu": 0.0923,
+      "output_channel_transfer_done_interrupt": 0.09148,
+      "trigger_sequencer": 0.06017,
+      "activate_inter_context_input": 0.03281,
+      "deactivate_vdma_channel": 0.01002,
+      "activate_boundary_output": 0.00768,
+      "activate_cfg_channel": 0.00392,
+      "deactivate_cfg_channel": 0.00306,
+      "change_vdma_to_stream_mapping": 0.0,
+      "fetch_data_from_vdma_channel": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "activate_boundary_output": 6,
+      "activate_inter_context_input": 7,
+      "repeated_action": 5,
+      "change_vdma_to_stream_mapping": 7,
+      "fetch_data_from_vdma_channel": 7,
+      "fetch_cfg_channel_descriptors": 82,
+      "lcu_interrupt": 111,
+      "disable_lcu": 111,
+      "output_channel_transfer_done_interrupt": 6,
+      "module_config_done_interrupt": 10,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "enable_lcu_default": 117,
+      "deactivate_cfg_channel": 2,
+      "deactivate_vdma_channel": 7
+     },
+     "largest_gaps": [
+      {
+       "ms": 2.463425,
+       "index": 34,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 1.44525,
+       "index": 37,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 1.22742,
+       "index": 367,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "module_config_done_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "batch_switching",
+     "timed": false,
+     "actions": 135,
+     "batch_counter": 0,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 0,
+     "last_cycles": 0,
+     "span_ms": null,
+     "type_ms": {},
+     "type_counts": {
+      "repeated_action": 1,
+      "switch_lcu_batch": 117,
+      "deactivate_vdma_channel": 7,
+      "ddr_buffering_reset": 1,
+      "activate_inter_context_output": 7,
+      "change boundary input batch": 1,
+      "burst_credits_task_start": 1
+     },
+     "largest_gaps": []
+    }
+   ],
+   "dynamic": [
+    "dynamic_0",
+    "dynamic_1"
+   ],
+   "switch_gaps_ms": [
+    0.00468
+   ],
+   "contiguous": true,
+   "dynamic_span_sum_ms": 19.22671,
+   "batch_span_ms": 19.23139,
+   "fps_period_ms": 19.26681021153846
+  },
+  {
+   "file": "/home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11s_b1_run2//fwactions.json",
+   "run": 0,
+   "batch_size": 1,
+   "fps": 51.4406286410398,
+   "clock_MHz": 200.0,
+   "contexts": [
+    {
+     "name": "activation",
+     "timed": true,
+     "actions": 8,
+     "batch_counter": 1,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 723,
+     "last_cycles": 5348,
+     "span_ms": 0.023125,
+     "type_ms": {
+      "open_boundary_output_channel": 0.018945,
+      "open_boundary_input_channel": 0.00418
+     },
+     "type_counts": {
+      "burst_credits_task_reset": 1,
+      "open_boundary_output_channel": 6,
+      "open_boundary_input_channel": 1
+     },
+     "largest_gaps": [
+      {
+       "ms": 0.00418,
+       "index": 7,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_input_channel"
+      },
+      {
+       "ms": 0.00324,
+       "index": 4,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_output_channel"
+      },
+      {
+       "ms": 0.00321,
+       "index": 3,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_output_channel"
+      }
+     ]
+    },
+    {
+     "name": "preliminary",
+     "timed": true,
+     "actions": 300,
+     "batch_counter": 1,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 24193,
+     "last_cycles": 1871646,
+     "span_ms": 9.237265,
+     "type_ms": {
+      "module_config_done_interrupt": 8.38452,
+      "sequencer_done_interrupt": 0.562615,
+      "repeated_action": 0.179215,
+      "trigger_sequencer": 0.06383,
+      "activate_inter_context_output": 0.03241,
+      "activate_cfg_channel": 0.003935,
+      "deactivate_cfg_channel": 0.00303,
+      "activate_boundary_input": 0.00265,
+      "fetch_data_from_vdma_channel": 0.00244,
+      "burst_credits_task_start": 0.00165,
+      "resume vdma channel": 0.00097,
+      "disable_lcu": 0.0,
+      "fetch_cfg_channel_descriptors": 0.0,
+      "change_vdma_to_stream_mapping": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "repeated_action": 7,
+      "disable_lcu": 117,
+      "fetch_cfg_channel_descriptors": 2,
+      "module_config_done_interrupt": 19,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "activate_inter_context_output": 7,
+      "activate_boundary_input": 1,
+      "change_vdma_to_stream_mapping": 7,
+      "resume vdma channel": 1,
+      "fetch_data_from_vdma_channel": 1,
+      "burst_credits_task_start": 1,
+      "enable_lcu_default": 117,
+      "deactivate_cfg_channel": 2
+     },
+     "largest_gaps": [
+      {
+       "ms": 5.923625,
+       "index": 200,
+       "after": "enable_lcu_default",
+       "before": "module_config_done_interrupt"
+      },
+      {
+       "ms": 1.11624,
+       "index": 123,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "module_config_done_interrupt"
+      },
+      {
+       "ms": 0.79193,
+       "index": 233,
+       "after": "enable_lcu_default",
+       "before": "module_config_done_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "dynamic_0",
+     "timed": true,
+     "actions": 493,
+     "batch_counter": 156,
+     "idle_time_ms": 38.59632,
+     "wraps": 0,
+     "first_cycles": 9251341,
+     "last_cycles": 10803678,
+     "span_ms": 7.761685,
+     "type_ms": {
+      "lcu_interrupt": 6.767355,
+      "sequencer_done_interrupt": 0.341075,
+      "fetch_cfg_channel_descriptors": 0.12205,
+      "repeated_action": 0.119855,
+      "output_channel_transfer_done_interrupt": 0.10585,
+      "disable_lcu": 0.098335,
+      "module_config_done_interrupt": 0.08914,
+      "trigger_sequencer": 0.06041,
+      "activate_inter_context_output": 0.033145,
+      "deactivate_vdma_channel": 0.00981,
+      "activate_cfg_channel": 0.003925,
+      "deactivate_cfg_channel": 0.003085,
+      "fetch_data_from_vdma_channel": 0.00248,
+      "burst_credits_task_start": 0.00169,
+      "activate_boundary_input": 0.001255,
+      "resume vdma channel": 0.001115,
+      "pause vdma channel": 0.00111,
+      "change_vdma_to_stream_mapping": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "activate_inter_context_output": 7,
+      "activate_boundary_input": 1,
+      "repeated_action": 4,
+      "change_vdma_to_stream_mapping": 7,
+      "resume vdma channel": 1,
+      "fetch_data_from_vdma_channel": 1,
+      "burst_credits_task_start": 1,
+      "fetch_cfg_channel_descriptors": 81,
+      "lcu_interrupt": 117,
+      "disable_lcu": 117,
+      "output_channel_transfer_done_interrupt": 7,
+      "module_config_done_interrupt": 10,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "enable_lcu_default": 111,
+      "deactivate_cfg_channel": 2,
+      "deactivate_vdma_channel": 7,
+      "pause vdma channel": 1
+     },
+     "largest_gaps": [
+      {
+       "ms": 3.235525,
+       "index": 24,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 0.74305,
+       "index": 311,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 0.389295,
+       "index": 140,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "dynamic_1",
+     "timed": true,
+     "actions": 496,
+     "batch_counter": 156,
+     "idle_time_ms": 38.583465,
+     "wraps": 0,
+     "first_cycles": 10804614,
+     "last_cycles": 13097300,
+     "span_ms": 11.46343,
+     "type_ms": {
+      "lcu_interrupt": 8.358965,
+      "module_config_done_interrupt": 2.02754,
+      "sequencer_done_interrupt": 0.518815,
+      "repeated_action": 0.13307,
+      "fetch_cfg_channel_descriptors": 0.122875,
+      "disable_lcu": 0.09224,
+      "output_channel_transfer_done_interrupt": 0.09221,
+      "trigger_sequencer": 0.060225,
+      "activate_inter_context_input": 0.03281,
+      "deactivate_vdma_channel": 0.01002,
+      "activate_boundary_output": 0.00768,
+      "activate_cfg_channel": 0.00392,
+      "deactivate_cfg_channel": 0.00306,
+      "change_vdma_to_stream_mapping": 0.0,
+      "fetch_data_from_vdma_channel": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "activate_boundary_output": 6,
+      "activate_inter_context_input": 7,
+      "repeated_action": 5,
+      "change_vdma_to_stream_mapping": 7,
+      "fetch_data_from_vdma_channel": 7,
+      "fetch_cfg_channel_descriptors": 82,
+      "lcu_interrupt": 111,
+      "disable_lcu": 111,
+      "output_channel_transfer_done_interrupt": 6,
+      "module_config_done_interrupt": 10,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "enable_lcu_default": 117,
+      "deactivate_cfg_channel": 2,
+      "deactivate_vdma_channel": 7
+     },
+     "largest_gaps": [
+      {
+       "ms": 2.463145,
+       "index": 34,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 1.44525,
+       "index": 37,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 1.225125,
+       "index": 367,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "module_config_done_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "batch_switching",
+     "timed": false,
+     "actions": 135,
+     "batch_counter": 0,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 0,
+     "last_cycles": 0,
+     "span_ms": null,
+     "type_ms": {},
+     "type_counts": {
+      "repeated_action": 1,
+      "switch_lcu_batch": 117,
+      "deactivate_vdma_channel": 7,
+      "ddr_buffering_reset": 1,
+      "activate_inter_context_output": 7,
+      "change boundary input batch": 1,
+      "burst_credits_task_start": 1
+     },
+     "largest_gaps": []
+    }
+   ],
+   "dynamic": [
+    "dynamic_0",
+    "dynamic_1"
+   ],
+   "switch_gaps_ms": [
+    0.00468
+   ],
+   "contiguous": true,
+   "dynamic_span_sum_ms": 19.225115000000002,
+   "batch_span_ms": 19.229795,
+   "fps_period_ms": 19.439886844660194
+  },
+  {
+   "file": "/home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11s_b1_run3//fwactions.json",
+   "run": 0,
+   "batch_size": 1,
+   "fps": 51.44004477597199,
+   "clock_MHz": 200.0,
+   "contexts": [
+    {
+     "name": "activation",
+     "timed": true,
+     "actions": 8,
+     "batch_counter": 1,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 723,
+     "last_cycles": 5348,
+     "span_ms": 0.023125,
+     "type_ms": {
+      "open_boundary_output_channel": 0.018945,
+      "open_boundary_input_channel": 0.00418
+     },
+     "type_counts": {
+      "burst_credits_task_reset": 1,
+      "open_boundary_output_channel": 6,
+      "open_boundary_input_channel": 1
+     },
+     "largest_gaps": [
+      {
+       "ms": 0.00418,
+       "index": 7,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_input_channel"
+      },
+      {
+       "ms": 0.00324,
+       "index": 4,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_output_channel"
+      },
+      {
+       "ms": 0.00321,
+       "index": 3,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_output_channel"
+      }
+     ]
+    },
+    {
+     "name": "preliminary",
+     "timed": true,
+     "actions": 300,
+     "batch_counter": 1,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 24193,
+     "last_cycles": 1871278,
+     "span_ms": 9.235425,
+     "type_ms": {
+      "module_config_done_interrupt": 8.3827,
+      "sequencer_done_interrupt": 0.56263,
+      "repeated_action": 0.17917,
+      "trigger_sequencer": 0.063845,
+      "activate_inter_context_output": 0.032405,
+      "activate_cfg_channel": 0.003935,
+      "deactivate_cfg_channel": 0.00303,
+      "activate_boundary_input": 0.00265,
+      "fetch_data_from_vdma_channel": 0.00244,
+      "burst_credits_task_start": 0.00165,
+      "resume vdma channel": 0.00097,
+      "disable_lcu": 0.0,
+      "fetch_cfg_channel_descriptors": 0.0,
+      "change_vdma_to_stream_mapping": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "repeated_action": 7,
+      "disable_lcu": 117,
+      "fetch_cfg_channel_descriptors": 2,
+      "module_config_done_interrupt": 19,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "activate_inter_context_output": 7,
+      "activate_boundary_input": 1,
+      "change_vdma_to_stream_mapping": 7,
+      "resume vdma channel": 1,
+      "fetch_data_from_vdma_channel": 1,
+      "burst_credits_task_start": 1,
+      "enable_lcu_default": 117,
+      "deactivate_cfg_channel": 2
+     },
+     "largest_gaps": [
+      {
+       "ms": 5.92245,
+       "index": 200,
+       "after": "enable_lcu_default",
+       "before": "module_config_done_interrupt"
+      },
+      {
+       "ms": 1.115665,
+       "index": 123,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "module_config_done_interrupt"
+      },
+      {
+       "ms": 0.791945,
+       "index": 233,
+       "after": "enable_lcu_default",
+       "before": "module_config_done_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "dynamic_0",
+     "timed": true,
+     "actions": 493,
+     "batch_counter": 156,
+     "idle_time_ms": 38.600425,
+     "wraps": 0,
+     "first_cycles": 9252643,
+     "last_cycles": 10805135,
+     "span_ms": 7.76246,
+     "type_ms": {
+      "lcu_interrupt": 6.76545,
+      "sequencer_done_interrupt": 0.34108,
+      "fetch_cfg_channel_descriptors": 0.12205,
+      "repeated_action": 0.119855,
+      "output_channel_transfer_done_interrupt": 0.10857,
+      "disable_lcu": 0.098335,
+      "module_config_done_interrupt": 0.08911,
+      "trigger_sequencer": 0.060395,
+      "activate_inter_context_output": 0.033145,
+      "deactivate_vdma_channel": 0.00981,
+      "activate_cfg_channel": 0.003925,
+      "deactivate_cfg_channel": 0.003085,
+      "fetch_data_from_vdma_channel": 0.00248,
+      "burst_credits_task_start": 0.00169,
+      "activate_boundary_input": 0.001255,
+      "resume vdma channel": 0.001115,
+      "pause vdma channel": 0.00111,
+      "change_vdma_to_stream_mapping": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "activate_inter_context_output": 7,
+      "activate_boundary_input": 1,
+      "repeated_action": 4,
+      "change_vdma_to_stream_mapping": 7,
+      "resume vdma channel": 1,
+      "fetch_data_from_vdma_channel": 1,
+      "burst_credits_task_start": 1,
+      "fetch_cfg_channel_descriptors": 81,
+      "lcu_interrupt": 117,
+      "disable_lcu": 117,
+      "output_channel_transfer_done_interrupt": 7,
+      "module_config_done_interrupt": 10,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "enable_lcu_default": 111,
+      "deactivate_cfg_channel": 2,
+      "deactivate_vdma_channel": 7,
+      "pause vdma channel": 1
+     },
+     "largest_gaps": [
+      {
+       "ms": 3.23974,
+       "index": 24,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 0.743145,
+       "index": 311,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 0.386805,
+       "index": 140,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "dynamic_1",
+     "timed": true,
+     "actions": 496,
+     "batch_counter": 156,
+     "idle_time_ms": 38.58543,
+     "wraps": 0,
+     "first_cycles": 10806071,
+     "last_cycles": 13099073,
+     "span_ms": 11.46501,
+     "type_ms": {
+      "lcu_interrupt": 8.35759,
+      "module_config_done_interrupt": 2.0304,
+      "sequencer_done_interrupt": 0.51876,
+      "repeated_action": 0.13307,
+      "fetch_cfg_channel_descriptors": 0.122875,
+      "output_channel_transfer_done_interrupt": 0.09238,
+      "disable_lcu": 0.09229,
+      "trigger_sequencer": 0.060155,
+      "activate_inter_context_input": 0.03281,
+      "deactivate_vdma_channel": 0.01002,
+      "activate_boundary_output": 0.00768,
+      "activate_cfg_channel": 0.00392,
+      "deactivate_cfg_channel": 0.00306,
+      "change_vdma_to_stream_mapping": 0.0,
+      "fetch_data_from_vdma_channel": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "activate_boundary_output": 6,
+      "activate_inter_context_input": 7,
+      "repeated_action": 5,
+      "change_vdma_to_stream_mapping": 7,
+      "fetch_data_from_vdma_channel": 7,
+      "fetch_cfg_channel_descriptors": 82,
+      "lcu_interrupt": 111,
+      "disable_lcu": 111,
+      "output_channel_transfer_done_interrupt": 6,
+      "module_config_done_interrupt": 10,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "enable_lcu_default": 117,
+      "deactivate_cfg_channel": 2,
+      "deactivate_vdma_channel": 7
+     },
+     "largest_gaps": [
+      {
+       "ms": 2.46211,
+       "index": 34,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 1.445265,
+       "index": 37,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 1.22859,
+       "index": 367,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "module_config_done_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "batch_switching",
+     "timed": false,
+     "actions": 135,
+     "batch_counter": 0,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 0,
+     "last_cycles": 0,
+     "span_ms": null,
+     "type_ms": {},
+     "type_counts": {
+      "repeated_action": 1,
+      "switch_lcu_batch": 117,
+      "deactivate_vdma_channel": 7,
+      "ddr_buffering_reset": 1,
+      "activate_inter_context_output": 7,
+      "change boundary input batch": 1,
+      "burst_credits_task_start": 1
+     },
+     "largest_gaps": []
+    }
+   ],
+   "dynamic": [
+    "dynamic_0",
+    "dynamic_1"
+   ],
+   "switch_gaps_ms": [
+    0.00468
+   ],
+   "contiguous": true,
+   "dynamic_span_sum_ms": 19.22747,
+   "batch_span_ms": 19.23215,
+   "fps_period_ms": 19.440107495145632
+  },
+  {
+   "file": "/home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11s_b2_run1//fwactions.json",
+   "run": 0,
+   "batch_size": 2,
+   "fps": 73.6040540286995,
+   "clock_MHz": 200.0,
+   "contexts": [
+    {
+     "name": "activation",
+     "timed": true,
+     "actions": 8,
+     "batch_counter": 1,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 723,
+     "last_cycles": 5348,
+     "span_ms": 0.023125,
+     "type_ms": {
+      "open_boundary_output_channel": 0.018945,
+      "open_boundary_input_channel": 0.00418
+     },
+     "type_counts": {
+      "burst_credits_task_reset": 1,
+      "open_boundary_output_channel": 6,
+      "open_boundary_input_channel": 1
+     },
+     "largest_gaps": [
+      {
+       "ms": 0.00418,
+       "index": 7,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_input_channel"
+      },
+      {
+       "ms": 0.00324,
+       "index": 4,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_output_channel"
+      },
+      {
+       "ms": 0.00321,
+       "index": 3,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_output_channel"
+      }
+     ]
+    },
+    {
+     "name": "preliminary",
+     "timed": true,
+     "actions": 300,
+     "batch_counter": 1,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 24193,
+     "last_cycles": 1871702,
+     "span_ms": 9.237545,
+     "type_ms": {
+      "module_config_done_interrupt": 8.384525,
+      "sequencer_done_interrupt": 0.562595,
+      "repeated_action": 0.17919,
+      "trigger_sequencer": 0.063895,
+      "activate_inter_context_output": 0.03266,
+      "activate_cfg_channel": 0.003935,
+      "deactivate_cfg_channel": 0.00303,
+      "activate_boundary_input": 0.002655,
+      "fetch_data_from_vdma_channel": 0.00244,
+      "burst_credits_task_start": 0.00165,
+      "resume vdma channel": 0.00097,
+      "disable_lcu": 0.0,
+      "fetch_cfg_channel_descriptors": 0.0,
+      "change_vdma_to_stream_mapping": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "repeated_action": 7,
+      "disable_lcu": 117,
+      "fetch_cfg_channel_descriptors": 2,
+      "module_config_done_interrupt": 19,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "activate_inter_context_output": 7,
+      "activate_boundary_input": 1,
+      "change_vdma_to_stream_mapping": 7,
+      "resume vdma channel": 1,
+      "fetch_data_from_vdma_channel": 1,
+      "burst_credits_task_start": 1,
+      "enable_lcu_default": 117,
+      "deactivate_cfg_channel": 2
+     },
+     "largest_gaps": [
+      {
+       "ms": 5.9234,
+       "index": 200,
+       "after": "enable_lcu_default",
+       "before": "module_config_done_interrupt"
+      },
+      {
+       "ms": 1.11613,
+       "index": 123,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "module_config_done_interrupt"
+      },
+      {
+       "ms": 0.791865,
+       "index": 233,
+       "after": "enable_lcu_default",
+       "before": "module_config_done_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "dynamic_0",
+     "timed": true,
+     "actions": 493,
+     "batch_counter": 111,
+     "idle_time_ms": 54.164145,
+     "wraps": 0,
+     "first_cycles": 12468319,
+     "last_cycles": 14729186,
+     "span_ms": 11.304335,
+     "type_ms": {
+      "lcu_interrupt": 10.30756,
+      "sequencer_done_interrupt": 0.34101,
+      "fetch_cfg_channel_descriptors": 0.122055,
+      "repeated_action": 0.120355,
+      "output_channel_transfer_done_interrupt": 0.10754,
+      "disable_lcu": 0.09837,
+      "module_config_done_interrupt": 0.089125,
+      "trigger_sequencer": 0.06046,
+      "activate_inter_context_output": 0.03339,
+      "deactivate_vdma_channel": 0.00981,
+      "activate_cfg_channel": 0.003925,
+      "deactivate_cfg_channel": 0.003085,
+      "fetch_data_from_vdma_channel": 0.00248,
+      "burst_credits_task_start": 0.00169,
+      "activate_boundary_input": 0.001255,
+      "resume vdma channel": 0.001115,
+      "pause vdma channel": 0.00111,
+      "change_vdma_to_stream_mapping": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "activate_inter_context_output": 7,
+      "activate_boundary_input": 1,
+      "repeated_action": 4,
+      "change_vdma_to_stream_mapping": 7,
+      "resume vdma channel": 1,
+      "fetch_data_from_vdma_channel": 1,
+      "burst_credits_task_start": 1,
+      "fetch_cfg_channel_descriptors": 81,
+      "lcu_interrupt": 117,
+      "disable_lcu": 117,
+      "output_channel_transfer_done_interrupt": 7,
+      "module_config_done_interrupt": 10,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "enable_lcu_default": 111,
+      "deactivate_cfg_channel": 2,
+      "deactivate_vdma_channel": 7,
+      "pause vdma channel": 1
+     },
+     "largest_gaps": [
+      {
+       "ms": 5.55089,
+       "index": 24,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 0.74191,
+       "index": 311,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 0.671425,
+       "index": 123,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "dynamic_1",
+     "timed": true,
+     "actions": 496,
+     "batch_counter": 111,
+     "idle_time_ms": 54.14693,
+     "wraps": 0,
+     "first_cycles": 14730122,
+     "last_cycles": 17870016,
+     "span_ms": 15.69947,
+     "type_ms": {
+      "lcu_interrupt": 12.59431,
+      "module_config_done_interrupt": 2.02837,
+      "sequencer_done_interrupt": 0.518685,
+      "repeated_action": 0.13307,
+      "fetch_cfg_channel_descriptors": 0.122885,
+      "disable_lcu": 0.092265,
+      "output_channel_transfer_done_interrupt": 0.091925,
+      "trigger_sequencer": 0.060225,
+      "activate_inter_context_input": 0.033055,
+      "deactivate_vdma_channel": 0.01002,
+      "activate_boundary_output": 0.00768,
+      "activate_cfg_channel": 0.00392,
+      "deactivate_cfg_channel": 0.00306,
+      "change_vdma_to_stream_mapping": 0.0,
+      "fetch_data_from_vdma_channel": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "activate_boundary_output": 6,
+      "activate_inter_context_input": 7,
+      "repeated_action": 5,
+      "change_vdma_to_stream_mapping": 7,
+      "fetch_data_from_vdma_channel": 7,
+      "fetch_cfg_channel_descriptors": 82,
+      "lcu_interrupt": 111,
+      "disable_lcu": 111,
+      "output_channel_transfer_done_interrupt": 6,
+      "module_config_done_interrupt": 10,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "enable_lcu_default": 117,
+      "deactivate_cfg_channel": 2,
+      "deactivate_vdma_channel": 7
+     },
+     "largest_gaps": [
+      {
+       "ms": 6.47174,
+       "index": 34,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 1.473715,
+       "index": 54,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 1.32735,
+       "index": 37,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "batch_switching",
+     "timed": false,
+     "actions": 135,
+     "batch_counter": 0,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 0,
+     "last_cycles": 0,
+     "span_ms": null,
+     "type_ms": {},
+     "type_counts": {
+      "repeated_action": 1,
+      "switch_lcu_batch": 117,
+      "deactivate_vdma_channel": 7,
+      "ddr_buffering_reset": 1,
+      "activate_inter_context_output": 7,
+      "change boundary input batch": 1,
+      "burst_credits_task_start": 1
+     },
+     "largest_gaps": []
+    }
+   ],
+   "dynamic": [
+    "dynamic_0",
+    "dynamic_1"
+   ],
+   "switch_gaps_ms": [
+    0.00468
+   ],
+   "contiguous": true,
+   "dynamic_span_sum_ms": 27.003805,
+   "batch_span_ms": 27.008485,
+   "fps_period_ms": 27.17241633484163
+  },
+  {
+   "file": "/home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11s_b2_run2//fwactions.json",
+   "run": 0,
+   "batch_size": 2,
+   "fps": 73.42766061074717,
+   "clock_MHz": 200.0,
+   "contexts": [
+    {
+     "name": "activation",
+     "timed": true,
+     "actions": 8,
+     "batch_counter": 1,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 723,
+     "last_cycles": 5348,
+     "span_ms": 0.023125,
+     "type_ms": {
+      "open_boundary_output_channel": 0.018945,
+      "open_boundary_input_channel": 0.00418
+     },
+     "type_counts": {
+      "burst_credits_task_reset": 1,
+      "open_boundary_output_channel": 6,
+      "open_boundary_input_channel": 1
+     },
+     "largest_gaps": [
+      {
+       "ms": 0.00418,
+       "index": 7,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_input_channel"
+      },
+      {
+       "ms": 0.00324,
+       "index": 4,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_output_channel"
+      },
+      {
+       "ms": 0.00321,
+       "index": 3,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_output_channel"
+      }
+     ]
+    },
+    {
+     "name": "preliminary",
+     "timed": true,
+     "actions": 300,
+     "batch_counter": 1,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 24193,
+     "last_cycles": 1871821,
+     "span_ms": 9.23814,
+     "type_ms": {
+      "module_config_done_interrupt": 8.38516,
+      "sequencer_done_interrupt": 0.562605,
+      "repeated_action": 0.1792,
+      "trigger_sequencer": 0.063835,
+      "activate_inter_context_output": 0.032655,
+      "activate_cfg_channel": 0.003935,
+      "deactivate_cfg_channel": 0.003035,
+      "activate_boundary_input": 0.002655,
+      "fetch_data_from_vdma_channel": 0.00244,
+      "burst_credits_task_start": 0.00165,
+      "resume vdma channel": 0.00097,
+      "disable_lcu": 0.0,
+      "fetch_cfg_channel_descriptors": 0.0,
+      "change_vdma_to_stream_mapping": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "repeated_action": 7,
+      "disable_lcu": 117,
+      "fetch_cfg_channel_descriptors": 2,
+      "module_config_done_interrupt": 19,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "activate_inter_context_output": 7,
+      "activate_boundary_input": 1,
+      "change_vdma_to_stream_mapping": 7,
+      "resume vdma channel": 1,
+      "fetch_data_from_vdma_channel": 1,
+      "burst_credits_task_start": 1,
+      "enable_lcu_default": 117,
+      "deactivate_cfg_channel": 2
+     },
+     "largest_gaps": [
+      {
+       "ms": 5.92503,
+       "index": 200,
+       "after": "enable_lcu_default",
+       "before": "module_config_done_interrupt"
+      },
+      {
+       "ms": 1.114625,
+       "index": 123,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "module_config_done_interrupt"
+      },
+      {
+       "ms": 0.792095,
+       "index": 233,
+       "after": "enable_lcu_default",
+       "before": "module_config_done_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "dynamic_0",
+     "timed": true,
+     "actions": 493,
+     "batch_counter": 111,
+     "idle_time_ms": 54.185715,
+     "wraps": 0,
+     "first_cycles": 12472078,
+     "last_cycles": 14734942,
+     "span_ms": 11.31432,
+     "type_ms": {
+      "lcu_interrupt": 10.317835,
+      "sequencer_done_interrupt": 0.34106,
+      "fetch_cfg_channel_descriptors": 0.122055,
+      "repeated_action": 0.119855,
+      "output_channel_transfer_done_interrupt": 0.107745,
+      "disable_lcu": 0.09834,
+      "module_config_done_interrupt": 0.08916,
+      "trigger_sequencer": 0.06041,
+      "activate_inter_context_output": 0.03339,
+      "deactivate_vdma_channel": 0.00981,
+      "activate_cfg_channel": 0.003925,
+      "deactivate_cfg_channel": 0.003085,
+      "fetch_data_from_vdma_channel": 0.00248,
+      "burst_credits_task_start": 0.00169,
+      "activate_boundary_input": 0.001255,
+      "resume vdma channel": 0.001115,
+      "pause vdma channel": 0.00111,
+      "change_vdma_to_stream_mapping": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "activate_inter_context_output": 7,
+      "activate_boundary_input": 1,
+      "repeated_action": 4,
+      "change_vdma_to_stream_mapping": 7,
+      "resume vdma channel": 1,
+      "fetch_data_from_vdma_channel": 1,
+      "burst_credits_task_start": 1,
+      "fetch_cfg_channel_descriptors": 81,
+      "lcu_interrupt": 117,
+      "disable_lcu": 117,
+      "output_channel_transfer_done_interrupt": 7,
+      "module_config_done_interrupt": 10,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "enable_lcu_default": 111,
+      "deactivate_cfg_channel": 2,
+      "deactivate_vdma_channel": 7,
+      "pause vdma channel": 1
+     },
+     "largest_gaps": [
+      {
+       "ms": 5.555525,
+       "index": 24,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 0.74194,
+       "index": 311,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 0.67227,
+       "index": 123,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "dynamic_1",
+     "timed": true,
+     "actions": 496,
+     "batch_counter": 111,
+     "idle_time_ms": 54.170655,
+     "wraps": 0,
+     "first_cycles": 14735878,
+     "last_cycles": 17876712,
+     "span_ms": 15.70417,
+     "type_ms": {
+      "lcu_interrupt": 12.598415,
+      "module_config_done_interrupt": 2.026495,
+      "sequencer_done_interrupt": 0.51868,
+      "repeated_action": 0.133065,
+      "fetch_cfg_channel_descriptors": 0.12289,
+      "output_channel_transfer_done_interrupt": 0.094205,
+      "disable_lcu": 0.09243,
+      "trigger_sequencer": 0.060255,
+      "activate_inter_context_input": 0.033055,
+      "deactivate_vdma_channel": 0.01002,
+      "activate_boundary_output": 0.00768,
+      "activate_cfg_channel": 0.00392,
+      "deactivate_cfg_channel": 0.00306,
+      "change_vdma_to_stream_mapping": 0.0,
+      "fetch_data_from_vdma_channel": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "activate_boundary_output": 6,
+      "activate_inter_context_input": 7,
+      "repeated_action": 5,
+      "change_vdma_to_stream_mapping": 7,
+      "fetch_data_from_vdma_channel": 7,
+      "fetch_cfg_channel_descriptors": 82,
+      "lcu_interrupt": 111,
+      "disable_lcu": 111,
+      "output_channel_transfer_done_interrupt": 6,
+      "module_config_done_interrupt": 10,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "enable_lcu_default": 117,
+      "deactivate_cfg_channel": 2,
+      "deactivate_vdma_channel": 7
+     },
+     "largest_gaps": [
+      {
+       "ms": 6.471235,
+       "index": 34,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 1.4746,
+       "index": 54,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 1.32769,
+       "index": 37,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "batch_switching",
+     "timed": false,
+     "actions": 135,
+     "batch_counter": 0,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 0,
+     "last_cycles": 0,
+     "span_ms": null,
+     "type_ms": {},
+     "type_counts": {
+      "repeated_action": 1,
+      "switch_lcu_batch": 117,
+      "deactivate_vdma_channel": 7,
+      "ddr_buffering_reset": 1,
+      "activate_inter_context_output": 7,
+      "change boundary input batch": 1,
+      "burst_credits_task_start": 1
+     },
+     "largest_gaps": []
+    }
+   ],
+   "dynamic": [
+    "dynamic_0",
+    "dynamic_1"
+   ],
+   "switch_gaps_ms": [
+    0.00468
+   ],
+   "contiguous": true,
+   "dynamic_span_sum_ms": 27.01849,
+   "batch_span_ms": 27.02317,
+   "fps_period_ms": 27.23769194557823
+  },
+  {
+   "file": "/home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11s_b2_run3//fwactions.json",
+   "run": 0,
+   "batch_size": 2,
+   "fps": 73.43325467899089,
+   "clock_MHz": 200.0,
+   "contexts": [
+    {
+     "name": "activation",
+     "timed": true,
+     "actions": 8,
+     "batch_counter": 1,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 723,
+     "last_cycles": 5348,
+     "span_ms": 0.023125,
+     "type_ms": {
+      "open_boundary_output_channel": 0.018945,
+      "open_boundary_input_channel": 0.00418
+     },
+     "type_counts": {
+      "burst_credits_task_reset": 1,
+      "open_boundary_output_channel": 6,
+      "open_boundary_input_channel": 1
+     },
+     "largest_gaps": [
+      {
+       "ms": 0.00418,
+       "index": 7,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_input_channel"
+      },
+      {
+       "ms": 0.00324,
+       "index": 4,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_output_channel"
+      },
+      {
+       "ms": 0.00321,
+       "index": 3,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_output_channel"
+      }
+     ]
+    },
+    {
+     "name": "preliminary",
+     "timed": true,
+     "actions": 300,
+     "batch_counter": 1,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 24193,
+     "last_cycles": 1871529,
+     "span_ms": 9.23668,
+     "type_ms": {
+      "module_config_done_interrupt": 8.383585,
+      "sequencer_done_interrupt": 0.562635,
+      "repeated_action": 0.179195,
+      "trigger_sequencer": 0.06392,
+      "activate_inter_context_output": 0.03266,
+      "activate_cfg_channel": 0.003935,
+      "deactivate_cfg_channel": 0.003035,
+      "activate_boundary_input": 0.002655,
+      "fetch_data_from_vdma_channel": 0.00244,
+      "burst_credits_task_start": 0.00165,
+      "resume vdma channel": 0.00097,
+      "disable_lcu": 0.0,
+      "fetch_cfg_channel_descriptors": 0.0,
+      "change_vdma_to_stream_mapping": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "repeated_action": 7,
+      "disable_lcu": 117,
+      "fetch_cfg_channel_descriptors": 2,
+      "module_config_done_interrupt": 19,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "activate_inter_context_output": 7,
+      "activate_boundary_input": 1,
+      "change_vdma_to_stream_mapping": 7,
+      "resume vdma channel": 1,
+      "fetch_data_from_vdma_channel": 1,
+      "burst_credits_task_start": 1,
+      "enable_lcu_default": 117,
+      "deactivate_cfg_channel": 2
+     },
+     "largest_gaps": [
+      {
+       "ms": 5.924915,
+       "index": 200,
+       "after": "enable_lcu_default",
+       "before": "module_config_done_interrupt"
+      },
+      {
+       "ms": 1.113685,
+       "index": 123,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "module_config_done_interrupt"
+      },
+      {
+       "ms": 0.79199,
+       "index": 233,
+       "after": "enable_lcu_default",
+       "before": "module_config_done_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "dynamic_0",
+     "timed": true,
+     "actions": 493,
+     "batch_counter": 111,
+     "idle_time_ms": 54.19826,
+     "wraps": 0,
+     "first_cycles": 12472270,
+     "last_cycles": 14735592,
+     "span_ms": 11.31661,
+     "type_ms": {
+      "lcu_interrupt": 10.31881,
+      "sequencer_done_interrupt": 0.34104,
+      "fetch_cfg_channel_descriptors": 0.122055,
+      "repeated_action": 0.119855,
+      "output_channel_transfer_done_interrupt": 0.10837,
+      "disable_lcu": 0.098395,
+      "module_config_done_interrupt": 0.089785,
+      "trigger_sequencer": 0.06044,
+      "activate_inter_context_output": 0.03339,
+      "deactivate_vdma_channel": 0.00981,
+      "activate_cfg_channel": 0.003925,
+      "deactivate_cfg_channel": 0.003085,
+      "fetch_data_from_vdma_channel": 0.00248,
+      "burst_credits_task_start": 0.00169,
+      "activate_boundary_input": 0.001255,
+      "resume vdma channel": 0.001115,
+      "pause vdma channel": 0.00111,
+      "change_vdma_to_stream_mapping": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "activate_inter_context_output": 7,
+      "activate_boundary_input": 1,
+      "repeated_action": 4,
+      "change_vdma_to_stream_mapping": 7,
+      "resume vdma channel": 1,
+      "fetch_data_from_vdma_channel": 1,
+      "burst_credits_task_start": 1,
+      "fetch_cfg_channel_descriptors": 81,
+      "lcu_interrupt": 117,
+      "disable_lcu": 117,
+      "output_channel_transfer_done_interrupt": 7,
+      "module_config_done_interrupt": 10,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "enable_lcu_default": 111,
+      "deactivate_cfg_channel": 2,
+      "deactivate_vdma_channel": 7,
+      "pause vdma channel": 1
+     },
+     "largest_gaps": [
+      {
+       "ms": 5.559825,
+       "index": 24,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 0.741845,
+       "index": 311,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 0.673355,
+       "index": 123,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "dynamic_1",
+     "timed": true,
+     "actions": 496,
+     "batch_counter": 111,
+     "idle_time_ms": 54.179455,
+     "wraps": 0,
+     "first_cycles": 14736528,
+     "last_cycles": 17877389,
+     "span_ms": 15.704305,
+     "type_ms": {
+      "lcu_interrupt": 12.59959,
+      "module_config_done_interrupt": 2.028425,
+      "sequencer_done_interrupt": 0.518665,
+      "repeated_action": 0.13307,
+      "fetch_cfg_channel_descriptors": 0.122885,
+      "disable_lcu": 0.09224,
+      "output_channel_transfer_done_interrupt": 0.09145,
+      "trigger_sequencer": 0.060245,
+      "activate_inter_context_input": 0.033055,
+      "deactivate_vdma_channel": 0.01002,
+      "activate_boundary_output": 0.00768,
+      "activate_cfg_channel": 0.00392,
+      "deactivate_cfg_channel": 0.00306,
+      "change_vdma_to_stream_mapping": 0.0,
+      "fetch_data_from_vdma_channel": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "activate_boundary_output": 6,
+      "activate_inter_context_input": 7,
+      "repeated_action": 5,
+      "change_vdma_to_stream_mapping": 7,
+      "fetch_data_from_vdma_channel": 7,
+      "fetch_cfg_channel_descriptors": 82,
+      "lcu_interrupt": 111,
+      "disable_lcu": 111,
+      "output_channel_transfer_done_interrupt": 6,
+      "module_config_done_interrupt": 10,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "enable_lcu_default": 117,
+      "deactivate_cfg_channel": 2,
+      "deactivate_vdma_channel": 7
+     },
+     "largest_gaps": [
+      {
+       "ms": 6.47171,
+       "index": 34,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 1.47286,
+       "index": 54,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 1.32767,
+       "index": 37,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "batch_switching",
+     "timed": false,
+     "actions": 135,
+     "batch_counter": 0,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 0,
+     "last_cycles": 0,
+     "span_ms": null,
+     "type_ms": {},
+     "type_counts": {
+      "repeated_action": 1,
+      "switch_lcu_batch": 117,
+      "deactivate_vdma_channel": 7,
+      "ddr_buffering_reset": 1,
+      "activate_inter_context_output": 7,
+      "change boundary input batch": 1,
+      "burst_credits_task_start": 1
+     },
+     "largest_gaps": []
+    }
+   ],
+   "dynamic": [
+    "dynamic_0",
+    "dynamic_1"
+   ],
+   "switch_gaps_ms": [
+    0.00468
+   ],
+   "contiguous": true,
+   "dynamic_span_sum_ms": 27.020915000000002,
+   "batch_span_ms": 27.025595,
+   "fps_period_ms": 27.235617006802723
+  },
+  {
+   "file": "/home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11s_b8_run1//fwactions.json",
+   "run": 0,
+   "batch_size": 8,
+   "fps": 107.88095827113142,
+   "clock_MHz": 200.0,
+   "contexts": [
+    {
+     "name": "activation",
+     "timed": true,
+     "actions": 8,
+     "batch_counter": 1,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 723,
+     "last_cycles": 5397,
+     "span_ms": 0.02337,
+     "type_ms": {
+      "open_boundary_output_channel": 0.019155,
+      "open_boundary_input_channel": 0.004215
+     },
+     "type_counts": {
+      "burst_credits_task_reset": 1,
+      "open_boundary_output_channel": 6,
+      "open_boundary_input_channel": 1
+     },
+     "largest_gaps": [
+      {
+       "ms": 0.004215,
+       "index": 7,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_input_channel"
+      },
+      {
+       "ms": 0.003275,
+       "index": 4,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_output_channel"
+      },
+      {
+       "ms": 0.003245,
+       "index": 3,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_output_channel"
+      }
+     ]
+    },
+    {
+     "name": "preliminary",
+     "timed": true,
+     "actions": 300,
+     "batch_counter": 1,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 24242,
+     "last_cycles": 2013039,
+     "span_ms": 9.943985,
+     "type_ms": {
+      "module_config_done_interrupt": 8.385855,
+      "repeated_action": 0.88195,
+      "sequencer_done_interrupt": 0.56257,
+      "trigger_sequencer": 0.06391,
+      "activate_inter_context_output": 0.03314,
+      "activate_cfg_channel": 0.003935,
+      "burst_credits_task_start": 0.003535,
+      "deactivate_cfg_channel": 0.003035,
+      "activate_boundary_input": 0.00266,
+      "fetch_data_from_vdma_channel": 0.002425,
+      "resume vdma channel": 0.00097,
+      "disable_lcu": 0.0,
+      "fetch_cfg_channel_descriptors": 0.0,
+      "change_vdma_to_stream_mapping": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "repeated_action": 7,
+      "disable_lcu": 117,
+      "fetch_cfg_channel_descriptors": 2,
+      "module_config_done_interrupt": 19,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "activate_inter_context_output": 7,
+      "activate_boundary_input": 1,
+      "change_vdma_to_stream_mapping": 7,
+      "resume vdma channel": 1,
+      "fetch_data_from_vdma_channel": 1,
+      "burst_credits_task_start": 1,
+      "enable_lcu_default": 117,
+      "deactivate_cfg_channel": 2
+     },
+     "largest_gaps": [
+      {
+       "ms": 5.924635,
+       "index": 200,
+       "after": "enable_lcu_default",
+       "before": "module_config_done_interrupt"
+      },
+      {
+       "ms": 1.11665,
+       "index": 123,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "module_config_done_interrupt"
+      },
+      {
+       "ms": 0.791735,
+       "index": 233,
+       "after": "enable_lcu_default",
+       "before": "module_config_done_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "dynamic_0",
+     "timed": true,
+     "actions": 493,
+     "batch_counter": 41,
+     "idle_time_ms": 147.456685,
+     "wraps": 0,
+     "first_cycles": 31120350,
+     "last_cycles": 37959436,
+     "span_ms": 34.19543,
+     "type_ms": {
+      "lcu_interrupt": 33.195795,
+      "sequencer_done_interrupt": 0.34106,
+      "fetch_cfg_channel_descriptors": 0.12205,
+      "repeated_action": 0.119855,
+      "output_channel_transfer_done_interrupt": 0.10858,
+      "disable_lcu": 0.09832,
+      "module_config_done_interrupt": 0.08913,
+      "trigger_sequencer": 0.060425,
+      "activate_inter_context_output": 0.03388,
+      "deactivate_vdma_channel": 0.00981,
+      "activate_cfg_channel": 0.003925,
+      "burst_credits_task_start": 0.003575,
+      "deactivate_cfg_channel": 0.003085,
+      "fetch_data_from_vdma_channel": 0.00246,
+      "activate_boundary_input": 0.001255,
+      "resume vdma channel": 0.001115,
+      "pause vdma channel": 0.00111,
+      "change_vdma_to_stream_mapping": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "activate_inter_context_output": 7,
+      "activate_boundary_input": 1,
+      "repeated_action": 4,
+      "change_vdma_to_stream_mapping": 7,
+      "resume vdma channel": 1,
+      "fetch_data_from_vdma_channel": 1,
+      "burst_credits_task_start": 1,
+      "fetch_cfg_channel_descriptors": 81,
+      "lcu_interrupt": 117,
+      "disable_lcu": 117,
+      "output_channel_transfer_done_interrupt": 7,
+      "module_config_done_interrupt": 10,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "enable_lcu_default": 111,
+      "deactivate_cfg_channel": 2,
+      "deactivate_vdma_channel": 7,
+      "pause vdma channel": 1
+     },
+     "largest_gaps": [
+      {
+       "ms": 27.617615,
+       "index": 24,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 0.741925,
+       "index": 311,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 0.672615,
+       "index": 123,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "dynamic_1",
+     "timed": true,
+     "actions": 496,
+     "batch_counter": 41,
+     "idle_time_ms": 147.44386,
+     "wraps": 0,
+     "first_cycles": 37960372,
+     "last_cycles": 45852445,
+     "span_ms": 39.460365,
+     "type_ms": {
+      "lcu_interrupt": 36.3571,
+      "module_config_done_interrupt": 2.02477,
+      "sequencer_done_interrupt": 0.51886,
+      "repeated_action": 0.13307,
+      "fetch_cfg_channel_descriptors": 0.1229,
+      "output_channel_transfer_done_interrupt": 0.092945,
+      "disable_lcu": 0.092335,
+      "trigger_sequencer": 0.06016,
+      "activate_inter_context_input": 0.033545,
+      "deactivate_vdma_channel": 0.01002,
+      "activate_boundary_output": 0.00768,
+      "activate_cfg_channel": 0.00392,
+      "deactivate_cfg_channel": 0.00306,
+      "change_vdma_to_stream_mapping": 0.0,
+      "fetch_data_from_vdma_channel": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "activate_boundary_output": 6,
+      "activate_inter_context_input": 7,
+      "repeated_action": 5,
+      "change_vdma_to_stream_mapping": 7,
+      "fetch_data_from_vdma_channel": 7,
+      "fetch_cfg_channel_descriptors": 82,
+      "lcu_interrupt": 111,
+      "disable_lcu": 111,
+      "output_channel_transfer_done_interrupt": 6,
+      "module_config_done_interrupt": 10,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "enable_lcu_default": 117,
+      "deactivate_cfg_channel": 2,
+      "deactivate_vdma_channel": 7
+     },
+     "largest_gaps": [
+      {
+       "ms": 28.06582,
+       "index": 34,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 1.41252,
+       "index": 54,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 1.221,
+       "index": 367,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "module_config_done_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "batch_switching",
+     "timed": false,
+     "actions": 135,
+     "batch_counter": 0,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 0,
+     "last_cycles": 0,
+     "span_ms": null,
+     "type_ms": {},
+     "type_counts": {
+      "repeated_action": 1,
+      "switch_lcu_batch": 117,
+      "deactivate_vdma_channel": 7,
+      "ddr_buffering_reset": 1,
+      "activate_inter_context_output": 7,
+      "change boundary input batch": 1,
+      "burst_credits_task_start": 1
+     },
+     "largest_gaps": []
+    }
+   ],
+   "dynamic": [
+    "dynamic_0",
+    "dynamic_1"
+   ],
+   "switch_gaps_ms": [
+    0.00468
+   ],
+   "contiguous": true,
+   "dynamic_span_sum_ms": 73.65579500000001,
+   "batch_span_ms": 73.660475,
+   "fps_period_ms": 74.15581144444444
+  },
+  {
+   "file": "/home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11s_b8_run2//fwactions.json",
+   "run": 0,
+   "batch_size": 8,
+   "fps": 107.87376240159286,
+   "clock_MHz": 200.0,
+   "contexts": [
+    {
+     "name": "activation",
+     "timed": true,
+     "actions": 8,
+     "batch_counter": 1,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 723,
+     "last_cycles": 5397,
+     "span_ms": 0.02337,
+     "type_ms": {
+      "open_boundary_output_channel": 0.019155,
+      "open_boundary_input_channel": 0.004215
+     },
+     "type_counts": {
+      "burst_credits_task_reset": 1,
+      "open_boundary_output_channel": 6,
+      "open_boundary_input_channel": 1
+     },
+     "largest_gaps": [
+      {
+       "ms": 0.004215,
+       "index": 7,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_input_channel"
+      },
+      {
+       "ms": 0.003275,
+       "index": 4,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_output_channel"
+      },
+      {
+       "ms": 0.003245,
+       "index": 3,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_output_channel"
+      }
+     ]
+    },
+    {
+     "name": "preliminary",
+     "timed": true,
+     "actions": 300,
+     "batch_counter": 1,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 24242,
+     "last_cycles": 1872698,
+     "span_ms": 9.24228,
+     "type_ms": {
+      "module_config_done_interrupt": 8.38647,
+      "sequencer_done_interrupt": 0.56262,
+      "repeated_action": 0.179695,
+      "trigger_sequencer": 0.06379,
+      "activate_inter_context_output": 0.033155,
+      "activate_cfg_channel": 0.003935,
+      "burst_credits_task_start": 0.003535,
+      "deactivate_cfg_channel": 0.003035,
+      "activate_boundary_input": 0.002655,
+      "fetch_data_from_vdma_channel": 0.00242,
+      "resume vdma channel": 0.00097,
+      "disable_lcu": 0.0,
+      "fetch_cfg_channel_descriptors": 0.0,
+      "change_vdma_to_stream_mapping": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "repeated_action": 7,
+      "disable_lcu": 117,
+      "fetch_cfg_channel_descriptors": 2,
+      "module_config_done_interrupt": 19,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "activate_inter_context_output": 7,
+      "activate_boundary_input": 1,
+      "change_vdma_to_stream_mapping": 7,
+      "resume vdma channel": 1,
+      "fetch_data_from_vdma_channel": 1,
+      "burst_credits_task_start": 1,
+      "enable_lcu_default": 117,
+      "deactivate_cfg_channel": 2
+     },
+     "largest_gaps": [
+      {
+       "ms": 5.927195,
+       "index": 200,
+       "after": "enable_lcu_default",
+       "before": "module_config_done_interrupt"
+      },
+      {
+       "ms": 1.11411,
+       "index": 123,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "module_config_done_interrupt"
+      },
+      {
+       "ms": 0.792055,
+       "index": 233,
+       "after": "enable_lcu_default",
+       "before": "module_config_done_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "dynamic_0",
+     "timed": true,
+     "actions": 493,
+     "batch_counter": 41,
+     "idle_time_ms": 147.472685,
+     "wraps": 0,
+     "first_cycles": 31131946,
+     "last_cycles": 37970108,
+     "span_ms": 34.19081,
+     "type_ms": {
+      "lcu_interrupt": 33.193325,
+      "sequencer_done_interrupt": 0.34105,
+      "fetch_cfg_channel_descriptors": 0.12205,
+      "repeated_action": 0.119855,
+      "output_channel_transfer_done_interrupt": 0.106355,
+      "disable_lcu": 0.098405,
+      "module_config_done_interrupt": 0.08914,
+      "trigger_sequencer": 0.060415,
+      "activate_inter_context_output": 0.03388,
+      "deactivate_vdma_channel": 0.00981,
+      "activate_cfg_channel": 0.003925,
+      "burst_credits_task_start": 0.003575,
+      "deactivate_cfg_channel": 0.003085,
+      "fetch_data_from_vdma_channel": 0.00246,
+      "activate_boundary_input": 0.001255,
+      "resume vdma channel": 0.001115,
+      "pause vdma channel": 0.00111,
+      "change_vdma_to_stream_mapping": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "activate_inter_context_output": 7,
+      "activate_boundary_input": 1,
+      "repeated_action": 4,
+      "change_vdma_to_stream_mapping": 7,
+      "resume vdma channel": 1,
+      "fetch_data_from_vdma_channel": 1,
+      "burst_credits_task_start": 1,
+      "fetch_cfg_channel_descriptors": 81,
+      "lcu_interrupt": 117,
+      "disable_lcu": 117,
+      "output_channel_transfer_done_interrupt": 7,
+      "module_config_done_interrupt": 10,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "enable_lcu_default": 111,
+      "deactivate_cfg_channel": 2,
+      "deactivate_vdma_channel": 7,
+      "pause vdma channel": 1
+     },
+     "largest_gaps": [
+      {
+       "ms": 27.61747,
+       "index": 24,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 0.74191,
+       "index": 311,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 0.674555,
+       "index": 123,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "dynamic_1",
+     "timed": true,
+     "actions": 496,
+     "batch_counter": 41,
+     "idle_time_ms": 147.453385,
+     "wraps": 0,
+     "first_cycles": 37971044,
+     "last_cycles": 45862882,
+     "span_ms": 39.45919,
+     "type_ms": {
+      "lcu_interrupt": 36.35525,
+      "module_config_done_interrupt": 2.02662,
+      "sequencer_done_interrupt": 0.518665,
+      "repeated_action": 0.13307,
+      "fetch_cfg_channel_descriptors": 0.1229,
+      "disable_lcu": 0.092315,
+      "output_channel_transfer_done_interrupt": 0.091885,
+      "trigger_sequencer": 0.06026,
+      "activate_inter_context_input": 0.033545,
+      "deactivate_vdma_channel": 0.01002,
+      "activate_boundary_output": 0.00768,
+      "activate_cfg_channel": 0.00392,
+      "deactivate_cfg_channel": 0.00306,
+      "change_vdma_to_stream_mapping": 0.0,
+      "fetch_data_from_vdma_channel": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "activate_boundary_output": 6,
+      "activate_inter_context_input": 7,
+      "repeated_action": 5,
+      "change_vdma_to_stream_mapping": 7,
+      "fetch_data_from_vdma_channel": 7,
+      "fetch_cfg_channel_descriptors": 82,
+      "lcu_interrupt": 111,
+      "disable_lcu": 111,
+      "output_channel_transfer_done_interrupt": 6,
+      "module_config_done_interrupt": 10,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "enable_lcu_default": 117,
+      "deactivate_cfg_channel": 2,
+      "deactivate_vdma_channel": 7
+     },
+     "largest_gaps": [
+      {
+       "ms": 28.059675,
+       "index": 34,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 1.41232,
+       "index": 54,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 1.22233,
+       "index": 367,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "module_config_done_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "batch_switching",
+     "timed": false,
+     "actions": 135,
+     "batch_counter": 0,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 0,
+     "last_cycles": 0,
+     "span_ms": null,
+     "type_ms": {},
+     "type_counts": {
+      "repeated_action": 1,
+      "switch_lcu_batch": 117,
+      "deactivate_vdma_channel": 7,
+      "ddr_buffering_reset": 1,
+      "activate_inter_context_output": 7,
+      "change boundary input batch": 1,
+      "burst_credits_task_start": 1
+     },
+     "largest_gaps": []
+    }
+   ],
+   "dynamic": [
+    "dynamic_0",
+    "dynamic_1"
+   ],
+   "switch_gaps_ms": [
+    0.00468
+   ],
+   "contiguous": true,
+   "dynamic_span_sum_ms": 73.65,
+   "batch_span_ms": 73.65468,
+   "fps_period_ms": 74.16075811111111
+  },
+  {
+   "file": "/home/pi/workspace/yolo_vulkan_optimize/07_results/hef_context_profile/runs/model_zoo_small/raw/yolov11s_b8_run3//fwactions.json",
+   "run": 0,
+   "batch_size": 8,
+   "fps": 107.87582074465249,
+   "clock_MHz": 200.0,
+   "contexts": [
+    {
+     "name": "activation",
+     "timed": true,
+     "actions": 8,
+     "batch_counter": 1,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 723,
+     "last_cycles": 5397,
+     "span_ms": 0.02337,
+     "type_ms": {
+      "open_boundary_output_channel": 0.019155,
+      "open_boundary_input_channel": 0.004215
+     },
+     "type_counts": {
+      "burst_credits_task_reset": 1,
+      "open_boundary_output_channel": 6,
+      "open_boundary_input_channel": 1
+     },
+     "largest_gaps": [
+      {
+       "ms": 0.004215,
+       "index": 7,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_input_channel"
+      },
+      {
+       "ms": 0.003275,
+       "index": 4,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_output_channel"
+      },
+      {
+       "ms": 0.003245,
+       "index": 3,
+       "after": "open_boundary_output_channel",
+       "before": "open_boundary_output_channel"
+      }
+     ]
+    },
+    {
+     "name": "preliminary",
+     "timed": true,
+     "actions": 300,
+     "batch_counter": 1,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 24242,
+     "last_cycles": 1974419,
+     "span_ms": 9.750885,
+     "type_ms": {
+      "module_config_done_interrupt": 7.894105,
+      "repeated_action": 1.180635,
+      "sequencer_done_interrupt": 0.562575,
+      "trigger_sequencer": 0.06387,
+      "activate_inter_context_output": 0.033155,
+      "activate_cfg_channel": 0.003935,
+      "burst_credits_task_start": 0.003535,
+      "deactivate_cfg_channel": 0.003035,
+      "activate_boundary_input": 0.00265,
+      "fetch_data_from_vdma_channel": 0.00242,
+      "resume vdma channel": 0.00097,
+      "disable_lcu": 0.0,
+      "fetch_cfg_channel_descriptors": 0.0,
+      "change_vdma_to_stream_mapping": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "repeated_action": 7,
+      "disable_lcu": 117,
+      "fetch_cfg_channel_descriptors": 2,
+      "module_config_done_interrupt": 19,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "activate_inter_context_output": 7,
+      "activate_boundary_input": 1,
+      "change_vdma_to_stream_mapping": 7,
+      "resume vdma channel": 1,
+      "fetch_data_from_vdma_channel": 1,
+      "burst_credits_task_start": 1,
+      "enable_lcu_default": 117,
+      "deactivate_cfg_channel": 2
+     },
+     "largest_gaps": [
+      {
+       "ms": 5.924035,
+       "index": 200,
+       "after": "enable_lcu_default",
+       "before": "module_config_done_interrupt"
+      },
+      {
+       "ms": 1.116315,
+       "index": 123,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "module_config_done_interrupt"
+      },
+      {
+       "ms": 1.030235,
+       "index": 235,
+       "after": "module_config_done_interrupt",
+       "before": "repeated_action"
+      }
+     ]
+    },
+    {
+     "name": "dynamic_0",
+     "timed": true,
+     "actions": 493,
+     "batch_counter": 41,
+     "idle_time_ms": 147.476805,
+     "wraps": 0,
+     "first_cycles": 31108993,
+     "last_cycles": 37950547,
+     "span_ms": 34.20777,
+     "type_ms": {
+      "lcu_interrupt": 33.2094,
+      "sequencer_done_interrupt": 0.340975,
+      "fetch_cfg_channel_descriptors": 0.12205,
+      "repeated_action": 0.119855,
+      "output_channel_transfer_done_interrupt": 0.10734,
+      "disable_lcu": 0.098385,
+      "module_config_done_interrupt": 0.08907,
+      "trigger_sequencer": 0.06048,
+      "activate_inter_context_output": 0.03388,
+      "deactivate_vdma_channel": 0.00981,
+      "activate_cfg_channel": 0.003925,
+      "burst_credits_task_start": 0.003575,
+      "deactivate_cfg_channel": 0.003085,
+      "fetch_data_from_vdma_channel": 0.00246,
+      "activate_boundary_input": 0.001255,
+      "resume vdma channel": 0.001115,
+      "pause vdma channel": 0.00111,
+      "change_vdma_to_stream_mapping": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "activate_inter_context_output": 7,
+      "activate_boundary_input": 1,
+      "repeated_action": 4,
+      "change_vdma_to_stream_mapping": 7,
+      "resume vdma channel": 1,
+      "fetch_data_from_vdma_channel": 1,
+      "burst_credits_task_start": 1,
+      "fetch_cfg_channel_descriptors": 81,
+      "lcu_interrupt": 117,
+      "disable_lcu": 117,
+      "output_channel_transfer_done_interrupt": 7,
+      "module_config_done_interrupt": 10,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "enable_lcu_default": 111,
+      "deactivate_cfg_channel": 2,
+      "deactivate_vdma_channel": 7,
+      "pause vdma channel": 1
+     },
+     "largest_gaps": [
+      {
+       "ms": 27.62489,
+       "index": 24,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 0.741745,
+       "index": 311,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 0.67786,
+       "index": 123,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "dynamic_1",
+     "timed": true,
+     "actions": 496,
+     "batch_counter": 41,
+     "idle_time_ms": 147.462525,
+     "wraps": 0,
+     "first_cycles": 37951483,
+     "last_cycles": 45844306,
+     "span_ms": 39.464115,
+     "type_ms": {
+      "lcu_interrupt": 36.35502,
+      "module_config_done_interrupt": 2.03042,
+      "sequencer_done_interrupt": 0.51871,
+      "repeated_action": 0.13358,
+      "fetch_cfg_channel_descriptors": 0.1229,
+      "output_channel_transfer_done_interrupt": 0.092745,
+      "disable_lcu": 0.092295,
+      "trigger_sequencer": 0.06022,
+      "activate_inter_context_input": 0.033545,
+      "deactivate_vdma_channel": 0.01002,
+      "activate_boundary_output": 0.00768,
+      "activate_cfg_channel": 0.00392,
+      "deactivate_cfg_channel": 0.00306,
+      "change_vdma_to_stream_mapping": 0.0,
+      "fetch_data_from_vdma_channel": 0.0,
+      "enable_lcu_default": 0.0
+     },
+     "type_counts": {
+      "activate_cfg_channel": 2,
+      "activate_boundary_output": 6,
+      "activate_inter_context_input": 7,
+      "repeated_action": 5,
+      "change_vdma_to_stream_mapping": 7,
+      "fetch_data_from_vdma_channel": 7,
+      "fetch_cfg_channel_descriptors": 82,
+      "lcu_interrupt": 111,
+      "disable_lcu": 111,
+      "output_channel_transfer_done_interrupt": 6,
+      "module_config_done_interrupt": 10,
+      "trigger_sequencer": 8,
+      "sequencer_done_interrupt": 8,
+      "enable_lcu_default": 117,
+      "deactivate_cfg_channel": 2,
+      "deactivate_vdma_channel": 7
+     },
+     "largest_gaps": [
+      {
+       "ms": 28.057685,
+       "index": 34,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 1.413855,
+       "index": 54,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "lcu_interrupt"
+      },
+      {
+       "ms": 1.228005,
+       "index": 367,
+       "after": "fetch_cfg_channel_descriptors",
+       "before": "module_config_done_interrupt"
+      }
+     ]
+    },
+    {
+     "name": "batch_switching",
+     "timed": false,
+     "actions": 135,
+     "batch_counter": 0,
+     "idle_time_ms": 0.0,
+     "wraps": 0,
+     "first_cycles": 0,
+     "last_cycles": 0,
+     "span_ms": null,
+     "type_ms": {},
+     "type_counts": {
+      "repeated_action": 1,
+      "switch_lcu_batch": 117,
+      "deactivate_vdma_channel": 7,
+      "ddr_buffering_reset": 1,
+      "activate_inter_context_output": 7,
+      "change boundary input batch": 1,
+      "burst_credits_task_start": 1
+     },
+     "largest_gaps": []
+    }
+   ],
+   "dynamic": [
+    "dynamic_0",
+    "dynamic_1"
+   ],
+   "switch_gaps_ms": [
+    0.00468
+   ],
+   "contiguous": true,
+   "dynamic_span_sum_ms": 73.671885,
+   "batch_span_ms": 73.676565,
+   "fps_period_ms": 74.15934307407407
+  }
+ ],
+ "fits": {
+  "contexts": {
+   "dynamic_0": {
+    "a": 3.861791492248063,
+    "b": 3.7897145930232554,
+    "n": 9,
+    "rms": 0.09915977126489423
+   },
+   "dynamic_1": {
+    "a": 7.595007189922482,
+    "b": 3.985709554263565,
+    "n": 9,
+    "rms": 0.10420888003595646
+   }
+  },
+  "types": {
+   "dynamic_0": {
+    "lcu_interrupt": {
+     "a": 2.865944127906978,
+     "b": 3.7893746317829455,
+     "n": 9,
+     "rms": 0.09953038237637991
+    }
+   },
+   "dynamic_1": {
+    "lcu_interrupt": {
+     "a": 4.489371065891474,
+     "b": 3.985741375968992,
+     "n": 9,
+     "rms": 0.10448034210429029
+    },
+    "module_config_done_interrupt": {
+     "a": 2.0287445736434107,
+     "b": -0.00019488372093024584,
+     "n": 9,
+     "rms": 0.001666213232892941
+    },
+    "sequencer_done_interrupt": {
+     "a": 0.5187256395348837,
+     "b": 1.4922480620166736e-06,
+     "n": 9,
+     "rms": 6.523239117095185e-05
+    }
+   }
+  },
+  "totals": {
+   "dynamic_span_sum": {
+    "a": 11.45679868217055,
+    "b": 7.775424147286821,
+    "n": 9,
+    "rms": 0.008639767291682178
+   },
+   "batch_span": {
+    "a": 11.461478682170544,
+    "b": 7.775424147286821,
+    "n": 9,
+    "rms": 0.008639767291682162
+   },
+   "fps_period": {
+    "a": 11.561323304319643,
+    "b": 7.824743416039992,
+    "n": 9,
+    "rms": 0.05040437185660873
+   }
+  }
+ }
+}

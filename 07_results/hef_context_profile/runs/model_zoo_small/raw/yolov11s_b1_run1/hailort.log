@@ -1,0 +1,12 @@
+[2026-11-09 17:24:29.229] [554169] [HailoRT] [info] [vdevice.cpp:535] [create] Creating vdevice with params: device_count: 1, scheduling_algorithm: NONE, multi_process_service: false
+[2026-11-09 17:24:29.242] [554169] [HailoRT] [info] [device.cpp:57] [Device] OS Version: Linux 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64
+[2026-11-09 17:24:29.242] [554169] [HailoRT] [info] [control.cpp:176] [identify] firmware_version is: 4.24.0
+[2026-11-09 17:24:29.242] [554169] [HailoRT] [info] [vdevice.cpp:682] [create] VDevice Infos: 0001:01:00.0
+[2026-11-09 17:24:29.331] [554169] [HailoRT] [info] [internal_buffer_manager.cpp:77] [print_execution_results] Planned internal buffer memory: CMA=0 CMA-Desc=458752 Pinned=3101184. memory to edge layer usage factor is 1
+[2026-11-09 17:24:29.331] [554169] [HailoRT] [info] [internal_buffer_manager.cpp:86] [print_execution_results] Default Internal buffer planner executed successfully
+[2026-11-09 17:24:29.362] [554169] [HailoRT] [info] [device_internal.cpp:57] [configure] Configuring HEF took 37.238217 milliseconds
+[2026-11-09 17:24:29.362] [554169] [HailoRT] [info] [vdevice.cpp:780] [configure] Configuring HEF on VDevice took 37.554015 milliseconds
+[2026-11-09 17:24:29.380] [554203] [HailoRT] [info] [core_op.cpp:155] [activate] Activating yolov11s took 0.185094 milliseconds. Note that the function is asynchronous and thus the network is not fully activated yet.
+[2026-11-09 17:24:29.380] [554203] [HailoRT] [info] [core_op.cpp:155] [activate] Activating yolov11s took 0.222871 milliseconds. Note that the function is asynchronous and thus the network is not fully activated yet.
+[2026-11-09 17:24:32.414] [554203] [HailoRT] [info] [core_op.cpp:185] [deactivate] Deactivating took 0.008925 ms
+[2026-11-09 17:24:32.414] [554203] [HailoRT] [info] [core_op.cpp:185] [deactivate] Deactivating took 0.050648 ms

@@ -1,0 +1,16 @@
+model,batch,source,runs,fps_median,fps_min,fps_max,hw_latency_ms_median,hw_latency_ms_min,hw_latency_ms_max
+yolov11n,1,run2_fw_actions,3,104.890,104.890,104.890,,,
+yolov11n,2,run2_fw_actions,3,147.510,147.290,147.510,,,
+yolov11n,8,run2_fw_actions,3,216.550,216.540,216.830,,,
+yolov11n,1,benchmark_hw_only,3,104.763,104.762,104.764,7.753,7.753,7.754
+yolov11n,8,benchmark_hw_only,3,217.471,217.471,217.472,22.140,22.131,22.143
+yolov11s,1,run2_fw_actions,3,51.950,51.630,51.950,,,
+yolov11s,2,run2_fw_actions,3,73.620,73.600,73.620,,,
+yolov11s,8,run2_fw_actions,3,106.890,106.890,106.890,,,
+yolov11s,1,benchmark_hw_only,3,51.969,51.968,51.969,15.199,15.198,15.213
+yolov11s,8,benchmark_hw_only,3,107.945,107.843,107.946,47.955,47.954,47.961
+yolov11m,1,run2_fw_actions,3,24.310,24.310,24.330,,,
+yolov11m,2,run2_fw_actions,3,34.630,34.630,34.660,,,
+yolov11m,8,run2_fw_actions,3,50.610,50.610,50.610,,,
+yolov11m,1,benchmark_hw_only,3,24.309,24.309,24.310,32.512,32.509,32.516
+yolov11m,8,benchmark_hw_only,3,51.032,51.032,51.033,126.261,126.258,126.267

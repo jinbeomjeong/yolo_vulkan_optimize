@@ -1,0 +1,26 @@
+# hef_context_profile/model_zoo_small environment snapshot 2026-11-09T17:23:15+09:00
+# models: yolov11n yolov11s yolov11m; fw-actions B = 1 2 8 (run2 -t 3); benchmark B = 1 8 (-t 10); 3 repetitions (rep outer, B inner)
+git HEAD: 7bc338cffc56c259f36fb17ecf387731bbacaacb
+kernel: 6.18.50+rpt-rpi-2712
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+soc: temp=67.5'C throttled=0xe0000 frequency(0)=2400027136
+v3d_freq=1150
+cpufreq policy0: governor ondemand cur_khz 1700000
+hailo temp: 56.0 C
+hef: 03_models/yolov11n.hef sha256 9b6fb370b660b331e4dc2a7b8dd0b0d037934ed31d2323be186fb30cff517e51 size 8614163
+hef: 03_models/yolov11s.hef sha256 5a9dbb513d2e31435753fe0fab0193cf9a3fb995124dc41f325a53b59ecacd15 size 19578267
+hef: 03_models/yolov11m.hef sha256 d5716578f0d18b01220db2ba89c8a3bec2bf2921cc04b4b794cfe88d573aa779 size 33667662
+hef source: Hailo Model Zoo v2.19.0 compiled/hailo8 (n/s/m byte-identical to v2.20.0)
+hailortcli: HailoRT-CLI version 4.24.0
+hailo_pci driver: 4.24.0
+bench lock: 553136 (this script)
+/dev/hailo0 users: 0
+cooling gate: hailo HOT_C=75 COOL_C=65; soc SOC_MAX_C=75; COOL_MAX_S=180 (before every run)
+--- hailortcli fw-control identify
+Executing on device: 0001:01:00.0
+Identifying board
+Control Protocol Version: 2
+Firmware Version: 4.24.0 (release,app,extended context switch buffer)
+Logger Version: 0
+Device Architecture: HAILO8
+
