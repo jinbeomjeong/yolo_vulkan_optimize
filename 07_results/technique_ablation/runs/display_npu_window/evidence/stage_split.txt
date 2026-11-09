@@ -1,0 +1,7 @@
+run                arr->dec  dec->sub  arr->sub       X  npu->cmp  arr->cmp
+base_run1              3.68     14.41     17.02   35.96      0.58     53.64
+base_run2              3.64     14.37     16.87   35.99      0.57     53.43
+base_run3              3.66     14.29     16.92   35.99      0.57     53.48
+display_off_run1       3.60     14.57     17.26   40.36      0.56     58.15
+display_off_run2       3.59     14.27     17.16   40.35      0.56     58.09
+display_off_run3       3.59     14.56     17.27   40.36      0.56     58.19

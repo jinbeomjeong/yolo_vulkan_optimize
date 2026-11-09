@@ -1,0 +1,14 @@
+base_run1          fps  24.30  npu_mean  32.72  X_med  35.96  G_med  4.97  G_mean  5.55  X+G_med  40.92  n 1442
+base_run2          fps  24.33  npu_mean  32.77  X_med  35.99  G_med  4.94  G_mean  5.47  X+G_med  40.92  n 1444
+base_run3          fps  24.33  npu_mean  32.80  X_med  35.99  G_med  4.93  G_mean  5.47  X+G_med  40.92  n 1444
+display_off_run1   fps  24.42  npu_mean  38.35  X_med  40.36  G_med  0.57  G_mean  0.73  X+G_med  40.92  n 1449
+display_off_run2   fps  24.42  npu_mean  38.34  X_med  40.35  G_med  0.57  G_mean  0.74  X+G_med  40.92  n 1449
+display_off_run3   fps  24.42  npu_mean  38.36  X_med  40.36  G_med  0.57  G_mean  0.72  X+G_med  40.92  n 1449
+
+per config: median over runs of the per-run values
+base         fps  24.33  npu_mean  32.77  X_med  35.99  G_med  4.94  G_mean  5.47  X+G_med  40.92
+display_off  fps  24.42  npu_mean  38.35  X_med  40.36  G_med  0.57  G_mean  0.73  X+G_med  40.92
+
+X median by G bin (all runs of a config pooled)
+base         G 0-1: - | G 1-2: - | G 2-4: - | G 4-8: X 35.98 (n 3941) | G 8-inf: X 32.86 (n 389)
+display_off  G 0-1: X 40.36 (n 4034) | G 1-2: X 39.41 (n 90) | G 2-4: X 38.02 (n 171) | G 4-8: X 36.61 (n 52) | G 8-inf: -

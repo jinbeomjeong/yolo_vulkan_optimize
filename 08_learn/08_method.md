@@ -328,7 +328,7 @@ FFmpeg 프레임 스레드가 늘린 메모리 지연을 원인으로 **추정**
 | 1150 MHz에서 GPU 작업 시간이 +2.6~6.3% 계단으로 바뀌는 현상 | **원인 미확인** (늘어난 몫은 전부 메모리 읽기 대기) |
 | 디코더 1스레드에서 표시 on 앱 내부 e2e p90이 +1.9 ms인 이유 | **추정** (source pace에서 가끔 한 프레임 준비가 늦음) |
 | 입력 페이싱 b2 의 `e2e_arr` max(136~142 ms)가 p90(104 ms)보다 훨씬 큰 이유 | **가렸다**(2026-10-12, `--frame-log`) — 실행 끝 프레임을 비우는 과정의 관찰 지연. 정상 상태 최대 약 107 ms |
-| 표시를 켠 배치 1 에서 NPU 지연이 4 ms 짧아지는 이유(35.2 → 31.1 ms) | **유력 가설(2026-11-07)** — slots 1 의 `npu_ms` 는 장치 주기에서 "콜백 → 다음 제출" 간격을 뺀 값이라 앞단 호스트 일이 늘면 짧아 보인다. `--input-copy` 로는 확인([`npu_latency_window`](../07_results/technique_ablation/runs/npu_latency_window/summary.md) §3), 표시 on 으로는 직접 재지 않음. `npu_ms` 하락만 설명하며, 표시 on/off 사이 도착 기준 e2e 차이는 이 가설 밖이다 |
+| 표시를 켠 배치 1 에서 NPU 지연이 4 ms 짧아지는 이유(35.2 → 31.1 ms) | **해소(2026-11-09)** — 왼쪽 값은 옛 회차, 이번 회차는 32.77 대 38.35 ms. 표시 on/off 모두 장치 주기 X + G = 40.92 ms로 같다. 표시 on 은 콜백 → 다음 GPU 제출(G)이 4.9 ms(off 0.6 ms)라 `npu_ms` 가 짧아 보인다(측정 구간 효과, [`npu_latency_window`](../07_results/technique_ablation/runs/npu_latency_window/summary.md)와 같은 원리). 도착 기준 e2e 도 4.7 ms 짧은데, 이것은 실제 차이다 — 늦은 제출이 NPU 의 출력 뒤 꼬리(m B=1 약 8 ms)와 겹쳐 X 가 4.4 ms 줄고, 도착 → 제출은 같다([`display_npu_window`](../07_results/technique_ablation/runs/display_npu_window/summary.md)) |
 
 각 `summary.md` 끝에는 **"주의·남은 일"** 절이 있고,
 [`07_results/README.md`](../07_results/README.md) 와

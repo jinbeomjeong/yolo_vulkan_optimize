@@ -1,0 +1,36 @@
+# technique_ablation_bench 2026-11-09T19:25:09+09:00
+kernel: 6.18.50+rpt-rpi-2712
+soc temp: 65.3 C, hailo temp: 54.8 C
+throttled=0xe0000
+frequency(0)=2400030464
+v3d_freq=1150
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+cpufreq policy0: governor performance cur_khz 2400000
+libavcodec61: 8:7.1.5-0+deb13u1+rpt2
+hailort: 4.24.0
+mesa-vulkan-drivers: 26.2.2-1~bpo13+0~rpt1
+labwc: 0.20.2-1~bpo13+1
+libwlroots-0.20: 0.20.2-1+rpt4
+git HEAD: 02f753564c6e43c45715af22929e78facbaa3646 (tracked changes)
+bin: /tmp/claude-1000/-home-pi-workspace-yolo-vulkan-optimize/e4a7ad62-ae73-489e-9893-56a55ad8454a/scratchpad/new_bin/yvo_pipeline md5 af63c101943f444a215e7eca0315b77b mtime 2026-11-06 23:33:15.368149679 +0900
+video: /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 md5 f04e7047fed4e1c6d84ea24ec5dc6be9 frames: 0 (0 = all) runs: 3
+timeout -s KILL 180s, connector HDMI-A-1, sampler interval 0.5s, clk_tck 100
+wlr-randr HDMI-A-1: Enabled; labwc DRM master: y
+mode:     1920x1080 px, 60.000000 Hz (preferred, current)
+env: WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/1000
+YVO_DEC_THREADS for every run: 1
+common args: --mode dmabuf --decoder hw --batch 1 --slots 1 --input-pace source --input-queue 1 --display on --display-backend wayland --display-fullscreen --display-sync matched --display-pace source --dump-dir . --dump-every 100000000
+configs (id|technique args):
+  base|--layout nhcw --postproc gpu --nms gpu
+  layout_nhwc|--layout nhwc --postproc host
+  post_host|--layout nhcw --postproc host
+  nms_cpu|--layout nhcw --postproc gpu --nms cpu
+  input_copy|--layout nhcw --postproc gpu --nms gpu --input-copy
+  decode_copy|--layout nhcw --postproc gpu --nms gpu --decode-copy
+  output_copy|--layout nhcw --postproc gpu --nms gpu --output-copy
+  all_copy|--layout nhcw --postproc gpu --nms gpu --decode-copy --input-copy --output-copy
+  display_off|--layout nhcw --postproc gpu --nms gpu --display off
+# after 2026-11-09T19:35:07+09:00
+soc temp: 66.4 C, hailo temp: 74.1 C
+bin md5 (after measurement): af63c101943f444a215e7eca0315b77b
+throttled=0xe0000

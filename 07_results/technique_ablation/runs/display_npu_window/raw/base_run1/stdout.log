@@ -1,0 +1,44 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[hevc @ 0x555686a855e0] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+== yvo_pipeline (dmabuf, nhcw, batch 1, slots 1, gpu_depth 1, postproc gpu/export) ==
+frames          1472 (decoded 1472, errors 0)
+wall            60.587 s, 24.30 FPS
+cpu             1.446 ms/frame (process user+sys 2129.0 ms, 4% of one core)
+decode call ms  mean 2.831  median 3.633  p90 4.882  max 11.739
+gpu shader ms   mean 0.166  median 0.004  p90 0.486  max 2.897
+npu latency ms  mean 32.724  median 33.043  p90 33.162  max 42.689
+e2e latency ms  mean 50.837  median 50.925  p90 64.100  max 72.648  (decode return → NPU completion callback)
+slot wait ms    mean 22.357  p90 36.174  (time the main thread waited for a free slot)
+input pace      source @ 30.000 fps, input queue 1 (leaky: full -> drop the oldest)
+arrived         1816 (processed 1472, dropped 344 = 18.94%, abandoned 0, longest drop run 1, queue depth max 1)
+e2e arrival ms  mean 53.745  median 53.639  p90 66.569  max 72.963  (source arrival → NPU completion callback)
+queue wait ms   mean 14.533  p90 27.373  max 35.402  (decode return → GPU submit)
+decode late ms  mean 2.999  p90 5.120  max 23.584  (source arrival → decode return)
+note            paced: FPS and cpu ms/frame are per processed frame (plus polling) — not comparable to asap
+gpu post ms     mean 0.450  median 0.446  p90 0.489  max 0.669  (yolo_decode.comp pass 1)
+cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+nms backend     gpu
+gpu nms ms      mean 0.0579  median 0.0556  p90 0.0758  max 0.1011  (efficient_nms.comp)
+nms fallback    0 frames (capacity 0, iou guard 0)
+candidates      mean 26.10  max 75  overflow frames 0
+slot hold ms    mean 0.731  median 0.582  p90 0.687  max 11.785  (NPU completion callback → slot return)
+disp convert ms mean 3.610  median 3.587  p90 3.666  (display_convert.comp)
+disp overlay ms mean 0.124  median 0.127  p90 0.160  (overlay_boxes.comp)
+present interval ms median 34.523  p90 50.501  (n=1470)
+glass-to-glass  mean 52.42  median 52.02  p90 59.54  (n=1472, slot acquired → reaches screen)
+decode-to-screen mean 66.95  median 67.37  p90 83.85  (n=1472, decode return → reaches screen, includes slot wait)
+arrival-to-present mean 69.86  median 71.07  p90 87.31  max 108.50  (n=1472, scheduled source arrival → reaches screen)
+display         presented 1472, dropped 0, recreates 1, overlay overflow 0
+display warmup  0 presentations excluded from glass / decode-to-screen / present interval / late frames (glass n 1472 of 1472, glass median 52.02)
+held frames max 3 (decoder limit about 13), slot timeout 0
+detections      7659 total, 5.20 / frame
+hailo chip temp 54.9 -> 69.5 C
+soc temp        67.0 -> 66.4 C
+vk validation   errors 0, warnings 1
+RESULT_CSV,base,dmabuf,nhcw,1,1,1472,60.587,24.30,1.446,2.831,0.166,0.486,32.72,33.16,50.84,64.10,7659,54.9,69.5,67.0,66.4,1
+RESULT_CSV2,base,gpu,export,0.4504,0.4886,0.000,26.10,75,0,1,wayland,matched,source,3.6097,3.6660,0.1236,34.523,52.42,59.54,1472,0,1,3,0,gpu,0.0579,0.0758,0,0,-,-,-,-,-,-
+RESULT_CSV3,base,0,52.02,1472,50.501,1470,-,-,-,-,-,-,-,1,66.95,67.37,83.85,1472
+RESULT_CSV4,base,1,30.000,1816,1472,344,0,0.1894,1,1,53.75,53.64,66.57,72.96,14.533,27.373,35.402,2.999,5.120,23.584,3,1
+RESULT_CSV5,base,69.86,71.07,87.31,108.50,1472,1
+thread cpu      yvo_pip:disk$        threads  1        0.0 ms    0.000 ms/arrived    0.000 ms/processed
+thread cpu      yvo_pipeline         threads 12     2129.2 ms    1.172 ms/arrived    1.446 ms/processed

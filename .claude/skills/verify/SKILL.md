@@ -120,7 +120,7 @@ grep -cE '\[error\]|\[warning\]' hailort.log
 
 | 메시지 | 이유 |
 |---|---|
-| `[vulkan WARNING] Unable to open device : ... VK_ERROR_INCOMPATIBLE_DRIVER` | V3D가 아닌 장치를 훑는 과정이다. V3D가 선택되면 정상이다 |
+| `[vulkan WARNING] Unable to open device : ... VK_ERROR_INCOMPATIBLE_DRIVER` | V3D가 아닌 장치를 훑는 과정이다. V3D가 선택되면 정상이다. 보내는 쪽은 Mesa Intel ANV ICD(`intel_icd.json`)다. 검증 레이어를 끈 실행의 요약 `vk validation errors 0, warnings 1`의 1건이 이것이다(레이어를 켜면 나오지 않는다. 2026-11-09 확인) |
 | 로더의 `Layer forced enabled due to env var` (2건) | `VK_LOADER_LAYERS_ENABLE`을 쓰면 항상 나온다 |
 | hailort `[info] ... HAILO_SHUTDOWN_EVENT_SIGNALED(57)` | 정상 종료 메시지다(`[info]` 레벨) |
 | `vcgencmd get_throttled` = `0x80000` | 과거 기록 비트다. 현재 스로틀링이 아니다(현재 비트는 하위 4비트) |
