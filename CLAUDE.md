@@ -37,7 +37,7 @@ Raspberry Pi 5 + Hailo-8 NPU로 YOLO(`03_models/yolov11m.hef`) 추론 파이프�
   회귀 격리를 위해 `yvo_vulkan`과 별도 라이브러리(`yvo_display`)다. kms 실표시는 DRM master가 필요하다 — lightdm을 멈추지 말고
   `loginctl activate <tty 세션>`으로 데스크톱을 비활성화한 뒤 실행하고, 실행 중에는 VT를 바꾸지 않는다(`08_learn/07_video_display.md` §7.12).
   화면이 사용자 눈앞에서 바뀌므로 **kms 실행은 사용자가 자리에 있을 때만 한다** — §사용자 확인. 기본은 `SKIP_KMS=1`이다.
-- `01_src/decode/`의 기본은 HW HEVC(DRM_PRIME)다. `yvo_pipeline --decoder sw`는 소프트웨어 디코드 출력을 CPU가 SAND128 dma-buf로 복사해 같은 경로로 흘리는 **비교용**이다(`07_results/decode_benchmark/runs/pipeline_sw_hw`). 비교용 옵션 넷 더: dma-buf 공유를 구간별로 CPU 복사 하나로 바꾸는 `--decode-copy`(디코더→GPU)·`--input-copy`(GPU→NPU)·`--output-copy`(NPU→GPU 후처리)(기법 제거·dma-buf 비교, `technique_ablation/runs/dmabuf_ablation`)와 `--input-live`(패킷을 도착 시각에야 디코더로, 실시간 입력 모사). 모두 기본 off다.
+- `01_src/decode/`의 기본은 HW HEVC(DRM_PRIME)다. `yvo_pipeline --decoder sw`는 소프트웨어 디코드 출력을 CPU가 SAND128 dma-buf로 복사해 같은 경로로 흘리는 **비교용**이다(`07_results/decode_benchmark/runs/pipeline_sw_hw`). 비교용 옵션 넷 더: dma-buf 공유를 구간별로 CPU 복사 하나로 바꾸는 `--decode-copy`(디코더→GPU)·`--input-copy`(GPU→NPU)·`--output-copy`(NPU→GPU 후처리)(기법 제거·dma-buf 비교, `technique_ablation/runs/dmabuf_ablation`)와 `--input-live`(패킷을 도착 시각에야 디코더로, 실시간 입력 모사). 모두 기본 off다. 진단 옵션 둘: `--gpu-timestamps on|off`(GPU 구간 timestamp, 기본 on, `technique_ablation/runs/cpu_trim`)와 `--submit-delay-ms X`(페이싱 루프에서 마지막 슬롯 반환 뒤 X ms가 지나야 다음 프레임을 꺼냄, 기본 0, `technique_ablation/runs/submit_delay`).
 - `01_src/isp/`(`yvo_isp`)는 PiSP BE 전처리 대체 경로. **구현돼 있으나 파이프라인에 연결돼 있지 않다**(검출 −2.33%로 보류).
 - 실행파일은 모두 `build/bin/`에 나온다. 도구의 기본 자산 경로는 `yvo_assets` 매크로(절대 경로)라 CWD와 무관하고,
   기본 출력은 `build/out/<도구>/`다 — `07_results`에 쓸 때는 `--out-dir`을 명시한다.

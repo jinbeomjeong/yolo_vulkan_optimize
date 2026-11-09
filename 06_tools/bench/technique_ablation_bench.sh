@@ -143,7 +143,7 @@ mkdir -p "$OUT_DIR/raw"
   pkg_versions "${PKGS_DISPLAY_BENCH[@]}"
   env_git_head
   env_bin "$BIN_PIPELINE"
-  echo "video: $VIDEO md5 $(md5sum "$VIDEO" | cut -d' ' -f1) frames: ${FRAMES} (0 = all) runs: $RUNS"
+  echo "video: $VIDEO md5 $(md5sum "$VIDEO" | cut -d' ' -f1) frames: ${FRAMES} (0 = all) runs: $RUNS"; echo "hef: $HEF md5 $(md5sum "$HEF" | cut -d' ' -f1)"
   echo "timeout -s KILL ${TIMEOUT_S}s, connector $CONNECTOR, sampler interval ${SAMPLE_S}s, clk_tck $(getconf CLK_TCK)"
   echo "wlr-randr $CONNECTOR: $(output_enabled && echo Enabled || echo NOT-enabled); labwc DRM master: $(master_of labwc)"
   timeout 5 wlr-randr 2>/dev/null | awk -v c="$CONNECTOR" '/^[^ \t]/ { inb = ($1 == c) } inb && /current/ { print "mode: " $0; exit }' || true
