@@ -1,0 +1,240 @@
+{
+  "tool": "sys_cpu_window",
+  "mode": "window",
+  "status": "ok",
+  "clk_tck": 100,
+  "ncpu": 4,
+  "app_comm": "yvo_pipeline",
+  "frames": null,
+  "window_ms": 25742.432,
+  "snapshot_ms": {
+    "a": 4.209,
+    "b": 5.052
+  },
+  "sys_busy_ms": 1320.0,
+  "user_ms": 660.0,
+  "nice_ms": 0.0,
+  "system_ms": 660.0,
+  "idle_ms": 101370.0,
+  "iowait_ms": 0.0,
+  "irq_ms": 0.0,
+  "softirq_ms": 0.0,
+  "steal_ms": 0.0,
+  "guest_ms": 0.0,
+  "guest_nice_ms": 0.0,
+  "per_cpu_busy_ms": [
+    330.0,
+    450.0,
+    330.0,
+    230.0
+  ],
+  "ctxt_switches": 124758,
+  "softirq_counts": {
+    "total": 21612,
+    "hi": 101,
+    "timer": 2062,
+    "net_tx": 9,
+    "net_rx": 154,
+    "block": 6,
+    "irq_poll": 0,
+    "tasklet": 0,
+    "sched": 9589,
+    "hrtimer": 0,
+    "rcu": 9691
+  },
+  "schedstat_version": 17,
+  "sched_run_ms": 1351.342,
+  "app_ms": 790.0,
+  "labwc_ms": 0.0,
+  "kthread_ms": 270.0,
+  "other_ms": 290.0,
+  "unattributed_ms": -30.0,
+  "reaped_children_ms": 10.0,
+  "procs": {
+    "app_comm": "yvo_pipeline",
+    "app_pids": [
+      {
+        "pid": 623126,
+        "comm": "yvo_pipeline",
+        "ms": 790.0
+      }
+    ],
+    "kthread_groups": {
+      "kworker_ms": 250.0,
+      "ksoftirqd_ms": 0.0,
+      "irq_thread_ms": 0.0,
+      "v3d_ms": 0.0,
+      "hailo_ms": 0.0,
+      "other_ms": 20.0
+    },
+    "kthread_top": [
+      {
+        "pid": 617936,
+        "comm": "kworker/u16:0-v3d_cache_clean",
+        "ms": 70.0
+      },
+      {
+        "pid": 621976,
+        "comm": "kworker/u16:2-v3d_csd",
+        "ms": 70.0
+      },
+      {
+        "pid": 621980,
+        "comm": "kworker/u16:3-v3d_cpu",
+        "ms": 60.0
+      },
+      {
+        "pid": 15,
+        "comm": "rcu_preempt",
+        "ms": 10.0
+      },
+      {
+        "pid": 48,
+        "comm": "kcompactd0",
+        "ms": 10.0
+      },
+      {
+        "pid": 617019,
+        "comm": "kworker/3:0-mm_percpu_wq",
+        "ms": 10.0
+      },
+      {
+        "pid": 621362,
+        "comm": "kworker/0:3-events",
+        "ms": 10.0
+      },
+      {
+        "pid": 621733,
+        "comm": "kworker/1:3-mm_percpu_wq",
+        "ms": 10.0
+      },
+      {
+        "pid": 622590,
+        "comm": "kworker/0:1-mm_percpu_wq",
+        "ms": 10.0
+      },
+      {
+        "pid": 622994,
+        "comm": "kworker/2:0-events",
+        "ms": 10.0
+      }
+    ],
+    "other_top": [
+      {
+        "pid": 1773,
+        "comm": "claude",
+        "ms": 280.0
+      },
+      {
+        "pid": 623112,
+        "comm": "python3",
+        "ms": 10.0
+      }
+    ],
+    "sampler_self_ms": 10.0,
+    "new_proc_count": 1,
+    "new_procs": [
+      {
+        "pid": 623139,
+        "comm": "sleep",
+        "ppid": 622056,
+        "ms": 0.0
+      }
+    ],
+    "lost_proc_count": 1,
+    "lost_procs": [
+      {
+        "pid": 623087,
+        "comm": "sleep",
+        "ppid": 622056
+      }
+    ],
+    "count_a": 209,
+    "count_b": 209
+  },
+  "interrupts": {
+    "total": 91819,
+    "top": [
+      {
+        "irq": "IPI1",
+        "desc": "Function call interrupts",
+        "count": 37214
+      },
+      {
+        "irq": "13",
+        "desc": "GICv2 26 Level arch_timer",
+        "count": 35588
+      },
+      {
+        "irq": "185",
+        "desc": "MIP-MSI-PCI-MSI-0001:01:00.0 0 Edge hailo",
+        "count": 6303
+      },
+      {
+        "irq": "165",
+        "desc": "GICv2 281 Level v3d_core0",
+        "count": 4500
+      },
+      {
+        "irq": "IPI5",
+        "desc": "IRQ work interrupts",
+        "count": 4275
+      },
+      {
+        "irq": "14",
+        "desc": "GICv2 65 Level 107c013880.mailbox",
+        "count": 1905
+      },
+      {
+        "irq": "184",
+        "desc": "GICv2 130 Level 1000800000.codec",
+        "count": 1802
+      },
+      {
+        "irq": "136",
+        "desc": "rp1_irq_chip 36 Edge xhci-hcd:usb4",
+        "count": 101
+      },
+      {
+        "irq": "106",
+        "desc": "rp1_irq_chip 6 Level eth0",
+        "count": 77
+      },
+      {
+        "irq": "161",
+        "desc": "GICv2 305 Level mmc0",
+        "count": 31
+      },
+      {
+        "irq": "IPI0",
+        "desc": "Rescheduling interrupts",
+        "count": 23
+      }
+    ]
+  },
+  "irq_count": 91819,
+  "cpufreq": {
+    "policy0": {
+      "governor_a": "ondemand",
+      "governor_b": "ondemand",
+      "cur_khz_a": 2300000,
+      "cur_khz_b": 1600000,
+      "avg_mhz": 1523.175,
+      "time_in_state_delta": {
+        "1500000": 21190.0,
+        "1600000": 4200.0,
+        "1700000": 160.0,
+        "1800000": 20.0,
+        "1900000": 30.0,
+        "2000000": 30.0,
+        "2100000": 0.0,
+        "2200000": 20.0,
+        "2300000": 10.0,
+        "2400000": 100.0
+      }
+    }
+  },
+  "cpufreq_avg_mhz": 1523.175,
+  "cpufreq_governor": "ondemand",
+  "cpufreq_error": null
+}

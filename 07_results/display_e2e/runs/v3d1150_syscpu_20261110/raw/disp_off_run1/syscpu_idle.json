@@ -1,0 +1,173 @@
+{
+  "tool": "sys_cpu_window",
+  "mode": "duration",
+  "status": "ok; warning: no process with comm 'yvo_pipeline' in snapshot B",
+  "clk_tck": 100,
+  "ncpu": 4,
+  "app_comm": "yvo_pipeline",
+  "frames": null,
+  "window_ms": 10003.988,
+  "snapshot_ms": {
+    "a": 3.907,
+    "b": 5.164
+  },
+  "sys_busy_ms": 90.0,
+  "user_ms": 70.0,
+  "nice_ms": 0.0,
+  "system_ms": 20.0,
+  "idle_ms": 39920.0,
+  "iowait_ms": 0.0,
+  "irq_ms": 0.0,
+  "softirq_ms": 0.0,
+  "steal_ms": 0.0,
+  "guest_ms": 0.0,
+  "guest_nice_ms": 0.0,
+  "per_cpu_busy_ms": [
+    0.0,
+    10.0,
+    10.0,
+    60.0
+  ],
+  "ctxt_switches": 2178,
+  "softirq_counts": {
+    "total": 1518,
+    "hi": 39,
+    "timer": 385,
+    "net_tx": 23,
+    "net_rx": 228,
+    "block": 4,
+    "irq_poll": 0,
+    "tasklet": 0,
+    "sched": 759,
+    "hrtimer": 0,
+    "rcu": 80
+  },
+  "schedstat_version": 17,
+  "sched_run_ms": 128.181,
+  "app_ms": 0.0,
+  "labwc_ms": 0.0,
+  "kthread_ms": 0.0,
+  "other_ms": 100.0,
+  "unattributed_ms": -10.0,
+  "reaped_children_ms": 0.0,
+  "procs": {
+    "app_comm": "yvo_pipeline",
+    "app_pids": [],
+    "kthread_groups": {
+      "kworker_ms": 0.0,
+      "ksoftirqd_ms": 0.0,
+      "irq_thread_ms": 0.0,
+      "v3d_ms": 0.0,
+      "hailo_ms": 0.0,
+      "other_ms": 0.0
+    },
+    "kthread_top": [],
+    "other_top": [
+      {
+        "pid": 1773,
+        "comm": "claude",
+        "ms": 70.0
+      },
+      {
+        "pid": 622269,
+        "comm": "python3",
+        "ms": 20.0
+      },
+      {
+        "pid": 702,
+        "comm": "avahi-daemon",
+        "ms": 10.0
+      }
+    ],
+    "sampler_self_ms": 20.0,
+    "new_proc_count": 1,
+    "new_procs": [
+      {
+        "pid": 622271,
+        "comm": "sleep",
+        "ppid": 622056,
+        "ms": 0.0
+      }
+    ],
+    "lost_proc_count": 1,
+    "lost_procs": [
+      {
+        "pid": 622208,
+        "comm": "sleep",
+        "ppid": 622056
+      }
+    ],
+    "count_a": 210,
+    "count_b": 210
+  },
+  "interrupts": {
+    "total": 2500,
+    "top": [
+      {
+        "irq": "13",
+        "desc": "GICv2 26 Level arch_timer",
+        "count": 1573
+      },
+      {
+        "irq": "IPI5",
+        "desc": "IRQ work interrupts",
+        "count": 401
+      },
+      {
+        "irq": "IPI1",
+        "desc": "Function call interrupts",
+        "count": 317
+      },
+      {
+        "irq": "106",
+        "desc": "rp1_irq_chip 6 Level eth0",
+        "count": 114
+      },
+      {
+        "irq": "14",
+        "desc": "GICv2 65 Level 107c013880.mailbox",
+        "count": 39
+      },
+      {
+        "irq": "136",
+        "desc": "rp1_irq_chip 36 Edge xhci-hcd:usb4",
+        "count": 39
+      },
+      {
+        "irq": "161",
+        "desc": "GICv2 305 Level mmc0",
+        "count": 14
+      },
+      {
+        "irq": "IPI0",
+        "desc": "Rescheduling interrupts",
+        "count": 3
+      }
+    ]
+  },
+  "irq_count": 2500,
+  "cpufreq": {
+    "policy0": {
+      "governor_a": "ondemand",
+      "governor_b": "ondemand",
+      "cur_khz_a": 2400000,
+      "cur_khz_b": 1500000,
+      "avg_mhz": 1510.08,
+      "time_in_state_delta": {
+        "1500000": 9670.0,
+        "1600000": 260.0,
+        "1700000": 0.0,
+        "1800000": 10.0,
+        "1900000": 0.0,
+        "2000000": 0.0,
+        "2100000": 0.0,
+        "2200000": 0.0,
+        "2300000": 0.0,
+        "2400000": 80.0
+      }
+    }
+  },
+  "cpufreq_avg_mhz": 1510.08,
+  "cpufreq_governor": "ondemand",
+  "cpufreq_error": null
+}

@@ -1,0 +1,9 @@
+== 07_results/display_e2e/runs/v3d1150_syscpu_20261110
+reg_host_off  pipeline 3.549 [3.494-3.560]  app 3.444  labwc 0.000  kthread_net 0.105  other_user 0.644  n=3
+disp_off      pipeline 1.178 [1.133-1.178]  app 0.889  labwc 0.000  kthread_net 0.278  other_user 0.322  n=3
+disp_asap     pipeline 2.478 [2.432-2.522]  app 1.533  labwc 0.500  kthread_net 0.444  other_user 0.600  n=3
+disp_source   pipeline 2.811 [2.789-2.833]  app 1.800  labwc 0.522  kthread_net 0.500  other_user 1.578  n=3
+  disp_off vs reg_host_off: -66.8%
+  disp_asap vs reg_host_off: -30.2%
+  disp_source vs reg_host_off: -20.8%
+  display adds (disp_asap - disp_off): +1.300

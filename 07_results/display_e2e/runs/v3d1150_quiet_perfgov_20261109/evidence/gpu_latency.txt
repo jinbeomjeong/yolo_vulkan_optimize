@@ -1,0 +1,6 @@
+== 07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016
+disp_source  pre 1.788 post 0.439 nms 0.0455 convert 3.598 overlay 0.115  sum 5.986 (17.9% of 33.4 ms)  glass mean 97.87 median 89.86 [89.39-98.13] p90 119.55  detections 3369  dropped 0  held_max 4  slot_timeout 0  n=5
+disp_asap    pre 1.801 post 0.398 nms 0.0382 convert 3.650 overlay 0.118  sum 6.005 (18.0% of 33.4 ms)  glass mean 128.74 median 128.04 [127.81-128.11] p90 136.85  detections 3369  dropped 0  held_max 4  slot_timeout 0  n=5
+== 07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261109
+disp_source  pre 1.776 post 0.438 nms 0.0456 convert 3.588 overlay 0.115  sum 5.963 (17.9% of 33.4 ms)  glass mean 98.44 median 99.86 [91.74-100.34] p90 116.77  detections 3369  dropped 0  held_max 4  slot_timeout 0  n=5
+disp_asap    pre 1.786 post 0.397 nms 0.0386 convert 3.628 overlay 0.117  sum 5.967 (17.9% of 33.4 ms)  glass mean 128.88 median 128.00 [127.96-128.13] p90 137.16  detections 3369  dropped 0  held_max 4  slot_timeout 0  n=5
