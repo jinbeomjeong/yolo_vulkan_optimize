@@ -13,7 +13,7 @@
 | 날짜 | 2026-11-09 17:04~17:14 |
 | 보드 | Raspberry Pi CM5, Hailo-8 PCIe 8.0 GT/s x1(Gen3), V3D 1150 MHz, 커널 6.18.50+rpt-rpi-2712 |
 | 소프트웨어 | HailoRT 4.24.0, Mesa 26.2.2 |
-| 바이너리 | 3d78e59 빌드(md5 af63c101). `npu_latency_window`·`o2_mot20_*`와 같은 바이너리입니다. 실행 시점 HEAD는 68a0f75이고, 그 사이 `01_src` 변경은 없습니다 |
+| 바이너리 | 3d78e59 빌드(md5 af63c101). `npu_latency_window`·`o2_mot20_*`와 같은 바이너리입니다. 실행 시점 HEAD는 68a0f75이고, 그 사이 `01_src` 변경은 없습니다. 2026-11-09 기록 재작성(증거 스크립트의 암호 파일 경로 제거)으로 이 커밋은 eb18c3b가 됐습니다 |
 | 인자 | `dec_threads`의 `sw_t1`·`sw_auto`와 같습니다: `--input-pace asap --mode dmabuf --layout nhcw --batch 8 --slots 16 --postproc host`, 표시 off. 여기에 `--frame-log`만 더했습니다 |
 | 설정 | `t1` = `YVO_DEC_THREADS=1`, `auto` = `YVO_DEC_THREADS=0`(FFmpeg 자동, 5스레드) |
 | 입력 | `04_data/videos/video_h265.mp4` 전체 1,816프레임 |
