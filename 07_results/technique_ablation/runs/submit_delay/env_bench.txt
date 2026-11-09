@@ -1,0 +1,13 @@
+# technique_ablation/runs/submit_delay — environment (written after the runs; per-run snapshot in raw/<cfg>_run<N>/env.txt)
+date: 2026-11-09 20:58 ~ 21:24 +09:00
+kernel: 6.18.50+rpt-rpi-2712
+model: Raspberry Pi Compute Module 5 Rev 1.0
+pcie: 8.0 GT/s PCIe x1
+v3d_freq: v3d_freq=1150
+hailort: 4.24.0  mesa-vulkan-drivers: 26.2.2-1~bpo13+0~rpt1
+governor: performance during the runs (sudo, restored to ondemand by trap; see evidence/run_log.txt)
+binary: build of dc447c5 (adds --submit-delay-ms), md5 070a868784f05f7a82f0ecb66af010b0, pinned copy outside the repo
+hef: 03_models/yolov11m.hef; video: 04_data/videos/video_h265.mp4 (1816 arrivals, full)
+args: --mode dmabuf --decoder hw --batch 1 --slots 1 --input-pace source --input-queue 1 --layout nhcw --postproc gpu --nms gpu --display off --submit-delay-ms D --frame-log frame_log.csv, YVO_DEC_THREADS=1
+configs: d0 d2 d4 d6 d8 = D 0/2/4/6/8 ms; order: run 1..3 outer, config inner; cooling before every run to Hailo <= 65 C and SoC <= 75 C
+hailort.log: warning 0, error 0 in all 15 runs

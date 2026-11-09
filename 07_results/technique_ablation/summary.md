@@ -90,3 +90,4 @@
 | [`runs/npu_latency_window`](runs/npu_latency_window/summary.md) | `input_copy`의 NPU 지연이 짧게 나오는 이유 — 측정 구간 시작점 효과 (2026-11-07) |
 | [`runs/o2_mot20_02`](runs/o2_mot20_02/summary.md) · [`o2_mot20_05`](runs/o2_mot20_05/summary.md) | 확정 구성을 혼잡 장면 MOT20 두 영상으로 재측정 (2026-11-07) |
 | [`runs/display_npu_window`](runs/display_npu_window/summary.md) | 표시 on이 NPU 지연·도착 기준 지연을 줄이는 이유 — 장치 주기는 같고, 제출이 NPU 출력 뒤 꼬리와 겹침 (2026-11-09) |
+| [`runs/submit_delay`](runs/submit_delay/summary.md) | 표시 off에서 제출을 `--submit-delay-ms`로 늦춘 스윕 — D 4 ms까지 처리량 그대로 도착 기준 지연 −4.6 ms (2026-11-09) |
