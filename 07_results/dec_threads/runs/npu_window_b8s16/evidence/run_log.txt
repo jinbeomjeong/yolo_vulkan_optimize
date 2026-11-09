@@ -1,0 +1,10 @@
+governor: performance (was ondemand)
+== latency runs 2026-11-09T17:04:52+09:00
+t1 run1 rc=0 npu latency ms  mean 296.793  median 297.564  p90 305.148  max 307.530 warn=0 err=0 cool=1s h=55.3 s=66.1
+auto run1 rc=0 npu latency ms  mean 305.999  median 306.909  p90 307.168  max 321.004 warn=0 err=0 cool=51s h=64.2 s=68.3
+t1 run2 rc=0 npu latency ms  mean 297.106  median 297.928  p90 305.292  max 307.500 warn=0 err=0 cool=71s h=64.8 s=67.8
+auto run2 rc=0 npu latency ms  mean 305.929  median 306.933  p90 307.183  max 320.996 warn=0 err=0 cool=82s h=64.2 s=67.2
+t1 run3 rc=0 npu latency ms  mean 297.344  median 298.022  p90 305.338  max 308.261 warn=0 err=0 cool=82s h=64.0 s=65.5
+auto run3 rc=0 npu latency ms  mean 306.043  median 306.938  p90 307.175  max 321.124 warn=0 err=0 cool=82s h=63.9 s=65.5
+== done 2026-11-09T17:14:37+09:00
+cleanup: governor ondemand, lock removed

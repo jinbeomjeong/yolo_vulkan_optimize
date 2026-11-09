@@ -1,0 +1,24 @@
+[cfg] video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 1920x1080 mode=dmabuf layout=nhcw batch=8 slots=16 gpu_depth=3 postproc=host device=V3D 7.1.10.2
+[progress] 300 frames, 53.3 FPS, hailo 68.9 C
+[progress] 600 frames, 52.8 FPS, hailo 71.7 C
+[progress] 900 frames, 52.3 FPS, hailo 74.7 C
+[progress] 1200 frames, 52.3 FPS, hailo 77.2 C
+[progress] 1500 frames, 52.0 FPS, hailo 79.4 C
+[progress] 1800 frames, 52.1 FPS, hailo 81.2 C
+== yvo_pipeline (dmabuf, nhcw, batch 8, slots 16, gpu_depth 3, postproc host) ==
+frames          1816 (decoded 1816, errors 0)
+wall            35.150 s, 51.66 FPS
+cpu             2.779 ms/frame (process user+sys 5046.3 ms, 14% of one core)
+decode call ms  mean 0.132  median 0.091  p90 0.116  max 12.799
+gpu shader ms   mean 1.979  median 1.960  p90 2.136  max 4.709
+npu latency ms  mean 305.999  median 306.909  p90 307.168  max 321.004
+e2e latency ms  mean 327.145  median 310.990  p90 448.285  max 456.119  (decode return → NPU completion callback)
+slot wait ms    mean 18.987  p90 139.079  (time the main thread waited for a free slot)
+held frames max 2 (decoder limit about 13), slot timeout 0
+detections      9457 total, 5.21 / frame
+hailo chip temp 64.2 -> 81.6 C
+soc temp        67.5 -> 68.6 C
+vk validation   errors 0, warnings 1
+thread cpu      av:hevc:df           threads  6      491.9 ms    0.271 ms/arrived    0.271 ms/processed
+thread cpu      yvo_pip:disk$        threads  1        0.0 ms    0.000 ms/arrived    0.000 ms/processed
+thread cpu      yvo_pipeline         threads 10     4554.8 ms    2.508 ms/arrived    2.508 ms/processed

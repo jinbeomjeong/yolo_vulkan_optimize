@@ -500,7 +500,7 @@ Python(`hailo_platform`)에서도 똑같다. `VDevice.create_params()`의 기본
 | 16 | 51.49 | 19.42 ms | 301.64 ms | **15.53** |
 
 (이 표의 지연은 FFmpeg 자동 5스레드 조건이다. 디코더를 1스레드로 두면 b8/s16의 NPU 지연이 306 → 297 ms로 조금 줄지만 FPS는 같다.
-프레임이 NPU 큐에 덜 쌓이기 때문으로 추정한다 — [`dec_threads`](../07_results/dec_threads/summary.md). 아래 비례 관계는 그대로 성립한다.)
+프레임이 NPU 큐에 덜 쌓이기 때문이다 — [`dec_threads`](../07_results/dec_threads/summary.md). 2026-11-09 재측정에서 GPU 제출 시점의 비행 중 프레임이 16 → 15개로 줄고 디코드 반환 기준 e2e도 같은 8.9 ms만큼 짧아, slots 1에서 본 `npu_ms` 측정 구간 착시가 아님을 확인했다([`npu_window_b8s16`](../07_results/dec_threads/runs/npu_window_b8s16/summary.md)). 아래 비례 관계는 그대로 성립한다.)
 
 마지막 열을 보라. **지연 ÷ 주기 ≈ slots**가 네 지점 전부에서 성립한다. 이것을 뒤집으면
 §4.5의 Little's law 그대로다.
