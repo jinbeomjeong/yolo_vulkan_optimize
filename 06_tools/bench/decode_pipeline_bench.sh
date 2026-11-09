@@ -125,7 +125,7 @@ mkdir -p "$OUT_DIR/raw"
   cpu_governor
   pkg_versions "${PKGS_DISPLAY_BENCH[@]}"
   env_git_head
-  env_bin "$BIN_PIPELINE"
+  env_bin "$BIN_PIPELINE"; env_hef "$HEF"
   echo "video: $VIDEO md5 $(md5sum "$VIDEO" | cut -d' ' -f1) frames: ${FRAMES} (0 = all) runs: $RUNS"
   echo "timeout -s KILL ${TIMEOUT_S}s, connector $CONNECTOR, sampler interval ${SAMPLE_S}s, clk_tck $(getconf CLK_TCK)"
   echo "wlr-randr $CONNECTOR: $(output_enabled && echo Enabled || echo NOT-enabled); labwc DRM master: $(master_of labwc)"

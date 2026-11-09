@@ -36,7 +36,7 @@ configs=(
   cpu_governor
   echo "bin: $BIN"; echo "bin md5: $(md5sum "$BIN" | cut -d' ' -f1)"; echo "bin mtime: $(stat -c %y "$BIN")"
   hailortcli fw-control identify 2>/dev/null | grep -E 'Firmware Version' || true
-  echo "video: $VIDEO frames: $FRAMES runs: $RUNS"
+  echo "video: $VIDEO frames: $FRAMES runs: $RUNS"; env_hef "$HEF"
 } > "$OUT_DIR/env_bench.txt"
 cat "$OUT_DIR/env_bench.txt"
 

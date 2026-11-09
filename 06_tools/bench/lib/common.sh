@@ -193,7 +193,7 @@ env_git_head() {
 }
 
 # env_bin <path>: "bin: <path> md5 <md5> mtime <mtime>".
-env_bin() { echo "bin: $1 md5 $(md5sum "$1" | cut -d' ' -f1) mtime $(stat -c %y "$1")"; }
+env_bin() { echo "bin: $1 md5 $(md5sum "$1" | cut -d' ' -f1) mtime $(stat -c %y "$1")"; }; env_hef() { echo "hef: $1 md5 $(md5sum "$1" | cut -d' ' -f1)"; }   # env_hef: which model a run used (03_models holds n/s/m since 2026-11-09)
 
 # gpu_stats_snap <out>: copy of the V3D gpu_stats file ($GPU_STATS, set by the caller); empty file when unreadable.
 gpu_stats_snap() { cat "$GPU_STATS" 2>/dev/null > "$1" || : > "$1"; }

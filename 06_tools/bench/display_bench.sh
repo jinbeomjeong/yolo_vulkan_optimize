@@ -251,7 +251,7 @@ fi
   pkg_versions "${PKGS_DISPLAY_BENCH[@]}"   # labwc/libwlroots matter: the wayland-planes COLOR_RANGE inversion is a compositor behavior
   echo "bin: $BIN"
   echo "bin md5: $(md5sum "$BIN" | cut -d' ' -f1)"
-  echo "video: $VIDEO frames: ${FRAMES:-all} runs: $RUNS"
+  echo "video: $VIDEO frames: ${FRAMES:-all} runs: $RUNS"; env_hef "$HEF"
   if (( HAVE_WAYLAND )); then echo "wayland: $XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
   else echo "wayland: none — configs with --display are skipped"; fi
   if [[ "$IRQ_TRACE" == "1" ]]; then

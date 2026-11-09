@@ -160,7 +160,7 @@ mkdir -p "$OUT_DIR/raw"
   echo "bin: $BIN"
   echo "bin md5: $(md5sum "$BIN" | cut -d' ' -f1)"
   echo "bin mtime: $(stat -c %y "$BIN")"
-  echo "video: $VIDEO frames: ${FRAMES:-all} runs: $RUNS"
+  echo "video: $VIDEO frames: ${FRAMES:-all} runs: $RUNS"; env_hef "$HEF"
   if [[ "$DISPLAY_RUN" == "1" ]]; then
     # Display runs also depend on the compositor (labwc / wlroots) and the V3D clock.
     pkg_versions labwc libwlroots-0.20

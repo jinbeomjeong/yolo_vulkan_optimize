@@ -171,7 +171,7 @@ env_snapshot() {
   env_snapshot before
   echo "bins: $(stat -c '%n %s B %y' "$APP_BIN" "$GST_BIN" | paste -sd ';')"
   echo "env: $(env | grep -E '^(GST_|VK_|HAILO)' | paste -sd ' ' || true)"
-  echo "video: $VIDEO frames: $([[ "$FRAMES" == "0" ]] && echo all || echo "$FRAMES") runs: $RUNS only: $ONLY"
+  echo "video: $VIDEO frames: $([[ "$FRAMES" == "0" ]] && echo all || echo "$FRAMES") runs: $RUNS only: $ONLY"; env_hef "$HEF"
   echo "configs: ${selected[*]}"
 } > "$OUT_DIR/env_bench.txt"
 # A validation layer or GST_DEBUG left in the environment silently changes the timing.

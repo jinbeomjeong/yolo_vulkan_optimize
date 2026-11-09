@@ -114,7 +114,7 @@ configs_grid=(
   echo "bin: $BIN"
   echo "bin md5: $(md5sum "$BIN" | cut -d' ' -f1)"
   echo "bin mtime: $(stat -c %y "$BIN")"
-  echo "video: $VIDEO frames: ${FRAMES:-all} runs: $RUNS"
+  echo "video: $VIDEO frames: ${FRAMES:-all} runs: $RUNS"; env_hef "$HEF"
   if (( HAVE_WAYLAND )); then echo "wayland: $XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
   else echo "wayland: none — configs with --display are skipped"; fi
 } > "$OUT_DIR/env_bench.txt"
