@@ -1,0 +1,50 @@
+[cfg] video=/home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 1920x1080 mode=dmabuf layout=nhcw batch=1 slots=2 gpu_depth=2 postproc=gpu/export device=V3D 7.1.10.2
+[pace] input-pace source @ 30.000 fps, input-queue 1 (leaky: drop the oldest), hw_frames=8, display frame gate off (input is paced)
+[display] backend=wayland-planes 1920x1080 fullscreen | video=NV12/SAND128 dma-buf -> parent wl_surface (zwp_linux_dmabuf v4) | presentation=yes(MONOTONIC) viewporter=yes | color=BT.709/full requested (auto = fullhack: labwc 0.20.1~0.20.2 inverts it and loads limited) [managers advertised 1] | boxes=OverlayPlane AB24 LINEAR 1920x1080 pitch=7680 x3 clear=erase | sync=matched pace=source@30.00 every=1 hw_frames=8 color_range=auto
+[scanout] debugfs start (presented 60): active=3 video=plane[83] NV12/SAND128 zpos=0 enc='ITU-R BT.709 YCbCr' range='YCbCr limited range' | boxes=plane[107] AB24 zpos=1 | hvs_underrun=0
+[progress] 300 frames (arrived 449, dropped 149), 20.1 FPS, hailo 67.0 C
+[progress] 600 frames (arrived 899, dropped 299), 20.0 FPS, hailo 68.9 C
+[scanout] debugfs end (presented 601): active=3 video=plane[83] NV12/SAND128 zpos=0 enc='ITU-R BT.709 YCbCr' range='YCbCr limited range' | boxes=plane[107] AB24 zpos=1 | hvs_underrun=0
+== yvo_pipeline (dmabuf, nhcw, batch 1, slots 2, gpu_depth 2, postproc gpu/export) ==
+frames          601 (decoded 601, errors 0)
+wall            30.077 s, 19.98 FPS
+cpu             1.155 ms/frame (process user+sys 693.9 ms, 2% of one core)
+decode call ms  mean 2.628  median 3.642  p90 4.137  max 10.505
+gpu shader ms   mean 1.775  median 1.775  p90 1.783  max 1.820
+npu latency ms  mean 31.086  median 31.018  p90 31.028  max 56.557
+e2e latency ms  mean 49.856  median 55.746  p90 59.952  max 73.449  (decode return → NPU completion callback)
+slot wait ms    mean 32.604  p90 43.004  (time the main thread waited for a free slot)
+input pace      source @ 30.000 fps, input queue 1 (leaky: full -> drop the oldest)
+arrived         900 (processed 601, dropped 299 = 33.22%, abandoned 0, longest drop run 1, queue depth max 1)
+e2e arrival ms  mean 52.405  median 59.850  p90 60.948  max 77.308  (source arrival → NPU completion callback)
+queue wait ms   mean 16.345  p90 26.537  max 39.962  (decode return → GPU submit)
+decode late ms  mean 2.671  p90 4.183  max 10.508  (source arrival → decode return)
+note            paced: FPS and cpu ms/frame are per processed frame (plus polling) — not comparable to asap
+gpu post ms     mean 0.442  median 0.442  p90 0.465  max 0.563  (yolo_decode.comp pass 1)
+cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+nms backend     gpu
+gpu nms ms      mean 0.0483  median 0.0466  p90 0.0566  max 0.0719  (efficient_nms.comp)
+nms fallback    0 frames (capacity 0, iou guard 0)
+candidates      mean 16.79  max 44  overflow frames 0
+slot hold ms    mean 0.571  median 0.552  p90 0.581  max 10.783  (NPU completion callback → slot return)
+disp convert ms -  (wayland-planes: YUV→RGB conversion is done by the HVS during scanout, V3D 0)
+disp overlay ms mean 0.310  median 0.304  p90 0.391  (overlay_boxes_buf.spv + clear, box plane)
+present interval ms median 50.000  p90 50.001  (n=570)
+glass-to-glass  mean 49.89  median 49.99  p90 50.52  (n=571, slot acquired → reaches screen)
+decode-to-screen mean 66.28  median 72.36  p90 76.86  (n=571, decode return → reaches screen, includes slot wait)
+arrival-to-present mean 68.82  median 76.98  p90 77.19  max 93.91  (n=571, scheduled source arrival → reaches screen)
+display         presented 601, dropped 0, recreates 0, overlay overflow 0
+display warmup  30 presentations excluded from glass / decode-to-screen / present interval / late frames (glass n 571 of 601, glass median 49.99)
+scanout         zero_copy 1, color_ok 1, hvs_underrun delta 0 (debugfs verdict)
+  debugfs start: active=3 video=plane[83] NV12/SAND128 zpos=0 enc='ITU-R BT.709 YCbCr' range='YCbCr limited range' | boxes=plane[107] AB24 zpos=1 | hvs_underrun=0
+  debugfs end: active=3 video=plane[83] NV12/SAND128 zpos=0 enc='ITU-R BT.709 YCbCr' range='YCbCr limited range' | boxes=plane[107] AB24 zpos=1 | hvs_underrun=0
+scanout         overlay skipped 0, frame-callback timeouts 0, busy reuse 0, presentation ZERO_COPY 600/601
+scanout         late frames 286 (vblank seq gap > max(1, ceil((every 1 + queue drops in the gap) x 60.000 Hz / 30.000 fps - 0.01)), 2 without drops; gaps 570, max gap 3, chain breaks 0), discarded 0
+scanout         299 source frames never reached the display (queue drops: not late)
+held frames max 4 (decoder limit about 13), slot timeout 0
+detections      2247 total, 3.74 / frame
+hailo chip temp 63.7 -> 68.8 C
+soc temp        68.1 -> 67.0 C
+vk validation   errors 0, warnings 1
+thread cpu      yvo_pip:disk$        threads  1        0.0 ms    0.000 ms/arrived    0.000 ms/processed
+thread cpu      yvo_pipeline         threads  9      694.3 ms    0.771 ms/arrived    1.155 ms/processed

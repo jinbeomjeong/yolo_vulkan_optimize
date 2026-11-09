@@ -1,0 +1,17 @@
+2026-11-09T19:41:44+09:00
+6.18.50+rpt-rpi-2712
+bin: /tmp/claude-1000/-home-pi-workspace-yolo-vulkan-optimize/e4a7ad62-ae73-489e-9893-56a55ad8454a/scratchpad/new_bin/yvo_pipeline md5 af63c101943f444a215e7eca0315b77b
+git HEAD: 8af61f048ae500e7effadcb3930840c89c794b73
+pcie: 8.0 GT/s PCIe x1
+v3d_freq=1150
+throttled=0xe0000
+governor: performance
+labwc: 0.20.2-1~bpo13+1  hailort: 4.24.0
+mode:     1920x1080 px, 60.000000 Hz (preferred, current)
+video: /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 frames 900 warmup 30 runs 3 timeout 90s YVO_DEC_THREADS=<app default 1>
+common: --mode dmabuf --layout nhcw --postproc gpu --nms gpu --display on --display-fullscreen --display-sync matched --display-pace source --display-warmup 30 --input-pace source --input-queue 1 --frame-log frame_log.csv
+config: vk_b1s1|--display-backend wayland --batch 1 --slots 1
+config: wlp_b1s2_m8|--display-backend wayland-planes --batch 1 --slots 2 --display-commit-margin-ms 8
+config: wlp_b1s2_m4|--display-backend wayland-planes --batch 1 --slots 2 --display-commit-margin-ms 4
+config: wlp_b1s2_m0|--display-backend wayland-planes --batch 1 --slots 2 --display-commit-margin-ms 0
+config: wlp_b1s2_m12|--display-backend wayland-planes --batch 1 --slots 2 --display-commit-margin-ms 12
