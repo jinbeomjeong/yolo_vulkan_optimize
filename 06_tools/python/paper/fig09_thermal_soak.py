@@ -1,4 +1,4 @@
-"""Figure 9: 40-minute thermal soak — interval FPS, Hailo chip temperature and chip clock for b2/s4 and b8/s16.
+"""Figure 9: 40-minute thermal soak — interval FPS, Hailo chip temperature and chip clock for b2/s4, b8/s16 and O2.
 
 Source: thermal_soak/evidence/soak_{b2s4,b8s16}.csv (written by evidence/analyze_soak.py from the run's stdout.log;
 1 run per setting, display off, GPU post-processing + GPU NMS, MOT20-05 looped, no extra cooling). Columns:
@@ -15,6 +15,13 @@ The stop marker is drawn at the stop time, not at the last row: it is read from 
 "# t_s is seconds since the run start; data cut at t_s=<s>" that analyze_soak.py writes into
 evidence/soak_<id>_events.txt (generated text, the only machine-readable record of it), and is cross-checked
 against that file's `closed streams` event line.
+Source (O2): thermal_soak/runs/o2_display_40min/evidence/soak_o2_display.csv (written by that folder's
+evidence/soak_csv_o2.py with the same column definitions; 1 run, 2026-11-09). Its conditions differ from the two
+curves above and are spelled out in its legend label: batch 1 / slots 1 with input pacing (the confirmed O2
+configuration), display ON, video_h265.mp4 looped and paced at the 29.96 fps source rate. Its interval FPS counts
+PROCESSED frames (about 19% of the arrivals are dropped by the leaky input queue), so it sits near 24.3 and is not
+comparable to the as-fast-as-possible rates of b2s4/b8s16. The run has no HailoRT warning, so its clock is 400 MHz
+throughout and it has no events file and no stop marker.
 The 30 fps line is a reference (the 30 fps operating-point target), not the input rate: the soak input is
 MOT20-05 at 25 fps, decoded as fast as possible.
 At batch 8 the 300-frame progress step is not a multiple of the batch, so b8s16 interval FPS alternates between
@@ -30,13 +37,16 @@ import paper_style as ps
 
 STEM = "fig09_thermal_soak"
 EVIDENCE = ps.RESULTS / "thermal_soak" / "evidence"
-CONFIGS = (("b2s4", "b2/s4 (30 fps 권고 운용점)", ps.PALETTE[0]),
-           ("b8s16", "b8/s16 (최대 처리량 운용점)", ps.PALETTE[3]))
+O2_EVIDENCE = ps.RESULTS / "thermal_soak" / "runs" / "o2_display_40min" / "evidence"
+CONFIGS = (("b2s4", "b2/s4 (30 fps 권고 운용점) · 표시 off · MOT20-05", ps.PALETTE[0]),
+           ("b8s16", "b8/s16 (최대 처리량 운용점) · 표시 off · MOT20-05", ps.PALETTE[3]),
+           ("o2_display", "b1/s1 O2 · 표시 on · video_h265 (처리 프레임 기준)", ps.PALETTE[2]))
+NO_EVENTS = ("o2_display",)   # runs without an events file (no HailoRT warning, no stop)
 SOURCE_FPS = 30.0   # reference line: the 30 fps target of the b2/s4 operating point
 
 
 def src(cfg: str) -> Path:
-    return EVIDENCE / f"soak_{cfg}.csv"
+    return (O2_EVIDENCE if cfg in NO_EVENTS else EVIDENCE) / f"soak_{cfg}.csv"
 
 
 def events(cfg: str) -> Path:
@@ -49,6 +59,8 @@ _CLOSED_RE = re.compile(r"^\s*([0-9.]+)\s+critical\s+.*closed streams", re.M)
 
 def stop_time_s(cfg: str) -> float | None:
     """Chip-protection stop time (s since run start) from the events file header, or None ("# no stop event")."""
+    if cfg in NO_EVENTS:
+        return None
     text = events(cfg).read_text(encoding="utf-8")
     m = _CUT_RE.search(text)
     if m is None:
@@ -85,7 +97,9 @@ def main(out_dir: str | Path | None = None) -> list[Path]:
         my = [f for f, m in zip(d["fps"], d["mixed"]) if m]
         ax1.plot(mx, my, "o", mfc="white", mec=col, ms=3, ls="none")
         ax2.plot(d["t_min"], d["temp"], "-", color=col, lw=1.0)
-        ax3.step([0.0] + d["t_min"], [d["clock"][0]] + d["clock"], where="pre", color=col, lw=1.0)
+        # O2 stays at 400 MHz; draw it under the others so the b2s4 / b8s16 400 MHz start stays visible
+        ax3.step([0.0] + d["t_min"], [d["clock"][0]] + d["clock"], where="pre", color=col, lw=1.0,
+                 zorder=1.5 if cfg in NO_EVENTS else 2.0)
         end_t = d["t_min"][-1]
         stop_s = stop_time_s(cfg)
         if stop_s is not None:
@@ -110,12 +124,13 @@ def main(out_dir: str | Path | None = None) -> list[Path]:
         if steady:
             lines.append(f"{cfg}: interval FPS after 15 min: {min(steady):.2f}..{max(steady):.2f}")
     ax1.axhline(SOURCE_FPS, color=ps.REFERENCE_COLOR, ls="--", lw=0.8)
-    ax1.text(42.8, SOURCE_FPS + 0.6, "기준 30 fps (권고 운용점 기준)", fontsize=6.5, ha="right", va="bottom",
+    # below the line: the band between the b2s4 curve (~34) and the line is too narrow at this y range
+    ax1.text(42.8, SOURCE_FPS - 0.6, "기준 30 fps (권고 운용점 기준)", fontsize=6.5, ha="right", va="top",
              color=ps.REFERENCE_COLOR)
     ax1.plot([], [], "o", mfc="white", mec=ps.REFERENCE_COLOR, ms=3, ls="none", label="구간 안에서 클럭 변경")
     ax1.set_ylabel("구간 FPS")
-    ax1.set_ylim(25, 56)
-    ax1.legend(loc="upper right", ncols=3, columnspacing=1.0)
+    ax1.set_ylim(20, 60)
+    ax1.legend(loc="upper right", ncols=2, columnspacing=1.0)
     ax1.set_title("(a) 구간 처리량", loc="left")
     ax2.set_ylabel("Hailo 칩 온도 (°C)")
     ax2.set_ylim(60, 125)
@@ -127,7 +142,8 @@ def main(out_dir: str | Path | None = None) -> list[Path]:
     ax3.set_xlabel("경과 시간 (분)")
     ax3.set_xlim(0, 43)
     paths = ps.save(fig, ps.resolve_out_dir(out_dir), STEM)
-    ps.report(STEM, [src(c) for c, _, _ in CONFIGS] + [events(c) for c, _, _ in CONFIGS], lines)
+    ps.report(STEM, [src(c) for c, _, _ in CONFIGS] + [events(c) for c, _, _ in CONFIGS if c not in NO_EVENTS],
+              lines)
     return paths
 
 
