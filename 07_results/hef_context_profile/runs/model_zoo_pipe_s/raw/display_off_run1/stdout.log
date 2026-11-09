@@ -1,0 +1,35 @@
+[vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+[hevc @ 0x5555bf36dcb0] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+== yvo_pipeline (dmabuf, nhcw, batch 1, slots 1, gpu_depth 1, postproc gpu/export) ==
+frames          1816 (decoded 1816, errors 0)
+wall            60.533 s, 30.00 FPS
+cpu             0.671 ms/frame (process user+sys 1218.9 ms, 2% of one core)
+decode call ms  mean 2.627  median 3.537  p90 4.444  max 10.797
+gpu shader ms   mean 1.752  median 1.749  p90 1.755  max 2.772
+npu latency ms  mean 15.233  median 15.217  p90 15.234  max 24.455
+e2e latency ms  mean 17.663  median 17.601  p90 17.681  max 39.798  (decode return → NPU completion callback)
+slot wait ms    mean 0.004  p90 0.000  (time the main thread waited for a free slot)
+input pace      source @ 30.000 fps, input queue 1 (leaky: full -> drop the oldest)
+arrived         1816 (processed 1816, dropped 0 = 0.00%, abandoned 0, longest drop run 0, queue depth max 1)
+e2e arrival ms  mean 20.347  median 21.180  p90 22.160  max 44.411  (source arrival → NPU completion callback)
+queue wait ms   mean 0.006  p90 0.002  max 6.546  (decode return → GPU submit)
+decode late ms  mean 2.684  p90 4.498  max 10.799  (source arrival → decode return)
+note            paced: FPS and cpu ms/frame are per processed frame (plus polling) — not comparable to asap
+gpu post ms     mean 0.453  median 0.449  p90 0.484  max 2.885  (yolo_decode.comp pass 1)
+cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+nms backend     gpu
+gpu nms ms      mean 0.0561  median 0.0544  p90 0.0728  max 0.0993  (efficient_nms.comp)
+nms fallback    0 frames (capacity 0, iou guard 0)
+candidates      mean 24.22  max 72  overflow frames 0
+slot hold ms    mean 0.576  median 0.561  p90 0.618  max 6.714  (NPU completion callback → slot return)
+held frames max 1 (decoder limit about 13), slot timeout 0
+detections      8901 total, 4.90 / frame
+hailo chip temp 59.1 -> 63.7 C
+soc temp        67.5 -> 64.8 C
+vk validation   errors 0, warnings 1
+RESULT_CSV,display_off,dmabuf,nhcw,1,1,1816,60.533,30.00,0.671,2.627,1.752,1.755,15.23,15.23,17.66,17.68,8901,59.1,63.7,67.5,64.8,1
+RESULT_CSV2,display_off,gpu,export,0.4531,0.4842,0.000,24.22,72,0,1,off,-,-,0.0000,0.0000,0.0000,0.000,0.00,0.00,0,0,0,1,0,gpu,0.0561,0.0728,0,0,-,-,-,-,-,-
+RESULT_CSV3,display_off,0,nan,0,nan,0,-,-,-,-,-,-,-,1,nan,nan,nan,0
+RESULT_CSV4,display_off,1,30.000,1816,1816,0,0,0.0000,0,1,20.35,21.18,22.16,44.41,0.006,0.002,6.546,2.684,4.498,10.799,1,1
+thread cpu      yvo_pip:disk$        threads  1        0.0 ms    0.000 ms/arrived    0.000 ms/processed
+thread cpu      yvo_pipeline         threads 12     1219.2 ms    0.671 ms/arrived    0.671 ms/processed
