@@ -1,0 +1,18 @@
+== 07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261016
+reg_host_off  pipeline 2.444 [2.422-2.678]  app 2.378  labwc 0.000  kthread_net 0.067  other_user 0.456  n=5
+disp_off      pipeline 0.933 [0.922-0.944]  app 0.767  labwc 0.000  kthread_net 0.156  other_user 0.467  n=5
+disp_asap     pipeline 2.044 [1.987-2.100]  app 1.356  labwc 0.378  kthread_net 0.316  other_user 0.622  n=5
+disp_source   pipeline 2.122 [2.100-2.178]  app 1.456  labwc 0.389  kthread_net 0.289  other_user 0.611  n=5
+  disp_off vs reg_host_off: -61.8%
+  disp_asap vs reg_host_off: -16.4%
+  disp_source vs reg_host_off: -13.2%
+  display adds (disp_asap - disp_off): +1.111
+== 07_results/display_e2e/runs/v3d1150_quiet_perfgov_20261109
+reg_host_off  pipeline 2.460 [2.422-2.489]  app 2.411  labwc 0.000  kthread_net 0.060  other_user 0.544  n=5
+disp_off      pipeline 0.778 [0.771-0.844]  app 0.656  labwc 0.000  kthread_net 0.116  other_user 0.433  n=5
+disp_asap     pipeline 1.844 [1.816-1.856]  app 1.189  labwc 0.367  kthread_net 0.289  other_user 0.744  n=5
+disp_source   pipeline 1.989 [1.978-2.133]  app 1.344  labwc 0.367  kthread_net 0.300  other_user 0.589  n=5
+  disp_off vs reg_host_off: -68.4%
+  disp_asap vs reg_host_off: -25.0%
+  disp_source vs reg_host_off: -19.2%
+  display adds (disp_asap - disp_off): +1.067

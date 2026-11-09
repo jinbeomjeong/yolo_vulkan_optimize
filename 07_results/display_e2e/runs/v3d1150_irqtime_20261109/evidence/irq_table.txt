@@ -1,0 +1,4 @@
+reg_host_off  hardirq/f 76.7  hardirq 0.185 (idle 0.176)  softirq 0.040 (idle 0.038)  us/irq 2.51  uncounted 0.213 [0.211-0.282]  unmatched 0  n=3
+disp_off      hardirq/f 95.2  hardirq 0.196 (idle 0.188)  softirq 0.040 (idle 0.039)  us/irq 2.06  uncounted 0.226 [0.225-0.233]  unmatched 0  n=3
+disp_asap     hardirq/f 129.2  hardirq 0.263 (idle 0.254)  softirq 0.067 (idle 0.065)  us/irq 2.03  uncounted 0.319 [0.317-0.320]  unmatched 0  n=3
+disp_source   hardirq/f 177.9  hardirq 0.330 (idle 0.321)  softirq 0.075 (idle 0.073)  us/irq 1.86  uncounted 0.394 [0.388-0.395]  unmatched 0  n=3

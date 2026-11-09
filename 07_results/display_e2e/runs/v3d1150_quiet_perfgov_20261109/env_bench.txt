@@ -1,0 +1,21 @@
+# display_bench 2026-11-09T23:00:03+09:00
+kernel: 6.18.50+rpt-rpi-2712
+soc temp: 70.8 C, hailo temp: 72.2 C
+throttled=0xe0000
+frequency(0)=2400033792
+cpufreq policy0: governor performance cur_khz 2400000
+pcie: 8.0 GT/s PCIe x1 (Gen3, 0001:01:00.0)
+libavcodec61: 8:7.1.5-0+deb13u1+rpt2
+hailort: 4.24.0
+mesa-vulkan-drivers: 26.2.2-1~bpo13+0~rpt1
+labwc: 0.20.2-1~bpo13+1
+libwlroots-0.20: 0.20.2-1+rpt4
+bin: /tmp/claude-1000/-home-pi-workspace-yolo-vulkan-optimize/e4a7ad62-ae73-489e-9893-56a55ad8454a/scratchpad/sd_bin/yvo_pipeline
+bin md5: 070a868784f05f7a82f0ecb66af010b0
+video: /home/pi/workspace/yolo_vulkan_optimize/04_data/videos/video_h265.mp4 frames: 900 runs: 5
+hef: /home/pi/workspace/yolo_vulkan_optimize/03_models/yolov11m.hef md5 51566585905b7190d6d03c9b60710f1d
+wayland: /run/user/1000/wayland-0
+# after 2026-11-09T23:23:27+09:00
+soc temp: 67.5 C, hailo temp: 72.3 C
+bin md5 (after measurement): 070a868784f05f7a82f0ecb66af010b0
+throttled=0xe0000

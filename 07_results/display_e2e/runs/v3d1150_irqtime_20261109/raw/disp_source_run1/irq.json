@@ -1,0 +1,289 @@
+{
+  "tool": "irq_time_window",
+  "script": "/home/pi/workspace/yolo_vulkan_optimize/07_results/display_e2e/runs/v3d1150_irqtime_20261109/raw/disp_source_run1/irq_script.txt",
+  "window_s": 30.12528,
+  "hardirq": {
+    "count": 158455,
+    "total_ms": 294.553,
+    "idle_count": 154624,
+    "idle_ms": 286.478,
+    "busy_ms": 8.075,
+    "incl_ms": 294.553,
+    "nested_count": 563
+  },
+  "softirq": {
+    "count": 37734,
+    "total_ms": 64.208,
+    "idle_count": 36781,
+    "idle_ms": 62.75,
+    "busy_ms": 1.458,
+    "incl_ms": 64.934,
+    "nested_count": 0
+  },
+  "by_irq": {
+    "13:arch_timer": {
+      "irq": 13,
+      "name": "arch_timer",
+      "count": 84491,
+      "total_ms": 139.537,
+      "idle_ms": 136.174,
+      "median_us": 1.0,
+      "p99_us": 5.0,
+      "max_us": 26.0
+    },
+    "185:hailo": {
+      "irq": 185,
+      "name": "hailo",
+      "count": 6853,
+      "total_ms": 60.89,
+      "idle_ms": 60.066,
+      "median_us": 7.0,
+      "p99_us": 15.0,
+      "max_us": 22.0
+    },
+    "2:IPI": {
+      "irq": 2,
+      "name": "IPI",
+      "count": 50886,
+      "total_ms": 55.427,
+      "idle_ms": 55.427,
+      "median_us": 1.0,
+      "p99_us": 3.0,
+      "max_us": 9.0
+    },
+    "165:v3d_core0": {
+      "irq": 165,
+      "name": "v3d_core0",
+      "count": 6302,
+      "total_ms": 12.414,
+      "idle_ms": 11.933,
+      "median_us": 2.0,
+      "p99_us": 4.0,
+      "max_us": 6.0
+    },
+    "180:vc4 crtc": {
+      "irq": 180,
+      "name": "vc4 crtc",
+      "count": 1422,
+      "total_ms": 8.592,
+      "idle_ms": 8.377,
+      "median_us": 6.0,
+      "p99_us": 12.0,
+      "max_us": 18.0
+    },
+    "184:1000800000.codec": {
+      "irq": 184,
+      "name": "1000800000.codec",
+      "count": 1802,
+      "total_ms": 6.061,
+      "idle_ms": 5.939,
+      "median_us": 3.0,
+      "p99_us": 7.0,
+      "max_us": 21.0
+    },
+    "6:IPI": {
+      "irq": 6,
+      "name": "IPI",
+      "count": 3702,
+      "total_ms": 4.316,
+      "idle_ms": 1.538,
+      "median_us": 1.0,
+      "p99_us": 4.0,
+      "max_us": 6.0
+    },
+    "167:107c580000.hvs": {
+      "irq": 167,
+      "name": "107c580000.hvs",
+      "count": 1798,
+      "total_ms": 3.128,
+      "idle_ms": 2.952,
+      "median_us": 2.0,
+      "p99_us": 5.0,
+      "max_us": 8.0
+    },
+    "166:v3d_hub": {
+      "irq": 166,
+      "name": "v3d_hub",
+      "count": 901,
+      "total_ms": 2.137,
+      "idle_ms": 2.112,
+      "median_us": 2.0,
+      "p99_us": 4.0,
+      "max_us": 5.0
+    },
+    "136:xhci-hcd:usb4": {
+      "irq": 136,
+      "name": "xhci-hcd:usb4",
+      "count": 117,
+      "total_ms": 1.518,
+      "idle_ms": 1.505,
+      "median_us": 12.0,
+      "p99_us": 18.0,
+      "max_us": 20.0
+    },
+    "106:eth0": {
+      "irq": 106,
+      "name": "eth0",
+      "count": 82,
+      "total_ms": 0.28,
+      "idle_ms": 0.263,
+      "median_us": 3.0,
+      "p99_us": 5.19,
+      "max_us": 6.0
+    },
+    "161:mmc0": {
+      "irq": 161,
+      "name": "mmc0",
+      "count": 58,
+      "total_ms": 0.212,
+      "idle_ms": 0.166,
+      "median_us": 4.0,
+      "p99_us": 8.0,
+      "max_us": 8.0
+    },
+    "14:107c013880.mailbox": {
+      "irq": 14,
+      "name": "107c013880.mailbox",
+      "count": 22,
+      "total_ms": 0.024,
+      "idle_ms": 0.017,
+      "median_us": 1.0,
+      "p99_us": 2.0,
+      "max_us": 2.0
+    },
+    "1:IPI": {
+      "irq": 1,
+      "name": "IPI",
+      "count": 19,
+      "total_ms": 0.017,
+      "idle_ms": 0.009,
+      "median_us": 1.0,
+      "p99_us": 2.0,
+      "max_us": 2.0
+    }
+  },
+  "by_softirq": {
+    "9:RCU": {
+      "vec": 9,
+      "action": "RCU",
+      "count": 19465,
+      "total_ms": 27.876,
+      "idle_ms": 27.052,
+      "median_us": 1.0,
+      "p99_us": 7.0,
+      "max_us": 24.0
+    },
+    "7:SCHED": {
+      "vec": 7,
+      "action": "SCHED",
+      "count": 14251,
+      "total_ms": 25.568,
+      "idle_ms": 25.228,
+      "median_us": 2.0,
+      "p99_us": 4.0,
+      "max_us": 13.0
+    },
+    "1:TIMER": {
+      "vec": 1,
+      "action": "TIMER",
+      "count": 3701,
+      "total_ms": 7.747,
+      "idle_ms": 7.589,
+      "median_us": 2.0,
+      "p99_us": 7.0,
+      "max_us": 31.0
+    },
+    "0:HI": {
+      "vec": 0,
+      "action": "HI",
+      "count": 117,
+      "total_ms": 1.459,
+      "idle_ms": 1.448,
+      "median_us": 11.0,
+      "p99_us": 19.84,
+      "max_us": 31.0
+    },
+    "3:NET_RX": {
+      "vec": 3,
+      "action": "NET_RX",
+      "count": 164,
+      "total_ms": 1.39,
+      "idle_ms": 1.291,
+      "median_us": 3.0,
+      "p99_us": 51.66,
+      "max_us": 68.0
+    },
+    "4:BLOCK": {
+      "vec": 4,
+      "action": "BLOCK",
+      "count": 28,
+      "total_ms": 0.151,
+      "idle_ms": 0.13,
+      "median_us": 3.0,
+      "p99_us": 17.92,
+      "max_us": 19.0
+    },
+    "2:NET_TX": {
+      "vec": 2,
+      "action": "NET_TX",
+      "count": 8,
+      "total_ms": 0.017,
+      "idle_ms": 0.012,
+      "median_us": 2.0,
+      "p99_us": 3.93,
+      "max_us": 4.0
+    }
+  },
+  "by_cpu": {
+    "0": {
+      "hardirq_ms": 129.457,
+      "hardirq_idle_ms": 126.068,
+      "softirq_ms": 20.288,
+      "softirq_idle_ms": 19.771
+    },
+    "1": {
+      "hardirq_ms": 51.612,
+      "hardirq_idle_ms": 50.271,
+      "softirq_ms": 14.897,
+      "softirq_idle_ms": 14.612
+    },
+    "2": {
+      "hardirq_ms": 53.671,
+      "hardirq_idle_ms": 51.782,
+      "softirq_ms": 14.558,
+      "softirq_idle_ms": 14.189
+    },
+    "3": {
+      "hardirq_ms": 59.813,
+      "hardirq_idle_ms": 58.357,
+      "softirq_ms": 14.465,
+      "softirq_idle_ms": 14.178
+    }
+  },
+  "unmatched": {
+    "hardirq_entry": 0,
+    "hardirq_exit": 0,
+    "softirq_entry": 0,
+    "softirq_exit": 0,
+    "total": 0
+  },
+  "negative_durations": 0,
+  "max_nesting_depth": 2,
+  "uncounted_ms": 349.228,
+  "frames": 900,
+  "hardirq_total_ms_per_frame": 0.327281,
+  "hardirq_idle_ms_per_frame": 0.318309,
+  "hardirq_busy_ms_per_frame": 0.008972,
+  "softirq_total_ms_per_frame": 0.071342,
+  "softirq_idle_ms_per_frame": 0.069722,
+  "softirq_busy_ms_per_frame": 0.00162,
+  "uncounted_ms_per_frame": 0.388031,
+  "parse": {
+    "lines": 392378,
+    "irq_events": 392378,
+    "skipped_lines": 0,
+    "bad_lines": 0,
+    "bad_examples": []
+  },
+  "error": null
+}
