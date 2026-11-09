@@ -561,7 +561,7 @@ V3D가 커맨드 버퍼를 합치면서 한쪽 구간이 0에 가깝게 잡히�
 ([`display_planes_e2e/`](../07_results/display_planes_e2e/summary.md)): CPU −0.44 ms/f(−20%), V3D −72% 이고 **지연 이득은 없다**.
 KMS 와 컴포지터 경유도 같다(glass 중앙 99.85 대 99.93 ms — 프로브 메모가 본 약 1 vblank 차이는 파이프라인 조건에서는 보이지 않았다).
 대신 평면 경로는 버퍼를 오래 쥐어 슬롯 6이 필요하다는 새 사실이 나왔다 — glass-to-glass 가 슬롯 대기를 못 보는 탓에 처음엔 가려져 있었다.
-남은 것은 소스 페이싱에서 프레임의 약 25~27%가 한 vblank 늦는 표시 박자 문제다.
+소스 페이싱에서 프레임의 약 25~27%가 한 vblank 늦는 표시 박자 문제는 2026-10-27에 원인이 밝혀졌다 — vblank 위상이 아니라 프레임 준비 시각이고, 커밋 게이트 여유가 박자와 지연을 맞바꾼다([`vblank_phase_20261027`](../07_results/display_planes_e2e/runs/vblank_phase_20261027/summary.md)). 배치 1(O2)의 평면 경로에는 이 교환이 보이지 않는다([`o2_commit_margin`](../07_results/display_planes_e2e/runs/o2_commit_margin/summary.md)).
 
 **전체 목록의 정본은 [`07_results/README.md`](../07_results/README.md#아직-열려-있는-것) 다**(22항목).
 위 여섯은 그중 이 챕터의 사슬과 직접 이어지는 것만 고른 것이다.

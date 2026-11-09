@@ -1,0 +1,3 @@
+[19:58:04] start o2_display soak=40min hailo 56.0 C soc 66.7 C
+[20:38:04] end o2_display rc=124 hailort warnings=0 errors=0 soc 72.7 C throttled=0xe0000
+cleanup: governor ondemand, lock removed

@@ -1,0 +1,243 @@
+1794221884.471648266 [vulkan WARNING] Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+1794221884.597192721 [cfg] video=/home/pi/workspace/yolo_vulkan_optimize/build/out/o2_soak/video_h265_loop42.mp4 1920x1080 mode=dmabuf layout=nhcw batch=1 slots=1 gpu_depth=1 postproc=gpu/export device=V3D 7.1.10.2
+1794221884.598702749 [pace] input-pace source @ 29.963 fps, input-queue 1 (leaky: drop the oldest), hw_frames=8, display frame gate off (input is paced)
+1794221884.600123426 [display] backend=wayland 1920x1080 1:1 / compute -> storage image images=4 sync=matched pace=source@29.96 every=1 hw_frames=8
+1794221884.603129427 [hevc @ 0x55558e82ed40] Hwaccel V4L2 HEVC stateless V4; devices: /dev/media2,/dev/video19; buffers: src DMABuf, dst DMABuf; swfmt rpi4_8; V4L2fmt Nc12
+1794221897.052286518 soc=66.1 throttled=0xe0000 [progress] 300 frames (arrived 374, dropped 74), 24.1 FPS, hailo 60.7 C
+1794221909.373367358 soc=67.2 throttled=0xe0000 [progress] 600 frames (arrived 743, dropped 143), 24.2 FPS, hailo 63.8 C
+1794221921.700431559 soc=68.8 throttled=0xe0000 [progress] 900 frames (arrived 1112, dropped 212), 24.3 FPS, hailo 66.6 C
+1794221934.055073142 soc=68.3 throttled=0xe0000 [progress] 1200 frames (arrived 1482, dropped 282), 24.3 FPS, hailo 68.6 C
+1794221946.430246528 soc=68.8 throttled=0xe0000 [progress] 1500 frames (arrived 1853, dropped 353), 24.3 FPS, hailo 70.8 C
+1794221958.789908895 soc=70.0 throttled=0xe0000 [progress] 1800 frames (arrived 2223, dropped 423), 24.3 FPS, hailo 71.9 C
+1794221971.131328270 soc=67.8 throttled=0xe0000 [progress] 2100 frames (arrived 2593, dropped 493), 24.3 FPS, hailo 73.4 C
+1794221983.498815358 soc=68.8 throttled=0xe0000 [progress] 2400 frames (arrived 2964, dropped 564), 24.3 FPS, hailo 74.7 C
+1794221995.858122812 soc=69.4 throttled=0xe0000 [progress] 2700 frames (arrived 3334, dropped 634), 24.3 FPS, hailo 75.9 C
+1794222008.218917461 soc=70.0 throttled=0xe0000 [progress] 3000 frames (arrived 3705, dropped 705), 24.3 FPS, hailo 76.9 C
+1794222020.553099408 soc=69.4 throttled=0xe0000 [progress] 3300 frames (arrived 4074, dropped 774), 24.3 FPS, hailo 77.8 C
+1794222032.874560973 soc=69.4 throttled=0xe0000 [progress] 3600 frames (arrived 4443, dropped 843), 24.3 FPS, hailo 78.5 C
+1794222045.203109068 soc=70.0 throttled=0xe0000 [progress] 3900 frames (arrived 4813, dropped 913), 24.3 FPS, hailo 79.2 C
+1794222057.552912658 soc=69.4 throttled=0xe0000 [progress] 4200 frames (arrived 5183, dropped 983), 24.3 FPS, hailo 79.9 C
+1794222069.924896867 soc=69.4 throttled=0xe0000 [progress] 4500 frames (arrived 5553, dropped 1053), 24.3 FPS, hailo 80.3 C
+1794222082.282174927 soc=70.0 throttled=0xe0000 [progress] 4800 frames (arrived 5924, dropped 1124), 24.3 FPS, hailo 80.9 C
+1794222094.656550045 soc=70.5 throttled=0xe0000 [progress] 5100 frames (arrived 6294, dropped 1194), 24.3 FPS, hailo 81.3 C
+1794222107.060817976 soc=70.5 throttled=0xe0000 [progress] 5400 frames (arrived 6666, dropped 1266), 24.3 FPS, hailo 81.8 C
+1794222119.450479811 soc=71.6 throttled=0xe0000 [progress] 5700 frames (arrived 7037, dropped 1337), 24.3 FPS, hailo 82.1 C
+1794222131.811626433 soc=70.5 throttled=0xe0000 [progress] 6000 frames (arrived 7408, dropped 1408), 24.3 FPS, hailo 82.4 C
+1794222144.147608037 soc=70.5 throttled=0xe0000 [progress] 6300 frames (arrived 7777, dropped 1477), 24.3 FPS, hailo 82.8 C
+1794222156.474452081 soc=71.6 throttled=0xe0000 [progress] 6600 frames (arrived 8147, dropped 1547), 24.3 FPS, hailo 83.1 C
+1794222168.817441449 soc=69.4 throttled=0xe0000 [progress] 6900 frames (arrived 8516, dropped 1616), 24.3 FPS, hailo 83.6 C
+1794222181.179073199 soc=70.5 throttled=0xe0000 [progress] 7200 frames (arrived 8887, dropped 1687), 24.3 FPS, hailo 83.8 C
+1794222193.531012399 soc=70.0 throttled=0xe0000 [progress] 7500 frames (arrived 9257, dropped 1757), 24.3 FPS, hailo 83.9 C
+1794222205.878218178 soc=70.5 throttled=0xe0000 [progress] 7800 frames (arrived 9627, dropped 1827), 24.3 FPS, hailo 84.1 C
+1794222218.213232680 soc=70.0 throttled=0xe0000 [progress] 8100 frames (arrived 9996, dropped 1896), 24.3 FPS, hailo 84.3 C
+1794222230.595229865 soc=71.6 throttled=0xe0000 [progress] 8400 frames (arrived 10367, dropped 1967), 24.3 FPS, hailo 84.3 C
+1794222242.983015800 soc=70.5 throttled=0xe0000 [progress] 8700 frames (arrived 10739, dropped 2039), 24.3 FPS, hailo 84.6 C
+1794222255.339071775 soc=71.0 throttled=0xe0000 [progress] 9000 frames (arrived 11109, dropped 2109), 24.3 FPS, hailo 84.8 C
+1794222267.679865360 soc=71.0 throttled=0xe0000 [progress] 9300 frames (arrived 11479, dropped 2179), 24.3 FPS, hailo 85.0 C
+1794222280.010078199 soc=71.0 throttled=0xe0000 [progress] 9600 frames (arrived 11848, dropped 2248), 24.3 FPS, hailo 85.2 C
+1794222292.344870630 soc=71.0 throttled=0xe0000 [progress] 9900 frames (arrived 12218, dropped 2318), 24.3 FPS, hailo 85.3 C
+1794222304.741345244 soc=71.6 throttled=0xe0000 [progress] 10200 frames (arrived 12589, dropped 2389), 24.3 FPS, hailo 85.3 C
+1794222317.089429153 soc=70.5 throttled=0xe0000 [progress] 10500 frames (arrived 12959, dropped 2459), 24.3 FPS, hailo 85.5 C
+1794222329.414952536 soc=70.5 throttled=0xe0000 [progress] 10800 frames (arrived 13328, dropped 2528), 24.3 FPS, hailo 85.6 C
+1794222341.742520844 soc=70.5 throttled=0xe0000 [progress] 11100 frames (arrived 13698, dropped 2598), 24.3 FPS, hailo 85.7 C
+1794222354.075905990 soc=70.0 throttled=0xe0000 [progress] 11400 frames (arrived 14067, dropped 2667), 24.3 FPS, hailo 85.8 C
+1794222366.439129309 soc=70.5 throttled=0xe0000 [progress] 11700 frames (arrived 14438, dropped 2738), 24.3 FPS, hailo 85.8 C
+1794222378.776706246 soc=70.5 throttled=0xe0000 [progress] 12000 frames (arrived 14807, dropped 2807), 24.3 FPS, hailo 86.0 C
+1794222391.103970880 soc=71.0 throttled=0xe0000 [progress] 12300 frames (arrived 15177, dropped 2877), 24.3 FPS, hailo 86.1 C
+1794222403.436170564 soc=71.0 throttled=0xe0000 [progress] 12600 frames (arrived 15546, dropped 2946), 24.3 FPS, hailo 86.3 C
+1794222415.798247209 soc=70.0 throttled=0xe0000 [progress] 12900 frames (arrived 15917, dropped 3017), 24.3 FPS, hailo 86.3 C
+1794222428.160828217 soc=71.0 throttled=0xe0000 [progress] 13200 frames (arrived 16287, dropped 3087), 24.3 FPS, hailo 86.3 C
+1794222440.498989996 soc=70.5 throttled=0xe0000 [progress] 13500 frames (arrived 16657, dropped 3157), 24.3 FPS, hailo 86.4 C
+1794222452.824233306 soc=71.0 throttled=0xe0000 [progress] 13800 frames (arrived 17026, dropped 3226), 24.3 FPS, hailo 86.5 C
+1794222465.164473184 soc=70.0 throttled=0xe0000 [progress] 14100 frames (arrived 17396, dropped 3296), 24.3 FPS, hailo 86.5 C
+1794222477.502222084 soc=72.2 throttled=0xe0000 [progress] 14400 frames (arrived 17765, dropped 3365), 24.3 FPS, hailo 86.7 C
+1794222489.863738166 soc=71.0 throttled=0xe0000 [progress] 14700 frames (arrived 18136, dropped 3436), 24.3 FPS, hailo 86.5 C
+1794222502.196242971 soc=71.6 throttled=0xe0000 [progress] 15000 frames (arrived 18505, dropped 3505), 24.3 FPS, hailo 86.6 C
+1794222514.524176646 soc=70.5 throttled=0xe0000 [progress] 15300 frames (arrived 18875, dropped 3575), 24.3 FPS, hailo 86.8 C
+1794222526.851825997 soc=72.2 throttled=0xe0000 [progress] 15600 frames (arrived 19244, dropped 3644), 24.3 FPS, hailo 86.9 C
+1794222539.192118306 soc=70.5 throttled=0xe0000 [progress] 15900 frames (arrived 19614, dropped 3714), 24.3 FPS, hailo 86.9 C
+1794222551.550705330 soc=72.2 throttled=0xe0000 [progress] 16200 frames (arrived 19984, dropped 3784), 24.3 FPS, hailo 86.9 C
+1794222563.926447603 soc=71.6 throttled=0xe0000 [progress] 16500 frames (arrived 20355, dropped 3855), 24.3 FPS, hailo 86.9 C
+1794222576.389611093 soc=72.7 throttled=0xe0000 [progress] 16800 frames (arrived 20728, dropped 3928), 24.3 FPS, hailo 86.9 C
+1794222588.760994547 soc=73.2 throttled=0xe0000 [progress] 17100 frames (arrived 21099, dropped 3999), 24.3 FPS, hailo 86.9 C
+1794222601.147212352 soc=71.6 throttled=0xe0000 [progress] 17400 frames (arrived 21470, dropped 4070), 24.3 FPS, hailo 87.0 C
+1794222613.568025756 soc=72.7 throttled=0xe0000 [progress] 17700 frames (arrived 21842, dropped 4142), 24.3 FPS, hailo 87.1 C
+1794222625.943173902 soc=72.2 throttled=0xe0000 [progress] 18000 frames (arrived 22213, dropped 4213), 24.3 FPS, hailo 87.0 C
+1794222638.269749757 soc=72.2 throttled=0xe0000 [progress] 18300 frames (arrived 22582, dropped 4282), 24.3 FPS, hailo 87.0 C
+1794222650.604068117 soc=72.2 throttled=0xe0000 [progress] 18600 frames (arrived 22952, dropped 4352), 24.3 FPS, hailo 87.2 C
+1794222662.949808984 soc=71.6 throttled=0xe0000 [progress] 18900 frames (arrived 23322, dropped 4422), 24.3 FPS, hailo 87.1 C
+1794222675.303201654 soc=72.7 throttled=0xe0000 [progress] 19200 frames (arrived 23692, dropped 4492), 24.3 FPS, hailo 87.2 C
+1794222687.636631542 soc=71.6 throttled=0xe0000 [progress] 19500 frames (arrived 24062, dropped 4562), 24.3 FPS, hailo 87.2 C
+1794222699.956822541 soc=71.0 throttled=0xe0000 [progress] 19800 frames (arrived 24431, dropped 4631), 24.3 FPS, hailo 87.3 C
+1794222712.310051588 soc=71.6 throttled=0xe0000 [progress] 20100 frames (arrived 24801, dropped 4701), 24.3 FPS, hailo 87.4 C
+1794222724.660344605 soc=72.7 throttled=0xe0000 [progress] 20400 frames (arrived 25171, dropped 4771), 24.3 FPS, hailo 87.3 C
+1794222737.001733892 soc=71.0 throttled=0xe0000 [progress] 20700 frames (arrived 25541, dropped 4841), 24.3 FPS, hailo 87.4 C
+1794222749.333203021 soc=71.0 throttled=0xe0000 [progress] 21000 frames (arrived 25910, dropped 4910), 24.3 FPS, hailo 87.4 C
+1794222761.650252910 soc=71.0 throttled=0xe0000 [progress] 21300 frames (arrived 26279, dropped 4979), 24.3 FPS, hailo 87.5 C
+1794222774.005277512 soc=72.2 throttled=0xe0000 [progress] 21600 frames (arrived 26649, dropped 5049), 24.3 FPS, hailo 87.4 C
+1794222786.380957099 soc=71.6 throttled=0xe0000 [progress] 21900 frames (arrived 27020, dropped 5120), 24.3 FPS, hailo 87.4 C
+1794222798.728099517 soc=72.7 throttled=0xe0000 [progress] 22200 frames (arrived 27390, dropped 5190), 24.3 FPS, hailo 87.4 C
+1794222811.063513533 soc=71.6 throttled=0xe0000 [progress] 22500 frames (arrived 27760, dropped 5260), 24.3 FPS, hailo 87.5 C
+1794222823.387038998 soc=71.6 throttled=0xe0000 [progress] 22800 frames (arrived 28129, dropped 5329), 24.3 FPS, hailo 87.5 C
+1794222835.721136357 soc=71.6 throttled=0xe0000 [progress] 23100 frames (arrived 28499, dropped 5399), 24.3 FPS, hailo 87.5 C
+1794222848.080816700 soc=71.0 throttled=0xe0000 [progress] 23400 frames (arrived 28869, dropped 5469), 24.3 FPS, hailo 87.5 C
+1794222860.418991459 soc=71.6 throttled=0xe0000 [progress] 23700 frames (arrived 29239, dropped 5539), 24.3 FPS, hailo 87.6 C
+1794222872.745890417 soc=72.2 throttled=0xe0000 [progress] 24000 frames (arrived 29608, dropped 5608), 24.3 FPS, hailo 87.6 C
+1794222885.069737715 soc=71.0 throttled=0xe0000 [progress] 24300 frames (arrived 29977, dropped 5677), 24.3 FPS, hailo 87.6 C
+1794222897.397693118 soc=72.7 throttled=0xe0000 [progress] 24600 frames (arrived 30347, dropped 5747), 24.3 FPS, hailo 87.5 C
+1794222909.758924738 soc=71.0 throttled=0xe0000 [progress] 24900 frames (arrived 30717, dropped 5817), 24.3 FPS, hailo 87.6 C
+1794222922.099083413 soc=71.6 throttled=0xe0000 [progress] 25200 frames (arrived 31087, dropped 5887), 24.3 FPS, hailo 87.7 C
+1794222934.421944870 soc=72.7 throttled=0xe0000 [progress] 25500 frames (arrived 31456, dropped 5956), 24.3 FPS, hailo 87.8 C
+1794222946.750528372 soc=71.0 throttled=0xe0000 [progress] 25800 frames (arrived 31825, dropped 6025), 24.3 FPS, hailo 87.7 C
+1794222959.080286614 soc=71.6 throttled=0xe0000 [progress] 26100 frames (arrived 32195, dropped 6095), 24.3 FPS, hailo 87.9 C
+1794222971.443661747 soc=71.0 throttled=0xe0000 [progress] 26400 frames (arrived 32565, dropped 6165), 24.3 FPS, hailo 87.8 C
+1794222983.782118086 soc=71.0 throttled=0xe0000 [progress] 26700 frames (arrived 32935, dropped 6235), 24.3 FPS, hailo 87.8 C
+1794222996.107478843 soc=71.0 throttled=0xe0000 [progress] 27000 frames (arrived 33304, dropped 6304), 24.3 FPS, hailo 87.8 C
+1794223008.439052839 soc=71.6 throttled=0xe0000 [progress] 27300 frames (arrived 33674, dropped 6374), 24.3 FPS, hailo 87.8 C
+1794223020.762523973 soc=71.6 throttled=0xe0000 [progress] 27600 frames (arrived 34043, dropped 6443), 24.3 FPS, hailo 87.9 C
+1794223033.124870949 soc=71.0 throttled=0xe0000 [progress] 27900 frames (arrived 34413, dropped 6513), 24.3 FPS, hailo 87.9 C
+1794223045.457264370 soc=72.2 throttled=0xe0000 [progress] 28200 frames (arrived 34783, dropped 6583), 24.3 FPS, hailo 87.8 C
+1794223057.782990678 soc=70.0 throttled=0xe0000 [progress] 28500 frames (arrived 35152, dropped 6652), 24.3 FPS, hailo 87.8 C
+1794223070.116859553 soc=72.7 throttled=0xe0000 [progress] 28800 frames (arrived 35522, dropped 6722), 24.3 FPS, hailo 87.9 C
+1794223082.448275658 soc=72.7 throttled=0xe0000 [progress] 29100 frames (arrived 35891, dropped 6791), 24.3 FPS, hailo 87.9 C
+1794223094.798947205 soc=71.6 throttled=0xe0000 [progress] 29400 frames (arrived 36261, dropped 6861), 24.3 FPS, hailo 88.0 C
+1794223107.130903862 soc=71.6 throttled=0xe0000 [progress] 29700 frames (arrived 36631, dropped 6931), 24.3 FPS, hailo 87.9 C
+1794223119.455277136 soc=70.5 throttled=0xe0000 [progress] 30000 frames (arrived 37000, dropped 7000), 24.3 FPS, hailo 87.9 C
+1794223131.828578861 soc=72.2 throttled=0xe0000 [progress] 30300 frames (arrived 37371, dropped 7071), 24.3 FPS, hailo 87.9 C
+1794223144.163903103 soc=71.6 throttled=0xe0000 [progress] 30600 frames (arrived 37740, dropped 7140), 24.3 FPS, hailo 87.9 C
+1794223156.524509473 soc=71.0 throttled=0xe0000 [progress] 30900 frames (arrived 38111, dropped 7211), 24.3 FPS, hailo 88.0 C
+1794223168.853039705 soc=71.0 throttled=0xe0000 [progress] 31200 frames (arrived 38480, dropped 7280), 24.3 FPS, hailo 88.1 C
+1794223181.176742398 soc=71.6 throttled=0xe0000 [progress] 31500 frames (arrived 38849, dropped 7349), 24.3 FPS, hailo 87.9 C
+1794223193.542948084 soc=72.2 throttled=0xe0000 [progress] 31800 frames (arrived 39220, dropped 7420), 24.3 FPS, hailo 87.9 C
+1794223205.886449539 soc=71.6 throttled=0xe0000 [progress] 32100 frames (arrived 39590, dropped 7490), 24.3 FPS, hailo 88.0 C
+1794223218.237680826 soc=71.0 throttled=0xe0000 [progress] 32400 frames (arrived 39960, dropped 7560), 24.3 FPS, hailo 88.0 C
+1794223230.565194563 soc=71.6 throttled=0xe0000 [progress] 32700 frames (arrived 40329, dropped 7629), 24.3 FPS, hailo 88.1 C
+1794223242.892349317 soc=71.0 throttled=0xe0000 [progress] 33000 frames (arrived 40699, dropped 7699), 24.3 FPS, hailo 88.0 C
+1794223255.259547042 soc=72.2 throttled=0xe0000 [progress] 33300 frames (arrived 41069, dropped 7769), 24.3 FPS, hailo 88.0 C
+1794223267.608283095 soc=72.7 throttled=0xe0000 [progress] 33600 frames (arrived 41439, dropped 7839), 24.3 FPS, hailo 88.1 C
+1794223279.973903261 soc=71.6 throttled=0xe0000 [progress] 33900 frames (arrived 41810, dropped 7910), 24.3 FPS, hailo 88.1 C
+1794223292.337529602 soc=71.6 throttled=0xe0000 [progress] 34200 frames (arrived 42180, dropped 7980), 24.3 FPS, hailo 88.0 C
+1794223304.660644788 soc=71.6 throttled=0xe0000 [progress] 34500 frames (arrived 42549, dropped 8049), 24.3 FPS, hailo 88.0 C
+1794223316.994577973 soc=71.6 throttled=0xe0000 [progress] 34800 frames (arrived 42919, dropped 8119), 24.3 FPS, hailo 88.1 C
+1794223329.340692692 soc=71.6 throttled=0xe0000 [progress] 35100 frames (arrived 43289, dropped 8189), 24.3 FPS, hailo 88.0 C
+1794223341.691457837 soc=71.6 throttled=0xe0000 [progress] 35400 frames (arrived 43659, dropped 8259), 24.3 FPS, hailo 88.1 C
+1794223354.024672268 soc=70.5 throttled=0xe0000 [progress] 35700 frames (arrived 44028, dropped 8328), 24.3 FPS, hailo 88.0 C
+1794223366.346237148 soc=71.0 throttled=0xe0000 [progress] 36000 frames (arrived 44398, dropped 8398), 24.3 FPS, hailo 88.2 C
+1794223378.672534055 soc=72.7 throttled=0xe0000 [progress] 36300 frames (arrived 44767, dropped 8467), 24.3 FPS, hailo 88.2 C
+1794223391.020381113 soc=72.2 throttled=0xe0000 [progress] 36600 frames (arrived 45137, dropped 8537), 24.3 FPS, hailo 88.2 C
+1794223403.398351778 soc=72.7 throttled=0xe0000 [progress] 36900 frames (arrived 45508, dropped 8608), 24.3 FPS, hailo 88.1 C
+1794223415.730149487 soc=72.7 throttled=0xe0000 [progress] 37200 frames (arrived 45877, dropped 8677), 24.3 FPS, hailo 88.2 C
+1794223428.058528059 soc=71.6 throttled=0xe0000 [progress] 37500 frames (arrived 46247, dropped 8747), 24.3 FPS, hailo 88.2 C
+1794223440.387707294 soc=71.6 throttled=0xe0000 [progress] 37800 frames (arrived 46616, dropped 8816), 24.3 FPS, hailo 88.2 C
+1794223452.743771227 soc=72.7 throttled=0xe0000 [progress] 38100 frames (arrived 46986, dropped 8886), 24.3 FPS, hailo 88.2 C
+1794223465.084709938 soc=71.0 throttled=0xe0000 [progress] 38400 frames (arrived 47356, dropped 8956), 24.3 FPS, hailo 88.2 C
+1794223477.411279537 soc=71.0 throttled=0xe0000 [progress] 38700 frames (arrived 47725, dropped 9025), 24.3 FPS, hailo 88.3 C
+1794223489.739263062 soc=71.6 throttled=0xe0000 [progress] 39000 frames (arrived 48095, dropped 9095), 24.3 FPS, hailo 88.2 C
+1794223502.070975552 soc=71.6 throttled=0xe0000 [progress] 39300 frames (arrived 48464, dropped 9164), 24.3 FPS, hailo 88.3 C
+1794223514.423345632 soc=72.2 throttled=0xe0000 [progress] 39600 frames (arrived 48834, dropped 9234), 24.3 FPS, hailo 88.3 C
+1794223526.765661096 soc=71.0 throttled=0xe0000 [progress] 39900 frames (arrived 49204, dropped 9304), 24.3 FPS, hailo 88.2 C
+1794223539.098257589 soc=72.2 throttled=0xe0000 [progress] 40200 frames (arrived 49574, dropped 9374), 24.3 FPS, hailo 88.3 C
+1794223551.416943714 soc=72.7 throttled=0xe0000 [progress] 40500 frames (arrived 49943, dropped 9443), 24.3 FPS, hailo 88.3 C
+1794223563.740955656 soc=71.6 throttled=0xe0000 [progress] 40800 frames (arrived 50312, dropped 9512), 24.3 FPS, hailo 88.3 C
+1794223576.102827747 soc=71.6 throttled=0xe0000 [progress] 41100 frames (arrived 50682, dropped 9582), 24.3 FPS, hailo 88.3 C
+1794223588.447118705 soc=71.6 throttled=0xe0000 [progress] 41400 frames (arrived 51052, dropped 9652), 24.3 FPS, hailo 88.3 C
+1794223600.774566213 soc=71.0 throttled=0xe0000 [progress] 41700 frames (arrived 51422, dropped 9722), 24.3 FPS, hailo 88.2 C
+1794223613.094572831 soc=72.2 throttled=0xe0000 [progress] 42000 frames (arrived 51791, dropped 9791), 24.3 FPS, hailo 88.3 C
+1794223625.418523864 soc=71.6 throttled=0xe0000 [progress] 42300 frames (arrived 52160, dropped 9860), 24.3 FPS, hailo 88.4 C
+1794223637.787194491 soc=72.2 throttled=0xe0000 [progress] 42600 frames (arrived 52531, dropped 9931), 24.3 FPS, hailo 88.3 C
+1794223650.119774388 soc=71.0 throttled=0xe0000 [progress] 42900 frames (arrived 52900, dropped 10000), 24.3 FPS, hailo 88.2 C
+1794223662.445075423 soc=71.6 throttled=0xe0000 [progress] 43200 frames (arrived 53269, dropped 10069), 24.3 FPS, hailo 88.3 C
+1794223674.775829392 soc=71.6 throttled=0xe0000 [progress] 43500 frames (arrived 53639, dropped 10139), 24.3 FPS, hailo 88.3 C
+1794223687.100175194 soc=70.5 throttled=0xe0000 [progress] 43800 frames (arrived 54008, dropped 10208), 24.3 FPS, hailo 88.3 C
+1794223699.463633642 soc=71.6 throttled=0xe0000 [progress] 44100 frames (arrived 54379, dropped 10279), 24.3 FPS, hailo 88.4 C
+1794223711.794158601 soc=71.6 throttled=0xe0000 [progress] 44400 frames (arrived 54748, dropped 10348), 24.3 FPS, hailo 88.4 C
+1794223724.120858062 soc=71.6 throttled=0xe0000 [progress] 44700 frames (arrived 55117, dropped 10417), 24.3 FPS, hailo 88.3 C
+1794223736.490636219 soc=73.8 throttled=0xe0000 [progress] 45000 frames (arrived 55488, dropped 10488), 24.3 FPS, hailo 88.3 C
+1794223748.904250289 soc=73.8 throttled=0xe0000 [progress] 45300 frames (arrived 55860, dropped 10560), 24.3 FPS, hailo 88.4 C
+1794223761.268485713 soc=72.7 throttled=0xe0000 [progress] 45600 frames (arrived 56230, dropped 10630), 24.3 FPS, hailo 88.4 C
+1794223773.634544701 soc=72.2 throttled=0xe0000 [progress] 45900 frames (arrived 56601, dropped 10701), 24.3 FPS, hailo 88.4 C
+1794223785.957834085 soc=72.2 throttled=0xe0000 [progress] 46200 frames (arrived 56970, dropped 10770), 24.3 FPS, hailo 88.4 C
+1794223798.290105380 soc=72.2 throttled=0xe0000 [progress] 46500 frames (arrived 57340, dropped 10840), 24.3 FPS, hailo 88.3 C
+1794223810.625535112 soc=71.6 throttled=0xe0000 [progress] 46800 frames (arrived 57709, dropped 10909), 24.3 FPS, hailo 88.4 C
+1794223822.989202977 soc=71.6 throttled=0xe0000 [progress] 47100 frames (arrived 58080, dropped 10980), 24.3 FPS, hailo 88.4 C
+1794223835.319399626 soc=72.2 throttled=0xe0000 [progress] 47400 frames (arrived 58449, dropped 11049), 24.3 FPS, hailo 88.5 C
+1794223847.641012790 soc=71.6 throttled=0xe0000 [progress] 47700 frames (arrived 58818, dropped 11118), 24.3 FPS, hailo 88.5 C
+1794223859.975233656 soc=72.7 throttled=0xe0000 [progress] 48000 frames (arrived 59188, dropped 11188), 24.3 FPS, hailo 88.4 C
+1794223872.317153996 soc=71.6 throttled=0xe0000 [progress] 48300 frames (arrived 59558, dropped 11258), 24.3 FPS, hailo 88.4 C
+1794223884.686221957 soc=71.6 throttled=0xe0000 [progress] 48600 frames (arrived 59928, dropped 11328), 24.3 FPS, hailo 88.4 C
+1794223897.016711721 soc=71.6 throttled=0xe0000 [progress] 48900 frames (arrived 60298, dropped 11398), 24.3 FPS, hailo 88.4 C
+1794223909.342105055 soc=72.2 throttled=0xe0000 [progress] 49200 frames (arrived 60667, dropped 11467), 24.3 FPS, hailo 88.5 C
+1794223921.678926634 soc=71.6 throttled=0xe0000 [progress] 49500 frames (arrived 61037, dropped 11537), 24.3 FPS, hailo 88.4 C
+1794223934.014907945 soc=71.0 throttled=0xe0000 [progress] 49800 frames (arrived 61406, dropped 11606), 24.3 FPS, hailo 88.4 C
+1794223946.364323899 soc=72.2 throttled=0xe0000 [progress] 50100 frames (arrived 61776, dropped 11676), 24.3 FPS, hailo 88.4 C
+1794223958.694989451 soc=71.6 throttled=0xe0000 [progress] 50400 frames (arrived 62146, dropped 11746), 24.3 FPS, hailo 88.5 C
+1794223971.022650814 soc=71.6 throttled=0xe0000 [progress] 50700 frames (arrived 62515, dropped 11815), 24.3 FPS, hailo 88.5 C
+1794223983.353532815 soc=72.2 throttled=0xe0000 [progress] 51000 frames (arrived 62885, dropped 11885), 24.3 FPS, hailo 88.4 C
+1794223995.700276436 soc=72.2 throttled=0xe0000 [progress] 51300 frames (arrived 63255, dropped 11955), 24.3 FPS, hailo 88.5 C
+1794224008.048265600 soc=72.2 throttled=0xe0000 [progress] 51600 frames (arrived 63625, dropped 12025), 24.3 FPS, hailo 88.4 C
+1794224020.378115767 soc=71.6 throttled=0xe0000 [progress] 51900 frames (arrived 63994, dropped 12094), 24.3 FPS, hailo 88.5 C
+1794224032.703470941 soc=72.2 throttled=0xe0000 [progress] 52200 frames (arrived 64363, dropped 12163), 24.3 FPS, hailo 88.4 C
+1794224045.022657144 soc=71.6 throttled=0xe0000 [progress] 52500 frames (arrived 64732, dropped 12232), 24.3 FPS, hailo 88.5 C
+1794224057.376558557 soc=72.7 throttled=0xe0000 [progress] 52800 frames (arrived 65103, dropped 12303), 24.3 FPS, hailo 88.5 C
+1794224069.724443136 soc=72.2 throttled=0xe0000 [progress] 53100 frames (arrived 65473, dropped 12373), 24.3 FPS, hailo 88.4 C
+1794224082.054983683 soc=72.2 throttled=0xe0000 [progress] 53400 frames (arrived 65842, dropped 12442), 24.3 FPS, hailo 88.5 C
+1794224094.383650879 soc=72.7 throttled=0xe0000 [progress] 53700 frames (arrived 66211, dropped 12511), 24.3 FPS, hailo 88.6 C
+1794224106.714483342 soc=71.6 throttled=0xe0000 [progress] 54000 frames (arrived 66581, dropped 12581), 24.3 FPS, hailo 88.5 C
+1794224119.068810723 soc=71.6 throttled=0xe0000 [progress] 54300 frames (arrived 66951, dropped 12651), 24.3 FPS, hailo 88.5 C
+1794224131.411796013 soc=71.0 throttled=0xe0000 [progress] 54600 frames (arrived 67321, dropped 12721), 24.3 FPS, hailo 88.6 C
+1794224143.741623328 soc=72.7 throttled=0xe0000 [progress] 54900 frames (arrived 67690, dropped 12790), 24.3 FPS, hailo 88.5 C
+1794224156.065457524 soc=71.6 throttled=0xe0000 [progress] 55200 frames (arrived 68060, dropped 12860), 24.3 FPS, hailo 88.6 C
+1794224168.390922734 soc=71.0 throttled=0xe0000 [progress] 55500 frames (arrived 68429, dropped 12929), 24.3 FPS, hailo 88.6 C
+1794224180.749794594 soc=73.2 throttled=0xe0000 [progress] 55800 frames (arrived 68799, dropped 12999), 24.3 FPS, hailo 88.5 C
+1794224193.091485052 soc=72.2 throttled=0xe0000 [progress] 56100 frames (arrived 69169, dropped 13069), 24.3 FPS, hailo 88.5 C
+1794224205.424799785 soc=73.2 throttled=0xe0000 [progress] 56400 frames (arrived 69539, dropped 13139), 24.3 FPS, hailo 88.6 C
+1794224217.744167007 soc=71.6 throttled=0xe0000 [progress] 56700 frames (arrived 69908, dropped 13208), 24.3 FPS, hailo 88.6 C
+1794224230.074970069 soc=72.2 throttled=0xe0000 [progress] 57000 frames (arrived 70277, dropped 13277), 24.3 FPS, hailo 88.6 C
+1794224242.427954753 soc=72.7 throttled=0xe0000 [progress] 57300 frames (arrived 70647, dropped 13347), 24.3 FPS, hailo 88.6 C
+1794224254.772480913 soc=72.2 throttled=0xe0000 [progress] 57600 frames (arrived 71017, dropped 13417), 24.3 FPS, hailo 88.5 C
+1794224267.105394903 soc=71.6 throttled=0xe0000 [progress] 57900 frames (arrived 71387, dropped 13487), 24.3 FPS, hailo 88.5 C
+1794224279.428003055 soc=72.2 throttled=0xe0000 [progress] 58200 frames (arrived 71756, dropped 13556), 24.3 FPS, hailo 88.4 C
+1794224284.395016923 [frame-log] 71895 rows -> frame_log.csv
+1794224284.427673165 [interrupted] SIGINT received — stopped at frame 58312 (the stats below are partial-run values, ok=0)
+1794224284.428861892 == yvo_pipeline (dmabuf, nhcw, batch 1, slots 1, gpu_depth 1, postproc gpu/export) ==
+1794224284.430143971 frames          58312 (decoded 58312, errors 0)
+1794224284.431907811 wall            2399.495 s, 24.30 FPS
+1794224284.433658429 cpu             1.327 ms/frame (process user+sys 77374.0 ms, 3% of one core)
+1794224284.435401584 decode call ms  mean 2.818  median 3.621  p90 4.938  max 35.549
+1794224284.436857498 gpu shader ms   mean 0.155  median 0.004  p90 0.087  max 4.764
+1794224284.438019225 npu latency ms  mean 32.423  median 32.607  p90 32.855  max 42.698
+1794224284.439170692 e2e latency ms  mean 50.836  median 51.104  p90 63.949  max 79.130  (decode return → NPU completion callback)
+1794224284.440093474 slot wait ms    mean 22.302  p90 36.111  (time the main thread waited for a free slot)
+1794224284.440968440 input pace      source @ 29.963 fps, input queue 1 (leaky: full -> drop the oldest)
+1794224284.443478635 arrived         71895 (processed 58312, dropped 13582 = 18.89%, abandoned 1, longest drop run 2, queue depth max 1)
+1794224284.444952956 e2e arrival ms  mean 53.745  median 53.839  p90 66.661  max 84.305  (source arrival → NPU completion callback)
+1794224284.446146572 queue wait ms   mean 14.503  p90 27.266  max 33.122  (decode return → GPU submit)
+1794224284.447028261 decode late ms  mean 3.010  p90 5.264  max 42.895  (source arrival → decode return)
+1794224284.447801467 note            paced: FPS and cpu ms/frame are per processed frame (plus polling) — not comparable to asap
+1794224284.448508711 gpu post ms     mean 0.454  median 0.449  p90 0.491  max 6.610  (yolo_decode.comp pass 1)
+1794224284.449204399 cpu nms us      mean 0.000  median 0.000  p90 0.000  max 0.000  (cpu_nms_greedy_by_class, n=0)
+1794224284.449847587 nms backend     gpu
+1794224284.450525978 gpu nms ms      mean 0.0579  median 0.0556  p90 0.0754  max 0.3270  (efficient_nms.comp)
+1794224284.451169574 nms fallback    0 frames (capacity 0, iou guard 0)
+1794224284.451791909 candidates      mean 25.96  max 78  overflow frames 0
+1794224284.452472931 slot hold ms    mean 0.704  median 0.577  p90 0.677  max 13.761  (NPU completion callback → slot return)
+1794224284.453143230 disp convert ms mean 3.609  median 3.595  p90 3.637  (display_convert.comp)
+1794224284.453763306 disp overlay ms mean 0.124  median 0.126  p90 0.160  (overlay_boxes.comp)
+1794224284.454411290 present interval ms median 34.248  p90 50.990  (n=58310)
+1794224284.455064089 glass-to-glass  mean 53.15  median 53.12  p90 60.22  (n=58312, slot acquired → reaches screen)
+1794224284.455748277 decode-to-screen mean 67.66  median 68.68  p90 82.43  (n=58312, decode return → reaches screen, includes slot wait)
+1794224284.456395039 arrival-to-present mean 70.56  median 71.17  p90 85.01  max 122.90  (n=58312, scheduled source arrival → reaches screen)
+1794224284.457026356 display         presented 58312, dropped 0, recreates 1, overlay overflow 0
+1794224284.457752748 display warmup  0 presentations excluded from glass / decode-to-screen / present interval / late frames (glass n 58312 of 58312, glass median 53.12)
+1794224284.458768141 held frames max 3 (decoder limit about 13), slot timeout 0
+1794224284.459533885 detections      302838 total, 5.19 / frame
+1794224284.460263017 hailo chip temp 55.9 -> 88.5 C
+1794224284.460916779 soc temp        65.3 -> 71.4 C
+1794224284.461540615 vk validation   errors 0, warnings 1
+1794224284.462201044 RESULT_CSV,o2_soak,dmabuf,nhcw,1,1,58312,2399.495,24.30,1.327,2.818,0.155,0.087,32.42,32.86,50.84,63.95,302838,55.9,88.5,65.3,71.4,0
+1794224284.462915158 RESULT_CSV2,o2_soak,gpu,export,0.4543,0.4911,0.000,25.96,78,0,0,wayland,matched,source,3.6089,3.6366,0.1236,34.248,53.15,60.22,58312,0,1,3,0,gpu,0.0579,0.0754,0,0,-,-,-,-,-,-
+1794224284.463611642 RESULT_CSV3,o2_soak,0,53.12,58312,50.990,58310,-,-,-,-,-,-,-,0,67.66,68.68,82.43,58312
+1794224284.464331886 RESULT_CSV4,o2_soak,1,29.963,71895,58312,13582,1,0.1889,2,1,53.74,53.84,66.66,84.30,14.503,27.266,33.122,3.010,5.264,42.895,3,0
+1794224284.464983722 RESULT_CSV5,o2_soak,70.56,71.17,85.01,122.90,58312,0
+1794224284.465642632 thread cpu      yvo_pip:disk$        threads  1        0.0 ms    0.000 ms/arrived    0.000 ms/processed
+1794224284.466274097 thread cpu      yvo_pipeline         threads 12    77374.3 ms    1.076 ms/arrived    1.327 ms/processed

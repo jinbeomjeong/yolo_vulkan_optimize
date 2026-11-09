@@ -1,0 +1,15 @@
+2026-11-09T19:58:03+09:00
+6.18.50+rpt-rpi-2712
+bin: /tmp/claude-1000/-home-pi-workspace-yolo-vulkan-optimize/e4a7ad62-ae73-489e-9893-56a55ad8454a/scratchpad/new_bin/yvo_pipeline md5 af63c101943f444a215e7eca0315b77b
+git HEAD: fb985434cff654be5864693aaa3c0c2ed2689793
+pcie: 8.0 GT/s PCIe x1
+v3d_freq=1150
+throttled=0xe0000
+governor: performance (was ondemand)
+labwc: 0.20.2-1~bpo13+1  hailort: 4.24.0
+mode:     1920x1080 px, 60.000000 Hz (preferred, current)
+loop video: /home/pi/workspace/yolo_vulkan_optimize/build/out/o2_soak/video_h265_loop42.mp4 5565663447 B (ffmpeg -stream_loop 41 -c copy of 04_data/videos/video_h265.mp4)
+soak: 40 min (timeout -s INT -k 120), SoC safety stop 85 C, YVO_DEC_THREADS=<app default 1>
+pre: hailo 56.0 C soc 66.7 C cool_wait_s 1
+args: --video /home/pi/workspace/yolo_vulkan_optimize/build/out/o2_soak/video_h265_loop42.mp4 --hef /home/pi/workspace/yolo_vulkan_optimize/03_models/yolov11m.hef --mode dmabuf --decoder hw --batch 1 --slots 1 --input-pace source --input-queue 1 --layout nhcw --postproc gpu --nms gpu --display on --display-backend wayland --display-fullscreen --display-sync matched --display-pace source --dump-dir . --dump-every 100000000 --frame-log frame_log.csv --csv-label o2_soak
+post: hailo 87.8 C soc 72.2 C rc 124 warn 0 err 0 throttled=0xe0000
